@@ -1,0 +1,121 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+}
+
+datasource db {
+  provider = "sqlserver"
+}
+
+// User Model
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  name          String?   @db.NVarChar(255)
+  password      String?   @db.NVarChar(500) // Hashed password
+  image         String?   @db.NVarChar(500)
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  payments      Payment[]
+  channels      Channel[]
+  devices       Device[]
+  chats         Chat[]
+
+  @@map("users")
+}
+
+// Payment Model
+model Payment {
+  id          String    @id @default(uuid())
+  amount      Decimal   @db.Decimal(18, 2)
+  status      String    @db.NVarChar(50) @default("PENDING") // PaymentStatus: PENDING, RECEIVED, OVERDUE, CANCELLED
+  type        String    @db.NVarChar(50) // PaymentType: INCOME, EXPENSE
+  receivedAt  DateTime?
+  dueAt       DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+// Channel Model (for top channels table)
+model Channel {
+  id          String    @id @default(uuid())
+  name        String    @db.NVarChar(255)
+  visits      Int       @default(0)
+  revenue     Decimal   @db.Decimal(18, 2) @default(0)
+  conversion  Decimal   @db.Decimal(5, 2) @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("channels")
+}
+
+// Device Model (for used devices chart)
+model Device {
+  id          String    @id @default(uuid())
+  name        String    @db.NVarChar(100)
+  percentage  Decimal   @db.Decimal(5, 2)
+  amount      Int
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("devices")
+}
+
+// Chat Model
+model Chat {
+  id          String    @id @default(uuid())
+  name        String    @db.NVarChar(255)
+  profile     String?   @db.NVarChar(500)
+  isActive    Boolean   @default(false)
+  lastMessage String?   @db.NVarChar(Max)
+  messageType String?   @db.NVarChar(50) @default("text")
+  timestamp   DateTime  @default(now())
+  isRead      Boolean   @default(false)
+  unreadCount Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("chats")
+}
+
+// Overview Stats Model
+model OverviewStats {
+  id          String    @id @default(uuid())
+  views       Int       @default(0)
+  profit      Decimal   @db.Decimal(18, 2) @default(0)
+  products    Int       @default(0)
+  users       Int       @default(0)
+  viewsGrowth Decimal   @db.Decimal(5, 2) @default(0)
+  profitGrowth Decimal  @db.Decimal(5, 2) @default(0)
+  productsGrowth Decimal @db.Decimal(5, 2) @default(0)
+  usersGrowth  Decimal  @db.Decimal(5, 2) @default(0)
+  period      String    @db.NVarChar(50) // "monthly" | "yearly"
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([period])
+  @@map("overview_stats")
+}

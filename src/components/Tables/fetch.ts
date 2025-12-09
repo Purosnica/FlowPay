@@ -1,9 +1,11 @@
 import * as logos from "@/assets/logos";
+import { mockDataService } from "@/services/mock-data.service";
+
+// Simular delay de red
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export async function getTopProducts() {
-  // Fake delay
-  await new Promise((resolve) => setTimeout(resolve, 2000));
-
+  await delay(2000);
   return [
     {
       image: "/images/product/product-01.png",
@@ -41,9 +43,7 @@ export async function getTopProducts() {
 }
 
 export async function getInvoiceTableData() {
-  // Fake delay
-  await new Promise((resolve) => setTimeout(resolve, 1400));
-
+  await delay(1400);
   return [
     {
       name: "Free package",
@@ -73,9 +73,7 @@ export async function getInvoiceTableData() {
 }
 
 export async function getTopChannels() {
-  // Fake delay
-  await new Promise((resolve) => setTimeout(resolve, 1500));
-
+  await delay(1500);
   return [
     {
       name: "Google",

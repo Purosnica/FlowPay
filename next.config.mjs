@@ -17,11 +17,12 @@ const nextConfig = {
         hostname: "avatars.githubusercontent.com",
         port: ""
       },
-      {
-        protocol: "https",
-        hostname: "pub-b7fd9c30cdbf439183b75041f5f71b92.r2.dev",
-        port: ""
-      }
+      // Dominio R2 comentado - descomentar solo si es necesario
+      // {
+      //   protocol: "https",
+      //   hostname: "pub-b7fd9c30cdbf439183b75041f5f71b92.r2.dev",
+      //   port: ""
+      // }
     ]
   }
 };

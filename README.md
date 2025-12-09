@@ -1,89 +1,124 @@
-# NextAdmin - Next.js Admin Dashboard Template and Components
+# FlowPay - Dashboard de Pagos
 
-**NextAdmin** is a Free, open-source Next.js admin dashboard toolkit featuring 200+ UI components and templates that come with pre-built elements, components, pages, high-quality design, integrations, and much more to help you create powerful admin dashboards with ease.
+**FlowPay** es un dashboard administrativo moderno construido con Next.js 16, diseñado para gestionar pagos, transacciones y análisis financieros.
 
+## 🚀 Características
 
-[![nextjs admin template](https://cdn.pimjo.com/nextadmin-2.png)](https://nextadmin.co/)
+- **Dashboard Completo** - Interfaz moderna y responsive para gestión de pagos
+- **GraphQL API** - API GraphQL con Pothos y validación con Zod
+- **SQL Server** - Base de datos SQL Server con Prisma ORM
+- **TanStack Query** - Manejo eficiente de estado del servidor y caché
+- **TanStack Table** - Tablas avanzadas con ordenamiento y filtrado
+- **Dark Mode** - Soporte completo para modo oscuro y claro
+- **TypeScript** - Código completamente tipado
+- **Componentes Reutilizables** - Más de 200 componentes UI listos para usar
 
+## 🛠️ Stack Tecnológico
 
-**NextAdmin** provides you with a diverse set of dashboard UI components, elements, examples and pages necessary for creating top-notch admin panels or dashboards with **powerful** features and integrations. Whether you are working on a complex web application or a basic website, **NextAdmin** has got you covered.
+- **Next.js 16** - Framework React con App Router
+- **React 19** - Biblioteca UI
+- **TypeScript** - Tipado estático
+- **Prisma ORM** - ORM para SQL Server
+- **Pothos** - Constructor de esquemas GraphQL
+- **Zod** - Validación de esquemas
+- **TanStack Query** - Estado del servidor
+- **TanStack Table** - Tablas avanzadas
+- **Axios** - Cliente HTTP
+- **Tailwind CSS** - Estilos
+- **ApexCharts** - Gráficos interactivos
 
-### [✨ Visit Website](https://nextadmin.co/)
-### [🚀 Live Demo](https://demo.nextadmin.co/)
-### [📖 Docs](https://docs.nextadmin.co/)
+## 📦 Instalación
 
-By leveraging the latest features of **Next.js 14** and key functionalities like **server-side rendering (SSR)**, **static site generation (SSG)**, and seamless **API route integration**, **NextAdmin** ensures optimal performance. With the added benefits of **React 18 advancements** and **TypeScript** reliability, **NextAdmin** is the ultimate choice to kickstart your **Next.js** project efficiently.
+1. Clona el repositorio y navega al directorio:
 
-## Installation
-
-1. Download/fork/clone the repo and Once you're in the correct directory, it's time to install all the necessary dependencies. You can do this by typing the following command:
-
+```bash
+cd FlowPay
 ```
+
+2. Instala las dependencias:
+
+```bash
 npm install
 ```
-If you're using **Yarn** as your package manager, the command will be:
 
-```
-yarn install
+3. Configura las variables de entorno:
+
+Crea un archivo `.env` en la raíz del proyecto:
+
+```env
+DATABASE_URL="sqlserver://localhost:1433;database=flowpay;user=sa;password=YourPassword123;encrypt=true;trustServerCertificate=true"
+NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_SECRET="your-secret-key-here"
+NEXT_PUBLIC_DEMO_USER_MAIL="demo@example.com"
+NEXT_PUBLIC_DEMO_USER_PASS="demo123"
 ```
 
-2. Okay, you're almost there. Now all you need to do is start the development server. If you're using **npm**, the command is:
+4. Configura la base de datos:
 
+```bash
+# Generar cliente de Prisma
+npm run db:generate
+
+# Crear tablas
+npm run db:push
+
+# (Opcional) Poblar con datos de ejemplo
+npm run db:seed
 ```
+
+5. Inicia el servidor de desarrollo:
+
+```bash
 npm run dev
 ```
-And if you're using **Yarn**, it's:
+
+La aplicación estará disponible en [http://localhost:3000](http://localhost:3000)
+
+## 📚 Scripts Disponibles
+
+- `npm run dev` - Inicia el servidor de desarrollo
+- `npm run build` - Construye la aplicación para producción
+- `npm run start` - Inicia el servidor de producción
+- `npm run lint` - Ejecuta el linter
+- `npm run db:generate` - Genera el cliente de Prisma
+- `npm run db:push` - Sincroniza el schema con la base de datos
+- `npm run db:migrate` - Crea una migración
+- `npm run db:studio` - Abre Prisma Studio
+- `npm run db:seed` - Ejecuta el seed de la base de datos
+
+## 📖 Documentación
+
+- [Guía de Integración](./README-INTEGRATION.md) - Configuración completa del stack
+- [Configuración SQL Server](./docs/SQL-SERVER-SETUP.md) - Guía de SQL Server
+- [Auditoría de Seguridad](./SECURITY-AUDIT.md) - Reporte de seguridad
+
+## 🏗️ Estructura del Proyecto
 
 ```
-yarn dev
+src/
+├── app/              # App Router de Next.js
+├── components/       # Componentes React reutilizables
+├── lib/             # Utilidades y configuraciones
+│   ├── prisma.ts    # Cliente de Prisma
+│   ├── axios.ts     # Cliente HTTP
+│   └── graphql/     # Configuración GraphQL
+├── hooks/           # Custom hooks
+├── services/        # Servicios de datos
+└── types/           # Tipos TypeScript
 ```
 
-And voila! You're now ready to start developing. **Happy coding**!
+## 🔒 Seguridad
 
-## Highlighted Features
-**200+ Next.js Dashboard Ul Components and Templates** - includes a variety of prebuilt **Ul elements, components, pages, and examples** crafted with a high-quality design.
-Additionally, features seamless **essential integrations and extensive functionalities**.
+El proyecto ha sido auditado y no contiene código malicioso ni seguimiento no autorizado. Todas las vulnerabilidades han sido corregidas.
 
-- A library of over **200** professional dashboard UI components and elements.
-- Five distinctive dashboard variations, catering to diverse use-cases.
-- A comprehensive set of essential dashboard and admin pages.
-- More than **45** **Next.js** files, ready for use.
-- Styling facilitated by **Tailwind CSS** files.
-- A design that resonates premium quality and high aesthetics.
-- A handy UI kit with assets.
-- Over ten web apps complete with examples.
-- Support for both **dark mode** and **light mode**.
-- Essential integrations including - Authentication (**NextAuth**), Database (**Postgres** with **Prisma**), and Search (**Algolia**).
-- Detailed and user-friendly documentation.
-- Customizable plugins and add-ons.
-- **TypeScript** compatibility.
-- Plus, much more!
+## 📝 Licencia
 
-All these features and more make **NextAdmin** a robust, well-rounded solution for all your dashboard development needs.
+Este proyecto es privado.
 
-## Update Logs
+## 🤝 Contribuir
 
-### Version 1.2.2 - [December 01, 2025]
-- Updated to Next.js 16
-- Updated dependencies.
+Este es un proyecto privado. Para sugerencias o mejoras, contacta al equipo de desarrollo.
 
-### Version 1.2.1 - [Mar 20, 2025]
-- Fix Peer dependency issues and NextConfig warning.
-- Updated apexcharts and react-apexhcarts to the latest version.
+---
 
-### Version 1.2.0 - Major Upgrade and UI Improvements - [Jan 27, 2025]
-
-- Upgraded to Next.js v15 and updated dependencies
-- API integration with loading skeleton for tables and charts.
-- Improved code structure for better readability.
-- Rebuilt components like dropdown, sidebar, and all ui-elements using accessibility practices.
-- Using search-params to store dropdown selection and refetch data.
-- Semantic markups, better separation of concerns and more.
-
-### Version 1.1.0
-- Updated Dependencies
-- Removed Unused Integrations
-- Optimized App
-
-### Version 1.0
-- Initial Release - [May 13, 2024]
+**FlowPay** - Dashboard de gestión de pagos moderno y eficiente.
