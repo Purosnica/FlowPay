@@ -1,4 +1,9 @@
 import { builder } from "./builder";
-import "./schemas";
+import "./resolvers";
 
 export const schema = builder.toSchema();
+
+
+
+
+

@@ -6,18 +6,13 @@ export const NAV_DATA = [
     items: [
       {
         title: "Dashboard",
-        icon: Icons.HomeIcon,
-        items: [
-          {
-            title: "eCommerce",
-            url: "/",
-          },
-        ],
+        icon: Icons.HomeIcon,       
+        url: "/",
       },
       {
-        title: "Calendar",
-        url: "/calendar",
-        icon: Icons.Calendar,
+        title: "Clientes",
+        url: "/clientes",
+        icon: Icons.User,
         items: [],
       },
       {

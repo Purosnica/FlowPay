@@ -12,8 +12,23 @@ export function Providers({ children }: { children: React.ReactNode }) {
         defaultOptions: {
           queries: {
             staleTime: 60 * 1000, // 1 minuto
+            gcTime: 5 * 60 * 1000, // 5 minutos (antes cacheTime)
             refetchOnWindowFocus: false,
-            retry: 1,
+            refetchOnMount: true,
+            refetchOnReconnect: true,
+            retry: (failureCount, error) => {
+              // No reintentar en errores 4xx
+              if (error && typeof error === "object" && "statusCode" in error) {
+                const statusCode = (error as { statusCode?: number }).statusCode;
+                if (statusCode && statusCode >= 400 && statusCode < 500) {
+                  return false;
+                }
+              }
+              return failureCount < 3;
+            },
+          },
+          mutations: {
+            retry: false, // No reintentar mutaciones por defecto
           },
         },
       })

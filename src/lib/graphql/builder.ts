@@ -2,12 +2,19 @@ import PrismaPlugin from "@pothos/plugin-prisma";
 import ValidationPlugin from "@pothos/plugin-validation";
 import ZodPlugin from "@pothos/plugin-zod";
 import SchemaBuilder from "@pothos/core";
-import type PrismaTypes from "@pothos/plugin-prisma/generated";
 import { prisma } from "@/lib/prisma";
-import { z } from "zod";
+import { Prisma } from "@prisma/client";
+
+// Tipos para el contexto
+export interface GraphQLContext {
+  prisma: typeof prisma;
+}
 
 export const builder = new SchemaBuilder<{
-  PrismaTypes: PrismaTypes;
+  Context: GraphQLContext;
+  PrismaTypes: {
+    PrismaClient: typeof prisma;
+  };
   Scalars: {
     DateTime: {
       Input: Date;
@@ -18,20 +25,23 @@ export const builder = new SchemaBuilder<{
   plugins: [PrismaPlugin, ValidationPlugin, ZodPlugin],
   prisma: {
     client: prisma,
-  },
-  validationOptions: {
-    // Configuración de validación
+    dmmf: Prisma.dmmf,
+    filterConnectionTotalCount: true,
+    onUnusedQuery: process.env.NODE_ENV === "production" ? null : "warn",
   },
 });
 
 // Agregar scalar DateTime
 builder.scalarType("DateTime", {
-  serialize: (date) => date.toISOString(),
-  parseValue: (date) => {
+  serialize: (date: Date) => date.toISOString(),
+  parseValue: (date: unknown): Date => {
     if (typeof date === "string") {
       return new Date(date);
     }
-    return date;
+    if (date instanceof Date) {
+      return date;
+    }
+    throw new Error("Invalid date value");
   },
 });
 

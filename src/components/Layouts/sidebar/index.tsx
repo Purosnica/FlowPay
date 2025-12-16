@@ -1,6 +1,6 @@
 "use client";
 
-import { Logo } from "@/components/logo";
+import { Logo } from "../logo";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -28,7 +28,7 @@ export function Sidebar() {
     // Keep collapsible open, when it's subpage is active
     NAV_DATA.some((section) => {
       return section.items.some((item) => {
-        return item.items.some((subItem) => {
+        return item.items?.some((subItem) => {
           if (subItem.url === pathname) {
             if (!expandedItems.includes(item.title)) {
               toggleExpanded(item.title);
@@ -97,7 +97,7 @@ export function Sidebar() {
                   <ul className="space-y-2">
                     {section.items.map((item) => (
                       <li key={item.title}>
-                        {item.items.length ? (
+                        {item.items && item.items.length > 0 ? (
                           <div>
                             <MenuItem
                               isActive={item.items.some(

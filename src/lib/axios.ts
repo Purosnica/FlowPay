@@ -1,8 +1,9 @@
 import axios from "axios";
+import { env } from "@/lib/env";
 
 // Instancia de axios configurada para la aplicación
 export const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "/api",
+  baseURL: env.NEXT_PUBLIC_API_URL,
   headers: {
     "Content-Type": "application/json",
   },
@@ -45,3 +46,9 @@ apiClient.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+
+
+
+
+
