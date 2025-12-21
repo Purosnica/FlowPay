@@ -1,0 +1,124 @@
+---
+alwaysApply: true
+---
+A partir de ahora debes seguir estas reglas estrictas en cada archivo que generes o modifiques. No puedes ignorar ninguna. Si el código existente no cumple una regla, refactorízalo automáticamente sin romper funcionalidad.
+
+🧱 1. NO INVENTAR NADA
+
+No inventes funciones, nombres, tipos, rutas, tablas ni campos que no existan en el proyecto.
+
+Si falta algo, pregunta antes o indícalo como comentario TODO.
+
+🧹 2. CÓDIGO LIMPIO Y CONSISTENTE
+
+No duplicar funciones, lógica ni componentes.
+
+Reutilizar siempre lo que ya existe.
+
+Si encuentras duplicación → extrae a utils, logic, o lib/services.
+
+Mantener nombres claros, consistentes y descriptivos.
+
+No mezclar responsabilidades: cada archivo hace una sola cosa.
+
+📁 3. RESPETAR ARQUITECTURA DEL PROYECTO
+
+Siempre seguir estas reglas:
+
+Nada de lógica en componentes → mover a lib/logic o utils.
+
+Validaciones → validators/ o schemas/.
+
+Acceso a BD → services/ o db/.
+
+Tipos → en types/.
+
+Reducir el tamaño de los componentes a lo mínimo.
+
+Si un archivo viola estos principios, debe ser refactorizado.
+
+🧩 4. TYPE SAFETY ESTRICTO
+
+No usar any, as any, as unknown as.
+
+Siempre tipar retornos de funciones.
+
+Usar TypeScript estricto.
+
+Sin console.log.
+
+Usar siempre async/await, no .then().
+
+📏 5. ESLINT + PRETTIER (OBLIGATORIO)
+
+Todas las reglas críticas deben cumplirse:
+
+no-unused-vars: error
+no-undef: error
+no-console: ["error", { "allow": ["warn", "error"] }]
+eqeqeq: error
+prefer-const: error
+no-duplicate-imports: error
+@typescript-eslint/no-explicit-any: error
+@typescript-eslint/consistent-type-imports: error
+react-hooks/rules-of-hooks: error
+react-hooks/exhaustive-deps: warn
+
+
+Prettier:
+
+2 spaces
+
+Semicolons ON
+
+Single quotes
+
+Máx 80–100 columnas
+
+🚫 6. ANTI-ERRORES EN CURSOR
+
+Estas son reglas duras para evitar errores típicos:
+
+No reescribir archivos completos si no es necesario.
+
+Nunca eliminar lógica existente sin validar.
+
+Respetar imports actuales antes de agregar nuevos.
+
+No cambiar nombres de funciones sin razón válida.
+
+No crear código muerto o sin uso.
+
+No crear funciones vacías.
+
+🔐 7. VALIDACIONES Y SEGURIDAD
+
+Validar todos los inputs en el backend.
+
+Usar Zod siempre que corresponda.
+
+No exponer errores internos.
+
+Si un parámetro es crítico, debe ser validado.
+
+⚙️ 8. CAMBIOS CONTROLADOS
+
+Cuando modifiques algo:
+
+Explicar brevemente qué cambias y por qué.
+
+Evitar cambios masivos innecesarios.
+
+Mantener legibilidad y orden de imports.
+
+🧪 9. TESTING BÁSICO
+
+Toda función compleja debe tener test o quedar marcada como pendiente.
+
+🎯 10. INSTRUCCIÓN FINAL
+
+No generes absolutamente nada que viole estas reglas.
+Si algo no está claro, pregunta antes.
+Si algo ya existe, reutilízalo.
+Si algo está mal escrito, corrígelo sin romper el sistema.
+Tu prioridad: Exactitud, consistencia y cero errores.

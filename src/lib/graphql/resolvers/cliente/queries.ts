@@ -1,5 +1,6 @@
 import { builder } from "../../builder";
 import { Cliente, ClientePage, ClienteFiltersInput } from "./types";
+import { Prisma } from "@prisma/client";
 
 // Query para obtener un cliente por ID
 export const clienteQuery = builder.queryField("cliente", (t) =>
@@ -9,9 +10,9 @@ export const clienteQuery = builder.queryField("cliente", (t) =>
     args: {
       id: t.arg.int({ required: true }),
     },
-    resolve: async (query, _parent, args, ctx: any) => {
+    resolve: async (query, _parent, args, ctx) => {
       const cliente = await ctx.prisma.tbl_cliente.findUnique({
-        ...query,
+        ...(query as any),
         where: { idcliente: args.id },
         include: {
           tipodocumento: true,
@@ -27,7 +28,7 @@ export const clienteQuery = builder.queryField("cliente", (t) =>
           },
         },
       });
-      return cliente;
+      return cliente as any;
     },
   })
 );
@@ -45,11 +46,11 @@ export const clientesQuery = builder.queryField("clientes", (t) =>
       const page = args.page || 1;
       const pageSize = args.pageSize || 10;
       const skip = (page - 1) * pageSize;
-      const filters = (args.filters || {}) as any;
+      const filters = args.filters || {};
 
       // Construir where clause
-      const where: any = {};
-      const filtersData = filters;
+      const where: Prisma.tbl_clienteWhereInput = {};
+      const filtersData = filters as { search?: string; estado?: boolean; idtipodocumento?: number; idgenero?: number; idestadocivil?: number; idocupacion?: number; idtipopersona?: number; idpais?: number; iddepartamento?: number };
 
       // Búsqueda general
       if (filtersData.search) {
@@ -127,4 +128,10 @@ export const clientesQuery = builder.queryField("clientes", (t) =>
     },
   })
 );
+
+
+
+
+
+
 

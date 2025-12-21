@@ -34,10 +34,10 @@ export function ClienteForm({
     segundo_nombres: "",
     primer_apellido: "",
     segundo_apellido: "",
-    idtipodocumento: undefined as any,
+    idtipodocumento: undefined,
     numerodocumento: "",
-    idtipopersona: undefined as any,
-    idpais: undefined as any,
+    idtipopersona: undefined,
+    idpais: undefined,
     espep: false,
     estado: true,
   });
@@ -84,14 +84,14 @@ export function ClienteForm({
         primer_apellido: cliente.primer_apellido,
         segundo_apellido: cliente.segundo_apellido || "",
         fechanacimiento: cliente.fechanacimiento || "",
-        idtipodocumento: cliente.tipodocumento.idtipodocumento,
+        idtipodocumento: cliente.tipodocumento?.idtipodocumento,
         numerodocumento: cliente.numerodocumento,
         fechavencimientodoc: cliente.fechavencimientodoc || "",
         idgenero: cliente.genero?.idgenero,
         idestadocivil: cliente.estadocivil?.idestadocivil,
         idocupacion: cliente.ocupacion?.idocupacion,
-        idtipopersona: cliente.tipopersona.idtipopersona,
-        idpais: cliente.pais.idpais,
+        idtipopersona: cliente.tipopersona?.idtipopersona,
+        idpais: cliente.pais?.idpais,
         iddepartamento: cliente.departamento?.iddepartamento,
         direccion: cliente.direccion || "",
         ciudad: cliente.ciudad || "",
@@ -112,10 +112,10 @@ export function ClienteForm({
         segundo_nombres: "",
         primer_apellido: "",
         segundo_apellido: "",
-        idtipodocumento: undefined as any,
+        idtipodocumento: undefined,
         numerodocumento: "",
-        idtipopersona: undefined as any,
-        idpais: undefined as any,
+        idtipopersona: undefined,
+        idpais: undefined,
         espep: false,
         estado: true,
       });
@@ -306,7 +306,7 @@ export function ClienteForm({
               onChange={(e) =>
                 setFormData({
                   ...formData,
-                  idtipodocumento: e.target.value ? Number(e.target.value) : undefined as any,
+                  idtipodocumento: e.target.value ? Number(e.target.value) : undefined,
                 })
               }
               options={
@@ -414,7 +414,7 @@ export function ClienteForm({
               onChange={(e) =>
                 setFormData({
                   ...formData,
-                  idtipopersona: e.target.value ? Number(e.target.value) : undefined as any,
+                  idtipopersona: e.target.value ? Number(e.target.value) : undefined,
                 })
               }
               options={
@@ -440,7 +440,7 @@ export function ClienteForm({
               onChange={(e) =>
                 setFormData({
                   ...formData,
-                  idpais: e.target.value ? Number(e.target.value) : undefined as any,
+                  idpais: e.target.value ? Number(e.target.value) : undefined,
                   iddepartamento: undefined,
                 })
               }

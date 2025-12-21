@@ -2,7 +2,8 @@
  * Tipos compartidos para la aplicación
  */
 
-import type { User, Payment } from "@prisma/client";
+// Nota: User y Payment no existen en el schema de Prisma actual
+// Usar tbl_usuario y tbl_pago en su lugar
 
 /**
  * Respuesta estándar de la API
@@ -25,13 +26,6 @@ export interface PaginatedResponse<T> {
     totalPages: number;
   };
 }
-
-/**
- * Usuario con relaciones
- */
-export type UserWithRelations = User & {
-  payments?: Payment[];
-};
 
 /**
  * Estado de carga genérico
@@ -66,6 +60,12 @@ export interface OperationResult<T = void> {
   error?: string;
   errors?: Record<string, string[]>;
 }
+
+
+
+
+
+
 
 
 

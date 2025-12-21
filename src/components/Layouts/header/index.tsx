@@ -8,6 +8,7 @@ import { MenuIcon } from "./icons";
 import { Notification } from "./notification";
 import { ThemeToggleSwitch } from "./theme-toggle";
 import { UserInfo } from "./user-info";
+import { GlobalSearch } from "@/components/ui/global-search";
 
 export function Header() {
   const { toggleSidebar, isMobile } = useSidebarContext();
@@ -41,7 +42,10 @@ export function Header() {
         <p className="font-medium">FlowPay - Dashboard de Pagos</p>
       </div>
 
-      <div className="flex flex-1 items-center justify-end gap-2 min-[375px]:gap-4">       
+      <div className="flex flex-1 items-center justify-end gap-2 min-[375px]:gap-4">
+        <div className="hidden flex-1 max-w-md lg:block">
+          <GlobalSearch />
+        </div>
 
         <ThemeToggleSwitch />
 

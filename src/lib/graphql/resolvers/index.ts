@@ -3,4 +3,7 @@
 
 import "./cliente";
 import "./catalogos";
+import "./finanzas";
+import "./cobranza";
+
 

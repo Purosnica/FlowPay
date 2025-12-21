@@ -1,13 +1,23 @@
-export default function HomePage() {
-  return (
-    <div className="rounded-lg bg-white p-6 shadow-1 dark:bg-gray-dark">
-      <h1 className="text-2xl font-bold text-dark dark:text-white">
-        Bienvenido a FlowPay
-      </h1>
-      <p className="mt-4 text-gray-6">
-        Estructura del Layout lista para usar
-      </p>
-    </div>
-  );
+import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+
+/**
+ * PÁGINA RAÍZ
+ * 
+ * El middleware debería redirigir antes de llegar aquí,
+ * pero por seguridad verificamos y redirigimos también.
+ */
+export default async function HomePage() {
+  // Verificar si hay token de autenticación
+  const cookieStore = await cookies();
+  const token = cookieStore.get("auth-token")?.value;
+
+  // Si no hay token, SIEMPRE redirigir a login
+  if (!token || token.trim() === "") {
+    redirect("/login");
+  }
+
+  // Si hay token, redirigir al dashboard principal
+  redirect("/dashboard");
 }
 

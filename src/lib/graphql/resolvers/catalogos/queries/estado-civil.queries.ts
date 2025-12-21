@@ -9,11 +9,17 @@ export const estadosCivilesQuery = builder.queryField("estadosCiviles", (t) =>
     },
     resolve: async (query, _parent, args, ctx) => {
       return ctx.prisma.tbl_estadocivil.findMany({
-        ...query,
-        where: args.estado !== undefined ? { estado: args.estado } : undefined,
+        ...(query as any),
+        where: args.estado !== undefined && args.estado !== null ? { estado: args.estado } : undefined,
         orderBy: { descripcion: "asc" },
       });
     },
   })
 );
+
+
+
+
+
+
 

@@ -17,7 +17,7 @@ export const departamentosQuery = builder.queryField("departamentos", (t) =>
         where.estado = args.estado;
       }
       return ctx.prisma.tbl_departamento.findMany({
-        ...query,
+        ...(query as any),
         where: Object.keys(where).length > 0 ? where : undefined,
         include: {
           pais: true,
@@ -27,4 +27,10 @@ export const departamentosQuery = builder.queryField("departamentos", (t) =>
     },
   })
 );
+
+
+
+
+
+
 

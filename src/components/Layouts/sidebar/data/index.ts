@@ -7,7 +7,7 @@ export const NAV_DATA = [
       {
         title: "Dashboard",
         icon: Icons.HomeIcon,       
-        url: "/",
+        url: "/dashboard",
       },
       {
         title: "Clientes",
@@ -16,36 +16,54 @@ export const NAV_DATA = [
         items: [],
       },
       {
+        title: "Préstamos",
+        icon: Icons.Table,
+        items: [
+          {
+            title: "Listado",
+            url: "/prestamos",
+          },
+          {
+            title: "Crear préstamo",
+            url: "/prestamos/nuevo",
+          },
+        ],
+      },
+      {
+        title: "Pagos",
+        icon: Icons.Calendar,
+        items: [
+          {
+            title: "Registrar pago",
+            url: "/pagos/registrar",
+          },
+        ],
+      },
+      {
+        title: "Cartera",
+        icon: Icons.PieChart,
+        url: "/cartera",
+        items: [],
+      },
+      {
+        title: "Reportes",
+        icon: Icons.PieChart,
+        url: "/reportes",
+        items: [],
+      },
+      {
+        title: "Configuración",
+        icon: Icons.Settings,
+        url: "/configuracion",
+        items: [],
+      },
+      {
         title: "Profile",
         url: "/profile",
         icon: Icons.User,
         items: [],
       },
-      {
-        title: "Forms",
-        icon: Icons.Alphabet,
-        items: [
-          {
-            title: "Form Elements",
-            url: "/forms/form-elements",
-          },
-          {
-            title: "Form Layout",
-            url: "/forms/form-layout",
-          },
-        ],
-      },
-      {
-        title: "Tables",
-        url: "/tables",
-        icon: Icons.Table,
-        items: [
-          {
-            title: "Tables",
-            url: "/tables",
-          },
-        ],
-      },
+      
       {
         title: "Pages",
         icon: Icons.Alphabet,
@@ -71,20 +89,7 @@ export const NAV_DATA = [
           },
         ],
       },
-      {
-        title: "UI Elements",
-        icon: Icons.FourCircle,
-        items: [
-          {
-            title: "Alerts",
-            url: "/ui-elements/alerts",
-          },
-          {
-            title: "Buttons",
-            url: "/ui-elements/buttons",
-          },
-        ],
-      },
+      
       {
         title: "Authentication",
         icon: Icons.Authentication,

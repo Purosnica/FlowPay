@@ -110,3 +110,9 @@ export const deleteClienteMutation = builder.mutationField("deleteCliente", (t) 
   })
 );
 
+
+
+
+
+
+

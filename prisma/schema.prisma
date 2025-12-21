@@ -103,6 +103,229 @@ model tbl_genero {
 }
 
 // ============================================
+// ENUMS PRÉSTAMOS Y COBRANZA
+// ============================================
+
+enum EstadoPrestamoEnum {
+  BORRADOR
+  APROBADO
+  DESEMBOLSADO
+  EN_CURSO
+  EN_MORA
+  REFINANCIADO
+  PAGADO
+  CASTIGADO
+  CANCELADO
+}
+
+enum TipoPrestamoEnum {
+  PROPIO
+  TERCERIZADO
+}
+
+enum EstadoCuotaEnum {
+  PENDIENTE
+  PARCIAL
+  PAGADA
+  VENCIDA
+  REPROGRAMADA
+  CONDONADA
+  CASTIGADA
+  ANULADA
+}
+
+enum MetodoPagoEnum {
+  EFECTIVO
+  TRANSFERENCIA
+  DEPOSITO
+  TARJETA
+  DEBITO_AUTOMATICO
+  CHEQUE
+  BILLETERA
+  DIGITAL
+  JUDICIAL
+  EMBARGOS
+  ORDEN_JUDICIAL
+}
+
+enum CanalCobranzaEnum {
+  OFICINA
+  CAMPO
+  CALL_CENTER
+  DIGITAL
+  AGENTE_EXTERNO
+  ALIADO
+}
+
+enum RolSistemaEnum {
+  ADMINISTRADOR
+  SUPERVISOR
+  ANALISTA_RIESGO
+  ASESOR_CREDITO
+  COBRADOR
+  BACKOFFICE
+  AUDITOR
+}
+
+enum EstadoGestionCobroEnum {
+  PENDIENTE
+  CONTACTADO
+  PROMESA
+  NO_CONTACTADO
+  NO_INTERESADO
+  ESCALADA
+  CERRADA
+}
+
+enum EstadoPromesaEnum {
+  PENDIENTE
+  CUMPLIDA
+  INCUMPLIDA
+  REPROGRAMADA
+  CANCELADA
+}
+
+enum EstadoLiquidacionEnum {
+  PENDIENTE
+  LIQUIDADO
+  PAGADO
+  CANCELADO
+}
+
+enum TipoDocumentoEnum {
+  CONTRATO
+  PAGARE
+  EVIDENCIA
+  IDENTIFICACION
+  COMPROBANTE
+  OTRO
+}
+
+enum TipoComisionEnum {
+  PORCENTAJE_DESEMBOLSO
+  PORCENTAJE_INTERES
+  FIJO
+  MIXTO
+}
+
+enum BaseComisionEnum {
+  DESEMBOLSO
+  INTERES
+  CUOTA
+}
+
+enum TipoCobroEnum {
+  PARCIAL
+  TOTAL
+  DESCUENTO
+  NEGOCIADO
+  EXTRAJUDICIAL
+}
+
+enum TipoGestionEnum {
+  LLAMADA
+  WHATSAPP
+  SMS
+  VISITA
+  CORREO
+  OTRO
+}
+
+enum TipoAcuerdoEnum {
+  PROMESA_DE_PAGO
+  CONVENIO_PARCIAL
+  CONVENIO_TOTAL
+  REFINANCIAMIENTO
+  REESTRUCTURADO
+}
+
+enum EstadoAcuerdoEnum {
+  ACTIVO
+  VENCIDO
+  CUMPLIDO
+  INCUMPLIDO
+}
+
+// ============================================
+// CATÁLOGOS PRÉSTAMOS Y COBRANZA
+// ============================================
+
+model tbl_estado_prestamo {
+  idestadoprestamo Int @id @default(autoincrement())
+  codigo           String @unique
+  descripcion      String
+  estado           Boolean  @default(true)
+  deletedAt        DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("tbl_estado_prestamo")
+}
+
+model tbl_tipo_prestamo {
+  idtipoprestamo Int @id @default(autoincrement())
+  codigo         String @unique
+  descripcion    String
+  estado         Boolean  @default(true)
+  deletedAt      DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("tbl_tipo_prestamo")
+}
+
+model tbl_estado_cuota {
+  idestadocuota Int @id @default(autoincrement())
+  codigo        String @unique
+  descripcion   String
+  estado        Boolean  @default(true)
+  deletedAt     DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("tbl_estado_cuota")
+}
+
+model tbl_metodo_pago {
+  idmetodopago Int @id @default(autoincrement())
+  codigo       String @unique
+  descripcion  String
+  estado       Boolean  @default(true)
+  deletedAt    DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("tbl_metodo_pago")
+}
+
+model tbl_canal_cobranza {
+  idcanalcobranza Int @id @default(autoincrement())
+  codigo          String @unique
+  descripcion     String
+  estado          Boolean  @default(true)
+  deletedAt       DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("tbl_canal_cobranza")
+}
+
+model tbl_rol {
+  idrol       Int @id @default(autoincrement())
+  codigo      String @unique
+  descripcion String
+  estado      Boolean  @default(true)
+  deletedAt   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  usuarios tbl_usuario[]
+  permisos tbl_rol_permiso[]
+
+  @@map("tbl_rol")
+}
+
+// ============================================
 // CLIENTES
 // ============================================
 
@@ -155,10 +378,663 @@ model tbl_cliente {
   tipopersona tbl_tipopersona @relation(fields: [idtipopersona], references: [idtipopersona])
   pais tbl_pais @relation(fields: [idpais], references: [idpais])
   departamento tbl_departamento? @relation(fields: [iddepartamento], references: [iddepartamento])
+  prestamos tbl_prestamo[]
   
   @@map("tbl_cliente")
   @@index([numerodocumento])
   @@index([email])
   @@index([idtipodocumento])
   @@index([idpais])
+}
+
+// ============================================
+// PRÉSTAMOS
+// ============================================
+
+model tbl_prestamo {
+  idprestamo        Int                @id @default(autoincrement())
+  idcliente         Int
+  idusuarioCreador  Int?
+  idusuarioMod      Int?
+  idusuarioGestor   Int?
+  tipoprestamo      TipoPrestamoEnum
+  estado            EstadoPrestamoEnum @default(BORRADOR)
+  codigo            String             @unique
+  referencia        String?
+  montoSolicitado   Decimal            @db.Decimal(18, 2)
+  montoAprobado     Decimal?           @db.Decimal(18, 2)
+  montoDesembolsado Decimal?           @db.Decimal(18, 2)
+  comisionTercerizado Decimal?         @db.Decimal(18, 2)
+  tasaInteresAnual  Decimal?           @db.Decimal(8, 4)
+  plazoMeses        Int?
+  fechaSolicitud    DateTime           @default(now())
+  fechaAprobacion   DateTime?
+  fechaDesembolso   DateTime?
+  fechaVencimiento  DateTime?
+  fechaUltimoPago   DateTime?
+  observaciones     String?            @db.Text
+  // Saldos avanzados
+  saldoCapital      Decimal?           @db.Decimal(18, 2)
+  saldoInteres      Decimal?           @db.Decimal(18, 2)
+  saldoMora         Decimal?           @db.Decimal(18, 2)
+  saldoTotal        Decimal?           @db.Decimal(18, 2)
+  deletedAt         DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  cliente tbl_cliente @relation(fields: [idcliente], references: [idcliente])
+  usuarioCreador tbl_usuario? @relation("usuario_prestamo_crea", fields: [idusuarioCreador], references: [idusuario])
+  usuarioMod     tbl_usuario? @relation("usuario_prestamo_mod", fields: [idusuarioMod], references: [idusuario])
+  usuarioGestor  tbl_usuario? @relation("usuario_prestamo_gestor", fields: [idusuarioGestor], references: [idusuario])
+  cuotas   tbl_cuota[]
+  pagos    tbl_pago[]
+  gestiones tbl_gestion_cobro[]
+  promesas  tbl_promesa_pago[]
+  contactos tbl_contacto_cobranza[]
+  comisiones tbl_comision_generada[]
+  prestamoTercerizado tbl_prestamo_tercerizado?
+  reestructuracionesComoOriginal tbl_reestructuracion[] @relation("prestamo_reestructuracion_original")
+  reestructuracionComoNuevo tbl_reestructuracion? @relation("prestamo_reestructuracion_nuevo")
+  documentos tbl_documento[]
+  castigos tbl_castigo[] @relation("prestamo_castigo")
+  acuerdos tbl_acuerdo[]
+  asignaciones tbl_asignacion_cartera[]
+
+  @@map("tbl_prestamo")
+  @@index([idcliente, deletedAt])
+  @@index([idusuarioCreador, deletedAt])
+  @@index([idusuarioMod, deletedAt])
+  @@index([idusuarioGestor, deletedAt])
+  @@index([estado, deletedAt])
+  @@index([tipoprestamo, deletedAt])
+}
+
+// ============================================
+// CUOTAS
+// ============================================
+
+model tbl_cuota {
+  idcuota            Int             @id @default(autoincrement())
+  idprestamo         Int
+  numero             Int
+  estado             EstadoCuotaEnum @default(PENDIENTE)
+  fechaVencimiento   DateTime
+  fechaPago          DateTime?
+  capitalProgramado  Decimal         @db.Decimal(18, 2)
+  interesProgramado  Decimal         @db.Decimal(18, 2)
+  moraProgramada     Decimal         @default(0) @db.Decimal(18, 2)
+  capitalPagado      Decimal         @default(0) @db.Decimal(18, 2)
+  interesPagado      Decimal         @default(0) @db.Decimal(18, 2)
+  moraPagada         Decimal         @default(0) @db.Decimal(18, 2)
+  saldoCapital       Decimal?        @db.Decimal(18, 2)
+  diasMoraAcumulados Int             @default(0)
+  deletedAt          DateTime?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  prestamo tbl_prestamo @relation(fields: [idprestamo], references: [idprestamo])
+  pagos    tbl_pago[]
+  gestiones tbl_gestion_cobro[]
+  promesas  tbl_promesa_pago[]
+  contactos tbl_contacto_cobranza[]
+
+  @@map("tbl_cuota")
+  @@unique([idprestamo, numero])
+  @@index([idprestamo, deletedAt])
+  @@index([fechaVencimiento, estado, deletedAt])
+}
+
+// ============================================
+// PAGOS
+// ============================================
+
+model tbl_pago {
+  idpago         Int             @id @default(autoincrement())
+  idprestamo     Int
+  idcuota        Int?
+  idacuerdo      Int?
+  idusuario      Int?
+  metodoPago     MetodoPagoEnum
+  tipoCobro      TipoCobroEnum  @default(PARCIAL)
+  fechaPago      DateTime        @default(now())
+  referencia     String?
+  montoCapital   Decimal         @default(0) @db.Decimal(18, 2)
+  montoInteres   Decimal         @default(0) @db.Decimal(18, 2)
+  montoMora      Decimal         @default(0) @db.Decimal(18, 2)
+  montoTotal     Decimal         @db.Decimal(18, 2)
+  observacion    String?         @db.Text
+  notas          String?         @db.Text
+  deletedAt      DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  prestamo tbl_prestamo @relation(fields: [idprestamo], references: [idprestamo])
+  cuota    tbl_cuota?    @relation(fields: [idcuota], references: [idcuota])
+  acuerdo  tbl_acuerdo?  @relation(fields: [idacuerdo], references: [idacuerdo])
+  usuario  tbl_usuario?  @relation("usuario_pago_registra", fields: [idusuario], references: [idusuario])
+  comisiones tbl_comision_generada[]
+
+  @@map("tbl_pago")
+  @@index([idprestamo, deletedAt])
+  @@index([idcuota, deletedAt])
+  @@index([idacuerdo, deletedAt])
+  @@index([idusuario, deletedAt])
+  @@index([fechaPago, deletedAt])
+  @@index([tipoCobro, deletedAt])
+}
+
+// ============================================
+// TERCERIZACIÓN Y COMISIONES
+// ============================================
+
+model tbl_empresa_tercera {
+  idempresa     Int      @id @default(autoincrement())
+  codigo        String   @unique
+  nombre        String
+  ruc           String?
+  contacto      String?
+  email         String?
+  telefono      String?
+  direccion     String?
+  deletedAt     DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  prestamosTercerizados tbl_prestamo_tercerizado[]
+  configuracionesComision tbl_config_comision[]
+  comisionesGeneradas tbl_comision_generada[]
+  liquidaciones tbl_liquidacion_tercero[]
+
+  @@map("tbl_empresa_tercera")
+  @@index([nombre])
+}
+
+model tbl_prestamo_tercerizado {
+  idprestamo Int @id
+  idempresa  Int
+  observaciones String?
+  deletedAt  DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  prestamo tbl_prestamo     @relation(fields: [idprestamo], references: [idprestamo])
+  empresa  tbl_empresa_tercera @relation(fields: [idempresa], references: [idempresa])
+
+  @@map("tbl_prestamo_tercerizado")
+  @@index([idempresa, deletedAt])
+}
+
+model tbl_config_comision {
+  idconfiguracion Int             @id @default(autoincrement())
+  idempresa       Int
+  tipo            TipoComisionEnum
+  baseCalculo     BaseComisionEnum
+  porcentaje      Decimal?        @db.Decimal(9, 4)
+  montoFijo       Decimal?        @db.Decimal(18, 2)
+  vigenteDesde    DateTime        @default(now())
+  vigenteHasta    DateTime?
+  deletedAt       DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  empresa tbl_empresa_tercera @relation(fields: [idempresa], references: [idempresa])
+
+  @@map("tbl_config_comision")
+  @@index([idempresa, vigenteDesde])
+  @@index([idempresa, deletedAt])
+}
+
+model tbl_comision_generada {
+  idcomision       Int       @id @default(autoincrement())
+  idempresa        Int
+  idprestamo       Int
+  idpago           Int?
+  idliquidacion    Int?
+  fechaGeneracion  DateTime  @default(now())
+  montoBase        Decimal   @db.Decimal(18, 2)
+  montoComision    Decimal   @db.Decimal(18, 2)
+  descripcion      String?
+  liquidada        Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  empresa  tbl_empresa_tercera @relation(fields: [idempresa], references: [idempresa])
+  prestamo tbl_prestamo        @relation(fields: [idprestamo], references: [idprestamo])
+  pago     tbl_pago?           @relation(fields: [idpago], references: [idpago])
+  liquidacion tbl_liquidacion_tercero? @relation(fields: [idliquidacion], references: [idliquidacion])
+
+  @@map("tbl_comision_generada")
+  @@index([idempresa])
+  @@index([idprestamo])
+  @@index([fechaGeneracion])
+  @@index([idliquidacion])
+  @@index([liquidada])
+}
+
+// ============================================
+model tbl_usuario {
+  idusuario   Int      @id @default(autoincrement())
+  idrol       Int
+  nombre      String
+  email       String   @unique
+  telefono    String?
+  passwordHash String? // Hash de contraseña con salt
+  salt        String? // Salt para hash de contraseña
+  password    String? // Hash simple (para migración de datos existentes)
+  ultimoAcceso DateTime? // Último acceso al sistema
+  activo      Boolean  @default(true)
+  deletedAt   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  rol tbl_rol @relation(fields: [idrol], references: [idrol])
+
+  // Relaciones operativas
+  prestamosCreados     tbl_prestamo[]      @relation("usuario_prestamo_crea")
+  prestamosActualizados tbl_prestamo[]     @relation("usuario_prestamo_mod")
+  prestamosAsignados   tbl_prestamo[]      @relation("usuario_prestamo_gestor")
+  pagosRegistrados     tbl_pago[]          @relation("usuario_pago_registra")
+  gestionesCreadas     tbl_gestion_cobro[] @relation("usuario_gestion_crea")
+  promesasCreadas      tbl_promesa_pago[]  @relation("usuario_promesa_crea")
+  contactosCreados     tbl_contacto_cobranza[] @relation("usuario_contacto_crea")
+  locks                tbl_lock[]           @relation("usuario_lock")
+  reestructuracionesSolicitadas tbl_reestructuracion[] @relation("usuario_reestructuracion_solicita")
+  reestructuracionesAutorizadas tbl_reestructuracion[] @relation("usuario_reestructuracion_autoriza")
+  liquidacionesCreadas tbl_liquidacion_tercero[] @relation("usuario_liquidacion_crea")
+  liquidacionesAutorizadas tbl_liquidacion_tercero[] @relation("usuario_liquidacion_autoriza")
+  documentosSubidos   tbl_documento[] @relation("usuario_documento_sube")
+  configuracionesModificadas tbl_configuracion_sistema[] @relation("usuario_config_mod")
+  auditorias           tbl_auditoria[]
+  castigosRealizados   tbl_castigo[] @relation("usuario_castigo")
+  acuerdosCreados      tbl_acuerdo[] @relation("usuario_acuerdo_crea")
+  asignacionesCartera tbl_asignacion_cartera[] @relation("usuario_asignacion")
+
+  @@map("tbl_usuario")
+  @@index([idrol])
+  @@index([email])
+  @@index([deletedAt])
+}
+
+model tbl_auditoria {
+  idauditoria    Int       @id @default(autoincrement())
+  idusuario      Int?
+  entidad        String
+  entidadId      Int?
+  accion         String
+  detalle        String?
+  ip             String?
+  userAgent      String?
+  createdAt      DateTime  @default(now())
+
+  usuario tbl_usuario? @relation(fields: [idusuario], references: [idusuario])
+
+  @@map("tbl_auditoria")
+  @@index([entidad, entidadId])
+  @@index([idusuario])
+}
+
+// ============================================
+// COBRANZA
+// ============================================
+
+model tbl_gestion_cobro {
+  idgestion          Int                    @id @default(autoincrement())
+  idprestamo         Int
+  idcuota            Int?
+  idusuario          Int?
+  idresultado        Int?
+  tipoGestion        TipoGestionEnum
+  canal              CanalCobranzaEnum
+  estado             EstadoGestionCobroEnum @default(PENDIENTE)
+  fechaGestion       DateTime               @default(now())
+  proximaAccion      DateTime?
+  duracionLlamada    Int?                   // Duración en minutos
+  resumen            String?
+  notas              String?                @db.Text
+  evidenciaArchivo   String?                // Ruta al archivo adjunto
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+
+  prestamo tbl_prestamo @relation(fields: [idprestamo], references: [idprestamo])
+  cuota    tbl_cuota?    @relation(fields: [idcuota], references: [idcuota])
+  usuario  tbl_usuario?  @relation("usuario_gestion_crea", fields: [idusuario], references: [idusuario])
+  resultado tbl_resultado_gestion? @relation(fields: [idresultado], references: [idresultado])
+
+  @@map("tbl_gestion_cobro")
+  @@index([idprestamo])
+  @@index([idcuota])
+  @@index([idusuario])
+  @@index([fechaGestion])
+  @@index([estado, fechaGestion])
+  @@index([tipoGestion, fechaGestion])
+}
+
+model tbl_promesa_pago {
+  idpromesa        Int               @id @default(autoincrement())
+  idprestamo       Int
+  idcuota          Int?
+  idusuario        Int?
+  canal            CanalCobranzaEnum
+  estado           EstadoPromesaEnum @default(PENDIENTE)
+  fechaPromesa     DateTime
+  fechaCumplimiento DateTime?
+  montoCompromiso  Decimal           @db.Decimal(18, 2)
+  observaciones    String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  prestamo tbl_prestamo @relation(fields: [idprestamo], references: [idprestamo])
+  cuota    tbl_cuota?    @relation(fields: [idcuota], references: [idcuota])
+  usuario  tbl_usuario?  @relation("usuario_promesa_crea", fields: [idusuario], references: [idusuario])
+
+  @@map("tbl_promesa_pago")
+  @@index([idprestamo])
+  @@index([idcuota])
+  @@index([idusuario])
+  @@index([fechaPromesa])
+  @@index([estado, fechaPromesa])
+}
+
+model tbl_contacto_cobranza {
+  idcontacto       Int               @id @default(autoincrement())
+  idprestamo       Int
+  idcuota          Int?
+  idusuario        Int?
+  canal            CanalCobranzaEnum
+  fechaContacto    DateTime          @default(now())
+  detalleContacto  String?
+  datosContacto    String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  prestamo tbl_prestamo @relation(fields: [idprestamo], references: [idprestamo])
+  cuota    tbl_cuota?    @relation(fields: [idcuota], references: [idcuota])
+  usuario  tbl_usuario?  @relation("usuario_contacto_crea", fields: [idusuario], references: [idusuario])
+
+  @@map("tbl_contacto_cobranza")
+  @@index([idprestamo])
+  @@index([idcuota])
+  @@index([idusuario])
+  @@index([fechaContacto])
+}
+
+// ============================================
+// CATÁLOGOS DE COBRANZA
+// ============================================
+
+model tbl_resultado_gestion {
+  idresultado Int @id @default(autoincrement())
+  codigo      String @unique
+  descripcion String
+  estado      Boolean @default(true)
+  deletedAt   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  gestiones tbl_gestion_cobro[]
+
+  @@map("tbl_resultado_gestion")
+}
+
+// ============================================
+// ACUERDOS DE PAGO
+// ============================================
+
+model tbl_acuerdo {
+  idacuerdo           Int                @id @default(autoincrement())
+  idprestamo          Int
+  idusuario           Int?
+  tipoAcuerdo         TipoAcuerdoEnum
+  estado              EstadoAcuerdoEnum  @default(ACTIVO)
+  montoAcordado       Decimal            @db.Decimal(18, 2)
+  numeroCuotas        Int                @default(1)
+  fechasPagoProgramadas String?          @db.Text // JSON array de fechas
+  fechaInicio         DateTime           @default(now())
+  fechaFin            DateTime
+  observacion         String?            @db.Text
+  deletedAt           DateTime?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  prestamo tbl_prestamo @relation(fields: [idprestamo], references: [idprestamo])
+  usuario  tbl_usuario?  @relation("usuario_acuerdo_crea", fields: [idusuario], references: [idusuario])
+  pagos    tbl_pago[]
+
+  @@map("tbl_acuerdo")
+  @@index([idprestamo, deletedAt])
+  @@index([idusuario, deletedAt])
+  @@index([estado, deletedAt])
+  @@index([fechaFin, estado, deletedAt])
+}
+
+// ============================================
+// ASIGNACIÓN DE COBRADORES
+// ============================================
+
+model tbl_asignacion_cartera {
+  idasignacion  Int       @id @default(autoincrement())
+  idprestamo    Int
+  idusuario     Int       // Cobrador asignado
+  idusuarioAsignador Int? // Usuario que hace la asignación
+  fechaAsignacion DateTime @default(now())
+  fechaFin      DateTime? // Para reasignaciones
+  motivo        String?   @db.Text
+  activa        Boolean   @default(true)
+  deletedAt     DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  prestamo tbl_prestamo @relation(fields: [idprestamo], references: [idprestamo])
+  usuario  tbl_usuario  @relation("usuario_asignacion", fields: [idusuario], references: [idusuario])
+
+  @@map("tbl_asignacion_cartera")
+  @@index([idprestamo, activa, deletedAt])
+  @@index([idusuario, activa, deletedAt])
+  @@index([fechaAsignacion, activa, deletedAt])
+}
+
+// ============================================
+// LIQUIDACIÓN DE TERCEROS
+// ============================================
+
+model tbl_liquidacion_tercero {
+  idliquidacion      Int                  @id @default(autoincrement())
+  idempresa          Int
+  idusuarioCreador   Int?
+  idusuarioAutorizador Int?
+  codigo             String               @unique
+  periodoDesde       DateTime
+  periodoHasta       DateTime
+  estado             EstadoLiquidacionEnum @default(PENDIENTE)
+  montoTotalComisiones Decimal            @db.Decimal(18, 2)
+  montoTotalLiquidado Decimal?            @db.Decimal(18, 2)
+  montoTotalPagado   Decimal?             @db.Decimal(18, 2)
+  fechaLiquidacion    DateTime?
+  fechaPago          DateTime?
+  numeroComisiones   Int                  @default(0)
+  observaciones      String?              @db.Text
+  deletedAt          DateTime?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  empresa tbl_empresa_tercera @relation(fields: [idempresa], references: [idempresa])
+  usuarioCreador tbl_usuario? @relation("usuario_liquidacion_crea", fields: [idusuarioCreador], references: [idusuario])
+  usuarioAutorizador tbl_usuario? @relation("usuario_liquidacion_autoriza", fields: [idusuarioAutorizador], references: [idusuario])
+  comisiones tbl_comision_generada[]
+
+  @@map("tbl_liquidacion_tercero")
+  @@index([idempresa, deletedAt])
+  @@index([estado, deletedAt])
+  @@index([periodoDesde, periodoHasta])
+  @@index([codigo])
+}
+
+// ============================================
+// REESTRUCTURACIÓN DE PRÉSTAMOS
+// ============================================
+
+model tbl_reestructuracion {
+  idreestructuracion  Int       @id @default(autoincrement())
+  idprestamoOriginal   Int
+  idprestamoNuevo      Int       @unique
+  idusuarioSolicitante Int?
+  idusuarioAutorizador Int?
+  motivo               String    @db.Text
+  observaciones        String?   @db.Text
+  evidencia            String?   @db.Text // Ruta o referencia a documento de evidencia
+  fechaReestructuracion DateTime @default(now())
+  deletedAt            DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  prestamoOriginal  tbl_prestamo @relation("prestamo_reestructuracion_original", fields: [idprestamoOriginal], references: [idprestamo])
+  prestamoNuevo     tbl_prestamo @relation("prestamo_reestructuracion_nuevo", fields: [idprestamoNuevo], references: [idprestamo])
+  usuarioSolicitante tbl_usuario? @relation("usuario_reestructuracion_solicita", fields: [idusuarioSolicitante], references: [idusuario])
+  usuarioAutorizador tbl_usuario? @relation("usuario_reestructuracion_autoriza", fields: [idusuarioAutorizador], references: [idusuario])
+
+  @@map("tbl_reestructuracion")
+  @@index([idprestamoOriginal, deletedAt])
+  @@index([idprestamoNuevo, deletedAt])
+  @@index([idusuarioSolicitante, deletedAt])
+  @@index([idusuarioAutorizador, deletedAt])
+  @@index([fechaReestructuracion, deletedAt])
+}
+
+// ============================================
+// CASTIGO DE CARTERA
+// ============================================
+
+model tbl_castigo {
+  idcastigo      Int       @id @default(autoincrement())
+  idprestamo     Int
+  motivo         String    @db.Text
+  observaciones  String?   @db.Text
+  fechaCastigo   DateTime  @default(now())
+  idusuario      Int?
+  deletedAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  prestamo tbl_prestamo @relation("prestamo_castigo", fields: [idprestamo], references: [idprestamo])
+  usuario  tbl_usuario? @relation("usuario_castigo", fields: [idusuario], references: [idusuario])
+
+  @@map("tbl_castigo")
+  @@index([idprestamo, deletedAt])
+  @@index([idusuario, deletedAt])
+  @@index([fechaCastigo, deletedAt])
+}
+
+// ============================================
+// DOCUMENTOS
+// ============================================
+
+model tbl_documento {
+  iddocumento      Int               @id @default(autoincrement())
+  idprestamo       Int
+  idusuario        Int?
+  tipo             TipoDocumentoEnum
+  nombre           String
+  nombreArchivo    String
+  rutaArchivo      String
+  mimeType         String?
+  tamano           Int?              // Tamaño en bytes
+  version          Int               @default(1)
+  esVersionActual  Boolean           @default(true)
+  observaciones    String?           @db.Text
+  deletedAt        DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  prestamo tbl_prestamo @relation(fields: [idprestamo], references: [idprestamo])
+  usuario  tbl_usuario? @relation("usuario_documento_sube", fields: [idusuario], references: [idusuario])
+
+  @@map("tbl_documento")
+  @@index([idprestamo, deletedAt])
+  @@index([tipo, deletedAt])
+  @@index([idusuario, deletedAt])
+  @@index([esVersionActual, deletedAt])
+  @@index([idprestamo, tipo, version])
+}
+
+// ============================================
+// CONFIGURACIÓN DEL SISTEMA
+// ============================================
+
+model tbl_configuracion_sistema {
+  idconfiguracion Int      @id @default(autoincrement())
+  clave           String    @unique
+  valor           String    @db.Text
+  tipo            String    // "numero", "decimal", "texto", "json", "booleano"
+  descripcion     String?   @db.Text
+  categoria       String?   // "mora", "cobranza", "reestructuracion", "general"
+  idusuarioMod    Int?
+  deletedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  usuarioMod tbl_usuario? @relation("usuario_config_mod", fields: [idusuarioMod], references: [idusuario])
+
+  @@map("tbl_configuracion_sistema")
+  @@index([clave, deletedAt])
+  @@index([categoria, deletedAt])
+}
+
+// ============================================
+// CONTROL DE CONCURRENCIA - LOCKS
+// ============================================
+
+model tbl_lock {
+  idlock          Int      @id @default(autoincrement())
+  tipoRecurso     String   // "PRESTAMO", "PAGO", "REESTRUCTURACION"
+  idrecurso       Int      // ID del recurso bloqueado (ej: idprestamo)
+  idusuario       Int?     // Usuario que adquirió el lock
+  descripcion     String?  @db.Text // Descripción de la operación
+  activo          Boolean  @default(true)
+  fechaCreacion    DateTime @default(now())
+  fechaExpiracion DateTime // Fecha de expiración del lock
+  fechaLiberacion DateTime? // Fecha en que se liberó el lock
+
+  usuario tbl_usuario? @relation("usuario_lock", fields: [idusuario], references: [idusuario])
+
+  @@map("tbl_lock")
+  @@index([tipoRecurso, idrecurso, activo], name: "idx_lock_recurso_activo")
+  @@index([fechaExpiracion, activo], name: "idx_lock_expiracion_activo")
+}
+
+// ============================================
+// PERMISOS Y ROLES (RBAC)
+// ============================================
+
+model tbl_permiso {
+  idpermiso   Int      @id @default(autoincrement())
+  codigo      String   @unique // Ej: "CREATE_LOAN", "EDIT_LOAN", "APPLY_PAYMENT"
+  nombre      String   // Nombre legible del permiso
+  descripcion String?  @db.Text
+  categoria   String?  // "PRESTAMOS", "PAGOS", "COBRANZA", "REPORTES", "CONFIGURACION"
+  estado      Boolean  @default(true)
+  deletedAt   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  roles tbl_rol_permiso[]
+
+  @@map("tbl_permiso")
+  @@index([codigo, deletedAt])
+  @@index([categoria, deletedAt])
+}
+
+model tbl_rol_permiso {
+  idrolPermiso Int      @id @default(autoincrement())
+  idrol        Int
+  idpermiso    Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  rol     tbl_rol     @relation(fields: [idrol], references: [idrol], onDelete: Cascade)
+  permiso tbl_permiso @relation(fields: [idpermiso], references: [idpermiso], onDelete: Cascade)
+
+  @@map("tbl_rol_permiso")
+  @@unique([idrol, idpermiso], name: "idrol_idpermiso")
+  @@index([idrol])
+  @@index([idpermiso])
 }

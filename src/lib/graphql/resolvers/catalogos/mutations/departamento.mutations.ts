@@ -4,62 +4,60 @@ import {
   UpdateDepartamentoInput,
   CreateDepartamentoInputSchema,
   UpdateDepartamentoInputSchema,
+  Departamento,
 } from "../types/departamento.types";
 
 export const createDepartamentoMutation = builder.mutationField("createDepartamento", (t) =>
   t.prismaField({
-    type: "tbl_departamento",
+    type: Departamento,
     args: {
       input: t.arg({ type: CreateDepartamentoInput, required: true }),
     },
     resolve: async (query, _parent, args, ctx) => {
       const validated = CreateDepartamentoInputSchema.parse(args.input);
       return ctx.prisma.tbl_departamento.create({
-        ...query,
+        ...(query as any),
         data: validated,
-        include: {
-          pais: true,
-        },
-      });
+      }) as any;
     },
   })
 );
 
 export const updateDepartamentoMutation = builder.mutationField("updateDepartamento", (t) =>
   t.prismaField({
-    type: "tbl_departamento",
+    type: Departamento,
     args: {
       input: t.arg({ type: UpdateDepartamentoInput, required: true }),
     },
     resolve: async (query, _parent, args, ctx) => {
       const { iddepartamento, ...updateData } = UpdateDepartamentoInputSchema.parse(args.input);
       return ctx.prisma.tbl_departamento.update({
-        ...query,
+        ...(query as any),
         where: { iddepartamento },
         data: updateData,
-        include: {
-          pais: true,
-        },
-      });
+      }) as any;
     },
   })
 );
 
 export const deleteDepartamentoMutation = builder.mutationField("deleteDepartamento", (t) =>
   t.prismaField({
-    type: "tbl_departamento",
+    type: Departamento,
     args: {
       id: t.arg.int({ required: true }),
     },
     resolve: async (query, _parent, args, ctx) => {
       return ctx.prisma.tbl_departamento.delete({
-        ...query,
+        ...(query as any),
         where: { iddepartamento: args.id },
-        include: {
-          pais: true,
-        },
-      });
+      }) as any;
     },
   })
 );
+
+
+
+
+
+
 

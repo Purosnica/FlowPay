@@ -1,8 +1,10 @@
 import { PrismaClient } from "@prisma/client";
 
-const globalForPrisma = globalThis as unknown as {
+interface GlobalPrisma {
   prisma: PrismaClient | undefined;
-};
+}
+
+const globalForPrisma = globalThis as unknown as GlobalPrisma;
 
 export const prisma =
   globalForPrisma.prisma ??

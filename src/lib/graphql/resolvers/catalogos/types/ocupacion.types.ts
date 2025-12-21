@@ -28,11 +28,17 @@ export const UpdateOcupacionInput = builder.inputRef("UpdateOcupacionInput").imp
 });
 
 // Tipo GraphQL (Prisma Object)
-export const Ocupacion = builder.prismaObject("tbl_ocupacion", {
+export const Ocupacion = builder.prismaObject("tbl_ocupacion" as any, {
   fields: (t: any) => ({
     idocupacion: t.exposeInt("idocupacion"),
     descripcion: t.exposeString("descripcion"),
     estado: t.exposeBoolean("estado"),
   }),
 });
+
+
+
+
+
+
 

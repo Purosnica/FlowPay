@@ -28,11 +28,17 @@ export const UpdateEstadoCivilInput = builder.inputRef("UpdateEstadoCivilInput")
 });
 
 // Tipo GraphQL (Prisma Object)
-export const EstadoCivil = builder.prismaObject("tbl_estadocivil", {
+export const EstadoCivil = builder.prismaObject("tbl_estadocivil" as any, {
   fields: (t: any) => ({
     idestadocivil: t.exposeInt("idestadocivil"),
     descripcion: t.exposeString("descripcion"),
     estado: t.exposeBoolean("estado"),
   }),
 });
+
+
+
+
+
+
 

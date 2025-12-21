@@ -1,10 +1,17 @@
 import { apiClient } from "@/lib/axios";
+import { clientErrorLogger } from "@/lib/errors/client-error-logger";
+import { StructuredError, ErrorCode } from "@/lib/errors/types";
 
 export interface GraphQLError {
   message: string;
   extensions?: {
     code?: string;
-    [key: string]: any;
+    userMessage?: string;
+    details?: Record<string, unknown>;
+    field?: string;
+    statusCode?: number;
+    timestamp?: string;
+    [key: string]: unknown;
   };
   path?: (string | number)[];
 }
@@ -18,7 +25,8 @@ export class GraphQLRequestError extends Error {
   constructor(
     message: string,
     public errors?: GraphQLError[],
-    public statusCode?: number
+    public statusCode?: number,
+    public structuredError?: StructuredError
   ) {
     super(message);
     this.name = "GraphQLRequestError";
@@ -26,11 +34,44 @@ export class GraphQLRequestError extends Error {
 }
 
 /**
- * Cliente GraphQL usando axios con mejor manejo de errores
+ * Convierte errores GraphQL a errores estructurados
  */
-export async function graphqlRequest<T = any>(
+function extractStructuredErrorFromGraphQL(error: GraphQLError): StructuredError {
+  // Validar que el error tenga al menos un mensaje
+  const message = error?.message || "Error desconocido de GraphQL";
+  
+  if (error?.extensions) {
+    return {
+      code: (error.extensions.code as ErrorCode) || ErrorCode.INTERNAL_SERVER_ERROR,
+      message: message,
+      userMessage: error.extensions.userMessage || message,
+      details: error.extensions.details,
+      field: error.extensions.field,
+      statusCode: error.extensions.statusCode || 500,
+      timestamp: error.extensions.timestamp || new Date().toISOString(),
+      path: error.path?.join("."),
+    };
+  }
+
+  return {
+    code: ErrorCode.INTERNAL_SERVER_ERROR,
+    message: message,
+    userMessage: message,
+    statusCode: 500,
+    timestamp: new Date().toISOString(),
+    path: error?.path?.join("."),
+  };
+}
+
+/**
+ * Cliente GraphQL usando axios con mejor manejo de errores
+ * 
+ * Los errores ya son manejados por el interceptor de axios,
+ * pero aquí los formateamos específicamente para GraphQL.
+ */
+export async function graphqlRequest<T = unknown>(
   query: string,
-  variables?: Record<string, any>
+  variables?: Record<string, unknown>
 ): Promise<T> {
   try {
     const response = await apiClient.post<GraphQLResponse<T>>("/api/graphql", {
@@ -41,59 +82,73 @@ export async function graphqlRequest<T = any>(
     // Si hay errores en la respuesta GraphQL
     if (response.data.errors && response.data.errors.length > 0) {
       const firstError = response.data.errors[0];
+      const structuredError = extractStructuredErrorFromGraphQL(firstError);
+
+      // Validar que el error estructurado sea válido antes de registrarlo
+      if (structuredError && structuredError.code && structuredError.message) {
+        // Registrar error (el interceptor de axios ya mostró la notificación)
+        if (typeof window !== "undefined") {
+          clientErrorLogger.log(structuredError, {
+            query: query.substring(0, 100), // Solo primeros 100 caracteres
+            variables: JSON.stringify(variables),
+          });
+        }
+      } else {
+        // Si el error no es válido, crear uno por defecto y registrarlo
+        const defaultError: StructuredError = {
+          code: ErrorCode.INTERNAL_SERVER_ERROR,
+          message: firstError?.message || "Error desconocido de GraphQL",
+          userMessage: firstError?.message || "Ocurrió un error inesperado. Por favor, intente nuevamente.",
+          statusCode: 500,
+          timestamp: new Date().toISOString(),
+        };
+        if (typeof window !== "undefined") {
+          clientErrorLogger.log(defaultError, {
+            query: query.substring(0, 100),
+            variables: JSON.stringify(variables),
+          });
+        }
+      }
+
       throw new GraphQLRequestError(
-        firstError.message || "Error en la petición GraphQL",
+        structuredError.userMessage,
         response.data.errors,
-        response.status
+        structuredError.statusCode,
+        structuredError
       );
     }
 
     // Si no hay data, algo salió mal
     if (!response.data.data) {
-      throw new GraphQLRequestError("No se recibieron datos de la respuesta");
+      const structuredError: StructuredError = {
+        code: ErrorCode.INTERNAL_SERVER_ERROR,
+        message: "No se recibieron datos de la respuesta",
+        userMessage: "No se recibieron datos de la respuesta. Por favor, intente nuevamente.",
+        statusCode: 500,
+        timestamp: new Date().toISOString(),
+      };
+
+      if (typeof window !== "undefined") {
+        clientErrorLogger.log(structuredError);
+      }
+
+      throw new GraphQLRequestError(
+        structuredError.userMessage,
+        undefined,
+        structuredError.statusCode,
+        structuredError
+      );
     }
 
     return response.data.data;
-  } catch (error: any) {
+  } catch (error) {
     // Si es un error de GraphQLRequestError, re-lanzarlo
     if (error instanceof GraphQLRequestError) {
       throw error;
     }
 
-    // Si es un error de axios con respuesta
-    if (error.response) {
-      // Si hay errores GraphQL en la respuesta
-      if (error.response.data?.errors) {
-        const errors = error.response.data.errors as GraphQLError[];
-        throw new GraphQLRequestError(
-          errors[0]?.message || "Error en la petición GraphQL",
-          errors,
-          error.response.status
-        );
-      }
-      
-      // Si es un error HTTP (404, 500, etc.)
-      const statusCode = error.response.status;
-      const statusText = error.response.statusText;
-      const message = error.response.data?.message || statusText || `Error HTTP ${statusCode}`;
-      
-      throw new GraphQLRequestError(
-        message,
-        undefined,
-        statusCode
-      );
-    }
-
-    // Si es un error de red
-    if (error.request && !error.response) {
-      throw new GraphQLRequestError(
-        "Error de conexión. Por favor, verifica tu conexión a internet y que el servidor esté corriendo."
-      );
-    }
-
-    // Error desconocido
-    throw new GraphQLRequestError(
-      error.message || "Error desconocido al realizar la petición"
-    );
+    // Si es un error de axios, ya fue manejado por el interceptor
+    // Solo re-lanzamos para que los hooks puedan manejarlo
+    throw error;
   }
 }

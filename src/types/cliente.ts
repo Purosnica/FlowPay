@@ -101,14 +101,14 @@ export interface CreateClienteInput {
   primer_apellido: string;
   segundo_apellido?: string;
   fechanacimiento?: string;
-  idtipodocumento: number;
+  idtipodocumento?: number;
   numerodocumento: string;
   fechavencimientodoc?: string;
   idgenero?: number;
   idestadocivil?: number;
   idocupacion?: number;
-  idtipopersona: number;
-  idpais: number;
+  idtipopersona?: number;
+  idpais?: number;
   iddepartamento?: number;
   direccion?: string;
   ciudad?: string;
@@ -125,6 +125,12 @@ export interface CreateClienteInput {
 export interface UpdateClienteInput extends Partial<CreateClienteInput> {
   idcliente: number;
 }
+
+
+
+
+
+
 
 
 

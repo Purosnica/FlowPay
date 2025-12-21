@@ -135,7 +135,7 @@ export const ClienteFiltersInput = builder.inputRef("ClienteFiltersInput").imple
 // TIPOS GRAPHQL
 // ============================================
 
-export const Cliente = builder.prismaObject("tbl_cliente", {
+export const Cliente = builder.prismaObject("tbl_cliente" as any, {
   fields: (t: any) => ({
     idcliente: t.exposeInt("idcliente"),
     primer_nombres: t.exposeString("primer_nombres"),
@@ -202,4 +202,10 @@ ClientePage.implement({
     totalPages: t.exposeInt("totalPages"),
   }),
 });
+
+
+
+
+
+
 

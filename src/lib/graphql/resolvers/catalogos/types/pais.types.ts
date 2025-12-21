@@ -31,7 +31,7 @@ export const UpdatePaisInput = builder.inputRef("UpdatePaisInput").implement({
 });
 
 // Tipo GraphQL (Prisma Object)
-export const Pais = builder.prismaObject("tbl_pais", {
+export const Pais = builder.prismaObject("tbl_pais" as any, {
   fields: (t: any) => ({
     idpais: t.exposeInt("idpais"),
     codepais: t.exposeString("codepais"),
@@ -39,4 +39,10 @@ export const Pais = builder.prismaObject("tbl_pais", {
     estado: t.exposeBoolean("estado"),
   }),
 });
+
+
+
+
+
+
 

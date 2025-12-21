@@ -31,7 +31,7 @@ export const UpdateDepartamentoInput = builder.inputRef("UpdateDepartamentoInput
 });
 
 // Tipo GraphQL (Prisma Object)
-export const Departamento = builder.prismaObject("tbl_departamento", {
+export const Departamento = builder.prismaObject("tbl_departamento" as any, {
   fields: (t: any) => ({
     iddepartamento: t.exposeInt("iddepartamento"),
     idpais: t.exposeInt("idpais"),
@@ -40,4 +40,10 @@ export const Departamento = builder.prismaObject("tbl_departamento", {
     pais: t.relation("pais"),
   }),
 });
+
+
+
+
+
+
 

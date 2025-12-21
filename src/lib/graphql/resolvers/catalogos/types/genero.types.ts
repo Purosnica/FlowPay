@@ -28,11 +28,17 @@ export const UpdateGeneroInput = builder.inputRef("UpdateGeneroInput").implement
 });
 
 // Tipo GraphQL (Prisma Object)
-export const Genero = builder.prismaObject("tbl_genero", {
+export const Genero = builder.prismaObject("tbl_genero" as any, {
   fields: (t: any) => ({
     idgenero: t.exposeInt("idgenero"),
     descripcion: t.exposeString("descripcion"),
     estado: t.exposeBoolean("estado"),
   }),
 });
+
+
+
+
+
+
 

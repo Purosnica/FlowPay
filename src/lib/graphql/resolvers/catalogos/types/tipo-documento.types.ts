@@ -28,11 +28,17 @@ export const UpdateTipoDocumentoInput = builder.inputRef("UpdateTipoDocumentoInp
 });
 
 // Tipo GraphQL (Prisma Object)
-export const TipoDocumento = builder.prismaObject("tbl_tipodocumento", {
+export const TipoDocumento = builder.prismaObject("tbl_tipodocumento" as any, {
   fields: (t: any) => ({
     idtipodocumento: t.exposeInt("idtipodocumento"),
     descripcion: t.exposeString("descripcion"),
     estado: t.exposeBoolean("estado"),
   }),
 });
+
+
+
+
+
+
 
