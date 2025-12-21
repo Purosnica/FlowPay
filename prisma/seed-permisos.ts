@@ -114,7 +114,7 @@ const PERMISOS_BASE = [
   },
 ];
 
-async function main() {
+export async function seedPermisos() {
   console.log("🌱 Iniciando seed de permisos...");
 
   // 1. Crear permisos base
@@ -288,13 +288,16 @@ async function main() {
   console.log("✅ Seed de permisos completado!");
 }
 
-main()
-  .catch((e) => {
-    console.error("❌ Error en seed de permisos:", e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+// Si se ejecuta directamente, ejecutar la función y desconectar
+if (require.main === module) {
+  seedPermisos()
+    .catch((e) => {
+      console.error("❌ Error en seed de permisos:", e);
+      process.exit(1);
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}
 
 

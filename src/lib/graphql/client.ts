@@ -85,9 +85,12 @@ export async function graphqlRequest<T = unknown>(
       const structuredError = extractStructuredErrorFromGraphQL(firstError);
 
       // Validar que el error estructurado sea válido antes de registrarlo
+      // Solo registrar errores GraphQL (no errores HTTP, esos ya los registró el interceptor)
       if (structuredError && structuredError.code && structuredError.message) {
-        // Registrar error (el interceptor de axios ya mostró la notificación)
-        if (typeof window !== "undefined") {
+        // Registrar error solo si es un error GraphQL (no HTTP)
+        // Los errores HTTP (4xx, 5xx) ya fueron registrados por el interceptor de axios
+        // Solo registramos errores GraphQL que vienen en respuestas HTTP 200
+        if (typeof window !== "undefined" && response.status === 200) {
           clientErrorLogger.log(structuredError, {
             query: query.substring(0, 100), // Solo primeros 100 caracteres
             variables: JSON.stringify(variables),
@@ -102,7 +105,7 @@ export async function graphqlRequest<T = unknown>(
           statusCode: 500,
           timestamp: new Date().toISOString(),
         };
-        if (typeof window !== "undefined") {
+        if (typeof window !== "undefined" && response.status === 200) {
           clientErrorLogger.log(defaultError, {
             query: query.substring(0, 100),
             variables: JSON.stringify(variables),
@@ -128,7 +131,8 @@ export async function graphqlRequest<T = unknown>(
         timestamp: new Date().toISOString(),
       };
 
-      if (typeof window !== "undefined") {
+      // Solo registrar si es HTTP 200 (errores HTTP ya fueron registrados por el interceptor)
+      if (typeof window !== "undefined" && response.status === 200) {
         clientErrorLogger.log(structuredError);
       }
 
@@ -148,7 +152,9 @@ export async function graphqlRequest<T = unknown>(
     }
 
     // Si es un error de axios, ya fue manejado por el interceptor
+    // (registrado y notificado al usuario)
     // Solo re-lanzamos para que los hooks puedan manejarlo
+    // No registramos aquí porque el interceptor ya lo hizo
     throw error;
   }
 }

@@ -13,13 +13,13 @@ const prisma = new PrismaClient();
 export async function seedAuth() {
   console.log("\n🌱 Creando usuarios de prueba...");
 
-  // Buscar o crear rol de administrador
+  // Buscar rol de administrador (debe existir por seed-permisos)
   let rolAdmin = await prisma.tbl_rol.findFirst({
     where: { codigo: "ADMIN" },
   });
 
   if (!rolAdmin) {
-    console.log("📝 Creando rol ADMIN...");
+    console.log("⚠️  Rol ADMIN no encontrado. Creando...");
     rolAdmin = await prisma.tbl_rol.create({
       data: {
         codigo: "ADMIN",
@@ -27,6 +27,9 @@ export async function seedAuth() {
         estado: true,
       },
     });
+    console.log("✅ Rol ADMIN creado");
+  } else {
+    console.log("✅ Rol ADMIN encontrado");
   }
 
   // Buscar o crear rol de cobrador

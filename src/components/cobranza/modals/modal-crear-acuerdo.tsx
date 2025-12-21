@@ -30,8 +30,12 @@ const acuerdoSchema = z.object({
     "REFINANCIAMIENTO",
     "REESTRUCTURADO",
   ]),
-  montoAcordado: z.number().positive("El monto acordado debe ser mayor a cero"),
-  numeroCuotas: z.number().int().positive().default(1),
+  montoAcordado: z.number({ invalid_type_error: "El monto debe ser un número" })
+    .nonnegative({ message: "El monto acordado no puede ser negativo" }),
+  numeroCuotas: z.number({ invalid_type_error: "El número de cuotas debe ser un número" })
+    .int({ message: "El número de cuotas debe ser un número entero" })
+    .positive({ message: "El número de cuotas debe ser mayor a 0" })
+    .default(1),
   fechaInicio: z.date(),
   fechaFin: z.date(),
   observacion: z.string().optional().nullable(),

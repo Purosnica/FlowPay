@@ -27,6 +27,7 @@ import {
 } from "./types";
 import { EstadoPrestamoEnum, EstadoCuotaEnum, TipoPrestamoEnum, EstadoPromesaEnum, Prisma } from "@prisma/client";
 import { requerirPermiso } from "@/lib/permissions/permission-service";
+import { GraphQLAuthenticationError } from "@/lib/errors/graphql-errors";
 
 /**
  * Calcula días de atraso desde una fecha de vencimiento
@@ -64,7 +65,7 @@ builder.queryField("agingCartera", (t) =>
       
       // Validar permiso (requerido para ver reportes)
       if (!idusuario) {
-        throw new Error("Debes estar autenticado para ver los reportes del dashboard");
+        throw new GraphQLAuthenticationError("Debes estar autenticado para ver los reportes del dashboard");
       }
       
       await requerirPermiso(idusuario, "VIEW_REPORTS");
@@ -188,7 +189,7 @@ builder.queryField("recuperacionRealVsEsperada", (t) =>
       
       // Validar permiso (requerido para ver reportes)
       if (!idusuario) {
-        throw new Error("Debes estar autenticado para ver los reportes del dashboard");
+        throw new GraphQLAuthenticationError("Debes estar autenticado para ver los reportes del dashboard");
       }
       
       await requerirPermiso(idusuario, "VIEW_REPORTS");
@@ -303,7 +304,7 @@ builder.queryField("rankingGestores", (t) =>
       
       // Validar permiso (requerido para ver reportes)
       if (!idusuario) {
-        throw new Error("Debes estar autenticado para ver los reportes del dashboard");
+        throw new GraphQLAuthenticationError("Debes estar autenticado para ver los reportes del dashboard");
       }
       
       await requerirPermiso(idusuario, "VIEW_REPORTS");
@@ -468,7 +469,7 @@ builder.queryField("moraPromedio", (t) =>
       
       // Validar permiso (requerido para ver reportes)
       if (!idusuario) {
-        throw new Error("Debes estar autenticado para ver los reportes del dashboard");
+        throw new GraphQLAuthenticationError("Debes estar autenticado para ver los reportes del dashboard");
       }
       
       await requerirPermiso(idusuario, "VIEW_REPORTS");
@@ -568,7 +569,7 @@ builder.queryField("dashboardKPIs", (t) =>
       
       // Validar permiso (requerido para ver reportes)
       if (!idusuario) {
-        throw new Error("Debes estar autenticado para ver los reportes del dashboard");
+        throw new GraphQLAuthenticationError("Debes estar autenticado para ver los reportes del dashboard");
       }
       
       await requerirPermiso(idusuario, "VIEW_REPORTS");
@@ -704,7 +705,7 @@ builder.queryField("prestamosUltimos30Dias", (t) =>
       
       // Validar permiso (requerido para ver reportes)
       if (!idusuario) {
-        throw new Error("Debes estar autenticado para ver los reportes del dashboard");
+        throw new GraphQLAuthenticationError("Debes estar autenticado para ver los reportes del dashboard");
       }
       
       await requerirPermiso(idusuario, "VIEW_REPORTS");
@@ -786,7 +787,7 @@ builder.queryField("promesasVencidasHoy", (t) =>
       
       // Validar permiso (requerido para ver reportes)
       if (!idusuario) {
-        throw new Error("Debes estar autenticado para ver los reportes del dashboard");
+        throw new GraphQLAuthenticationError("Debes estar autenticado para ver los reportes del dashboard");
       }
       
       await requerirPermiso(idusuario, "VIEW_REPORTS");

@@ -19,6 +19,64 @@ export interface ErrorLog {
 class ClientErrorLogger {
   private logs: ErrorLog[] = [];
   private maxLogs = 100; // Máximo de logs en memoria
+  private recentErrors: Map<string, number> = new Map(); // Cache de errores recientes
+  private debounceTime = 5000; // 5 segundos para evitar duplicados
+
+  /**
+   * Genera una clave única para un error basado en su contenido
+   * Ignora campos variables como query, variables para agrupar errores similares
+   */
+  private getErrorKey(error: StructuredError, additionalInfo?: Record<string, unknown>): string {
+    // Para errores GraphQL, agrupar por código, mensaje y statusCode solamente
+    // Esto permite que múltiples queries GraphQL con el mismo error se agrupen
+    const errorPart = `${error.code}-${error.message}-${error.statusCode}`;
+    
+    // Solo incluir campos estables del additionalInfo para el debounce
+    // Ignorar campos que cambian frecuentemente (query, variables, etc.)
+    let stableInfo = "";
+    if (additionalInfo) {
+      const stableFields: Record<string, unknown> = {};
+      // Solo incluir URL base (sin query params) y método
+      if (additionalInfo.url) {
+        const url = String(additionalInfo.url);
+        const urlBase = url.split("?")[0]; // Remover query params
+        stableFields.url = urlBase;
+      }
+      if (additionalInfo.method) {
+        stableFields.method = additionalInfo.method;
+      }
+      
+      // Para errores GraphQL, no incluir query ni variables en la clave
+      // Esto permite agrupar errores similares de diferentes queries
+      // Solo incluir otros campos estables si no son query/variables
+      for (const [key, value] of Object.entries(additionalInfo)) {
+        if (key !== "query" && key !== "variables" && key !== "url" && key !== "method") {
+          stableFields[key] = value;
+        }
+      }
+      
+      stableInfo = Object.keys(stableFields).length > 0 ? JSON.stringify(stableFields) : "";
+    }
+    
+    return `${errorPart}-${stableInfo}`;
+  }
+
+  /**
+   * Verifica si un error fue registrado recientemente
+   */
+  private isRecentError(key: string): boolean {
+    const lastTime = this.recentErrors.get(key);
+    if (!lastTime) {
+      return false;
+    }
+    const now = Date.now();
+    if (now - lastTime < this.debounceTime) {
+      return true;
+    }
+    // Limpiar entrada antigua
+    this.recentErrors.delete(key);
+    return false;
+  }
 
   /**
    * Registrar un error
@@ -71,6 +129,31 @@ class ClientErrorLogger {
         statusCode: 500,
         timestamp: new Date().toISOString(),
       };
+    }
+
+    // Verificar si este error fue registrado recientemente (debounce)
+    const errorKey = this.getErrorKey(error, additionalInfo);
+    if (this.isRecentError(errorKey)) {
+      // Error duplicado reciente, no registrar de nuevo
+      if (process.env.NODE_ENV === "development") {
+        // eslint-disable-next-line no-console
+        console.debug(
+          `[Error Logger] Error duplicado omitido (debounce ${this.debounceTime}ms):`,
+          `${error.code} - ${error.message.substring(0, 50)}...`
+        );
+      }
+      return;
+    }
+
+    // Registrar el tiempo actual para este error
+    this.recentErrors.set(errorKey, Date.now());
+    
+    // Limpiar errores antiguos del cache (más de 1 minuto)
+    const now = Date.now();
+    for (const [key, time] of this.recentErrors.entries()) {
+      if (now - time > 60000) {
+        this.recentErrors.delete(key);
+      }
     }
 
     // Construir errorLog sin sobrescribir propiedades principales con additionalInfo

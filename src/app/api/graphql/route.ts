@@ -5,6 +5,8 @@ import { NextRequest } from "next/server";
 import { getCurrentUser, getRequestInfo } from "@/lib/middleware/auth";
 import { rateLimiter, RATE_LIMIT_CONFIG } from "@/lib/security/rate-limit";
 import { logger } from "@/lib/utils/logger";
+import { ErrorCode } from "@/lib/errors/types";
+import { GraphQLPermissionError, GraphQLAuthenticationError } from "@/lib/errors/graphql-errors";
 
 // Variable para almacenar el request original
 let originalRequest: NextRequest | null = null;
@@ -47,6 +49,77 @@ const { handleRequest } = createYoga({
   // Si necesitamos formateo personalizado, lo hacemos en los resolvers
   maskedErrors: process.env.NODE_ENV === "production", // Ocultar errores en producción
   graphiql: process.env.NODE_ENV === "development",
+  // Formateo personalizado de errores
+  plugins: [
+    {
+      onExecute: () => ({
+        onExecuteDone: ({ result }) => {
+          if (result.errors) {
+            result.errors = result.errors.map((error) => {
+              // Si el error es una instancia de nuestras clases personalizadas, usar sus extensiones
+              const originalError = error.originalError;
+              
+              if (originalError instanceof GraphQLPermissionError) {
+                return {
+                  ...error,
+                  extensions: originalError.extensions,
+                };
+              }
+              
+              if (originalError instanceof GraphQLAuthenticationError) {
+                return {
+                  ...error,
+                  extensions: originalError.extensions,
+                };
+              }
+              
+              // Si el error ya tiene extensiones, mantenerlas
+              if (error.extensions) {
+                return error;
+              }
+              
+              // Si el error es sobre permisos (por mensaje), formatearlo correctamente
+              if (error.message.includes("No tienes permiso")) {
+                return {
+                  ...error,
+                  extensions: {
+                    code: ErrorCode.FORBIDDEN,
+                    statusCode: 403,
+                    userMessage: error.message,
+                    timestamp: new Date().toISOString(),
+                  },
+                };
+              }
+              
+              // Si el error es sobre autenticación (por mensaje), formatearlo correctamente
+              if (error.message.includes("Debes estar autenticado") || error.message.includes("autenticado")) {
+                return {
+                  ...error,
+                  extensions: {
+                    code: ErrorCode.UNAUTHORIZED,
+                    statusCode: 401,
+                    userMessage: error.message,
+                    timestamp: new Date().toISOString(),
+                  },
+                };
+              }
+              
+              // Error genérico con extensiones
+              return {
+                ...error,
+                extensions: {
+                  code: ErrorCode.INTERNAL_SERVER_ERROR,
+                  statusCode: 500,
+                  userMessage: error.message,
+                  timestamp: new Date().toISOString(),
+                },
+              };
+            });
+          }
+        },
+      }),
+    },
+  ],
 });
 
 export async function GET(request: NextRequest) {

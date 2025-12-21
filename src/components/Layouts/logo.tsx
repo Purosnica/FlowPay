@@ -8,7 +8,8 @@ export function Logo() {
         fill
         alt="FlowPay logo"
         role="presentation"
-        quality={100}
+        quality={90}
+        sizes="(max-width: 768px) 100vw, 173px"
       />
     </div>
   );

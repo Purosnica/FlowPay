@@ -41,22 +41,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const checkAuth = async () => {
     try {
-      // Usar apiClient para que envíe el token en el header si está disponible
-      const { apiClient } = await import("@/lib/axios");
+      // Preparar headers con token si está disponible
+      // Esto asegura que funcione incluso si la cookie aún no está disponible
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
       
-      const response = await apiClient.get<{
+      // Si tenemos token en memoria, enviarlo en el header Authorization
+      // Esto asegura que funcione inmediatamente después del login
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+      
+      // Usar fetch directamente para peticiones a rutas API internas
+      // Esto asegura que las cookies HTTP-only se envíen automáticamente
+      // sin necesidad de tener el token en memoria
+      const response = await fetch("/api/auth/me", {
+        method: "GET",
+        credentials: "include",
+        headers,
+      });
+
+      if (!response.ok) {
+        // Si la respuesta no es OK, el usuario no está autenticado
+        // Esto es normal cuando no hay sesión activa, no es un error
+        setUsuario(null);
+        setToken(null);
+        setAuthToken(null);
+        return;
+      }
+
+      const data = (await response.json()) as {
         success: boolean;
         usuario?: Usuario;
         token?: string;
         error?: string;
-      }>("/api/auth/me");
+      };
 
-      if (response.data.success && response.data.usuario) {
-        setUsuario(response.data.usuario);
+      if (data.success && data.usuario) {
+        setUsuario(data.usuario);
         // Guardar el token si viene en el response
-        if (response.data.token) {
-          setToken(response.data.token);
-          setAuthToken(response.data.token);
+        if (data.token) {
+          setToken(data.token);
+          setAuthToken(data.token);
         }
       } else {
         setUsuario(null);
@@ -90,8 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await response.json();
 
       if (data.success && data.usuario) {
-        setUsuario(data.usuario);
-        // Guardar el token para enviarlo en headers
+        // Guardar el token primero para que esté disponible inmediatamente
         if (data.token) {
           setToken(data.token);
           setAuthToken(data.token);
@@ -105,6 +131,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.warn("[Auth] Login exitoso pero no se recibió token en la respuesta");
           }
         }
+        
+        // Establecer usuario
+        setUsuario(data.usuario);
+        
+        // Verificar autenticación después del login usando el token recién obtenido
+        // Esto valida que la cookie se estableció correctamente y sincroniza el estado
+        if (data.token) {
+          // Usar el token directamente de la respuesta en lugar del estado
+          const headers: HeadersInit = {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${data.token}`,
+          };
+          
+          const verifyResponse = await fetch("/api/auth/me", {
+            method: "GET",
+            credentials: "include",
+            headers,
+          });
+          
+          if (verifyResponse.ok) {
+            const verifyData = (await verifyResponse.json()) as {
+              success: boolean;
+              usuario?: Usuario;
+              token?: string;
+            };
+            
+            if (verifyData.success && verifyData.usuario) {
+              // Actualizar con datos verificados
+              setUsuario(verifyData.usuario);
+              if (verifyData.token) {
+                setToken(verifyData.token);
+                setAuthToken(verifyData.token);
+              }
+            }
+          }
+        }
+        
         return { success: true };
       } else {
         setToken(null);

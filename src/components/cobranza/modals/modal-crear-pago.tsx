@@ -55,9 +55,15 @@ const pagoSchema = z.object({
   tipoCobro: z.enum(["PARCIAL", "TOTAL", "DESCUENTO", "NEGOCIADO", "EXTRAJUDICIAL"]).default("PARCIAL"),
   fechaPago: z.date(),
   referencia: z.string().optional().nullable(),
-  montoCapital: z.number().nonnegative().default(0),
-  montoInteres: z.number().nonnegative().default(0),
-  montoMora: z.number().nonnegative().default(0),
+  montoCapital: z.number({ invalid_type_error: "El monto debe ser un número" })
+    .nonnegative({ message: "El monto de capital no puede ser negativo" })
+    .default(0),
+  montoInteres: z.number({ invalid_type_error: "El monto debe ser un número" })
+    .nonnegative({ message: "El monto de interés no puede ser negativo" })
+    .default(0),
+  montoMora: z.number({ invalid_type_error: "El monto debe ser un número" })
+    .nonnegative({ message: "El monto de mora no puede ser negativo" })
+    .default(0),
   observacion: z.string().optional().nullable(),
   notas: z.string().optional().nullable(),
   idusuario: z.number().int().positive().optional().nullable(),

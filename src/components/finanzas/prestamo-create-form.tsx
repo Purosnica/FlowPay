@@ -20,12 +20,30 @@ const prestamoSchema = z.object({
   codigo: z.string().min(3, { message: "Código mínimo 3 caracteres" }),
   referencia: z.string().optional(),
   tipoprestamo: z.enum(["PROPIO", "TERCERIZADO"]),
-  montoSolicitado: z.coerce.number().nonnegative({ message: "Monto requerido" }),
-  montoAprobado: z.coerce.number().nonnegative().optional(),
-  montoDesembolsado: z.coerce.number().nonnegative().optional(),
-  comisionTercerizado: z.coerce.number().nonnegative().optional(),
-  tasaInteresAnual: z.coerce.number().nonnegative().optional(),
-  plazoMeses: z.coerce.number().int().positive().optional(),
+  montoSolicitado: z.coerce
+    .number({ invalid_type_error: "El monto debe ser un número" })
+    .nonnegative({ message: "El monto no puede ser negativo" }),
+  montoAprobado: z.coerce
+    .number({ invalid_type_error: "El monto debe ser un número" })
+    .nonnegative({ message: "El monto no puede ser negativo" })
+    .optional(),
+  montoDesembolsado: z.coerce
+    .number({ invalid_type_error: "El monto debe ser un número" })
+    .nonnegative({ message: "El monto no puede ser negativo" })
+    .optional(),
+  comisionTercerizado: z.coerce
+    .number({ invalid_type_error: "La comisión debe ser un número" })
+    .nonnegative({ message: "La comisión no puede ser negativa" })
+    .optional(),
+  tasaInteresAnual: z.coerce
+    .number({ invalid_type_error: "La tasa debe ser un número" })
+    .nonnegative({ message: "La tasa no puede ser negativa" })
+    .optional(),
+  plazoMeses: z.coerce
+    .number({ invalid_type_error: "El plazo debe ser un número" })
+    .int({ message: "El plazo debe ser un número entero" })
+    .positive({ message: "El plazo debe ser mayor a 0" })
+    .optional(),
   fechaSolicitud: z.coerce.date().optional(),
   fechaAprobacion: z.coerce.date().optional(),
   fechaDesembolso: z.coerce.date().optional(),
@@ -137,6 +155,7 @@ export function PrestamoCreateForm({ initialData, onSuccess }: PrestamoFormProps
           label="Monto solicitado *"
           type="number"
           step="0.01"
+          min="0"
           error={errors.montoSolicitado?.message}
           {...register("montoSolicitado")}
         />
@@ -144,6 +163,7 @@ export function PrestamoCreateForm({ initialData, onSuccess }: PrestamoFormProps
           label="Monto aprobado"
           type="number"
           step="0.01"
+          min="0"
           error={errors.montoAprobado?.message}
           {...register("montoAprobado")}
         />
@@ -151,6 +171,7 @@ export function PrestamoCreateForm({ initialData, onSuccess }: PrestamoFormProps
           label="Monto desembolsado"
           type="number"
           step="0.01"
+          min="0"
           error={errors.montoDesembolsado?.message}
           {...register("montoDesembolsado")}
         />
@@ -158,12 +179,14 @@ export function PrestamoCreateForm({ initialData, onSuccess }: PrestamoFormProps
           label="Tasa interés anual (%)"
           type="number"
           step="0.0001"
+          min="0"
           error={errors.tasaInteresAnual?.message}
           {...register("tasaInteresAnual")}
         />
         <Input
           label="Plazo (meses)"
           type="number"
+          min="1"
           error={errors.plazoMeses?.message}
           {...register("plazoMeses")}
         />
@@ -178,6 +201,7 @@ export function PrestamoCreateForm({ initialData, onSuccess }: PrestamoFormProps
             label="Comisión tercerizado"
             type="number"
             step="0.01"
+            min="0"
             error={errors.comisionTercerizado?.message}
             {...register("comisionTercerizado")}
           />

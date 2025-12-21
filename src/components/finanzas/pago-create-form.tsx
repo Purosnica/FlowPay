@@ -32,10 +32,22 @@ const pagoSchema = z.object({
   ]).optional(),
   fechaPago: z.coerce.date().optional(),
   referencia: z.string().optional(),
-  montoCapital: z.coerce.number().nonnegative().default(0),
-  montoInteres: z.coerce.number().nonnegative().default(0),
-  montoMora: z.coerce.number().nonnegative().default(0),
-  montoTotal: z.coerce.number().nonnegative().optional(),
+  montoCapital: z.coerce
+    .number({ invalid_type_error: "El monto debe ser un número" })
+    .nonnegative({ message: "El monto no puede ser negativo" })
+    .default(0),
+  montoInteres: z.coerce
+    .number({ invalid_type_error: "El monto debe ser un número" })
+    .nonnegative({ message: "El monto no puede ser negativo" })
+    .default(0),
+  montoMora: z.coerce
+    .number({ invalid_type_error: "El monto debe ser un número" })
+    .nonnegative({ message: "El monto no puede ser negativo" })
+    .default(0),
+  montoTotal: z.coerce
+    .number({ invalid_type_error: "El monto debe ser un número" })
+    .nonnegative({ message: "El monto no puede ser negativo" })
+    .optional(),
   notas: z.string().optional(),
 });
 
@@ -189,6 +201,7 @@ export function PagoCreateForm({ initialData, onSuccess }: PagoFormProps) {
           label="Monto capital"
           type="number"
           step="0.01"
+          min="0"
           error={errors.montoCapital?.message}
           {...register("montoCapital")}
         />
@@ -196,6 +209,7 @@ export function PagoCreateForm({ initialData, onSuccess }: PagoFormProps) {
           label="Monto interés"
           type="number"
           step="0.01"
+          min="0"
           error={errors.montoInteres?.message}
           {...register("montoInteres")}
         />
@@ -203,6 +217,7 @@ export function PagoCreateForm({ initialData, onSuccess }: PagoFormProps) {
           label="Monto mora"
           type="number"
           step="0.01"
+          min="0"
           error={errors.montoMora?.message}
           {...register("montoMora")}
         />
@@ -210,6 +225,7 @@ export function PagoCreateForm({ initialData, onSuccess }: PagoFormProps) {
           label="Monto total (auto si vacío)"
           type="number"
           step="0.01"
+          min="0"
           error={errors.montoTotal?.message}
           {...register("montoTotal")}
         />

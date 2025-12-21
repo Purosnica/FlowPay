@@ -38,7 +38,8 @@ export type PermisoCodigo =
   | "ASSIGN_MANAGER"
   | "VIEW_PORTFOLIO"
   | "MANAGE_DOCUMENTS"
-  | "MANAGE_THIRD_PARTY";
+  | "MANAGE_THIRD_PARTY"
+  | "CASTIGAR_CARTERA";
 
 /**
  * Verifica si un usuario tiene un permiso específico
@@ -367,7 +368,7 @@ export async function crearPermiso(
  * 
  * @param idusuario ID del usuario
  * @param codigoPermiso Código del permiso requerido
- * @throws Error si no tiene permiso
+ * @throws GraphQLPermissionError si no tiene permiso
  */
 export async function requerirPermiso(
   idusuario: number | null | undefined,
@@ -376,7 +377,9 @@ export async function requerirPermiso(
   const tiene = await tienePermiso(idusuario, codigoPermiso);
 
   if (!tiene) {
-    throw new Error(
+    // Importar dinámicamente para evitar dependencias circulares
+    const { GraphQLPermissionError } = await import("@/lib/errors/graphql-errors");
+    throw new GraphQLPermissionError(
       `No tienes permiso para realizar esta operación. Permiso requerido: ${codigoPermiso}`
     );
   }

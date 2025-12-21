@@ -23,7 +23,10 @@ const nextConfig = {
       //   hostname: "pub-b7fd9c30cdbf439183b75041f5f71b92.r2.dev",
       //   port: ""
       // }
-    ]
+    ],
+    // Configurar calidades permitidas para imágenes
+    // Permite usar quality={75} y quality={90}
+    qualities: [75, 90],
   }
 };
 
