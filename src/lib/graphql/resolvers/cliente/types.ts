@@ -1,5 +1,7 @@
+import { definePrismaObject } from "../../helpers/prisma-object";
 import { builder } from "../../builder";
 import { z } from "zod";
+import type { tbl_cliente } from "@prisma/client";
 
 // ============================================
 // SCHEMAS DE VALIDACIÓN ZOD
@@ -135,8 +137,8 @@ export const ClienteFiltersInput = builder.inputRef("ClienteFiltersInput").imple
 // TIPOS GRAPHQL
 // ============================================
 
-export const Cliente = builder.prismaObject("tbl_cliente" as any, {
-  fields: (t: any) => ({
+export const Cliente = definePrismaObject("tbl_cliente", {
+  fields: (t) => ({
     idcliente: t.exposeInt("idcliente"),
     primer_nombres: t.exposeString("primer_nombres"),
     segundo_nombres: t.exposeString("segundo_nombres", { nullable: true }),
@@ -145,13 +147,13 @@ export const Cliente = builder.prismaObject("tbl_cliente" as any, {
     fechanacimiento: t.field({
       type: "DateTime",
       nullable: true,
-      resolve: (parent: any) => parent.fechanacimiento,
+      resolve: (parent: Record<string, unknown>) => parent.fechanacimiento,
     }),
     numerodocumento: t.exposeString("numerodocumento"),
     fechavencimientodoc: t.field({
       type: "DateTime",
       nullable: true,
-      resolve: (parent: any) => parent.fechavencimientodoc,
+      resolve: (parent: Record<string, unknown>) => parent.fechavencimientodoc,
     }),
     direccion: t.exposeString("direccion", { nullable: true }),
     ciudad: t.exposeString("ciudad", { nullable: true }),
@@ -165,11 +167,11 @@ export const Cliente = builder.prismaObject("tbl_cliente" as any, {
     estado: t.exposeBoolean("estado"),
     createdAt: t.field({
       type: "DateTime",
-      resolve: (parent: any) => parent.createdAt,
+      resolve: (parent: Record<string, unknown>) => parent.createdAt,
     }),
     updatedAt: t.field({
       type: "DateTime",
-      resolve: (parent: any) => parent.updatedAt,
+      resolve: (parent: Record<string, unknown>) => parent.updatedAt,
     }),
     // Relaciones
     tipodocumento: t.relation("tipodocumento"),
@@ -183,7 +185,7 @@ export const Cliente = builder.prismaObject("tbl_cliente" as any, {
 });
 
 export const ClientePage = builder.objectRef<{
-  clientes: any[];
+  clientes: tbl_cliente[];
   total: number;
   page: number;
   pageSize: number;
@@ -191,10 +193,10 @@ export const ClientePage = builder.objectRef<{
 }>("ClientePage");
 
 ClientePage.implement({
-  fields: (t: any) => ({
+  fields: (t) => ({
     clientes: t.field({
       type: [Cliente],
-      resolve: (parent: any) => parent.clientes,
+      resolve: (parent) => parent.clientes as never,
     }),
     total: t.exposeInt("total"),
     page: t.exposeInt("page"),

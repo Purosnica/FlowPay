@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Input, InputProps } from "./input";
+import { type InputProps , Input } from "./input";
+
 import { cn } from "@/lib/utils";
 
 export interface AutocompleteOption {

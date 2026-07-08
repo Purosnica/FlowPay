@@ -11,19 +11,14 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { loginSchema, type LoginInput } from "@/lib/validators/auth";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
-const loginSchema = z.object({
-  email: z.string().email("Email inválido"),
-  password: z.string().min(1, "La contraseña es requerida"),
-});
-
-type LoginFormValues = z.infer<typeof loginSchema>;
+type LoginFormValues = LoginInput;
 
 export default function LoginPage() {
   const router = useRouter();
@@ -57,8 +52,8 @@ export default function LoginPage() {
       } else {
         setError(result.error || "Error al iniciar sesión");
       }
-    } catch (err: any) {
-      setError(err.message || "Error al iniciar sesión");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al iniciar sesión");
     } finally {
       setIsSubmitting(false);
     }

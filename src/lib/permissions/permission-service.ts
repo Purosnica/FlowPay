@@ -21,25 +21,9 @@
 
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/utils/logger";
+import type { PermisoCodigo } from "@/lib/permissions/permiso-codes";
 
-export type PermisoCodigo =
-  | "CREATE_LOAN"
-  | "EDIT_LOAN"
-  | "DELETE_LOAN"
-  | "VIEW_LOAN"
-  | "APPLY_PAYMENT"
-  | "EDIT_PAYMENT"
-  | "DELETE_PAYMENT"
-  | "VIEW_PAYMENT"
-  | "MANAGE_COLLECTION"
-  | "VIEW_REPORTS"
-  | "CONFIG_SYSTEM"
-  | "RESTRUCTURE_LOAN"
-  | "ASSIGN_MANAGER"
-  | "VIEW_PORTFOLIO"
-  | "MANAGE_DOCUMENTS"
-  | "MANAGE_THIRD_PARTY"
-  | "CASTIGAR_CARTERA";
+export type { PermisoCodigo };
 
 /**
  * Verifica si un usuario tiene un permiso específico
@@ -399,8 +383,9 @@ export async function requerirAlgunPermiso(
   const tiene = await tieneAlgunPermiso(idusuario, codigosPermisos);
 
   if (!tiene) {
-    throw new Error(
-      `No tienes permiso para realizar esta operación. Permisos requeridos: ${codigosPermisos.join(", ")}`
+    const { GraphQLPermissionError } = await import('@/lib/errors/graphql-errors');
+    throw new GraphQLPermissionError(
+      `No tienes permiso para realizar esta operación. Permisos requeridos: ${codigosPermisos.join(', ')}`,
     );
   }
 }

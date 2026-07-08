@@ -1,21 +1,28 @@
 /**
  * RESOLVERS PARA BÚSQUEDA GLOBAL
- * 
- * Búsqueda rápida de clientes y préstamos con resultados limitados y optimizados
+ *
+ * Búsqueda rápida de clientes con resultados limitados y optimizados
  */
 
-import { builder } from "../../builder";
-import { Prisma } from "@prisma/client";
+import { builder ,type  GraphQLContext } from "../../builder";
+
+import { authClienteLectura } from "@/lib/graphql/auth-helpers";
+import { BUSQUEDA_CLIENTE_LIMITE_MAX } from "@/lib/cobranza/performance-limits";
+import { filtroClientePorMandante } from "@/lib/cobranza/mandante-scope";
 
 // Tipo para resultado de búsqueda
-export const SearchResultItem = builder.objectRef<{
-  tipo: "cliente" | "prestamo";
+interface SearchClienteItem {
+  tipo: "cliente";
   id: number;
   codigo: string;
   nombre: string;
   subtitulo: string;
-  metadata?: Record<string, any>;
-}>("SearchResultItem");
+  metadata?: Record<string, unknown>;
+}
+
+export const SearchResultItem = builder.objectRef<SearchClienteItem>(
+  "SearchResultItem"
+);
 
 SearchResultItem.implement({
   fields: (t) => ({
@@ -26,14 +33,13 @@ SearchResultItem.implement({
     subtitulo: t.exposeString("subtitulo"),
     metadata: t.string({
       nullable: true,
-      resolve: (parent) => parent.metadata ? JSON.stringify(parent.metadata) : null,
+      resolve: (parent) => (parent.metadata ? JSON.stringify(parent.metadata) : null),
     }),
   }),
 });
 
 export const SearchResults = builder.objectRef<{
-  clientes: any[];
-  prestamos: any[];
+  clientes: SearchClienteItem[];
   total: number;
 }>("SearchResults");
 
@@ -43,16 +49,12 @@ SearchResults.implement({
       type: [SearchResultItem],
       resolve: (parent) => parent.clientes,
     }),
-    prestamos: t.field({
-      type: [SearchResultItem],
-      resolve: (parent) => parent.prestamos,
-    }),
     total: t.exposeInt("total"),
   }),
 });
 
 /**
- * Query para búsqueda global de clientes y préstamos
+ * Query para búsqueda global de clientes
  */
 builder.queryField("buscarGlobal", (t) =>
   t.field({
@@ -61,21 +63,24 @@ builder.queryField("buscarGlobal", (t) =>
       query: t.arg.string({ required: true }),
       limite: t.arg.int({ required: false, defaultValue: 10 }),
     },
-    resolve: async (_parent, args, ctx) => {
+    resolve: async (_parent, args, ctx: GraphQLContext) => {
+      await authClienteLectura(ctx);
       const searchQuery = args.query.trim();
-      const limite = args.limite || 10;
+      const limite = Math.min(Math.max(args.limite || 10, 1), BUSQUEDA_CLIENTE_LIMITE_MAX);
 
       if (searchQuery.length < 2) {
         return {
           clientes: [],
-          prestamos: [],
           total: 0,
         };
       }
 
-      // Buscar clientes
+      const scopeCliente = await filtroClientePorMandante(ctx.usuario?.idusuario);
+
       const clientes = await ctx.prisma.tbl_cliente.findMany({
         where: {
+          estado: true,
+          ...(scopeCliente ?? {}),
           OR: [
             { primer_nombres: { contains: searchQuery } },
             { primer_apellido: { contains: searchQuery } },
@@ -94,40 +99,6 @@ builder.queryField("buscarGlobal", (t) =>
         orderBy: { primer_nombres: "asc" },
       });
 
-      // Buscar préstamos
-      const prestamos = await ctx.prisma.tbl_prestamo.findMany({
-        where: {
-          OR: [
-            { codigo: { contains: searchQuery } },
-            { referencia: { contains: searchQuery } },
-            {
-              cliente: {
-                OR: [
-                  { primer_nombres: { contains: searchQuery } },
-                  { primer_apellido: { contains: searchQuery } },
-                  { numerodocumento: { contains: searchQuery } },
-                ],
-              },
-            },
-          ],
-        },
-        select: {
-          idprestamo: true,
-          codigo: true,
-          referencia: true,
-          estado: true,
-          cliente: {
-            select: {
-              primer_nombres: true,
-              primer_apellido: true,
-            },
-          },
-        },
-        take: limite,
-        orderBy: { codigo: "desc" },
-      });
-
-      // Formatear resultados de clientes
       const clientesFormateados = clientes.map((cliente) => ({
         tipo: "cliente" as const,
         id: cliente.idcliente,
@@ -140,25 +111,10 @@ builder.queryField("buscarGlobal", (t) =>
         },
       }));
 
-      // Formatear resultados de préstamos
-      const prestamosFormateados = prestamos.map((prestamo) => ({
-        tipo: "prestamo" as const,
-        id: prestamo.idprestamo,
-        codigo: prestamo.codigo,
-        nombre: `Préstamo ${prestamo.codigo}`,
-        subtitulo: `${prestamo.cliente.primer_nombres} ${prestamo.cliente.primer_apellido}`,
-        metadata: {
-          estado: prestamo.estado,
-          referencia: prestamo.referencia,
-        },
-      }));
-
       return {
         clientes: clientesFormateados,
-        prestamos: prestamosFormateados,
-        total: clientesFormateados.length + prestamosFormateados.length,
+        total: clientesFormateados.length,
       };
     },
   })
 );
-

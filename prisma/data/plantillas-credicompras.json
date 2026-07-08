@@ -1,0 +1,26 @@
+[
+  {
+    "nombre": "SMS ILOCALIZADOS",
+    "canal": "SMS",
+    "etapa": "ADMINISTRATIVA",
+    "contenido": "DESPACHO LEGAL *CYCCO*\n\nDEUDOR: *{{nombre}}*\n\nID: *{{prestamo}}*\n\nCEDULA: *{{documento}}*\n\nPor este medio notificamos la representación legal *{{mandanteLegal}}*, debido a su cuenta pendiente proveniente de *{{mandante}}* Referente a la negativa que demuestra a los requerimientos de pagó que se le han brindado más la falta de prontitud para conciliar la deuda, sumado el ignorar o hacer caso omiso de nuestras llamadas telefónicas, se decidió promover aviso Extrajudicial.\n\nSe le hará comunicar a su domicilio y trabajo documento con tramite a iniciar el proceso. Ya que no accedió a conciliar su deuda con dicha entidad. Para mayor información llámenos o escribanos a los números wsp (505) 88888888 o (505) 9999999\n\nAtentamente,\n\nLic. Brittany\n\nJefe legal.\n\nDpto. Ejecuciones Legales"
+  },
+  {
+    "nombre": "SMS PROMOCION DE DESCUENTO",
+    "canal": "SMS",
+    "etapa": "ADMINISTRATIVA",
+    "contenido": "DESPACHO LEGAL *CYCCO*\n\nDEUDOR: *{{nombre}}*\n\nID: *{{prestamo}}*\n\nCEDULA: *{{documento}}*\n\nEn Grupo *{{mandanteLegal}}* queremos ayudarte a cancelar tu deuda con *{{mandante}}* Actualmente el saldo de tu deuda es de {{saldo}} y te ofrecemos un descuento especial de hasta un 50% si realizas tu pago antes del {{fechaLimite}}. \nNo dejes pasar esta oportunidad. Comunícate con nosotros a los números wsp (505) 88888888 o (505) 9999999 o visítanos en nuestra oficina *{{mandanteLegal}}*.\n\n¡Cancela tu deuda disfrutando de nuestro beneficio!\n\nAtentamente,\n\nLic. Brittany\n\nJefe legal.\n\nDpto. Ejecuciones Legales"
+  },
+  {
+    "nombre": "OFERTA DE DESCUENTO",
+    "canal": "WHATSAPP",
+    "etapa": "ADMINISTRATIVA",
+    "contenido": "🎉 ¡Atención, Estimad@ Sr@. {{nombre}} Llegó la Feria de Descuentos de *{{mandanteLegal}}* en conjunto con *{{mandante}}* pensada para Ti 🎉\n\nSabemos que estuviste interesado, pero aún no concretaste tu pago.\n¡Esta es tu oportunidad perfecta!\n\n💥 Durante nuestra Feria de Descuentos, estamos ofreciendo condiciones especiales de pago y descuentos exclusivos solo para clientes como tú.\n\n✅ Descuentos de hasta 50% al cancelar de contado.\n✅ Opciones de pago flexibles\n✅ Atención personalizada\n✅ Válido hasta el {{fechaLimite}}\n\nNo esperes más que esta es tu oportunidad de cancelar tu deuda mediante nuestro plan de descuento.\n📞 llámanos o 💬 Escríbenos hoy mismo a los números wsp (505) 88888888 o (505) 99999999 para más detalles o para reactivar tu solicitud sin compromiso.📲\n\n¡Aprovecha antes de que termine!"
+  },
+  {
+    "nombre": "PNC",
+    "canal": "WHATSAPP",
+    "etapa": "EXTRAJUDICIAL",
+    "contenido": "DESPACHO LEGAL *CYCCO*\n\nDEUDOR: *{{nombre}}*\n\nID: *{{prestamo}}*\n\nCEDULA: *{{documento}}*\n\nEstimado Sr@. {{nombre}} nuevamente le escribimos del despacho *{{mandanteLegal}}* en representación de *{{mandante}}*, Le informamos que su cuenta aún se encuentra en nuestro despacho de cobro.\n\nEstamos tratando de apoyarle con la cancelación de su obligación, pero él hacer caso omiso de atender nuestras llamadas demuestra su falta de interés en honrar está su obligación, por lo que requerimos comunicarse con nuestra oficina en las próximas 48 horas para evitar mayores complicaciones; al mismo tiempo le invitamos a aprovechar la oportunidad única para poder cancelar su cuenta de forma inmediata a través de nuestros planes de descuento. Llámenos o escríbanos a los wsp Tigo (505) 88888888 - (505) 99999999 / Claro (505) 505 77777777 que con mucho gusto le atenderemos.\n\nAtentamente,\n\nLic. Brittany\n\nJefe legal.\n\nDpto. Ejecuciones Legales"
+  }
+]

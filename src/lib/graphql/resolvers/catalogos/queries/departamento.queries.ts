@@ -1,5 +1,7 @@
+import { spreadPrismaQuery } from "../../../helpers/prisma-query";
 import { builder } from "../../../builder";
 import { Departamento } from "../types/departamento.types";
+import { authCatalogoLectura } from "@/lib/graphql/auth-helpers";
 
 export const departamentosQuery = builder.queryField("departamentos", (t) =>
   t.prismaField({
@@ -9,15 +11,16 @@ export const departamentosQuery = builder.queryField("departamentos", (t) =>
       estado: t.arg.boolean({ required: false }),
     },
     resolve: async (query, _parent, args, ctx) => {
-      const where: any = {};
+      await authCatalogoLectura(ctx);
+      const where: { idpais?: number; estado?: boolean } = {};
       if (args.idpais) {
         where.idpais = args.idpais;
       }
-      if (args.estado !== undefined) {
+      if (args.estado != null) {
         where.estado = args.estado;
       }
       return ctx.prisma.tbl_departamento.findMany({
-        ...(query as any),
+        ...spreadPrismaQuery(query),
         where: Object.keys(where).length > 0 ? where : undefined,
         include: {
           pais: true,

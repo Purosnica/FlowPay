@@ -1,4 +1,7 @@
-import { builder } from "../../../builder";
+import { spreadPrismaQuery } from "../../../helpers/prisma-query";
+import { builder ,type  GraphQLContext } from "../../../builder";
+
+import { authCatalogoEscritura } from "@/lib/graphql/auth-helpers";
 import {
   CreateTipoDocumentoInput,
   UpdateTipoDocumentoInput,
@@ -13,12 +16,13 @@ export const createTipoDocumentoMutation = builder.mutationField("createTipoDocu
     args: {
       input: t.arg({ type: CreateTipoDocumentoInput, required: true }),
     },
-    resolve: async (query, _parent, args, ctx) => {
+    resolve: async (query, _parent, args, ctx: GraphQLContext) => {
+      await authCatalogoEscritura(ctx);
       const validated = CreateTipoDocumentoInputSchema.parse(args.input);
       return ctx.prisma.tbl_tipodocumento.create({
-        ...(query as any),
+        ...spreadPrismaQuery(query),
         data: validated,
-      }) as any;
+      }) as never;
     },
   })
 );
@@ -29,13 +33,14 @@ export const updateTipoDocumentoMutation = builder.mutationField("updateTipoDocu
     args: {
       input: t.arg({ type: UpdateTipoDocumentoInput, required: true }),
     },
-    resolve: async (query, _parent, args, ctx) => {
+    resolve: async (query, _parent, args, ctx: GraphQLContext) => {
+      await authCatalogoEscritura(ctx);
       const { idtipodocumento, ...updateData } = UpdateTipoDocumentoInputSchema.parse(args.input);
       return ctx.prisma.tbl_tipodocumento.update({
-        ...(query as any),
+        ...spreadPrismaQuery(query),
         where: { idtipodocumento },
         data: updateData,
-      }) as any;
+      }) as never;
     },
   })
 );
@@ -46,11 +51,12 @@ export const deleteTipoDocumentoMutation = builder.mutationField("deleteTipoDocu
     args: {
       id: t.arg.int({ required: true }),
     },
-    resolve: async (query, _parent, args, ctx) => {
+    resolve: async (query, _parent, args, ctx: GraphQLContext) => {
+      await authCatalogoEscritura(ctx);
       return ctx.prisma.tbl_tipodocumento.delete({
-        ...(query as any),
+        ...spreadPrismaQuery(query),
         where: { idtipodocumento: args.id },
-      }) as any;
+      }) as never;
     },
   })
 );

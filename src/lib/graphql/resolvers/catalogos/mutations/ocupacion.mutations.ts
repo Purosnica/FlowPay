@@ -1,4 +1,7 @@
-import { builder } from "../../../builder";
+import { spreadPrismaQuery } from "../../../helpers/prisma-query";
+import { builder ,type  GraphQLContext } from "../../../builder";
+
+import { authCatalogoEscritura } from "@/lib/graphql/auth-helpers";
 import {
   CreateOcupacionInput,
   UpdateOcupacionInput,
@@ -13,12 +16,13 @@ export const createOcupacionMutation = builder.mutationField("createOcupacion", 
     args: {
       input: t.arg({ type: CreateOcupacionInput, required: true }),
     },
-    resolve: async (query, _parent, args, ctx) => {
+    resolve: async (query, _parent, args, ctx: GraphQLContext) => {
+      await authCatalogoEscritura(ctx);
       const validated = CreateOcupacionInputSchema.parse(args.input);
       return ctx.prisma.tbl_ocupacion.create({
-        ...(query as any),
+        ...spreadPrismaQuery(query),
         data: validated,
-      }) as any;
+      }) as never;
     },
   })
 );
@@ -29,13 +33,14 @@ export const updateOcupacionMutation = builder.mutationField("updateOcupacion", 
     args: {
       input: t.arg({ type: UpdateOcupacionInput, required: true }),
     },
-    resolve: async (query, _parent, args, ctx) => {
+    resolve: async (query, _parent, args, ctx: GraphQLContext) => {
+      await authCatalogoEscritura(ctx);
       const { idocupacion, ...updateData } = UpdateOcupacionInputSchema.parse(args.input);
       return ctx.prisma.tbl_ocupacion.update({
-        ...(query as any),
+        ...spreadPrismaQuery(query),
         where: { idocupacion },
         data: updateData,
-      }) as any;
+      }) as never;
     },
   })
 );
@@ -46,11 +51,12 @@ export const deleteOcupacionMutation = builder.mutationField("deleteOcupacion", 
     args: {
       id: t.arg.int({ required: true }),
     },
-    resolve: async (query, _parent, args, ctx) => {
+    resolve: async (query, _parent, args, ctx: GraphQLContext) => {
+      await authCatalogoEscritura(ctx);
       return ctx.prisma.tbl_ocupacion.delete({
-        ...(query as any),
+        ...spreadPrismaQuery(query),
         where: { idocupacion: args.id },
-      }) as any;
+      }) as never;
     },
   })
 );

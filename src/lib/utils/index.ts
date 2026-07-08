@@ -23,9 +23,6 @@ export * from "./number";
 // Utilidades de formateo
 export * from "./format";
 
-// Utilidades de validación
-export * from "./validation";
-
 // Logger estructurado
 export * from "./logger";
 

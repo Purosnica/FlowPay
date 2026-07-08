@@ -1,3 +1,4 @@
+import { definePrismaObject } from "../../../helpers/prisma-object";
 import { builder } from "../../../builder";
 import { z } from "zod";
 
@@ -28,8 +29,8 @@ export const UpdateTipoDocumentoInput = builder.inputRef("UpdateTipoDocumentoInp
 });
 
 // Tipo GraphQL (Prisma Object)
-export const TipoDocumento = builder.prismaObject("tbl_tipodocumento" as any, {
-  fields: (t: any) => ({
+export const TipoDocumento = definePrismaObject("tbl_tipodocumento", {
+  fields: (t) => ({
     idtipodocumento: t.exposeInt("idtipodocumento"),
     descripcion: t.exposeString("descripcion"),
     estado: t.exposeBoolean("estado"),

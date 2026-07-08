@@ -1,4 +1,7 @@
-import { builder } from "../../../builder";
+import { spreadPrismaQuery } from "../../../helpers/prisma-query";
+import { builder ,type  GraphQLContext } from "../../../builder";
+
+import { authCatalogoEscritura } from "@/lib/graphql/auth-helpers";
 import {
   CreateGeneroInput,
   UpdateGeneroInput,
@@ -13,12 +16,13 @@ export const createGeneroMutation = builder.mutationField("createGenero", (t) =>
     args: {
       input: t.arg({ type: CreateGeneroInput, required: true }),
     },
-    resolve: async (query, _parent, args, ctx) => {
+    resolve: async (query, _parent, args, ctx: GraphQLContext) => {
+      await authCatalogoEscritura(ctx);
       const validated = CreateGeneroInputSchema.parse(args.input);
       return ctx.prisma.tbl_genero.create({
-        ...(query as any),
+        ...spreadPrismaQuery(query),
         data: validated,
-      }) as any;
+      }) as never;
     },
   })
 );
@@ -29,13 +33,14 @@ export const updateGeneroMutation = builder.mutationField("updateGenero", (t) =>
     args: {
       input: t.arg({ type: UpdateGeneroInput, required: true }),
     },
-    resolve: async (query, _parent, args, ctx) => {
+    resolve: async (query, _parent, args, ctx: GraphQLContext) => {
+      await authCatalogoEscritura(ctx);
       const { idgenero, ...updateData } = UpdateGeneroInputSchema.parse(args.input);
       return ctx.prisma.tbl_genero.update({
-        ...(query as any),
+        ...spreadPrismaQuery(query),
         where: { idgenero },
         data: updateData,
-      }) as any;
+      }) as never;
     },
   })
 );
@@ -46,11 +51,12 @@ export const deleteGeneroMutation = builder.mutationField("deleteGenero", (t) =>
     args: {
       id: t.arg.int({ required: true }),
     },
-    resolve: async (query, _parent, args, ctx) => {
+    resolve: async (query, _parent, args, ctx: GraphQLContext) => {
+      await authCatalogoEscritura(ctx);
       return ctx.prisma.tbl_genero.delete({
-        ...(query as any),
+        ...spreadPrismaQuery(query),
         where: { idgenero: args.id },
-      }) as any;
+      }) as never;
     },
   })
 );

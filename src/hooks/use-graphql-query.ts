@@ -1,4 +1,5 @@
-import { useQuery, UseQueryOptions } from "@tanstack/react-query";
+import { type UseQueryOptions , useQuery } from "@tanstack/react-query";
+
 import { graphqlRequest, GraphQLRequestError } from "@/lib/graphql/client";
 import { useAuth } from "@/contexts/auth-context";
 

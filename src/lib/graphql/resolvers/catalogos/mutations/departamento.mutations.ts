@@ -1,4 +1,7 @@
-import { builder } from "../../../builder";
+import { spreadPrismaQuery } from "../../../helpers/prisma-query";
+import { builder ,type  GraphQLContext } from "../../../builder";
+
+import { authCatalogoEscritura } from "@/lib/graphql/auth-helpers";
 import {
   CreateDepartamentoInput,
   UpdateDepartamentoInput,
@@ -13,12 +16,13 @@ export const createDepartamentoMutation = builder.mutationField("createDepartame
     args: {
       input: t.arg({ type: CreateDepartamentoInput, required: true }),
     },
-    resolve: async (query, _parent, args, ctx) => {
+    resolve: async (query, _parent, args, ctx: GraphQLContext) => {
+      await authCatalogoEscritura(ctx);
       const validated = CreateDepartamentoInputSchema.parse(args.input);
       return ctx.prisma.tbl_departamento.create({
-        ...(query as any),
+        ...spreadPrismaQuery(query),
         data: validated,
-      }) as any;
+      }) as never;
     },
   })
 );
@@ -29,13 +33,14 @@ export const updateDepartamentoMutation = builder.mutationField("updateDepartame
     args: {
       input: t.arg({ type: UpdateDepartamentoInput, required: true }),
     },
-    resolve: async (query, _parent, args, ctx) => {
+    resolve: async (query, _parent, args, ctx: GraphQLContext) => {
+      await authCatalogoEscritura(ctx);
       const { iddepartamento, ...updateData } = UpdateDepartamentoInputSchema.parse(args.input);
       return ctx.prisma.tbl_departamento.update({
-        ...(query as any),
+        ...spreadPrismaQuery(query),
         where: { iddepartamento },
         data: updateData,
-      }) as any;
+      }) as never;
     },
   })
 );
@@ -46,11 +51,12 @@ export const deleteDepartamentoMutation = builder.mutationField("deleteDepartame
     args: {
       id: t.arg.int({ required: true }),
     },
-    resolve: async (query, _parent, args, ctx) => {
+    resolve: async (query, _parent, args, ctx: GraphQLContext) => {
+      await authCatalogoEscritura(ctx);
       return ctx.prisma.tbl_departamento.delete({
-        ...(query as any),
+        ...spreadPrismaQuery(query),
         where: { iddepartamento: args.id },
-      }) as any;
+      }) as never;
     },
   })
 );

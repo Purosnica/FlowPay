@@ -1,6 +1,6 @@
 "use client";
 
-import { Component, type ReactNode } from "react";
+import { Component, type ErrorInfo, type ReactNode } from "react";
 
 interface Props {
   children: ReactNode;
@@ -23,7 +23,7 @@ export class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: any) {
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     // Log error to error reporting service (Sentry, etc.)
     console.error("ErrorBoundary caught an error:", error, errorInfo);
     
@@ -55,13 +55,13 @@ export class ErrorBoundary extends Component<Props, State> {
               <div className="flex gap-4 justify-center">
                 <button
                   onClick={this.handleReset}
-                  className="rounded-lg bg-primary px-4 py-2 text-white transition-colors hover:bg-primary/90"
+                  className="rounded-lg bg-primary px-4 py-2 font-semibold text-white shadow-md shadow-primary/25 transition-all hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/30"
                 >
                   Reintentar
                 </button>
                 <button
-                  onClick={() => window.location.href = "/"}
-                  className="rounded-lg border border-stroke px-4 py-2 text-dark transition-colors hover:bg-gray-2 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
+                  onClick={() => (window.location.href = '/')}
+                  className="rounded-lg border-2 border-primary bg-white px-4 py-2 font-semibold text-primary shadow-sm transition-all hover:bg-primary hover:text-white dark:bg-dark-2"
                 >
                   Volver al inicio
                 </button>

@@ -14,17 +14,6 @@ export const BUSCAR_GLOBAL = /* GraphQL */ `
         subtitulo
         metadata
       }
-      prestamos {
-        tipo
-        id
-        codigo
-        nombre
-        subtitulo
-        metadata
-      }
     }
   }
 `;
-
-
-

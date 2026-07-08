@@ -1,12 +1,9 @@
 import "@/css/satoshi.css";
 import "@/css/style.css";
 
-import { Sidebar } from "@/components/Layouts/sidebar";
-
 import "flatpickr/dist/flatpickr.min.css";
 import "jsvectormap/dist/jsvectormap.css";
 
-import { Header } from "@/components/Layouts/header";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { NotificationContainer } from "@/components/ui/notification-toast";
 import type { Metadata } from "next";

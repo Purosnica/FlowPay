@@ -11,12 +11,15 @@
 import { GraphQLError } from "graphql";
 import { Prisma } from "@prisma/client";
 import { ZodError } from "zod";
-import { ErrorCode, StructuredError } from "./types";
+import { type StructuredError , ErrorCode } from "./types";
+
 
 /**
  * Convierte un error de Prisma a un error estructurado
  */
-function handlePrismaError(error: any): StructuredError {
+function handlePrismaError(
+  error: Prisma.PrismaClientKnownRequestError
+): StructuredError {
   // Error de constraint único
   if (error.code === "P2002") {
     const target = error.meta?.target as string[] | undefined;
@@ -149,9 +152,14 @@ function handleZodError(error: ZodError): StructuredError {
 /**
  * Convierte un error genérico a un error estructurado
  */
-function handleGenericError(error: any, path?: string): StructuredError {
+function handleGenericError(error: unknown, path?: string): StructuredError {
   // Si ya es un error estructurado, retornarlo
-  if (error.code && error.userMessage) {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    "userMessage" in error
+  ) {
     return error as StructuredError;
   }
 
@@ -230,7 +238,7 @@ function handleGenericError(error: any, path?: string): StructuredError {
 /**
  * Función principal para formatear errores de GraphQL
  */
-export function formatGraphQLError(error: any, path?: string): GraphQLError {
+export function formatGraphQLError(error: unknown, path?: string): GraphQLError {
   let structuredError: StructuredError;
 
   // Error de Prisma
@@ -275,14 +283,14 @@ export function formatGraphQLError(error: any, path?: string): GraphQLError {
       timestamp: structuredError.timestamp,
       path: structuredError.path || path,
     },
-    originalError: error,
+    originalError: error instanceof Error ? error : undefined,
   });
 }
 
 /**
  * Middleware para capturar errores en resolvers de GraphQL
  */
-export function graphqlErrorHandler(error: any, path?: string): GraphQLError {
+export function graphqlErrorHandler(error: unknown, path?: string): GraphQLError {
   return formatGraphQLError(error, path);
 }
 

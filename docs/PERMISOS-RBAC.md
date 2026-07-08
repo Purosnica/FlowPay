@@ -1,454 +1,343 @@
-# SISTEMA DE PERMISOS RBAC (Role-Based Access Control)
+# RBAC FlowPay — Auditoría y Catálogo de Permisos
 
-Este documento describe el sistema de permisos avanzados implementado en FlowPay, basado en roles (RBAC) y completamente dinámico.
-
-## 📋 Índice
-
-1. [Arquitectura del Sistema](#arquitectura-del-sistema)
-2. [Modelos de Datos](#modelos-de-datos)
-3. [Permisos Base](#permisos-base)
-4. [Validación de Permisos](#validación-de-permisos)
-5. [Integración en GraphQL](#integración-en-graphql)
-6. [Gestión de Permisos](#gestión-de-permisos)
-7. [Roles Predefinidos](#roles-predefinidos)
+> **Fuente única de verdad:** `src/lib/permissions/permiso-codes.ts`  
+> **Jerarquía organizacional (roles):** `src/lib/permissions/role-codes.ts`  
+> **Última auditoría:** 2026-07-07
 
 ---
 
-## Arquitectura del Sistema
+## Resumen ejecutivo
 
-### Estructura RBAC
+El sistema tiene **18 permisos** en 3 categorías:
 
-```
-Usuario (tbl_usuario)
-  └── Rol (tbl_rol)
-       └── Permisos (tbl_rol_permiso)
-            └── Permiso (tbl_permiso)
-```
+| Categoría | Tipo | Permisos |
+|-----------|------|----------|
+| ADMINISTRACION | Administrativo | `USER_READ`, `USER_WRITE` |
+| CONFIGURACION | Administrativo | `CONFIG_SYSTEM` |
+| COBRANZA | Operativo | 15 permisos restantes |
 
-**Flujo de Validación:**
-1. Usuario intenta realizar una operación
-2. Sistema obtiene el rol del usuario
-3. Sistema obtiene los permisos asociados al rol
-4. Sistema verifica si el permiso requerido está en la lista
-5. Si tiene permiso: permite la operación
-6. Si no tiene permiso: rechaza con error
+**Principio de diseño:**
+
+- **Permisos (RBAC)** → controlan *qué módulos y acciones* puede ejecutar un usuario.
+- **Roles organizacionales** (`COBRADOR`, `SUPERVISOR`, `GERENTE`, `ADMIN`) → controlan *jerarquía y alcance de datos* (equipo, aprobaciones, mandantes).
+- **Nunca** usar permisos financieros (`LIQUIDACION_*`, `PAGO_*`) para inferir jerarquía.
 
 ---
 
-## Modelos de Datos
+## Capas de autorización
 
-### `tbl_permiso`
-
-Catálogo de permisos disponibles en el sistema.
-
-```prisma
-model tbl_permiso {
-  idpermiso   Int      @id @default(autoincrement())
-  codigo      String   @unique // Ej: "CREATE_LOAN", "EDIT_LOAN"
-  nombre      String   // Nombre legible
-  descripcion String?  @db.Text
-  categoria   String?  // "PRESTAMOS", "PAGOS", "COBRANZA", etc.
-  estado      Boolean  @default(true)
-  deletedAt   DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  roles tbl_rol_permiso[]
-}
+```
+┌─────────────┐    ┌──────────────────┐    ┌─────────────────────┐
+│  Frontend   │───▶│  Middleware JWT  │───▶│  GraphQL / API      │
+│  (nav UI)   │    │  (rutas páginas) │    │  (requerirPermiso)  │
+└─────────────┘    └──────────────────┘    └─────────────────────┘
+       │                    │                         │
+       └────────────────────┴─────────────────────────┘
+                    permisos en JWT
+              + scope mandante (tbl_usuario_mandante)
+              + scope equipo (rol + idsupervisor)
 ```
 
-### `tbl_rol_permiso`
-
-Tabla intermedia para relación muchos a muchos entre roles y permisos.
-
-```prisma
-model tbl_rol_permiso {
-  idrolPermiso Int      @id @default(autoincrement())
-  idrol        Int
-  idpermiso    Int
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  rol     tbl_rol     @relation(...)
-  permiso tbl_permiso @relation(...)
-
-  @@unique([idrol, idpermiso])
-}
-```
-
-### `tbl_rol` (Actualizado)
-
-Relación agregada con permisos:
-
-```prisma
-model tbl_rol {
-  // ... campos existentes
-  permisos tbl_rol_permiso[]
-}
-```
+| Capa | Archivo | Qué valida |
+|------|---------|------------|
+| Constantes | `src/lib/permissions/permiso-codes.ts` | Códigos, catálogo, presets por rol |
+| Seed | `prisma/seed-permisos.ts` | Persistencia en `tbl_permiso` / `tbl_rol_permiso` |
+| Middleware páginas | `src/middleware.ts` + `route-permissions.ts` | Acceso a rutas del dashboard |
+| API REST | `src/lib/middleware/auth.ts` | `requirePermission()` en rutas `/api/*` |
+| GraphQL | Resolvers + `auth-helpers.ts` | `requerirPermiso()` por operación |
+| Frontend nav | `sidebar/data/index.ts` + `filter-nav-by-permisos.ts` | Visibilidad de menú |
+| Scope datos | `mandante-scope.ts`, `equipo-scope.ts` | Filtrado por mandante y equipo |
 
 ---
 
-## Permisos Base
+## Inconsistencias encontradas y correcciones
 
-### Permisos de Préstamos
+### Corregidas en esta auditoría
 
-- **`CREATE_LOAN`**: Crear préstamos
-- **`EDIT_LOAN`**: Editar préstamos
-- **`DELETE_LOAN`**: Eliminar préstamos (soft delete)
-- **`VIEW_LOAN`**: Ver préstamos
-- **`RESTRUCTURE_LOAN`**: Reestructurar préstamos
-- **`ASSIGN_MANAGER`**: Asignar gestores
-- **`VIEW_PORTFOLIO`**: Ver cartera
+| # | Problema | Impacto | Corrección |
+|---|----------|---------|------------|
+| 1 | `PERMISOS_COBRADOR` en constantes no incluía `MANDANTE_READ` ni `REPORTE_READ` | Drift seed ↔ código | Presets unificados en `permiso-codes.ts`, seed importa de ahí |
+| 2 | `PERMISOS_SUPERVISOR` no incluía `MANDANTE_READ` | Drift seed ↔ código | Hereda de `PERMISOS_COBRADOR` |
+| 3 | `equipo/page.tsx` usaba `LIQUIDACION_WRITE` para detectar gerente | Permiso financiero usado como jerarquía | `useEsGerente()` basado en `rolCodigo` |
+| 4 | Rutas sin regla en middleware: `/cobranza/asignacion`, `/historial-cargas`, `/campanas/wizard` | Bypass de RBAC en UI | Reglas agregadas en `route-permissions.ts` |
+| 5 | Catálogo duplicado en seed y constantes | Mantenimiento frágil | `PERMISOS_CATALOGO` como fuente única |
+| 6 | Bloque redundante en seed re-asignando permisos a ADMIN | Código muerto | Eliminado |
 
-### Permisos de Pagos
+### Patrones correctos (no son bugs)
 
-- **`APPLY_PAYMENT`**: Registrar pagos
-- **`EDIT_PAYMENT`**: Editar pagos
-- **`DELETE_PAYMENT`**: Eliminar pagos (soft delete)
-- **`VIEW_PAYMENT`**: Ver pagos
+| Patrón | Ubicación | Explicación |
+|--------|-----------|-------------|
+| `esSupervisor()` por rol en acuerdos | `acuerdo/mutations.ts` | Aprobación de descuentos altos — jerarquía, no permiso |
+| `esGerente()` en dashboard gerente | `dashboard-gerente-service.ts` | Vista multi-equipo — jerarquía, no `LIQUIDACION_WRITE` |
+| `filtroMandante()` | Todos los resolvers de cobranza | Scope de datos independiente del permiso |
+| `CARTERA_READ` amplio | Clientes, préstamos, bandeja | Permiso operativo base; no es redundancia |
 
-### Permisos de Cobranza
+### Permisos redundantes
 
-- **`MANAGE_COLLECTION`**: Gestionar cobranza, promesas y castigos
-
-### Permisos de Reportes
-
-- **`VIEW_REPORTS`**: Ver reportes y KPIs
-
-### Permisos de Configuración
-
-- **`CONFIG_SYSTEM`**: Configurar sistema
-
-### Permisos de Documentos
-
-- **`MANAGE_DOCUMENTS`**: Gestionar documentos
-
-### Permisos de Terceros
-
-- **`MANAGE_THIRD_PARTY`**: Gestionar liquidaciones de terceros
+**No se eliminó ningún permiso.** Los 18 cubren módulos distintos. Lo que parecía redundante era **uso incorrecto** (`LIQUIDACION_WRITE` como proxy de gerente), no permisos duplicados.
 
 ---
 
-## Validación de Permisos
+## Presets de rol (referencia)
 
-### Servicio de Permisos
+| Rol | Permisos |
+|-----|----------|
+| **COBRADOR** | Cartera lectura, mandante lectura, gestión, acuerdos, pagos, reportes |
+| **SUPERVISOR** | Cobrador + cartera escritura, inteligencia, equipo, liquidación lectura |
+| **GERENTE** | Supervisor + liquidación escritura, usuarios lectura |
+| **ADMIN** | Todos los permisos |
 
-El servicio `permission-service.ts` proporciona funciones para validar permisos:
-
-#### `tienePermiso()`
-Verifica si un usuario tiene un permiso específico.
-
-```typescript
-const tiene = await tienePermiso(idusuario, "CREATE_LOAN");
-if (!tiene) {
-  throw new Error("No tienes permiso para crear préstamos");
-}
-```
-
-#### `requerirPermiso()`
-Lanza error automáticamente si no tiene permiso (útil para mutations).
-
-```typescript
-await requerirPermiso(idusuario, "CREATE_LOAN");
-// Si no tiene permiso, lanza error automáticamente
-```
-
-#### `tieneAlgunPermiso()`
-Verifica si tiene al menos uno de varios permisos.
-
-```typescript
-const tiene = await tieneAlgunPermiso(idusuario, [
-  "EDIT_LOAN",
-  "CREATE_LOAN",
-]);
-```
-
-#### `tieneTodosLosPermisos()`
-Verifica si tiene todos los permisos especificados.
-
-```typescript
-const tiene = await tieneTodosLosPermisos(idusuario, [
-  "CREATE_LOAN",
-  "APPLY_PAYMENT",
-]);
-```
-
-#### `obtenerPermisosUsuario()`
-Obtiene todos los permisos de un usuario.
-
-```typescript
-const permisos = await obtenerPermisosUsuario(idusuario);
-// ["CREATE_LOAN", "EDIT_LOAN", "APPLY_PAYMENT", ...]
-```
+Definidos en `PERMISOS_COBRADOR`, `PERMISOS_SUPERVISOR`, `PERMISOS_GERENTE`, `PERMISOS_ADMIN`.
 
 ---
 
-## Integración en GraphQL
+## Catálogo detallado por permiso
 
-### Mutations Protegidas
+### ADMINISTRACIÓN (administrativo)
 
-Todas las mutations críticas validan permisos antes de ejecutar:
+#### `USER_READ`
 
-#### Ejemplo: Crear Préstamo
+| Aspecto | Detalle |
+|---------|---------|
+| **Permite** | Ver usuarios, roles, permisos asignados; listar cobradores/supervisores |
+| **No permite** | Crear/editar usuarios, modificar roles ni asignar permisos |
+| **Módulos** | Configuración → Usuarios y permisos |
+| **Middleware** | `/configuracion/usuarios` |
+| **GraphQL** | `usuarios`, `usuario`, `roles`, `rol`, `permisos` |
+| **Frontend** | Nav "Usuarios y permisos"; sección Configuración visible |
 
-```typescript
-builder.mutationField("createPrestamo", (t) =>
-  t.prismaField({
-    type: Prestamo,
-    args: {
-      input: t.arg({ type: CreatePrestamoInput, required: true }),
-    },
-    resolve: async (query, _parent, args, ctx) => {
-      const input = CreatePrestamoInputSchema.parse(args.input);
+#### `USER_WRITE`
 
-      // Validar permiso
-      await requerirPermiso(input.idusuarioCreador, "CREATE_LOAN");
-
-      // Continuar con la operación...
-      const prestamo = await ctx.prisma.tbl_prestamo.create({...});
-      return prestamo;
-    },
-  })
-);
-```
-
-#### Ejemplo: Registrar Pago
-
-```typescript
-builder.mutationField("registrarPagoConAplicacion", (t) =>
-  t.field({
-    type: Pago,
-    resolve: async (_parent, args, ctx) => {
-      const input = CreatePagoInputSchema.parse(args.input);
-
-      // Validar permiso
-      await requerirPermiso(input.idusuario, "APPLY_PAYMENT");
-
-      // Continuar con la operación...
-    },
-  })
-);
-```
-
-### Queries Protegidas
-
-Las queries también pueden validar permisos:
-
-#### Ejemplo: Ver Cartera
-
-```typescript
-builder.queryField("cartera", (t) =>
-  t.field({
-    type: CarteraPage,
-    args: {
-      filters: t.arg({ type: CarteraFiltersInput, required: false }),
-      idusuario: t.arg.int({ required: false }),
-    },
-    resolve: async (_parent, args, ctx) => {
-      // Validar permiso
-      await requerirPermiso(args.idusuario, "VIEW_PORTFOLIO");
-
-      // Continuar con la consulta...
-    },
-  })
-);
-```
-
-### Mutations con Validación de Permisos
-
-| Mutation | Permiso Requerido |
-|----------|-------------------|
-| `createPrestamo` | `CREATE_LOAN` |
-| `updatePrestamo` | `EDIT_LOAN` |
-| `createPago` | `APPLY_PAYMENT` |
-| `registrarPagoConAplicacion` | `APPLY_PAYMENT` |
-| `updatePago` | `EDIT_PAYMENT` |
-| `deletePago` | `DELETE_PAYMENT` |
-| `asignarGestor` | `ASSIGN_MANAGER` |
-| `reestructurarPrestamo` | `RESTRUCTURE_LOAN` |
-| `castigarCartera` | `MANAGE_COLLECTION` |
-| `createDocumento` | `MANAGE_DOCUMENTS` |
-| `deleteDocumento` | `MANAGE_DOCUMENTS` |
-| `createLiquidacionTercero` | `MANAGE_THIRD_PARTY` |
-| `updateLiquidacionTercero` | `MANAGE_THIRD_PARTY` |
-| `updateConfiguracionSistema` | `CONFIG_SYSTEM` |
-
-### Queries con Validación de Permisos
-
-| Query | Permiso Requerido |
-|-------|-------------------|
-| `cartera` | `VIEW_PORTFOLIO` |
-| `agingCartera` | `VIEW_REPORTS` |
-| `recuperacionRealVsEsperada` | `VIEW_REPORTS` |
-| `rankingGestores` | `VIEW_REPORTS` |
-| `moraPromedio` | `VIEW_REPORTS` |
+| Aspecto | Detalle |
+|---------|---------|
+| **Permite** | Crear/editar/desactivar usuarios; crear/editar roles; asignar permisos a roles |
+| **No permite** | Acceso a configuración del sistema ni módulos de cobranza sin otros permisos |
+| **Módulos** | Administración de identidades |
+| **GraphQL** | `createUsuario`, `updateUsuario`, `createRol`, `updateRol`, `asignarPermisoRol`, etc. |
+| **Frontend** | Botones de escritura en `/configuracion/usuarios` |
 
 ---
 
-## Gestión de Permisos
+### CONFIGURACIÓN (administrativo)
 
-### Crear Nuevo Permiso
+#### `CONFIG_SYSTEM`
 
-```typescript
-import { crearPermiso } from "@/lib/permissions/permission-service";
-
-const permiso = await crearPermiso(
-  "NUEVO_PERMISO",
-  "Nuevo Permiso",
-  "Descripción del permiso",
-  "CATEGORIA"
-);
-```
-
-### Asignar Permiso a Rol
-
-```typescript
-import { asignarPermisoARol } from "@/lib/permissions/permission-service";
-
-// Obtener IDs
-const rol = await prisma.tbl_rol.findUnique({ where: { codigo: "GESTOR" } });
-const permiso = await prisma.tbl_permiso.findUnique({ where: { codigo: "CREATE_LOAN" } });
-
-// Asignar
-await asignarPermisoARol(rol.idrol, permiso.idpermiso);
-```
-
-### Remover Permiso de Rol
-
-```typescript
-import { removerPermisoDeRol } from "@/lib/permissions/permission-service";
-
-await removerPermisoDeRol(rol.idrol, permiso.idpermiso);
-```
-
-### Obtener Permisos de un Rol
-
-```typescript
-import { obtenerPermisosRol } from "@/lib/permissions/permission-service";
-
-const permisos = await obtenerPermisosRol(idrol);
-// ["CREATE_LOAN", "EDIT_LOAN", ...]
-```
+| Aspecto | Detalle |
+|---------|---------|
+| **Permite** | Ver/editar configuración global; auditoría; cron operativo; catálogos de sistema |
+| **No permite** | Gestionar usuarios (requiere `USER_WRITE`); operaciones de cobranza |
+| **Módulos** | Configuración → Sistema, Auditoría, Cron |
+| **Middleware** | `/configuracion`, `/configuracion/auditoria`, `/configuracion/cron` |
+| **GraphQL** | `configuraciones`, `updateConfiguracion`, `auditoria`, cron jobs, algunos queries de inteligencia admin |
+| **Frontend** | Nav Configuración (parcial; también requiere `USER_READ` para ver usuarios) |
 
 ---
 
-## Roles Predefinidos
+### COBRANZA — Mandante (operativo)
 
-### ADMIN
+#### `MANDANTE_READ`
 
-**Descripción:** Administrador del sistema con acceso completo.
+| Aspecto | Detalle |
+|---------|---------|
+| **Permite** | Consultar mandantes, contratos, políticas descuento, comisiones, horarios, plantillas mensaje |
+| **No permite** | Crear/editar mandantes ni su configuración |
+| **Módulos** | Mandantes, Plantillas, horarios cobranza (lectura) |
+| **Middleware** | `/cobranza/mandantes`, `/cobranza/plantillas` |
+| **GraphQL** | `mandantes`, `mandante`, `contratosMandante`, `politicasDescuento`, `comisionesCobro`, `plantillasMensaje`, `horariosCobranza` |
+| **Frontend** | Nav Mandantes, Plantillas |
 
-**Permisos:**
-- Todos los permisos del sistema
+#### `MANDANTE_WRITE`
 
-### GESTOR
-
-**Descripción:** Gestor de cobranza con permisos operativos.
-
-**Permisos:**
-- `VIEW_LOAN`
-- `VIEW_PAYMENT`
-- `APPLY_PAYMENT`
-- `MANAGE_COLLECTION`
-- `VIEW_PORTFOLIO`
-- `ASSIGN_MANAGER`
-- `VIEW_REPORTS`
-- `MANAGE_DOCUMENTS`
-
-### CONSULTA
-
-**Descripción:** Usuario de solo lectura.
-
-**Permisos:**
-- `VIEW_LOAN`
-- `VIEW_PAYMENT`
-- `VIEW_PORTFOLIO`
-- `VIEW_REPORTS`
+| Aspecto | Detalle |
+|---------|---------|
+| **Permite** | CRUD mandantes, contratos, tipificaciones, plantillas mensaje, comisiones, horarios, asignación usuario-mandante |
+| **No permite** | Importar cartera ni registrar gestiones |
+| **Módulos** | Configuración de mandante |
+| **Middleware** | `/cobranza/plantillas-mensaje` |
+| **GraphQL** | Mutations de mandante, contrato, plantilla-mensaje, comision-cobro, mandante-tipificacion, horario-cobranza; queries de asignación usuario-mandante |
+| **Frontend** | Nav Plantillas mensaje |
 
 ---
 
-## Seed de Permisos
+### COBRANZA — Cartera (operativo)
 
-Para crear los permisos base y asignarlos a roles, ejecutar:
+#### `CARTERA_READ`
+
+| Aspecto | Detalle |
+|---------|---------|
+| **Permite** | Ver cartera, préstamos, clientes (360°), bandeja, campañas, agencias, documentos, fiadores, catálogos, secuencias contacto, historial cargas |
+| **No permite** | Importar, asignar cartera, modificar préstamos ni subir documentos |
+| **Módulos** | Dashboard, Mi día, Clientes, Cartera, Bandeja, Campañas, Agencias, Historial cargas |
+| **Middleware** | `/dashboard`, `/clientes`, `/cobranza/mi-dia`, `/cobranza/cartera`, `/cobranza/bandeja`, `/cobranza/campanas`, `/cobranza/agencias`, `/cobranza/prestamos`, `/cobranza/historial-cargas` |
+| **GraphQL** | `prestamos`, `clientes`, `cliente360`, `bandejaCobrador`, `documentos`, `fiadores`, `catalogosCobranza`, `cargasCartera`, `secuenciasContacto`, varios dashboards |
+| **Frontend** | Mayoría de entradas del menú Cobranza (lectura) |
+
+#### `CARTERA_WRITE`
+
+| Aspecto | Detalle |
+|---------|---------|
+| **Permite** | Importar cartera, asignar cobradores, modificar préstamos, plantillas importación, documentos, contactos deudor, campañas wizard |
+| **No permite** | Registrar gestiones ni pagos (permisos propios) |
+| **Módulos** | Importar, Asignación, Wizard campaña |
+| **Middleware** | `/cobranza/importar`, `/cobranza/asignacion`, `/cobranza/campanas/wizard` |
+| **API REST** | `POST /api/cobranza/importar`, `/importar/async`, upload documentos |
+| **GraphQL** | Mutations préstamo, asignación-cartera, plantilla-importación, documento, deudor-contacto, secuencia-contacto; castigo cartera |
+| **Frontend** | Nav Importar, Asignación, Wizard campaña |
+
+---
+
+### COBRANZA — Gestión (operativo)
+
+#### `GESTION_READ`
+
+| Aspecto | Detalle |
+|---------|---------|
+| **Permite** | Consultar gestiones, tipificaciones, reclamos, horarios (vista gestor) |
+| **No permite** | Registrar gestiones ni reclamos |
+| **Módulos** | Gestiones, Reclamos |
+| **Middleware** | `/cobranza/gestiones`, `/cobranza/reclamos`, `/cobranza` (OR con CARTERA_READ) |
+| **GraphQL** | `gestiones`, `tipificaciones`, `reclamos`, horario validación |
+| **Frontend** | Nav Mis gestiones, Reclamos |
+
+#### `GESTION_WRITE`
+
+| Aspecto | Detalle |
+|---------|---------|
+| **Permite** | Registrar gestiones y reclamos |
+| **No permite** | Crear acuerdos ni registrar pagos |
+| **Módulos** | Operación diaria del cobrador |
+| **GraphQL** | `createGestion`, mutations reclamo, acciones inteligencia operativas |
+| **Frontend** | Formularios de gestión (implícito por acceso a página) |
+
+---
+
+### COBRANZA — Acuerdos (operativo)
+
+#### `ACUERDO_READ`
+
+| Aspecto | Detalle |
+|---------|---------|
+| **Permite** | Consultar acuerdos y promesas de pago |
+| **No permite** | Crear ni modificar acuerdos |
+| **GraphQL** | `acuerdos`, `acuerdo` |
+
+#### `ACUERDO_WRITE`
+
+| Aspecto | Detalle |
+|---------|---------|
+| **Permite** | Crear acuerdos, simular, evaluar cuotas |
+| **No permite** | Aprobar descuentos sobre umbral sin ser supervisor (validación por **rol**, no permiso) |
+| **GraphQL** | `createAcuerdo`, `cancelarAcuerdo` |
+| **Jerarquía** | Descuentos altos requieren `esSupervisor()` en `equipo-scope.ts` |
+
+---
+
+### COBRANZA — Pagos (operativo)
+
+#### `PAGO_READ`
+
+| Aspecto | Detalle |
+|---------|---------|
+| **Permite** | Consultar pagos registrados |
+| **No permite** | Registrar ni reversar pagos |
+| **GraphQL** | `pagos`, `pago` |
+
+#### `PAGO_WRITE`
+
+| Aspecto | Detalle |
+|---------|---------|
+| **Permite** | Registrar y aplicar pagos |
+| **No permite** | Liquidar a mandantes |
+| **GraphQL** | `createPago`, `aplicarPago` |
+
+---
+
+### COBRANZA — Liquidación (operativo, financiero)
+
+#### `LIQUIDACION_READ`
+
+| Aspecto | Detalle |
+|---------|---------|
+| **Permite** | Consultar liquidaciones a mandantes |
+| **No permite** | Crear ni emitir liquidaciones |
+| **Módulos** | Liquidaciones |
+| **Middleware** | `/cobranza/liquidaciones` |
+| **GraphQL** | Queries liquidación |
+| **Frontend** | Nav Liquidaciones |
+
+#### `LIQUIDACION_WRITE`
+
+| Aspecto | Detalle |
+|---------|---------|
+| **Permite** | Crear, calcular y emitir liquidaciones |
+| **No permite** | Inferir jerarquía de gerente (uso prohibido en UI) |
+| **GraphQL** | Mutations liquidación |
+| **Nota** | Solo operación financiera; gerente se detecta por `rolCodigo === GERENTE` |
+
+---
+
+### COBRANZA — Analítica (operativo)
+
+#### `REPORTE_READ`
+
+| Aspecto | Detalle |
+|---------|---------|
+| **Permite** | Reportes de cobranza, aging, recuperación, export CSV |
+| **No permite** | Centro de inteligencia avanzado ni dashboards de equipo |
+| **Módulos** | Reportes |
+| **Middleware** | `/cobranza/reportes` |
+| **GraphQL** | `reporteCobranza`, `agingCartera`, `forecastRecuperacion`, etc. |
+| **Frontend** | Nav Reportes, widgets dashboard |
+
+#### `INTELIGENCIA_READ`
+
+| Aspecto | Detalle |
+|---------|---------|
+| **Permite** | Centro de inteligencia, roll rate, forecast, decisiones operativas |
+| **No permite** | Configuración de sistema ni gestión de usuarios |
+| **Módulos** | Centro de Inteligencia |
+| **Middleware** | `/cobranza/centro-inteligencia` |
+| **GraphQL** | Queries `inteligencia/*`, `rollRateCartera`, `forecastRecuperacion` |
+| **Frontend** | Nav Centro de Inteligencia |
+
+#### `EQUIPO_READ`
+
+| Aspecto | Detalle |
+|---------|---------|
+| **Permite** | Dashboard supervisor/gerente, gamificación, rankings |
+| **No permite** | Ver datos de equipos ajenos (scope por `obtenerIdsEquipo`) |
+| **Módulos** | Mi equipo, Gamificación |
+| **Middleware** | `/cobranza/equipo`, `/cobranza/gamificacion` |
+| **GraphQL** | `dashboardSupervisor`, `dashboardGerente`, `rankingGestores`, gamificación |
+| **Frontend** | Nav Mi equipo, Gamificación |
+| **Jerarquía** | `dashboardGerente` además valida `esGerente()` por rol |
+
+---
+
+## Matriz rol → permisos
+
+Ver `PERMISOS_COBRADOR`, `PERMISOS_SUPERVISOR`, `PERMISOS_GERENTE`, `PERMISOS_ADMIN` en `permiso-codes.ts`.
+
+---
+
+## Cómo extender el RBAC
+
+1. Agregar entrada en `PERMISOS_CATALOGO` (`permiso-codes.ts`).
+2. Ejecutar `npx tsx prisma/seed-permisos.ts` (upsert automático).
+3. Proteger resolver GraphQL con `requerirPermiso()`.
+4. Agregar regla en `route-permissions.ts` si hay página nueva.
+5. Agregar entrada en `sidebar/data/index.ts`.
+6. Actualizar esta documentación.
+
+**No** crear permisos para jerarquía. Usar `role-codes.ts` + `equipo-scope.ts`.
+
+---
+
+## Verificación
 
 ```bash
 npx tsx prisma/seed-permisos.ts
+npx tsx scripts/smoke-test-cobranza.ts
 ```
 
-Este script:
-1. Crea todos los permisos base
-2. Crea roles predefinidos (ADMIN, GESTOR, CONSULTA)
-3. Asigna permisos a cada rol según su función
-
----
-
-## Características del Sistema
-
-### ✅ Dinámico
-
-- Los permisos se almacenan en la base de datos
-- No hay código hardcodeado
-- Se pueden crear nuevos permisos sin modificar código
-- Se pueden asignar/remover permisos a roles dinámicamente
-
-### ✅ Flexible
-
-- Un rol puede tener múltiples permisos
-- Un permiso puede estar en múltiples roles
-- Fácil agregar nuevos permisos y roles
-
-### ✅ Seguro
-
-- Validación en cada operación crítica
-- Mensajes de error claros
-- Auditoría completa
-
-### ✅ Escalable
-
-- Fácil agregar nuevos permisos
-- Fácil crear nuevos roles
-- Sistema preparado para crecer
-
----
-
-## Mejores Prácticas
-
-1. **Siempre validar permisos en mutations críticas**
-   - Usar `requerirPermiso()` para validación automática
-   - Validar antes de ejecutar la operación
-
-2. **Usar códigos de permisos descriptivos**
-   - Formato: `ACCION_RECURSO` (ej: `CREATE_LOAN`)
-   - Mantener consistencia en nomenclatura
-
-3. **Agrupar permisos por categoría**
-   - Facilita la gestión y visualización
-   - Permite filtros por categoría
-
-4. **Documentar permisos nuevos**
-   - Agregar al catálogo de permisos
-   - Documentar en qué mutations/queries se usa
-
-5. **Revisar permisos periódicamente**
-   - Verificar que los roles tengan los permisos correctos
-   - Limpiar permisos no utilizados
-
----
-
-## Resumen
-
-El sistema RBAC implementado garantiza:
-
-✅ **Control de acceso granular** por operación
-✅ **Sistema completamente dinámico** (sin código hardcodeado)
-✅ **Fácil gestión** de permisos y roles
-✅ **Validación automática** en todas las operaciones críticas
-✅ **Escalable** para agregar nuevos permisos y roles
-✅ **Seguro** con mensajes de error claros
-
-El sistema está listo para usar y puede extenderse fácilmente con nuevos permisos y roles según las necesidades del negocio.
-
-
-
-
+El smoke test valida que ADMIN tiene permisos de escritura y COBRADOR no tiene `CARTERA_WRITE`.

@@ -1,102 +1,155 @@
 import * as Icons from "../icons";
+import type { NavSection } from "@/lib/navigation/filter-nav-by-permisos";
+import { PERMISO } from "@/lib/permissions/permiso-codes";
 
-export const NAV_DATA = [
+export const NAV_DATA: NavSection[] = [
   {
     label: "MAIN MENU",
     items: [
       {
         title: "Dashboard",
-        icon: Icons.HomeIcon,       
+        icon: Icons.HomeIcon,
         url: "/dashboard",
+        permiso: PERMISO.CARTERA_READ,
+      },
+      {
+        title: "Mi día",
+        url: "/cobranza/mi-dia",
+        icon: Icons.HomeIcon,
+        permiso: PERMISO.CARTERA_READ,
       },
       {
         title: "Clientes",
         url: "/clientes",
         icon: Icons.User,
-        items: [],
+        permiso: PERMISO.CARTERA_READ,
       },
       {
-        title: "Préstamos",
-        icon: Icons.Table,
+        title: "Cobranza",
+        icon: Icons.PieChart,
+        permisos: [PERMISO.CARTERA_READ, PERMISO.GESTION_READ],
         items: [
           {
-            title: "Listado",
-            url: "/prestamos",
+            title: "Centro de Inteligencia",
+            url: "/cobranza/centro-inteligencia",
+            permiso: PERMISO.INTELIGENCIA_READ,
           },
           {
-            title: "Crear préstamo",
-            url: "/prestamos/nuevo",
+            title: "Mi equipo",
+            url: "/cobranza/equipo",
+            permiso: PERMISO.EQUIPO_READ,
           },
-        ],
-      },
-      {
-        title: "Pagos",
-        icon: Icons.Calendar,
-        items: [
           {
-            title: "Registrar pago",
-            url: "/pagos/registrar",
+            title: "Gamificación",
+            url: "/cobranza/gamificacion",
+            permiso: PERMISO.EQUIPO_READ,
+          },
+          {
+            title: "Mandantes",
+            url: "/cobranza/mandantes",
+            permiso: PERMISO.MANDANTE_READ,
+          },
+          {
+            title: "Plantillas",
+            url: "/cobranza/plantillas",
+            permiso: PERMISO.MANDANTE_READ,
+          },
+          {
+            title: "Plantillas mensaje",
+            url: "/cobranza/plantillas-mensaje",
+            permiso: PERMISO.MANDANTE_WRITE,
+          },
+          {
+            title: "Importar",
+            url: "/cobranza/importar",
+            permiso: PERMISO.CARTERA_WRITE,
+          },
+          {
+            title: "Historial cargas",
+            url: "/cobranza/historial-cargas",
+            permiso: PERMISO.CARTERA_READ,
+          },
+          {
+            title: "Asignación",
+            url: "/cobranza/asignacion",
+            permiso: PERMISO.CARTERA_WRITE,
+          },
+          {
+            title: "Cartera",
+            url: "/cobranza/cartera",
+            permiso: PERMISO.CARTERA_READ,
+          },
+          {
+            title: "Campañas",
+            url: "/cobranza/campanas",
+            permiso: PERMISO.CARTERA_READ,
+          },
+          {
+            title: "Wizard campaña",
+            url: "/cobranza/campanas/wizard",
+            permiso: PERMISO.CARTERA_WRITE,
+          },
+          {
+            title: "Mi bandeja",
+            url: "/cobranza/bandeja",
+            permiso: PERMISO.CARTERA_READ,
+          },
+          {
+            title: "Mis gestiones",
+            url: "/cobranza/gestiones",
+            permiso: PERMISO.GESTION_READ,
+          },
+          {
+            title: "Reclamos",
+            url: "/cobranza/reclamos",
+            permiso: PERMISO.GESTION_READ,
+          },
+          {
+            title: "Agencias",
+            url: "/cobranza/agencias",
+            permiso: PERMISO.CARTERA_READ,
+          },
+          {
+            title: "Reportes",
+            url: "/cobranza/reportes",
+            permiso: PERMISO.REPORTE_READ,
+          },
+          {
+            title: "Liquidaciones",
+            url: "/cobranza/liquidaciones",
+            permiso: PERMISO.LIQUIDACION_READ,
+          },
+          {
+            title: "Conciliaciones",
+            url: "/cobranza/conciliaciones",
+            permiso: PERMISO.PAGO_READ,
           },
         ],
-      },
-      {
-        title: "Cartera",
-        icon: Icons.PieChart,
-        url: "/cartera",
-        items: [],
-      },
-      {
-        title: "Reportes",
-        icon: Icons.PieChart,
-        url: "/reportes",
-        items: [],
       },
       {
         title: "Configuración",
         icon: Icons.Settings,
-        url: "/configuracion",
-        items: [],
-      },
-      {
-        title: "Profile",
-        url: "/profile",
-        icon: Icons.User,
-        items: [],
-      },
-      
-      {
-        title: "Pages",
-        icon: Icons.Alphabet,
+        permisos: [PERMISO.CONFIG_SYSTEM, PERMISO.USER_READ],
         items: [
           {
-            title: "Settings",
-            url: "/pages/settings",
+            title: "Sistema",
+            url: "/configuracion",
+            permiso: PERMISO.CONFIG_SYSTEM,
           },
-        ],
-      },
-    ],
-  },
-  {
-    label: "OTHERS",
-    items: [
-      {
-        title: "Charts",
-        icon: Icons.PieChart,
-        items: [
           {
-            title: "Basic Chart",
-            url: "/charts/basic-chart",
+            title: "Auditoría",
+            url: "/configuracion/auditoria",
+            permiso: PERMISO.CONFIG_SYSTEM,
           },
-        ],
-      },
-      
-      {
-        title: "Authentication",
-        icon: Icons.Authentication,
-        items: [
           {
-            title: "Sign In",
-            url: "/auth/sign-in",
+            title: "Cron operativo",
+            url: "/configuracion/cron",
+            permiso: PERMISO.CONFIG_SYSTEM,
+          },
+          {
+            title: "Usuarios y permisos",
+            url: "/configuracion/usuarios",
+            permiso: PERMISO.USER_READ,
           },
         ],
       },

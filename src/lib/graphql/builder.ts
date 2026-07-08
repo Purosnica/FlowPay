@@ -1,8 +1,8 @@
 import PrismaPlugin from "@pothos/plugin-prisma";
 import ZodPlugin from "@pothos/plugin-zod";
 import SchemaBuilder from "@pothos/core";
+import { getDatamodel, type default as PrismaTypes } from "@pothos/plugin-prisma/generated";
 import { prisma } from "@/lib/prisma";
-import { Prisma } from "@prisma/client";
 
 // Tipos para el contexto
 export interface GraphQLContext {
@@ -17,24 +17,26 @@ export interface GraphQLContext {
 
 export const builder = new SchemaBuilder<{
   Context: GraphQLContext;
-  PrismaTypes: {
-    PrismaClient: typeof prisma;
-  };
+  PrismaTypes: PrismaTypes;
   Scalars: {
     DateTime: {
       Input: Date;
       Output: Date;
     };
     JSON: {
-      Input: any;
-      Output: any;
+      Input: unknown;
+      Output: unknown;
+    };
+    Decimal: {
+      Input: string;
+      Output: string | null;
     };
   };
 }>({
   plugins: [PrismaPlugin, ZodPlugin],
   prisma: {
     client: prisma,
-    dmmf: Prisma.dmmf,
+    dmmf: getDatamodel(),
     filterConnectionTotalCount: true,
     onUnusedQuery: process.env.NODE_ENV === "production" ? null : "warn",
   },
@@ -56,8 +58,23 @@ builder.scalarType("DateTime", {
 
 // Agregar scalar JSON
 builder.scalarType("JSON", {
-  serialize: (value: any) => value,
-  parseValue: (value: unknown): any => value,
+  serialize: (value: unknown) => value,
+  parseValue: (value: unknown): unknown => value,
+});
+
+builder.scalarType("Decimal", {
+  serialize: (value: unknown) => {
+    if (value === null || value === undefined) {
+      return null;
+    }
+    return String(value);
+  },
+  parseValue: (value: unknown): string => {
+    if (typeof value === "string" || typeof value === "number") {
+      return String(value);
+    }
+    throw new Error("Valor decimal inválido");
+  },
 });
 
 builder.queryType();

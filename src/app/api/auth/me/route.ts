@@ -5,9 +5,13 @@
  * Obtiene la información del usuario autenticado
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
+
 import { getCurrentUser } from "@/lib/middleware/auth";
 import { handleApiError } from "@/lib/api/error-handler";
+import { obtenerPermisosUsuario } from "@/lib/permissions/permission-service";
+import { generateToken } from "@/lib/auth/jwt";
+import { getUserById } from "@/lib/auth/auth-service";
 
 /**
  * GET /api/auth/me
@@ -27,15 +31,35 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Obtener el token de la cookie para retornarlo
-    const tokenCookie = req.cookies.get("auth-token");
-    const token = tokenCookie?.value || null;
+    const permisos = await obtenerPermisosUsuario(usuario.idusuario);
+    const usuarioCompleto = await getUserById(usuario.idusuario);
 
-    return NextResponse.json({
-      success: true,
-      usuario,
-      token, // Retornar el token para que el cliente lo guarde
+    const tokenNuevo = generateToken({
+      idusuario: usuario.idusuario,
+      email: usuario.email,
+      nombre: usuario.nombre,
+      idrol: usuario.idrol,
+      permisos,
     });
+
+    const response = NextResponse.json({
+      success: true,
+      usuario: {
+        ...usuario,
+        rolCodigo: usuarioCompleto?.rol?.codigo ?? '',
+      },
+      permisos,
+    });
+
+    response.cookies.set("auth-token", tokenNuevo, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 8,
+      path: "/",
+    });
+
+    return response;
   } catch (error) {
     return handleApiError(error);
   }

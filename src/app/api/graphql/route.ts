@@ -1,120 +1,134 @@
-import { createYoga } from "graphql-yoga";
-import { schema } from "@/lib/graphql/schema";
-import { prisma } from "@/lib/prisma";
-import { NextRequest } from "next/server";
-import { getCurrentUser, getRequestInfo } from "@/lib/middleware/auth";
-import { rateLimiter, RATE_LIMIT_CONFIG } from "@/lib/security/rate-limit";
-import { logger } from "@/lib/utils/logger";
-import { ErrorCode } from "@/lib/errors/types";
-import { GraphQLPermissionError, GraphQLAuthenticationError } from "@/lib/errors/graphql-errors";
+import { createYoga } from 'graphql-yoga';
+import { useValidationRule } from '@envelop/core';
+import { NoSchemaIntrospectionCustomRule } from 'graphql';
+import { schema } from '@/lib/graphql/schema';
+import { prisma } from '@/lib/prisma';
+import type { NextRequest } from 'next/server';
+import { getCurrentUser, getRequestInfo } from '@/lib/middleware/auth';
+import { checkRateLimit, RATE_LIMIT_CONFIG } from '@/lib/security/rate-limit-service';
+import { validarCsrfHeader } from '@/lib/security/csrf';
+import { logger } from '@/lib/utils/logger';
+import { ErrorCode } from '@/lib/errors/types';
+import {
+  GraphQLPermissionError,
+  GraphQLAuthenticationError,
+} from '@/lib/errors/graphql-errors';
+import { useRequireAuthPlugin } from '@/lib/graphql/plugins/require-auth-plugin';
 
-// Variable para almacenar el request original
-let originalRequest: NextRequest | null = null;
+interface FormattableGraphQLError {
+  message: string;
+  originalError?: Error;
+  extensions?: Record<string, unknown>;
+}
 
-// Crear instancia de Yoga GraphQL
+const introspectionPlugins =
+  process.env.NODE_ENV === 'production'
+    ? // eslint-disable-next-line react-hooks/rules-of-hooks -- plugin GraphQL Yoga, no React hook
+      [useValidationRule(NoSchemaIntrospectionCustomRule)]
+    : [];
+
 const { handleRequest } = createYoga({
   schema,
-  graphqlEndpoint: "/api/graphql",
-  context: async (req: NextRequest) => {
+  graphqlEndpoint: '/api/graphql',
+  context: async ({ request }) => {
     try {
-      // Usar el request original si está disponible, de lo contrario usar el request de Yoga
-      const requestToUse = originalRequest || req;
-      
-      // Obtener usuario autenticado
-      const usuario = await getCurrentUser(requestToUse);
-      
+      const usuario = await getCurrentUser(request as NextRequest);
       return {
         prisma,
-        usuario: usuario ? {
-          idusuario: usuario.idusuario,
-          nombre: usuario.nombre,
-          email: usuario.email,
-          idrol: usuario.idrol,
-        } : null,
+        usuario: usuario
+          ? {
+              idusuario: usuario.idusuario,
+              nombre: usuario.nombre,
+              email: usuario.email,
+              idrol: usuario.idrol,
+            }
+          : null,
       };
     } catch (error) {
-      // Si hay error al obtener el usuario, retornar contexto sin usuario
-      logger.error("Error al obtener usuario en contexto GraphQL", error instanceof Error ? error : undefined);
+      logger.error(
+        'Error al obtener usuario en contexto GraphQL',
+        error instanceof Error ? error : undefined,
+      );
       return {
         prisma,
         usuario: null,
       };
-    } finally {
-      // Limpiar el request original después de usarlo
-      originalRequest = null;
     }
   },
-  // Manejo de errores centralizado
-  // Los errores se formatean automáticamente por GraphQL Yoga
-  // Si necesitamos formateo personalizado, lo hacemos en los resolvers
-  maskedErrors: process.env.NODE_ENV === "production", // Ocultar errores en producción
-  graphiql: process.env.NODE_ENV === "development",
-  // Formateo personalizado de errores
+  maskedErrors: process.env.NODE_ENV === 'production',
+  graphiql: process.env.NODE_ENV === 'development',
   plugins: [
+    ...introspectionPlugins,
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- plugin GraphQL Yoga, no React hook
+    useRequireAuthPlugin(),
     {
       onExecute: () => ({
-        onExecuteDone: ({ result }) => {
+        onExecuteDone: ({
+          result,
+        }: {
+          result: { errors?: FormattableGraphQLError[] };
+        }) => {
           if (result.errors) {
-            result.errors = result.errors.map((error) => {
-              // Si el error es una instancia de nuestras clases personalizadas, usar sus extensiones
-              const originalError = error.originalError;
-              
-              if (originalError instanceof GraphQLPermissionError) {
-                return {
-                  ...error,
-                  extensions: originalError.extensions,
-                };
-              }
-              
-              if (originalError instanceof GraphQLAuthenticationError) {
-                return {
-                  ...error,
-                  extensions: originalError.extensions,
-                };
-              }
-              
-              // Si el error ya tiene extensiones, mantenerlas
-              if (error.extensions) {
-                return error;
-              }
-              
-              // Si el error es sobre permisos (por mensaje), formatearlo correctamente
-              if (error.message.includes("No tienes permiso")) {
+            result.errors = result.errors.map(
+              (error: FormattableGraphQLError) => {
+                const originalError = error.originalError;
+
+                if (originalError instanceof GraphQLPermissionError) {
+                  return {
+                    ...error,
+                    extensions: originalError.extensions,
+                  };
+                }
+
+                if (originalError instanceof GraphQLAuthenticationError) {
+                  return {
+                    ...error,
+                    extensions: originalError.extensions,
+                  };
+                }
+
+                if (error.extensions) {
+                  return error;
+                }
+
+                if (error.message.includes('No tienes permiso')) {
+                  return {
+                    ...error,
+                    extensions: {
+                      code: ErrorCode.FORBIDDEN,
+                      statusCode: 403,
+                      userMessage: error.message,
+                      timestamp: new Date().toISOString(),
+                    },
+                  };
+                }
+
+                if (
+                  error.message.includes('Debes estar autenticado') ||
+                  error.message.includes('autenticado')
+                ) {
+                  return {
+                    ...error,
+                    extensions: {
+                      code: ErrorCode.UNAUTHORIZED,
+                      statusCode: 401,
+                      userMessage: error.message,
+                      timestamp: new Date().toISOString(),
+                    },
+                  };
+                }
+
                 return {
                   ...error,
                   extensions: {
-                    code: ErrorCode.FORBIDDEN,
-                    statusCode: 403,
+                    code: ErrorCode.INTERNAL_SERVER_ERROR,
+                    statusCode: 500,
                     userMessage: error.message,
                     timestamp: new Date().toISOString(),
                   },
                 };
-              }
-              
-              // Si el error es sobre autenticación (por mensaje), formatearlo correctamente
-              if (error.message.includes("Debes estar autenticado") || error.message.includes("autenticado")) {
-                return {
-                  ...error,
-                  extensions: {
-                    code: ErrorCode.UNAUTHORIZED,
-                    statusCode: 401,
-                    userMessage: error.message,
-                    timestamp: new Date().toISOString(),
-                  },
-                };
-              }
-              
-              // Error genérico con extensiones
-              return {
-                ...error,
-                extensions: {
-                  code: ErrorCode.INTERNAL_SERVER_ERROR,
-                  statusCode: 500,
-                  userMessage: error.message,
-                  timestamp: new Date().toISOString(),
-                },
-              };
-            });
+              },
+            );
           }
         },
       }),
@@ -122,121 +136,116 @@ const { handleRequest } = createYoga({
   ],
 });
 
-export async function GET(request: NextRequest) {
-  try {
-    // Rate limiting para GraphQL
-    const requestInfo = getRequestInfo(request);
-    const identifier = requestInfo.ip || "unknown";
-    const isAllowed = rateLimiter.check(
-      `graphql:${identifier}`,
-      RATE_LIMIT_CONFIG.GRAPHQL.maxRequests,
-      RATE_LIMIT_CONFIG.GRAPHQL.windowMs
-    );
-
-    if (!isAllowed) {
-      logger.warn("Rate limit excedido en GraphQL GET", { ip: identifier });
-      return new Response(
-        JSON.stringify({
-          errors: [{ message: "Demasiadas solicitudes. Por favor, intente más tarde." }],
-        }),
-        {
-          status: 429,
-          headers: {
-            "Content-Type": "application/json",
-            "Retry-After": String(Math.ceil(RATE_LIMIT_CONFIG.GRAPHQL.windowMs / 1000)),
-          },
-        }
-      );
-    }
-
-    // Guardar el request original antes de pasarlo a Yoga
-    originalRequest = request;
-    return handleRequest(request, {} as any);
-  } catch (error) {
-    originalRequest = null;
-    const errorMessage = error instanceof Error ? error.message : "Error desconocido";
-    logger.error("GraphQL GET Error", error instanceof Error ? error : undefined);
-    // El error ya fue formateado por el plugin de Yoga
-    // Solo lo logueamos y retornamos
+async function handleGraphQLRequest(request: NextRequest): Promise<Response> {
+  if (request.method === 'POST' && !validarCsrfHeader(request)) {
     return new Response(
-      JSON.stringify({ 
-        errors: [{ message: errorMessage }],
+      JSON.stringify({
+        errors: [{ message: 'Solicitud no autorizada.' }],
       }),
       {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      }
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      },
     );
+  }
+
+  const requestInfo = getRequestInfo(request);
+  const identifier = requestInfo.ip || 'unknown';
+  const isAllowed = await checkRateLimit(
+    `graphql:${identifier}`,
+    RATE_LIMIT_CONFIG.GRAPHQL.maxRequests,
+    RATE_LIMIT_CONFIG.GRAPHQL.windowMs,
+  );
+
+  if (!isAllowed) {
+    logger.warn('Rate limit excedido en GraphQL', { ip: identifier });
+    return new Response(
+      JSON.stringify({
+        errors: [
+          {
+            message: 'Demasiadas solicitudes. Por favor, intente más tarde.',
+          },
+        ],
+      }),
+      {
+        status: 429,
+        headers: {
+          'Content-Type': 'application/json',
+          'Retry-After': String(
+            Math.ceil(RATE_LIMIT_CONFIG.GRAPHQL.windowMs / 1000),
+          ),
+        },
+      },
+    );
+  }
+
+  return handleRequest(request, {} as Record<string, unknown>);
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    return await handleGraphQLRequest(request);
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Error desconocido';
+    logger.error(
+      'GraphQL GET Error',
+      error instanceof Error ? error : undefined,
+    );
+    return new Response(JSON.stringify({ errors: [{ message: errorMessage }] }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    // Rate limiting para GraphQL
-    const requestInfo = getRequestInfo(request);
-    const identifier = requestInfo.ip || "unknown";
-    const isAllowed = rateLimiter.check(
-      `graphql:${identifier}`,
-      RATE_LIMIT_CONFIG.GRAPHQL.maxRequests,
-      RATE_LIMIT_CONFIG.GRAPHQL.windowMs
+    return await handleGraphQLRequest(request);
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Error desconocido';
+    logger.error(
+      'GraphQL POST Error',
+      error instanceof Error ? error : undefined,
     );
 
-    if (!isAllowed) {
-      logger.warn("Rate limit excedido en GraphQL POST", { ip: identifier });
-      return new Response(
-        JSON.stringify({
-          errors: [{ message: "Demasiadas solicitudes. Por favor, intente más tarde." }],
-        }),
-        {
-          status: 429,
-          headers: {
-            "Content-Type": "application/json",
-            "Retry-After": String(Math.ceil(RATE_LIMIT_CONFIG.GRAPHQL.windowMs / 1000)),
-          },
-        }
-      );
-    }
-
-    // Guardar el request original antes de pasarlo a Yoga
-    originalRequest = request;
-    return handleRequest(request, {} as any);
-  } catch (error) {
-    originalRequest = null;
-    const errorMessage = error instanceof Error ? error.message : "Error desconocido";
-    logger.error("GraphQL POST Error", error instanceof Error ? error : undefined);
-    
-    // Si el error ya tiene formato GraphQL, retornarlo directamente
-    const errorWithExtensions = error as { extensions?: { statusCode?: number } };
+    const errorWithExtensions = error as {
+      extensions?: { statusCode?: number };
+    };
     if (errorWithExtensions.extensions) {
       return new Response(
-        JSON.stringify({ 
-          errors: [{
-            message: errorMessage,
-            extensions: errorWithExtensions.extensions,
-          }],
+        JSON.stringify({
+          errors: [
+            {
+              message: errorMessage,
+              extensions: errorWithExtensions.extensions,
+            },
+          ],
         }),
         {
           status: errorWithExtensions.extensions.statusCode || 500,
-          headers: { "Content-Type": "application/json" },
-        }
+          headers: { 'Content-Type': 'application/json' },
+        },
       );
     }
-    
-    // Error genérico
+
     return new Response(
-      JSON.stringify({ 
-        errors: [{ 
-          message: errorMessage,
-          extensions: {
-            code: "INTERNAL_SERVER_ERROR",
-            statusCode: 500,
+      JSON.stringify({
+        errors: [
+          {
+            message: errorMessage,
+            extensions: {
+              code: 'INTERNAL_SERVER_ERROR',
+              statusCode: 500,
+            },
           },
-        }],
+        ],
       }),
       {
         status: 500,
-        headers: { "Content-Type": "application/json" },
-      }
+        headers: { 'Content-Type': 'application/json' },
+      },
     );
   }
 }

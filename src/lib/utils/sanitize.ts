@@ -24,15 +24,15 @@ export function sanitizeString(input: string): string {
  * Sanitiza un objeto recursivamente
  */
 export function sanitizeObject<T extends Record<string, unknown>>(obj: T): T {
-  const sanitized = { ...obj };
+  const sanitized: Record<string, unknown> = { ...obj };
 
   for (const [key, value] of Object.entries(sanitized)) {
     if (typeof value === "string") {
-      (sanitized as any)[key] = sanitizeString(value);
+      sanitized[key] = sanitizeString(value);
     } else if (typeof value === "object" && value !== null && !Array.isArray(value)) {
-      (sanitized as any)[key] = sanitizeObject(value as Record<string, unknown>);
+      sanitized[key] = sanitizeObject(value as Record<string, unknown>);
     } else if (Array.isArray(value)) {
-      (sanitized as any)[key] = value.map((item) =>
+      sanitized[key] = value.map((item) =>
         typeof item === "string"
           ? sanitizeString(item)
           : typeof item === "object" && item !== null
@@ -42,7 +42,7 @@ export function sanitizeObject<T extends Record<string, unknown>>(obj: T): T {
     }
   }
 
-  return sanitized;
+  return sanitized as T;
 }
 
 /**

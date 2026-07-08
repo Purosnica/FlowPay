@@ -36,7 +36,7 @@ export class ServicioError extends Error {
   constructor(
     public code: ErrorCode,
     message: string,
-    public detalles?: Record<string, any>
+    public detalles?: Record<string, unknown>
   ) {
     super(message);
     this.name = "ServicioError";
@@ -48,7 +48,7 @@ export class ServicioError extends Error {
  */
 export function errorValidacion(
   mensaje: string,
-  detalles?: Record<string, any>
+  detalles?: Record<string, unknown>
 ): ServicioError {
   return new ServicioError(ErrorCode.VALIDACION_ERROR, mensaje, detalles);
 }
@@ -59,7 +59,7 @@ export function errorValidacion(
 export function errorNegocio(
   code: ErrorCode,
   mensaje: string,
-  detalles?: Record<string, any>
+  detalles?: Record<string, unknown>
 ): ServicioError {
   return new ServicioError(code, mensaje, detalles);
 }
@@ -69,7 +69,7 @@ export function errorNegocio(
  */
 export function errorConcurrencia(
   mensaje: string,
-  detalles?: Record<string, any>
+  detalles?: Record<string, unknown>
 ): ServicioError {
   return new ServicioError(ErrorCode.CONCURRENCIA_ERROR, mensaje, detalles);
 }

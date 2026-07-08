@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { notificationService, Notification } from "@/lib/notifications/notification-service";
+import { type Notification , notificationService } from "@/lib/notifications/notification-service";
+
 
 const NotificationToast: React.FC<{ notification: Notification; onClose: () => void }> = ({
   notification,

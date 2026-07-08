@@ -1,17 +1,20 @@
-import axios, { AxiosError } from "axios";
-import { env } from "@/lib/env";
-import { notificationService } from "@/lib/notifications/notification-service";
-import { clientErrorLogger } from "@/lib/errors/client-error-logger";
-import { ErrorCode, StructuredError } from "@/lib/errors/types";
+import axios, { type AxiosError } from 'axios';
+
+import { env } from '@/lib/env';
+import { notificationService } from '@/lib/notifications/notification-service';
+import { clientErrorLogger } from '@/lib/errors/client-error-logger';
+import { type StructuredError, ErrorCode } from '@/lib/errors/types';
+import { CSRF_HEADER, CSRF_HEADER_VALUE } from '@/lib/security/csrf';
 
 // Instancia de axios configurada para la aplicación
 export const apiClient = axios.create({
   baseURL: env.NEXT_PUBLIC_API_URL,
   headers: {
-    "Content-Type": "application/json",
+    'Content-Type': 'application/json',
+    [CSRF_HEADER]: CSRF_HEADER_VALUE,
   },
-  timeout: 30000, // 30 segundos
-  withCredentials: true, // Incluir cookies en las peticiones
+  timeout: 30000,
+  withCredentials: true,
 });
 
 /**
@@ -110,43 +113,6 @@ function extractErrorFromResponse(error: AxiosError): StructuredError {
   };
 }
 
-/**
- * Función para obtener el token de autenticación desde el cliente
- * Se actualiza desde el contexto de autenticación
- */
-let authToken: string | null = null;
-
-export function setAuthToken(token: string | null): void {
-  authToken = token;
-}
-
-export function getAuthToken(): string | null {
-  return authToken;
-}
-
-// Interceptor para requests
-apiClient.interceptors.request.use(
-  (config) => {
-    // Agregar token de autenticación si está disponible
-    if (authToken) {
-      config.headers.Authorization = `Bearer ${authToken}`;
-      if (process.env.NODE_ENV === "development") {
-        // eslint-disable-next-line no-console
-        console.log("[Axios] Token agregado al header Authorization");
-      }
-    } else {
-      if (process.env.NODE_ENV === "development" && config.url?.includes("graphql")) {
-        // eslint-disable-next-line no-console
-        console.warn("[Axios] No hay token disponible para petición GraphQL");
-      }
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-
 // Interceptor para responses
 apiClient.interceptors.response.use(
   (response) => {
@@ -160,6 +126,15 @@ apiClient.interceptors.response.use(
       if (error.response) {
         // El servidor respondió con un código de estado fuera del rango 2xx
         structuredError = extractErrorFromResponse(error);
+      } else if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        structuredError = {
+          code: ErrorCode.TIMEOUT_ERROR,
+          message: error.message || 'timeout exceeded',
+          userMessage:
+            'La operación tardó demasiado. Si estaba asignando cartera, intente de nuevo; con volúmenes grandes puede demorar unos minutos.',
+          statusCode: 0,
+          timestamp: new Date().toISOString(),
+        };
       } else if (error.request) {
         // La petición fue hecha pero no se recibió respuesta
         structuredError = {

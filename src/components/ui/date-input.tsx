@@ -3,9 +3,9 @@
 import { useEffect, useRef, forwardRef } from "react";
 import flatpickr from "flatpickr";
 import "flatpickr/dist/themes/material_blue.css";
-// @ts-ignore - No hay tipos para l10n
 import { Spanish } from "flatpickr/dist/l10n/es.js";
-import { Input, InputProps } from "./input";
+import { type InputProps , Input } from "./input";
+
 
 export interface DateInputProps extends Omit<InputProps, "type" | "value" | "onChange"> {
   value?: Date | string | null;
@@ -46,7 +46,7 @@ export const DateInput = forwardRef<HTMLInputElement, DateInputProps>(
     useEffect(() => {
       if (!inputRef.current) return;
 
-      const options: any = {
+      const options: flatpickr.Options.Options = {
         locale: Spanish,
         dateFormat: enableTime ? `${dateFormat} H:i` : dateFormat,
         enableTime,

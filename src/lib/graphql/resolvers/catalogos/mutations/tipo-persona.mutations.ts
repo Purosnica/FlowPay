@@ -1,4 +1,7 @@
-import { builder } from "../../../builder";
+import { spreadPrismaQuery } from "../../../helpers/prisma-query";
+import { builder ,type  GraphQLContext } from "../../../builder";
+
+import { authCatalogoEscritura } from "@/lib/graphql/auth-helpers";
 import {
   CreateTipoPersonaInput,
   UpdateTipoPersonaInput,
@@ -13,12 +16,13 @@ export const createTipoPersonaMutation = builder.mutationField("createTipoPerson
     args: {
       input: t.arg({ type: CreateTipoPersonaInput, required: true }),
     },
-    resolve: async (query, _parent, args, ctx) => {
+    resolve: async (query, _parent, args, ctx: GraphQLContext) => {
+      await authCatalogoEscritura(ctx);
       const validated = CreateTipoPersonaInputSchema.parse(args.input);
       return ctx.prisma.tbl_tipopersona.create({
-        ...(query as any),
+        ...spreadPrismaQuery(query),
         data: validated,
-      }) as any;
+      }) as never;
     },
   })
 );
@@ -29,13 +33,14 @@ export const updateTipoPersonaMutation = builder.mutationField("updateTipoPerson
     args: {
       input: t.arg({ type: UpdateTipoPersonaInput, required: true }),
     },
-    resolve: async (query, _parent, args, ctx) => {
+    resolve: async (query, _parent, args, ctx: GraphQLContext) => {
+      await authCatalogoEscritura(ctx);
       const { idtipopersona, ...updateData } = UpdateTipoPersonaInputSchema.parse(args.input);
       return ctx.prisma.tbl_tipopersona.update({
-        ...(query as any),
+        ...spreadPrismaQuery(query),
         where: { idtipopersona },
         data: updateData,
-      }) as any;
+      }) as never;
     },
   })
 );
@@ -46,11 +51,12 @@ export const deleteTipoPersonaMutation = builder.mutationField("deleteTipoPerson
     args: {
       id: t.arg.int({ required: true }),
     },
-    resolve: async (query, _parent, args, ctx) => {
+    resolve: async (query, _parent, args, ctx: GraphQLContext) => {
+      await authCatalogoEscritura(ctx);
       return ctx.prisma.tbl_tipopersona.delete({
-        ...(query as any),
+        ...spreadPrismaQuery(query),
         where: { idtipopersona: args.id },
-      }) as any;
+      }) as never;
     },
   })
 );

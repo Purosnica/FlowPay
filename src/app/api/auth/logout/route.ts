@@ -5,7 +5,8 @@
  * Cierra la sesión del usuario
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
+
 import { requireAuth } from "@/lib/middleware/auth";
 
 /**
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest) {
     });
 
     return response;
-  } catch (error: any) {
+  } catch {
     // Si no está autenticado, igualmente eliminar la cookie
     const response = NextResponse.json(
       {

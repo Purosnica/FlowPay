@@ -1,10 +1,14 @@
 "use client";
 
-import { ReactNode } from "react";
-import { Input, InputProps } from "./input";
-import { Select, SelectProps } from "./select";
-import { DateInput, DateInputProps } from "./date-input";
-import { AutocompleteInput, AutocompleteInputProps } from "./autocomplete-input";
+import { useId } from "react";
+import { type InputProps , Input } from "./input";
+
+import { type SelectProps , Select } from "./select";
+
+import { type DateInputProps , DateInput } from "./date-input";
+
+import { type AutocompleteInputProps , AutocompleteInput } from "./autocomplete-input";
+
 import { cn } from "@/lib/utils";
 
 interface BaseFormFieldProps {
@@ -43,23 +47,27 @@ type FormFieldProps =
 
 export function FormField(props: FormFieldProps) {
   const { label, error, hint, required, className } = props;
+  const fieldId = useId();
 
   const renderInput = () => {
     switch (props.type) {
       case "input":
-        return <Input {...props.inputProps} error={error} />;
+        return <Input id={fieldId} {...props.inputProps} error={error} />;
       case "select":
-        return <Select {...props.inputProps} error={error} />;
+        return <Select id={fieldId} {...props.inputProps} error={error} />;
       case "date":
-        return <DateInput {...props.inputProps} />;
+        return <DateInput id={fieldId} {...props.inputProps} />;
       case "autocomplete":
-        return <AutocompleteInput {...props.inputProps} />;
+        return <AutocompleteInput id={fieldId} {...props.inputProps} />;
     }
   };
 
   return (
     <div className={cn("w-full", className)}>
-      <label className="mb-1.5 block text-sm font-medium text-dark dark:text-white">
+      <label
+        htmlFor={fieldId}
+        className="mb-1.5 block text-sm font-medium text-dark dark:text-white"
+      >
         {label}
         {required && <span className="ml-1 text-red-500">*</span>}
       </label>

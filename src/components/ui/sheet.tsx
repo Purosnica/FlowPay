@@ -121,7 +121,7 @@ export function Sheet({
                 size="sm"
                 onClick={onClose}
                 aria-label="Cerrar"
-                className="h-8 w-8 rounded-full hover:bg-gray-3 dark:hover:bg-dark-3 flex-shrink-0 p-0"
+                className="h-8 w-8 flex-shrink-0 rounded-full bg-transparent p-0 text-gray-6 hover:bg-gray-3 hover:text-dark dark:bg-transparent dark:text-dark-6 dark:hover:bg-dark-3 dark:hover:text-white"
               >
                 <svg
                   className="h-4 w-4 text-gray-6 dark:text-dark-6"

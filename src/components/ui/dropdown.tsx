@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { useClickOutside } from "@/hooks/use-click-outside";
-import { createContext, useContext, useEffect, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useCallback, type ReactNode } from "react";
 
 type DropdownContextType = {
   isOpen: boolean;

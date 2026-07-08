@@ -1,0 +1,170 @@
+'use client';
+
+import { useQueryClient } from '@tanstack/react-query';
+import { Modal } from '@/components/ui/modal';
+import { AsyncPanel } from '@/components/ui/async-panel';
+import {
+  GestionForm,
+  type GestionFormData,
+} from '@/components/cobranza/gestion-form';
+import { useGraphQLQuery } from '@/hooks/use-graphql-query';
+import { useGraphQLMutation } from '@/hooks/use-graphql-mutation';
+import {
+  CREATE_GESTION,
+  GET_BANDEJA_COBRADOR,
+  GET_CASOS_PRIORITARIOS_MI_DIA,
+  GET_PRESTAMO,
+  GET_RESUMEN_MI_DIA,
+} from '@/lib/graphql/queries/cobranza.queries';
+import { buildPlantillaContextFromPrestamo } from '@/lib/cobranza/plantilla-mensaje-utils';
+import { type BandejaGraphQLItem, type Prestamo , nombreCompletoCliente } from '@/types/cobranza';
+
+
+interface GestionRapidaModalProps {
+  prestamo?: BandejaGraphQLItem | null;
+  idprestamo?: number | null;
+  onClose: () => void;
+  onSuccess?: () => void;
+}
+
+function toBandejaItem(p: Prestamo): BandejaGraphQLItem {
+  return {
+    idprestamo: p.idprestamo,
+    idmandante: p.idmandante,
+    noPrestamo: p.noPrestamo,
+    diasMora: p.diasMora,
+    saldoTotal: p.saldoTotal,
+    moneda: p.moneda,
+    estado: p.estado,
+    cliente: p.cliente,
+  };
+}
+
+export function GestionRapidaModal({
+  prestamo: prestamoProp,
+  idprestamo,
+  onClose,
+  onSuccess,
+}: GestionRapidaModalProps) {
+  const queryClient = useQueryClient();
+  const resolvedId = prestamoProp?.idprestamo ?? idprestamo ?? null;
+
+  const { data, isLoading, error } = useGraphQLQuery<{
+    prestamo: Prestamo | null;
+  }>(
+    GET_PRESTAMO,
+    { id: resolvedId ?? 0 },
+    { enabled: !!resolvedId && !prestamoProp },
+  );
+
+  const prestamo =
+    prestamoProp ?? (data?.prestamo ? toBandejaItem(data.prestamo) : null);
+
+  const mutation = useGraphQLMutation(CREATE_GESTION, {
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: [GET_BANDEJA_COBRADOR] });
+      void queryClient.invalidateQueries({ queryKey: [GET_RESUMEN_MI_DIA] });
+      void queryClient.invalidateQueries({
+        queryKey: [GET_CASOS_PRIORITARIOS_MI_DIA],
+      });
+      onSuccess?.();
+      onClose();
+    },
+  });
+
+  const handleSubmit = (form: GestionFormData) => {
+    if (!prestamo) {
+      return;
+    }
+    mutation.mutate({
+      input: {
+        idprestamo: prestamo.idprestamo,
+        idcodaccion: form.idcodaccion,
+        idcodresultado: form.idcodresultado,
+        telefonoContacto: form.telefonoContacto,
+        contactoTercero: form.contactoTercero,
+        nota: form.nota,
+        montoPromesa: form.montoPromesa,
+        fechaPromesa: form.fechaPromesa
+          ? new Date(form.fechaPromesa).toISOString()
+          : undefined,
+        fechaProximaGestion: form.fechaProximaGestion
+          ? new Date(form.fechaProximaGestion).toISOString()
+          : undefined,
+        comentario: form.comentario,
+      },
+    });
+  };
+
+  if (!resolvedId) {
+    return null;
+  }
+
+  const plantillaContext = prestamo
+    ? buildPlantillaContextFromPrestamo({
+        idprestamo: prestamo.idprestamo,
+        idmandante: prestamo.idmandante,
+        idcampana: null,
+        idcliente: prestamo.cliente?.idcliente ?? 0,
+        noPrestamo: prestamo.noPrestamo,
+        codigoUnico: prestamo.noPrestamo,
+        noCuenta: null,
+        estado: prestamo.estado,
+        moneda: prestamo.moneda,
+        diasMora: prestamo.diasMora,
+        saldoTotal: prestamo.saldoTotal,
+        montoPrestamo: prestamo.saldoTotal,
+        interes: 0,
+        interesMoratorio: 0,
+        reportableCentralRiesgo: false,
+        fechaPrestamo: null,
+        fechaVencimiento: null,
+        ultimaFechaPago: null,
+        cliente: prestamo.cliente ?? undefined,
+      })
+    : null;
+
+  const nombreCliente = prestamo?.cliente
+    ? nombreCompletoCliente(prestamo.cliente)
+    : undefined;
+
+  return (
+    <Modal
+      isOpen
+      onClose={onClose}
+      title={
+        prestamo
+          ? `Gestión rápida — ${prestamo.noPrestamo}`
+          : 'Gestión rápida'
+      }
+      size="lg"
+    >
+      <AsyncPanel
+        isLoading={isLoading && !prestamo}
+        error={error}
+        isEmpty={!isLoading && !prestamo}
+        emptyMessage="Préstamo no disponible."
+      >
+        {prestamo && plantillaContext && (
+          <>
+            <p className="mb-4 text-sm text-gray-500">
+              {nombreCliente} · {prestamo.diasMora} días mora
+            </p>
+            <GestionForm
+              modoRapido
+              idmandante={prestamo.idmandante}
+              plantillaContext={plantillaContext}
+              noPrestamo={prestamo.noPrestamo}
+              nombreCliente={nombreCliente}
+              saldoTotal={prestamo.saldoTotal}
+              celularCliente={prestamo.cliente?.celular}
+              isLoading={mutation.isPending}
+              onCancel={onClose}
+              onSubmit={handleSubmit}
+            />
+          </>
+        )}
+      </AsyncPanel>
+    </Modal>
+  );
+}

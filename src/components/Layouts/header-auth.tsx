@@ -8,11 +8,9 @@
 
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
 
 export function HeaderAuth() {
   const { usuario, logout } = useAuth();
-  const router = useRouter();
 
   const handleLogout = async () => {
     await logout();

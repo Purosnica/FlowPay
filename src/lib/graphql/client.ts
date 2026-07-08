@@ -1,6 +1,7 @@
 import { apiClient } from "@/lib/axios";
 import { clientErrorLogger } from "@/lib/errors/client-error-logger";
-import { StructuredError, ErrorCode } from "@/lib/errors/types";
+import { type StructuredError, ErrorCode } from "@/lib/errors/types";
+
 
 export interface GraphQLError {
   message: string;
@@ -63,21 +64,31 @@ function extractStructuredErrorFromGraphQL(error: GraphQLError): StructuredError
   };
 }
 
+export interface GraphQLRequestOptions {
+  /** Timeout en ms; por defecto usa el de apiClient (30s). */
+  timeout?: number;
+}
+
 /**
  * Cliente GraphQL usando axios con mejor manejo de errores
- * 
+ *
  * Los errores ya son manejados por el interceptor de axios,
  * pero aquí los formateamos específicamente para GraphQL.
  */
 export async function graphqlRequest<T = unknown>(
   query: string,
-  variables?: Record<string, unknown>
+  variables?: Record<string, unknown>,
+  options?: GraphQLRequestOptions,
 ): Promise<T> {
   try {
-    const response = await apiClient.post<GraphQLResponse<T>>("/api/graphql", {
-      query,
-      variables,
-    });
+    const response = await apiClient.post<GraphQLResponse<T>>(
+      '/api/graphql',
+      {
+        query,
+        variables,
+      },
+      options?.timeout ? { timeout: options.timeout } : undefined,
+    );
 
     // Si hay errores en la respuesta GraphQL
     if (response.data.errors && response.data.errors.length > 0) {

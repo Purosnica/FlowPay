@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/operaciones-cobranza",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/procesar-importaciones",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}

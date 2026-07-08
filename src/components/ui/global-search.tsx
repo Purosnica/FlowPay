@@ -18,14 +18,6 @@ interface SearchResult {
       subtitulo: string;
       metadata: string | null;
     }>;
-    prestamos: Array<{
-      tipo: string;
-      id: number;
-      codigo: string;
-      nombre: string;
-      subtitulo: string;
-      metadata: string | null;
-    }>;
   };
 }
 
@@ -79,7 +71,7 @@ export function GlobalSearch() {
       <div className="relative">
         <Input
           type="text"
-          placeholder="Buscar clientes, préstamos..."
+          placeholder="Buscar clientes..."
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -110,27 +102,6 @@ export function GlobalSearch() {
                     <Link
                       key={`cliente-${item.id}`}
                       href={`/clientes?id=${item.id}`}
-                      onClick={handleSelect}
-                      className="block px-4 py-2 hover:bg-gray-50 dark:hover:bg-dark-3"
-                    >
-                      <div className="font-medium text-dark dark:text-white">
-                        {item.nombre}
-                      </div>
-                      <div className="text-xs text-gray-500">{item.subtitulo}</div>
-                    </Link>
-                  ))}
-                </div>
-              )}
-
-              {results.prestamos.length > 0 && (
-                <div>
-                  <div className="px-3 py-2 text-xs font-semibold uppercase text-gray-500">
-                    Préstamos ({results.prestamos.length})
-                  </div>
-                  {results.prestamos.map((item) => (
-                    <Link
-                      key={`prestamo-${item.id}`}
-                      href={`/prestamos?id=${item.id}`}
                       onClick={handleSelect}
                       className="block px-4 py-2 hover:bg-gray-50 dark:hover:bg-dark-3"
                     >

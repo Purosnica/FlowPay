@@ -10,17 +10,17 @@ import { Prisma } from "@prisma/client";
 import { ServicioError, ErrorCode } from "@/lib/services/error-types";
 import { logger } from "@/lib/utils/logger";
 
-export interface ErrorResponse {
+export interface ApiErrorResponse {
   success: false;
   error: string;
   code?: string;
-  detalles?: Record<string, any>;
+  detalles?: Record<string, unknown>;
 }
 
 /**
  * Maneja errores y retorna respuesta apropiada
  */
-export function handleApiError(error: unknown): NextResponse<ErrorResponse> {
+export function handleApiError(error: unknown): NextResponse<ApiErrorResponse> {
   logger.error("API Error", error instanceof Error ? error : undefined);
 
   // Error de servicio personalizado
@@ -91,7 +91,7 @@ export function handleApiError(error: unknown): NextResponse<ErrorResponse> {
  */
 function handlePrismaError(
   error: Prisma.PrismaClientKnownRequestError
-): NextResponse<ErrorResponse> {
+): NextResponse<ApiErrorResponse> {
   switch (error.code) {
     case "P2002":
       // Unique constraint violation
@@ -177,7 +177,7 @@ function getStatusCodeForErrorCode(code: ErrorCode): number {
  */
 export function withErrorHandler<T>(
   handler: () => Promise<NextResponse<T>>
-): Promise<NextResponse<T | ErrorResponse>> {
+): Promise<NextResponse<T | ApiErrorResponse>> {
   return handler().catch(handleApiError);
 }
 

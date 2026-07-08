@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useGraphQLQuery } from "@/hooks/use-graphql-query";
 import { useGraphQLMutation } from "@/hooks/use-graphql-mutation";
-import { LIST_CONFIGURACIONES, BULK_UPDATE_CONFIGURACION } from "@/lib/graphql/queries/finanzas.queries";
+import { LIST_CONFIGURACIONES, BULK_UPDATE_CONFIGURACION } from "@/lib/graphql/queries/configuracion.queries";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
@@ -30,12 +30,7 @@ interface ConfiguracionFormProps {
   idusuario?: number;
 }
 
-const categorias = [
-  { value: "mora", label: "Mora" },
-  { value: "cobranza", label: "Cobranza" },
-  { value: "reestructuracion", label: "Reestructuración" },
-  { value: "general", label: "General" },
-];
+const categorias = [{ value: "general", label: "General" }];
 
 export function ConfiguracionForm({ idusuario }: ConfiguracionFormProps) {
   const [configuraciones, setConfiguraciones] = useState<Record<string, string>>({});
@@ -51,7 +46,7 @@ export function ConfiguracionForm({ idusuario }: ConfiguracionFormProps) {
       alert("Configuración actualizada exitosamente");
       refetch();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       alert(`Error al actualizar: ${error.message || "Error desconocido"}`);
     },
   });

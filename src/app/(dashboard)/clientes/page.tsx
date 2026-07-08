@@ -1,9 +1,12 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { ClienteTable } from "@/components/clientes/cliente-table";
+import { TablePagination } from "@/components/cobranza/data-table";
+import { usePagination } from "@/hooks/use-pagination";
 import { ClienteFiltersComponent } from "@/components/clientes/cliente-filters";
 import { ClienteForm } from "@/components/clientes/cliente-form";
 import { useGraphQLQuery } from "@/hooks/use-graphql-query";
@@ -24,8 +27,12 @@ import type {
 import type { ColumnDef } from "@tanstack/react-table";
 
 export default function ClientesPage() {
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const {
+    resetPage,
+    handlePageChange,
+    handlePageSizeChange,
+    queryVars,
+  } = usePagination({ initialPageSize: 10 });
   const [filters, setFilters] = useState<ClienteFilters>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCliente, setSelectedCliente] = useState<Cliente | undefined>();
@@ -44,8 +51,7 @@ export default function ClientesPage() {
       totalPages: number;
     };
   }>(GET_CLIENTES, {
-    page,
-    pageSize,
+    ...queryVars,
     filters: Object.keys(filters).length > 0 ? filters : undefined,
   });
 
@@ -137,6 +143,18 @@ export default function ClientesPage() {
           );
         },
       },
+      {
+        id: "vista360",
+        header: "360°",
+        cell: ({ row }) => (
+          <Link
+            href={`/clientes/${row.original.idcliente}`}
+            className="text-sm text-primary hover:underline"
+          >
+            Ver
+          </Link>
+        ),
+      },
     ],
     []
   );
@@ -174,17 +192,15 @@ export default function ClientesPage() {
 
   const handleFiltersChange = (newFilters: ClienteFilters) => {
     setFilters(newFilters);
-    setPage(1); // Reset a la primera página cuando cambian los filtros
+    resetPage();
   };
 
   const handleResetFilters = () => {
     setFilters({});
-    setPage(1);
+    resetPage();
   };
 
   const clientesData = data?.clientes;
-  const totalPages = clientesData?.totalPages || 0;
-  const currentPage = clientesData?.page || 1;
 
   return (
     <div className="space-y-6">
@@ -216,49 +232,17 @@ export default function ClientesPage() {
           isLoading={isLoading}
         />
 
-        {/* Paginación */}
         {clientesData && clientesData.total > 0 && (
-          <div className="mt-6 flex items-center justify-between">
-            <div className="text-sm text-gray-6 dark:text-dark-6">
-              Mostrando {(currentPage - 1) * pageSize + 1} a{" "}
-              {Math.min(currentPage * pageSize, clientesData.total)} de{" "}
-              {clientesData.total} clientes
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1 || isLoading}
-              >
-                Anterior
-              </Button>
-              <span className="text-sm text-dark dark:text-white">
-                Página {currentPage} de {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages || isLoading}
-              >
-                Siguiente
-              </Button>
-              <select
-                value={pageSize.toString()}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value));
-                  setPage(1);
-                }}
-                className="w-40 rounded-lg border border-stroke bg-transparent px-4 py-2 text-dark outline-none transition focus:border-primary focus-visible:shadow-none dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:focus:border-primary"
-              >
-                <option value="5">5 por página</option>
-                <option value="10">10 por página</option>
-                <option value="20">20 por página</option>
-                <option value="50">50 por página</option>
-              </select>
-            </div>
-          </div>
+          <TablePagination
+            page={clientesData.page}
+            pageSize={clientesData.pageSize}
+            total={clientesData.total}
+            totalPages={clientesData.totalPages}
+            isLoading={isLoading}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+            itemLabel="clientes"
+          />
         )}
       </div>
 

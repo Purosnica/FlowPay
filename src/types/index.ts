@@ -2,8 +2,7 @@
  * Tipos compartidos para la aplicación
  */
 
-// Nota: User y Payment no existen en el schema de Prisma actual
-// Usar tbl_usuario y tbl_pago en su lugar
+// Nota: para usuarios usar el modelo Prisma tbl_usuario
 
 /**
  * Respuesta estándar de la API

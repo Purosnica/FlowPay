@@ -14,13 +14,24 @@ interface TabsProps {
   children: ReactNode;
   defaultValue: string;
   className?: string;
+  onValueChange?: (value: string) => void;
 }
 
-export function Tabs({ children, defaultValue, className }: TabsProps) {
+export function Tabs({
+  children,
+  defaultValue,
+  className,
+  onValueChange,
+}: TabsProps) {
   const [activeTab, setActiveTab] = useState(defaultValue);
 
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    onValueChange?.(tab);
+  };
+
   return (
-    <TabsContext.Provider value={{ activeTab, setActiveTab }}>
+    <TabsContext.Provider value={{ activeTab, setActiveTab: handleTabChange }}>
       <div className={cn("w-full", className)}>{children}</div>
     </TabsContext.Provider>
   );
@@ -35,7 +46,7 @@ export function TabsList({ children, className }: TabsListProps) {
   return (
     <div
       className={cn(
-        "inline-flex h-10 items-center justify-center rounded-lg bg-gray-1 p-1 text-muted-foreground dark:bg-dark-2",
+        "flex h-10 max-w-full items-center justify-start gap-1 overflow-x-auto rounded-lg bg-gray-1 p-1 text-muted-foreground dark:bg-dark-2",
         className
       )}
     >
@@ -64,8 +75,8 @@ export function TabsTrigger({ value, children, className }: TabsTriggerProps) {
       className={cn(
         "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ring-offset-white transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 dark:ring-offset-gray-dark",
         isActive
-          ? "bg-white text-dark shadow-sm dark:bg-dark-3 dark:text-white"
-          : "text-gray-6 hover:bg-white/50 hover:text-dark dark:text-dark-6 dark:hover:bg-dark-3 dark:hover:text-white",
+          ? "bg-primary text-white shadow-md shadow-primary/25 dark:bg-primary dark:text-white"
+          : "text-dark-5 hover:bg-primary/10 hover:text-primary dark:text-dark-6 dark:hover:bg-primary/15 dark:hover:text-primary",
         className
       )}
     >

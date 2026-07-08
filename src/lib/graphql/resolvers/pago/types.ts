@@ -1,0 +1,48 @@
+import { definePrismaObject } from "../../helpers/prisma-object";
+import { builder } from "../../builder";
+import { z } from "zod";
+import { exposeDecimal } from "../../helpers/graphql-helpers";
+
+export const CreatePagoInputSchema = z.object({
+  idprestamo: z.number().int().positive(),
+  idacuerdo: z.number().int().positive().optional(),
+  idgestion: z.number().int().positive().optional(),
+  fechaPago: z.union([z.date(), z.string()]).transform((v) =>
+    typeof v === "string" ? new Date(v) : v,
+  ),
+  monto: z.number().positive(),
+  moneda: z.enum(["NIO", "USD"]).default("NIO"),
+  tipoCambio: z.number().positive().optional(),
+  medio: z.string().optional(),
+});
+
+export const CreatePagoInput = builder.inputRef("CreatePagoInput").implement({
+  fields: (t) => ({
+    idprestamo: t.int({ required: true }),
+    idacuerdo: t.int({ required: false }),
+    idgestion: t.int({ required: false }),
+    fechaPago: t.field({ type: "DateTime", required: true }),
+    monto: t.float({ required: true }),
+    moneda: t.string({ required: false, defaultValue: "NIO" }),
+    tipoCambio: t.float({ required: false }),
+    medio: t.string({ required: false }),
+  }),
+});
+
+export const Pago = definePrismaObject("tbl_pago", {
+  fields: (t) => ({
+    idpago: t.exposeInt("idpago"),
+    idmandante: t.exposeInt("idmandante"),
+    idprestamo: t.exposeInt("idprestamo"),
+    idacuerdo: t.exposeInt("idacuerdo", { nullable: true }),
+    idgestion: t.exposeInt("idgestion", { nullable: true }),
+    fechaPago: t.expose("fechaPago", { type: "DateTime" }),
+    monto: exposeDecimal(t, "monto"),
+    moneda: t.exposeString("moneda"),
+    medio: t.exposeString("medio", { nullable: true }),
+    aplicado: t.exposeBoolean("aplicado"),
+    reciboUrl: t.exposeString("reciboUrl", { nullable: true }),
+    createdAt: t.expose("createdAt", { type: "DateTime" }),
+    prestamo: t.relation("prestamo"),
+  }),
+});

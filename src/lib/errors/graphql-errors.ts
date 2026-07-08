@@ -47,3 +47,23 @@ export class GraphQLAuthenticationError extends Error {
   }
 }
 
+export class GraphQLValidationError extends Error {
+  public extensions: {
+    code: ErrorCode;
+    statusCode: number;
+    userMessage: string;
+    timestamp: string;
+  };
+
+  constructor(message: string, code: ErrorCode = ErrorCode.VALIDATION_ERROR) {
+    super(message);
+    this.name = "GraphQLValidationError";
+    this.extensions = {
+      code,
+      statusCode: 400,
+      userMessage: message,
+      timestamp: new Date().toISOString(),
+    };
+  }
+}
+

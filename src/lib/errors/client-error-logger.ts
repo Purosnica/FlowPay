@@ -5,7 +5,8 @@
  * Los errores se pueden enviar a un servicio externo o almacenarse localmente.
  */
 
-import { StructuredError, ErrorCode, ErrorDetails } from "./types";
+import { type StructuredError, ErrorCode } from "./types";
+
 
 export interface ErrorLog {
   error: StructuredError;
@@ -252,7 +253,7 @@ class ClientErrorLogger {
   /**
    * Enviar error a servicio externo (ej: Sentry, LogRocket, etc.)
    */
-  private async sendToExternalService(errorLog: ErrorLog): Promise<void> {
+  private async sendToExternalService(_errorLog: ErrorLog): Promise<void> {
     // TODO: Implementar envío a servicio externo si es necesario
     // Ejemplo:
     // await fetch('/api/errors', {

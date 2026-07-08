@@ -5,8 +5,10 @@
  */
 
 import { prisma } from "@/lib/prisma";
-import { hashPassword, verifyPassword, simpleHash } from "./password";
-import { generateToken, JWTPayload } from "./jwt";
+import { verifyPassword, simpleHash } from "./password";
+import { type JWTPayload , generateToken } from "./jwt";
+import { obtenerPermisosUsuario } from "@/lib/permissions/permission-service";
+
 import { logger } from "@/lib/utils/logger";
 
 export interface LoginCredentials {
@@ -17,11 +19,13 @@ export interface LoginCredentials {
 export interface AuthResult {
   success: boolean;
   token?: string;
+  permisos?: string[];
   usuario?: {
     idusuario: number;
     nombre: string;
     email: string;
     idrol: number;
+    rolCodigo: string;
   };
   error?: string;
 }
@@ -87,11 +91,14 @@ export async function authenticateUser(
     }
 
     // Generar token JWT
+    const permisos = await obtenerPermisosUsuario(usuario.idusuario);
+
     const payload: JWTPayload = {
       idusuario: usuario.idusuario,
       email: usuario.email,
       nombre: usuario.nombre,
       idrol: usuario.idrol || 0,
+      permisos,
     };
 
     const token = generateToken(payload);
@@ -107,11 +114,13 @@ export async function authenticateUser(
     return {
       success: true,
       token,
+      permisos,
       usuario: {
         idusuario: usuario.idusuario,
         nombre: usuario.nombre,
         email: usuario.email,
         idrol: usuario.idrol || 0,
+        rolCodigo: usuario.rol?.codigo ?? '',
       },
     };
   } catch (error: unknown) {

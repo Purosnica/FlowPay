@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useIsMobile } from "@/hooks/use-mobile";
-import { createContext, useContext, useEffect, useState } from "react";
+import { useIsMobile } from '@/hooks/use-mobile';
+import { createContext, useContext, useEffect, useState } from 'react';
 
-type SidebarState = "expanded" | "collapsed";
+type SidebarState = 'expanded' | 'collapsed';
 
 type SidebarContextType = {
   state: SidebarState;
@@ -18,7 +18,7 @@ const SidebarContext = createContext<SidebarContextType | null>(null);
 export function useSidebarContext() {
   const context = useContext(SidebarContext);
   if (!context) {
-    throw new Error("useSidebarContext must be used within a SidebarProvider");
+    throw new Error('useSidebarContext must be used within a SidebarProvider');
   }
   return context;
 }
@@ -33,6 +33,7 @@ export function SidebarProvider({
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const isMobile = useIsMobile();
 
+  // En desktop el sidebar siempre permanece abierto. Solo se colapsa en móvil.
   useEffect(() => {
     if (isMobile) {
       setIsOpen(false);
@@ -41,16 +42,35 @@ export function SidebarProvider({
     }
   }, [isMobile]);
 
+  // Red de seguridad: si por alguna razón queda cerrado en desktop, forzar apertura.
+  useEffect(() => {
+    if (!isMobile && !isOpen) {
+      setIsOpen(true);
+    }
+  }, [isMobile, isOpen]);
+
   function toggleSidebar() {
+    if (!isMobile) {
+      setIsOpen(true);
+      return;
+    }
     setIsOpen((prev) => !prev);
+  }
+
+  function handleSetIsOpen(open: boolean) {
+    if (!isMobile && !open) {
+      setIsOpen(true);
+      return;
+    }
+    setIsOpen(open);
   }
 
   return (
     <SidebarContext.Provider
       value={{
-        state: isOpen ? "expanded" : "collapsed",
+        state: isOpen ? 'expanded' : 'collapsed',
         isOpen,
-        setIsOpen,
+        setIsOpen: handleSetIsOpen,
         isMobile,
         toggleSidebar,
       }}

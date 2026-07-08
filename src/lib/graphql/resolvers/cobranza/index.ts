@@ -1,7 +1,27 @@
-// Barrel export para módulos de cobranza
-import "./types";
-import "./queries";
-import "./mutations";
-
-
-
+import "../mandante";
+import "../prestamo";
+import "../gestion";
+import "../acuerdo";
+import "../pago";
+import "../tipificacion";
+import "../plantilla-importacion";
+import "../usuario";
+import "../liquidacion";
+import "../reporte";
+import "../comision-cobro";
+import "../politica-descuento";
+import "../plantilla-mensaje";
+import "../horario-cobranza";
+import "../fiador";
+import "../reclamo";
+import "../documento";
+import "../deudor-contacto";
+import "../contrato-mandante";
+import "../mandante-tipificacion";
+import "../carga-cartera";
+import "../asignacion-cartera";
+import "../inteligencia";
+import "../auditoria";
+import "../cron";
+import "../secuencia-contacto";
+import "../catalogo-cobranza";

@@ -3,7 +3,6 @@
 
 import "./cliente";
 import "./catalogos";
-import "./finanzas";
+import "./configuracion";
 import "./cobranza";
-
-
+import "./rol";

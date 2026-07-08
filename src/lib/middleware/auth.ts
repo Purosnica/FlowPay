@@ -4,9 +4,9 @@
  * Este middleware valida la autenticación y permisos para las API Routes
  */
 
-import { NextRequest } from "next/server";
-import { requerirPermiso, tienePermiso } from "@/lib/permissions/permission-service";
-import { verifyToken, JWTPayload } from "@/lib/auth/jwt";
+import type { NextRequest } from "next/server";
+import { requerirPermiso } from "@/lib/permissions/permission-service";
+import { verifyToken } from "@/lib/auth/jwt";
 import { getUserById } from "@/lib/auth/auth-service";
 
 export interface UsuarioAutenticado {
@@ -46,7 +46,7 @@ function getTokenFromRequest(req: NextRequest): string | null {
     console.log("[Auth] No se encontró token en header ni cookie");
     // eslint-disable-next-line no-console
     console.log("[Auth] Headers disponibles:", Array.from(req.headers.entries()).map((entry) => entry[0]));
-    // eslint-disable-next-line no-console
+     
     const cookieNames: string[] = [];
     req.cookies.getAll().forEach((cookie) => {
       cookieNames.push(cookie.name);
@@ -85,7 +85,7 @@ export async function getCurrentUser(
       email: usuario.email,
       idrol: usuario.idrol || 0,
     };
-  } catch (error) {
+  } catch {
     // Token inválido o expirado
     return null;
   }
