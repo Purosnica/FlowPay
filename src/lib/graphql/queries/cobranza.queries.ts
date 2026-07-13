@@ -2219,3 +2219,43 @@ export const GET_CLIENTE_VISTA_360 = `
   }
 `;
 
+
+export const GET_INFORME_GESTIONES = `
+  query GetInformeGestiones(
+    $idmandante: Int!
+    $periodo: String!
+    $idgestor: Int
+  ) {
+    informeGestiones(
+      idmandante: $idmandante
+      periodo: $periodo
+      idgestor: $idgestor
+    ) {
+      idmandante
+      mandanteCodigo
+      mandanteNombre
+      periodo
+      totalGestiones
+      gestiones {
+        noPrestamo
+        codigoUnico
+        nombreCliente
+        cantCtas
+        agencia
+        gestor
+        fechaGestion
+        telefonoContacto
+        codigoAccion
+        codigoResultado
+        nota
+        razonMora
+        montoPromesa
+        fechaProximaGestion
+        comentario
+        tipificacion
+        mes
+        pagos
+      }
+    }
+  }
+`;

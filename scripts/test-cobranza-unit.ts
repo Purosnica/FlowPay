@@ -82,17 +82,17 @@ function testNarrativaInformeGerencial(): void {
     indicadores: {
       montoRecuperado: 125154.23,
       acuerdosFormalizados: 15,
-      acuerdosCumplidos: 1,
-      acuerdosIncumplidos: 14,
-      eficaciaAcuerdosPct: 6.7,
+      acuerdosCumplidos: 15,
+      acuerdosIncumplidos: 0,
+      eficaciaAcuerdosPct: 100,
       totalGestiones: 120,
     },
     pctCarteraCritica: 60,
-    acuerdosSinFechaInicio: 10,
+    acuerdosSinFechaInicio: 0,
   });
   assert.ok(n.resumenEjecutivo.includes('junio'));
   assert.equal(n.hallazgosPositivos.length, 3);
-  assert.ok(n.brechasCriticas.length >= 2);
+  assert.ok(n.valoracionGeneral.includes('cumplidos mientras no se registren'));
   assert.ok(n.conclusion.includes('15 acuerdos'));
 }
 

@@ -48,28 +48,31 @@ function TableSimple({
 }
 
 function TicTacLogo({ variant = 'dark' }: { variant?: 'dark' | 'light' }) {
-  const text = variant === 'light' ? 'text-white' : 'text-[#0b2a4a]';
-  const box = variant === 'light' ? 'bg-white/90' : 'bg-[#0b2a4a]';
-  const icon = variant === 'light' ? 'text-[#0b2a4a]' : 'text-white';
+  if (variant === 'light') {
+    return (
+      <div className="flex items-center gap-2 text-white">
+        <div className="flex flex-col gap-0.5">
+          <div className="flex h-5 w-5 items-center justify-center bg-white/90 text-[10px] font-bold text-[#0b2a4a]">
+            ⏱
+          </div>
+          <div className="flex h-5 w-5 items-center justify-center bg-white/90 text-[10px] font-bold text-[#0b2a4a]">
+            $
+          </div>
+        </div>
+        <div className="text-lg font-extrabold leading-tight tracking-wide">
+          <div>TIC</div>
+          <div>TAC</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className={`flex items-center gap-2 ${text}`}>
-      <div className="flex flex-col gap-0.5">
-        <div
-          className={`flex h-5 w-5 items-center justify-center ${box} text-[10px] font-bold ${icon}`}
-        >
-          ⏱
-        </div>
-        <div
-          className={`flex h-5 w-5 items-center justify-center ${box} text-[10px] font-bold ${icon}`}
-        >
-          $
-        </div>
-      </div>
-      <div className="text-lg font-extrabold leading-tight tracking-wide">
-        <div>TIC</div>
-        <div>TAC</div>
-      </div>
-    </div>
+    <img
+      src="/images/informe/logo-tic-tac.png"
+      alt="TIC TAC"
+      className="h-14 w-auto object-contain"
+    />
   );
 }
 
@@ -128,38 +131,34 @@ export function InformeGerencialDocument({
       </section>
 
       {/* Cuerpo */}
-      <section className="informe-page relative overflow-hidden px-10 py-8 print:px-10">
+      <section className="informe-page relative overflow-hidden px-10 py-8 print:px-8">
         {/* Decoración letterhead */}
-        <div
-          className="pointer-events-none absolute right-0 top-0 h-20 w-28 bg-[#0b2a4a]"
-          style={{ clipPath: 'polygon(25% 0, 100% 0, 100% 100%)' }}
+        <img
+          src="/images/informe/esquina-superior.png"
+          alt=""
+          aria-hidden
+          className="pointer-events-none absolute right-0 top-0 h-20 w-auto object-contain"
         />
-        <div className="pointer-events-none absolute right-0 top-[4.5rem] h-0.5 w-24 bg-[#5eb8e8]" />
-        <div
-          className="pointer-events-none absolute bottom-0 left-0 h-24 w-40 bg-[#7eb8d8]/30"
-          style={{
-            clipPath: 'ellipse(80% 100% at 0% 100%)',
-          }}
-        />
-        <div
-          className="pointer-events-none absolute bottom-0 right-0 h-16 w-48 bg-[#0b2a4a]"
-          style={{
-            clipPath: 'ellipse(100% 100% at 100% 100%)',
-          }}
+        <img
+          src="/images/informe/pie-ola.png"
+          alt=""
+          aria-hidden
+          className="pointer-events-none absolute bottom-0 left-0 z-0 w-full max-h-24 object-cover object-bottom opacity-80 print:opacity-90"
         />
 
-        <div className="relative mb-6 flex items-start justify-between">
+        <div className="relative z-10 mb-6 flex items-start justify-between pb-2">
           <TicTacLogo />
         </div>
 
-        <h2 className="relative mb-2 text-center text-xl font-bold uppercase tracking-wide text-[#0b2a4a]">
+        <div className="relative z-10 space-y-0">
+        <h2 className="mb-2 text-center text-xl font-bold uppercase tracking-wide text-[#0b2a4a]">
           Informe Gerencial de Gestión de Cobranza
         </h2>
-        <p className="relative mb-4 text-center text-xs text-slate-500">
+        <p className="mb-4 text-center text-xs text-slate-500">
           Periodo: {informe.periodoLabel} · Mandante: {informe.mandanteNombre}
         </p>
 
-        <nav className="relative mb-6 rounded border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-700">
+        <nav className="mb-6 rounded border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-700">
           <p className="mb-1 font-semibold text-[#0b2a4a]">Contenido</p>
           <ol className="list-decimal space-y-0.5 pl-4">
             <li>Resumen ejecutivo</li>
@@ -213,7 +212,11 @@ export function InformeGerencialDocument({
                 `${ind.acuerdosFormalizados} nuevos acuerdos`,
               ],
               [
-                'Acuerdos incumplidos',
+                'Acuerdos cumplidos',
+                String(ind.acuerdosCumplidos),
+              ],
+              [
+                'Acuerdos incumplidos (rotos)',
                 String(ind.acuerdosIncumplidos),
               ],
             ]}
@@ -231,7 +234,8 @@ export function InformeGerencialDocument({
             rows={[
               ['Monto recuperado', formatearMoneda(ind.montoRecuperado)],
               ['Acuerdos formalizados', String(ind.acuerdosFormalizados)],
-              ['Acuerdos incumplidos', String(ind.acuerdosIncumplidos)],
+              ['Acuerdos cumplidos', String(ind.acuerdosCumplidos)],
+              ['Acuerdos incumplidos (rotos)', String(ind.acuerdosIncumplidos)],
               [
                 'Eficacia de acuerdos',
                 `${ind.eficaciaAcuerdosPct}% (${ind.acuerdosCumplidos} de ${ind.acuerdosFormalizados} cumplido${ind.acuerdosCumplidos === 1 ? '' : 's'})`,
@@ -501,10 +505,11 @@ export function InformeGerencialDocument({
           {n.conclusion}
         </div>
 
-        <div className="mt-10 text-sm">
+        <div className="mt-10 mb-16 text-sm">
           <p className="mb-8">Atentamente,</p>
           <p className="font-semibold">Equipo de Gestión de Cobranza</p>
           <p>TIC TAC</p>
+        </div>
         </div>
       </section>
     </div>

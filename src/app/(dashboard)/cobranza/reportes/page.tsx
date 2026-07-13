@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
+import Link from 'next/link';
 import { ClientPaginatedDataTable } from '@/components/cobranza/client-paginated-data-table';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
@@ -202,6 +203,18 @@ export default function ReportesPage() {
         description="Indicadores de cartera, aging, recuperación y desempeño por gestor."
         actions={
           <div className="flex flex-wrap gap-2">
+            <Link
+              href="/cobranza/reportes/informe-gerencial"
+              className="inline-flex h-10 items-center justify-center rounded-lg border-2 border-primary px-4 text-base font-semibold text-primary transition-all hover:bg-primary hover:text-white dark:border-primary dark:text-primary dark:hover:bg-primary dark:hover:text-white"
+            >
+              Informe gerencial
+            </Link>
+            <Link
+              href="/cobranza/reportes/informe-gestiones"
+              className="inline-flex h-10 items-center justify-center rounded-lg border-2 border-primary px-4 text-base font-semibold text-primary transition-all hover:bg-primary hover:text-white dark:border-primary dark:text-primary dark:hover:bg-primary dark:hover:text-white"
+            >
+              Informe de gestiones
+            </Link>
             <Button
               variant="outline"
               disabled={!reporte}

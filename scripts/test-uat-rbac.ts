@@ -83,6 +83,10 @@ const MATRIZ_RUTAS: RutaExpectativa[] = [
     porRol: { COBRADOR: true, SUPERVISOR: true, GERENTE: true, ADMIN: true },
   },
   {
+    ruta: '/cobranza/reportes/informe-gerencial',
+    porRol: { COBRADOR: true, SUPERVISOR: true, GERENTE: true, ADMIN: true },
+  },
+  {
     ruta: '/cobranza/importar',
     porRol: { COBRADOR: false, SUPERVISOR: true, GERENTE: true, ADMIN: true },
   },

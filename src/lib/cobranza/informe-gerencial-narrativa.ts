@@ -18,7 +18,7 @@ function pct(n: number): string {
 
 /**
  * Genera textos del informe a partir de indicadores del período.
- * Réplica del tono del informe gerencial original (cierre de mes).
+ * Mientras un acuerdo no esté ROTO, se considera cumplido.
  */
 export function construirNarrativaInforme(params: {
   periodoLabel: string;
@@ -49,21 +49,25 @@ export function construirNarrativaInforme(params: {
     `clientes de difícil localización.`;
 
   let valoracionGeneral: string;
-  if (eficacia >= 50 && incumplidos <= formalizados * 0.3) {
+  if (incumplidos === 0) {
     valoracionGeneral =
       `La gestión refleja un enfoque operativo efectivo, logrando avances ` +
       `en la recuperación de saldos (${monto}) y la activación de acuerdos ` +
-      `de pago (${formalizados}). La tasa de cumplimiento de acuerdos ` +
-      `(${pct(eficacia)}) se mantiene en un rango aceptable; se recomienda ` +
-      `sostener el ritmo de seguimiento para consolidar los resultados.`;
+      `de pago (${formalizados}). Los acuerdos formalizados se mantienen ` +
+      `cumplidos mientras no se registren como rotos ` +
+      `(eficacia ${pct(eficacia)}).`;
+  } else if (eficacia >= 70) {
+    valoracionGeneral =
+      `La gestión refleja un enfoque operativo efectivo, con ` +
+      `${cumplidos} acuerdo(s) cumplidos y ${incumplidos} roto(s). ` +
+      `Se recomienda reforzar el seguimiento de los casos rotos para ` +
+      `recuperar el nivel de cumplimiento.`;
   } else {
     valoracionGeneral =
-      `La gestión refleja un enfoque operativo efectivo, logrando avances ` +
-      `en la recuperación de saldos y la activación de acuerdos de pago. ` +
-      `Sin embargo, se identifica una brecha crítica en la tasa de ` +
-      `cumplimiento de los acuerdos (${pct(eficacia)}), lo que evidencia ` +
-      `la necesidad de fortalecer los mecanismos de seguimiento y la ` +
-      `rigurosidad en la selección de clientes con capacidad real de pago.`;
+      `La gestión logró avances en recuperación (${monto}) y formalización ` +
+      `de acuerdos (${formalizados}). Se identifican ${incumplidos} ` +
+      `acuerdo(s) rotos, lo que requiere fortalecer el seguimiento y la ` +
+      `selección de clientes con capacidad real de pago.`;
   }
 
   const hallazgosPositivos: string[] = [
@@ -77,13 +81,16 @@ export function construirNarrativaInforme(params: {
       `(${indicadores.totalGestiones} gestiones registradas).`,
   ];
 
-  const brechasCriticas: string[] = [
-    `Tasa de incumplimiento de acuerdos: ${incumplidos} de ` +
-      `${formalizados} acuerdos formalizados no se encuentran cumplidos, ` +
-      `lo que representa una eficacia del ${pct(eficacia)} ` +
-      `(${cumplidos} de ${formalizados} cumplido` +
-      `${cumplidos === 1 ? '' : 's'}).`,
-  ];
+  const brechasCriticas: string[] = [];
+
+  if (incumplidos > 0) {
+    brechasCriticas.push(
+      `Acuerdos rotos: ${incumplidos} de ${formalizados} acuerdos ` +
+        `formalizados (` +
+        `${cumplidos} cumplido${cumplidos === 1 ? '' : 's'}, ` +
+        `eficacia ${pct(eficacia)}).`,
+    );
+  }
 
   if (acuerdosSinFechaInicio > 0) {
     brechasCriticas.push(
@@ -102,21 +109,26 @@ export function construirNarrativaInforme(params: {
     );
   }
 
+  if (brechasCriticas.length === 0) {
+    brechasCriticas.push(
+      'No se identificaron brechas críticas materiales en el período; ' +
+        'los acuerdos se mantienen cumplidos al no existir casos rotos.',
+    );
+  }
+
   const conclusion =
     `La gestión realizada durante el período comprendido del ` +
     `${periodoLabel} ha permitido avances concretos en la recuperación ` +
     `de cartera, reflejados en:\n` +
     `• ${formalizados} acuerdos de pago formalizados\n` +
-    `• ${monto} recuperados efectivamente\n\n` +
-    (eficacia < 50
-      ? `No obstante, se reconoce que los resultados obtenidos se ` +
-        `encuentran por debajo de lo esperado, evidenciando la necesidad ` +
-        `de intensificar y ajustar las estrategias de cobranza, ` +
-        `especialmente en lo referente a la calidad de los datos de ` +
-        `contacto, la definición clara de fechas de inicio en los ` +
-        `acuerdos y la tasa de incumplimiento de promesas de pago.\n\n`
+    `• ${monto} recuperados efectivamente\n` +
+    `• ${cumplidos} acuerdo(s) cumplidos · ${incumplidos} roto(s)\n\n` +
+    (incumplidos > formalizados * 0.3
+      ? `Se reconoce la necesidad de intensificar el seguimiento sobre ` +
+        `acuerdos rotos y ajustar estrategias de cobranza.\n\n`
       : `Los resultados del período sustentan la continuidad de la ` +
-        `estrategia vigente, con ajustes puntuales de seguimiento.\n\n`) +
+        `estrategia vigente, manteniendo como cumplidos los acuerdos ` +
+        `mientras no se marquen como rotos.\n\n`) +
     `Frente a este panorama, como empresa especializada en recuperación ` +
     `de cartera, continuaremos ejecutando una gestión firme, estructurada ` +
     `y escalonada. Continuaremos informando de manera periódica la ` +
@@ -125,7 +137,9 @@ export function construirNarrativaInforme(params: {
 
   const metaPagos = Math.max(10, Math.ceil(formalizados * 0.67));
   const compromisosProximoPeriodo = [
-    `Reducir la tasa de incumplimiento recurrente en un 30%.`,
+    incumplidos > 0
+      ? `Reducir la tasa de acuerdos rotos en un 30%.`
+      : `Mantener en 0 los acuerdos rotos.`,
     `Lograr al menos ${metaPagos} pagos efectivos de los acuerdos ` +
       `formalizados.`,
     `Establecer fecha de primer pago en el 100% de los nuevos acuerdos.`,

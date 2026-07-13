@@ -26,6 +26,7 @@ export const ROUTE_PERMISSION_RULES: RoutePermissionRule[] = [
   { prefix: '/cobranza/conciliaciones', permiso: PERMISO.PAGO_READ },
   { prefix: '/cobranza/liquidaciones', permiso: PERMISO.LIQUIDACION_READ },
   { prefix: '/cobranza/reportes', permiso: PERMISO.REPORTE_READ },
+  { prefix: '/cobranza/informe-gerencial', permiso: PERMISO.REPORTE_READ },
   { prefix: '/cobranza/gestiones', permiso: PERMISO.GESTION_READ },
   { prefix: '/cobranza/bandeja', permiso: PERMISO.CARTERA_READ },
   { prefix: '/cobranza/campanas', permiso: PERMISO.CARTERA_READ },

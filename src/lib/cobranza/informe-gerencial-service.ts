@@ -92,13 +92,11 @@ function etiquetaMesAnio(d: Date): string {
 }
 
 function estatusAcuerdoLabel(estado: string): string {
-  if (estado === 'CUMPLIDO') {
-    return 'Cumplido';
-  }
+  // Mientras no esté ROTO, se reporta como cumplido.
   if (estado === 'ROTO') {
     return 'Incumplido';
   }
-  return 'Pendiente';
+  return 'Cumplido';
 }
 
 function tipoArregloDesdeCuotas(
@@ -265,13 +263,13 @@ export async function obtenerInformeGerencial(
   );
 
   const acuerdosFormalizados = acuerdosRaw.length;
-  const acuerdosCumplidos = acuerdosRaw.filter(
-    (a) => a.estado === 'CUMPLIDO',
+  // VIGENTE y CUMPLIDO cuentan como cumplidos; solo ROTO es incumplido.
+  const acuerdosIncumplidos = acuerdosRaw.filter(
+    (a) => a.estado === 'ROTO',
   ).length;
-  // Misma lógica del informe original: no cumplidos = incumplidos
-  const acuerdosIncumplidos = Math.max(
+  const acuerdosCumplidos = Math.max(
     0,
-    acuerdosFormalizados - acuerdosCumplidos,
+    acuerdosFormalizados - acuerdosIncumplidos,
   );
   const eficaciaAcuerdosPct =
     acuerdosFormalizados > 0

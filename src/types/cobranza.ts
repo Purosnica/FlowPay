@@ -679,7 +679,9 @@ export interface ImportacionJob {
 export interface InformeGerencialIndicadores {
   montoRecuperado: number;
   acuerdosFormalizados: number;
+  /** Cumplidos = todo lo que no esté ROTO (VIGENTE o CUMPLIDO). */
   acuerdosCumplidos: number;
+  /** Solo acuerdos con estado ROTO. */
   acuerdosIncumplidos: number;
   eficaciaAcuerdosPct: number;
   totalGestiones: number;
@@ -766,4 +768,35 @@ export interface InformeGerencial {
   accionesRecomendadas: InformeGerencialAccionItem[];
   planTrabajo: InformeGerencialPlanItem[];
   narrativa: InformeGerencialNarrativaData;
+}
+
+/** Fila del Informe de gestiones (plantilla REGISTROS / Hoja1). */
+export interface InformeGestionItem {
+  noPrestamo: string;
+  codigoUnico: string;
+  nombreCliente: string;
+  cantCtas: number;
+  agencia: string;
+  gestor: string;
+  fechaGestion: string;
+  telefonoContacto: string;
+  codigoAccion: string;
+  codigoResultado: string;
+  nota: string;
+  razonMora: string;
+  montoPromesa: number | null;
+  fechaProximaGestion: string;
+  comentario: string;
+  tipificacion: string;
+  mes: string;
+  pagos: number;
+}
+
+export interface InformeGestiones {
+  idmandante: number;
+  mandanteCodigo: string;
+  mandanteNombre: string;
+  periodo: string;
+  totalGestiones: number;
+  gestiones: InformeGestionItem[];
 }

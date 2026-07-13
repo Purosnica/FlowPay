@@ -2,12 +2,14 @@ import { builder ,type  GraphQLContext } from '../../builder';
 
 import { ReporteCobranzaType, ReporteAgingCarteraType } from '../liquidacion/types';
 import { InformeGerencialType } from './types-informe';
+import { InformeGestionesType } from './types-informe-gestiones';
 import { requerirPermiso } from '@/lib/permissions/permission-service';
 import { PERMISO } from '@/lib/permissions/permiso-codes';
 import { obtenerReporteCobranza } from '@/lib/cobranza/reporte-cobranza-service';
 import { obtenerReporteAgingCartera } from '@/lib/cobranza/aging-cartera-service';
 import { obtenerResumenDashboard } from '@/lib/cobranza/dashboard-service';
 import { obtenerInformeGerencial } from '@/lib/cobranza/informe-gerencial-service';
+import { obtenerInformeGestiones } from '@/lib/cobranza/informe-gestiones-service';
 import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
 import { DashboardResumenType } from '../contrato-mandante/types';
 
@@ -99,6 +101,38 @@ builder.queryField('informeGerencial', (t) =>
           err instanceof Error
             ? err.message
             : 'Error al generar informe gerencial.';
+        throw new GraphQLValidationError(msg);
+      }
+    },
+  }),
+);
+
+builder.queryField('informeGestiones', (t) =>
+  t.field({
+    type: InformeGestionesType,
+    args: {
+      idmandante: t.arg.int({ required: true }),
+      periodo: t.arg.string({ required: true }),
+      idgestor: t.arg.int({ required: false }),
+    },
+    resolve: async (_parent, args, ctx: GraphQLContext) => {
+      await requerirPermiso(ctx.usuario?.idusuario, PERMISO.REPORTE_READ);
+      const idusuario = ctx.usuario?.idusuario;
+      if (!idusuario) {
+        throw new GraphQLValidationError('Usuario no autenticado.');
+      }
+      try {
+        return await obtenerInformeGestiones(
+          args.idmandante,
+          idusuario,
+          args.periodo,
+          args.idgestor,
+        );
+      } catch (err) {
+        const msg =
+          err instanceof Error
+            ? err.message
+            : 'Error al generar informe de gestiones.';
         throw new GraphQLValidationError(msg);
       }
     },

@@ -110,16 +110,6 @@ export const NAV_DATA: NavSection[] = [
             permiso: PERMISO.CARTERA_READ,
           },
           {
-            title: "Reportes",
-            url: "/cobranza/reportes",
-            permiso: PERMISO.REPORTE_READ,
-          },
-          {
-            title: "Informe gerencial",
-            url: "/cobranza/informe-gerencial",
-            permiso: PERMISO.REPORTE_READ,
-          },
-          {
             title: "Liquidaciones",
             url: "/cobranza/liquidaciones",
             permiso: PERMISO.LIQUIDACION_READ,
@@ -128,6 +118,28 @@ export const NAV_DATA: NavSection[] = [
             title: "Conciliaciones",
             url: "/cobranza/conciliaciones",
             permiso: PERMISO.PAGO_READ,
+          },
+        ],
+      },
+      {
+        title: "Reportes",
+        icon: Icons.Table,
+        permiso: PERMISO.REPORTE_READ,
+        items: [
+          {
+            title: "Reportes de cobranza",
+            url: "/cobranza/reportes",
+            permiso: PERMISO.REPORTE_READ,
+          },
+          {
+            title: "Informe gerencial",
+            url: "/cobranza/reportes/informe-gerencial",
+            permiso: PERMISO.REPORTE_READ,
+          },
+          {
+            title: "Informe de gestiones",
+            url: "/cobranza/reportes/informe-gestiones",
+            permiso: PERMISO.REPORTE_READ,
           },
         ],
       },
