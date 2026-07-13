@@ -1,14 +1,17 @@
 import axios, { type AxiosError } from 'axios';
 
-import { env } from '@/lib/env';
 import { notificationService } from '@/lib/notifications/notification-service';
 import { clientErrorLogger } from '@/lib/errors/client-error-logger';
 import { type StructuredError, ErrorCode } from '@/lib/errors/types';
 import { CSRF_HEADER, CSRF_HEADER_VALUE, CSRF_TOKEN_HEADER, CSRF_COOKIE } from '@/lib/security/csrf';
 
+/** Solo NEXT_PUBLIC_*: este módulo se usa en el cliente. No importar @/lib/env. */
+const apiBaseUrl =
+  process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
+
 // Instancia de axios configurada para la aplicación
 export const apiClient = axios.create({
-  baseURL: env.NEXT_PUBLIC_API_URL,
+  baseURL: apiBaseUrl,
   headers: {
     'Content-Type': 'application/json',
     [CSRF_HEADER]: CSRF_HEADER_VALUE,
