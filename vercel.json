@@ -6,7 +6,7 @@
     },
     {
       "path": "/api/cron/procesar-importaciones",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 7 * * *"
     }
   ]
 }
