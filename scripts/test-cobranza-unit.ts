@@ -5,6 +5,7 @@ import {
   PRESETS_BANDEJA_SISTEMA,
 } from '@/lib/cobranza/bandeja-presets';
 import { calcularAbonoCuotasPorTotal } from '@/lib/cobranza/acuerdo-cuota-service';
+import { construirNarrativaInforme } from '@/lib/cobranza/informe-gerencial-narrativa';
 
 function testTransicionesEstado(): void {
   assert.equal(puedeTransicionar('Vigente', 'Vencido'), true);
@@ -74,7 +75,29 @@ function testAbonoCuotasAcumulado(): void {
   assert.equal(conVencida[1]?.estadoNuevo, 'PENDIENTE');
 }
 
+function testNarrativaInformeGerencial(): void {
+  const n = construirNarrativaInforme({
+    periodoLabel: '1 al 30 de junio del 2026',
+    proximoPeriodoLabel: 'Julio 2026',
+    indicadores: {
+      montoRecuperado: 125154.23,
+      acuerdosFormalizados: 15,
+      acuerdosCumplidos: 1,
+      acuerdosIncumplidos: 14,
+      eficaciaAcuerdosPct: 6.7,
+      totalGestiones: 120,
+    },
+    pctCarteraCritica: 60,
+    acuerdosSinFechaInicio: 10,
+  });
+  assert.ok(n.resumenEjecutivo.includes('junio'));
+  assert.equal(n.hallazgosPositivos.length, 3);
+  assert.ok(n.brechasCriticas.length >= 2);
+  assert.ok(n.conclusion.includes('15 acuerdos'));
+}
+
 testTransicionesEstado();
 testBandejaPresets();
 testAbonoCuotasAcumulado();
+testNarrativaInformeGerencial();
 console.log('tests unitarios cobranza: OK');

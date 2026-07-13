@@ -115,6 +115,11 @@ export const NAV_DATA: NavSection[] = [
             permiso: PERMISO.REPORTE_READ,
           },
           {
+            title: "Informe gerencial",
+            url: "/cobranza/informe-gerencial",
+            permiso: PERMISO.REPORTE_READ,
+          },
+          {
             title: "Liquidaciones",
             url: "/cobranza/liquidaciones",
             permiso: PERMISO.LIQUIDACION_READ,

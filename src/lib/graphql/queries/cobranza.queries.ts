@@ -1947,6 +1947,84 @@ export const GET_REPORTES_DASHBOARD = `
   }
 `;
 
+export const GET_INFORME_GERENCIAL = `
+  query GetInformeGerencial($idmandante: Int!, $periodo: String!) {
+    informeGerencial(idmandante: $idmandante, periodo: $periodo) {
+      idmandante
+      mandanteCodigo
+      mandanteNombre
+      periodo
+      periodoLabel
+      proximoPeriodoLabel
+      indicadores {
+        montoRecuperado
+        acuerdosFormalizados
+        acuerdosCumplidos
+        acuerdosIncumplidos
+        eficaciaAcuerdosPct
+        totalGestiones
+      }
+      acuerdos {
+        numero
+        cliente
+        saldoTotal
+        tipoArreglo
+        montoCuota
+        plazo
+        fechaPrimerPago
+        estatus
+      }
+      pagos {
+        cliente
+        noPrestamo
+        codigoUnico
+        montoOriginal
+        montoPagado
+        fechaPago
+        medioReferencia
+        ejecutivo
+        departamentoCiudad
+        sucursal
+        diasMora
+      }
+      segmentos {
+        segmento
+        descripcion
+        porcentaje
+      }
+      canales {
+        canal
+        uso
+      }
+      accionesDesarrolladas
+      perfilesGestion {
+        perfil
+        accion
+        frecuencia
+      }
+      accionesRecomendadas {
+        accion
+        responsable
+        fechaLimite
+        kpiExito
+      }
+      planTrabajo {
+        actividad
+        frecuencia
+        responsable
+      }
+      narrativa {
+        resumenEjecutivo
+        valoracionGeneral
+        hallazgosPositivos
+        brechasCriticas
+        conclusion
+        compromisosProximoPeriodo
+      }
+    }
+  }
+`;
+
 export const GET_AUDITORIA_RESUMEN = `
   query GetAuditoriaResumen {
     auditoriaResumen {

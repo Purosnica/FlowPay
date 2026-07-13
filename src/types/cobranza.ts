@@ -674,3 +674,96 @@ export interface ImportacionJob {
   createdAt?: string;
   finalizadoEn?: string | null;
 }
+
+/** Informe gerencial de cierre de mes (entregable al mandante). */
+export interface InformeGerencialIndicadores {
+  montoRecuperado: number;
+  acuerdosFormalizados: number;
+  acuerdosCumplidos: number;
+  acuerdosIncumplidos: number;
+  eficaciaAcuerdosPct: number;
+  totalGestiones: number;
+}
+
+export interface InformeGerencialAcuerdoItem {
+  numero: number;
+  cliente: string;
+  saldoTotal: number;
+  tipoArreglo: string;
+  montoCuota: number;
+  plazo: string;
+  fechaPrimerPago: string;
+  estatus: string;
+}
+
+export interface InformeGerencialPagoItem {
+  cliente: string;
+  noPrestamo: string;
+  codigoUnico: string;
+  montoOriginal: number;
+  montoPagado: number;
+  fechaPago: string;
+  medioReferencia: string;
+  ejecutivo: string;
+  departamentoCiudad: string;
+  sucursal: string;
+  diasMora: number;
+}
+
+export interface InformeGerencialSegmentoItem {
+  segmento: string;
+  descripcion: string;
+  porcentaje: number;
+}
+
+export interface InformeGerencialCanalItem {
+  canal: string;
+  uso: string;
+}
+
+export interface InformeGerencialAccionItem {
+  accion: string;
+  responsable: string;
+  fechaLimite: string;
+  kpiExito: string;
+}
+
+export interface InformeGerencialPlanItem {
+  actividad: string;
+  frecuencia: string;
+  responsable: string;
+}
+
+export interface InformeGerencialPerfilItem {
+  perfil: string;
+  accion: string;
+  frecuencia: string;
+}
+
+export interface InformeGerencialNarrativaData {
+  resumenEjecutivo: string;
+  valoracionGeneral: string;
+  hallazgosPositivos: string[];
+  brechasCriticas: string[];
+  conclusion: string;
+  compromisosProximoPeriodo: string[];
+}
+
+export interface InformeGerencial {
+  idmandante: number;
+  mandanteCodigo: string;
+  mandanteNombre: string;
+  periodo: string;
+  periodoLabel: string;
+  proximoPeriodoLabel: string;
+  indicadores: InformeGerencialIndicadores;
+  acuerdos: InformeGerencialAcuerdoItem[];
+  pagos: InformeGerencialPagoItem[];
+  segmentos: InformeGerencialSegmentoItem[];
+  canales: InformeGerencialCanalItem[];
+  accionesDesarrolladas: string[];
+  perfilesGestion: InformeGerencialPerfilItem[];
+  accionesRecomendadas: InformeGerencialAccionItem[];
+  planTrabajo: InformeGerencialPlanItem[];
+  narrativa: InformeGerencialNarrativaData;
+}

@@ -1,11 +1,13 @@
 import { builder ,type  GraphQLContext } from '../../builder';
 
 import { ReporteCobranzaType, ReporteAgingCarteraType } from '../liquidacion/types';
+import { InformeGerencialType } from './types-informe';
 import { requerirPermiso } from '@/lib/permissions/permission-service';
 import { PERMISO } from '@/lib/permissions/permiso-codes';
 import { obtenerReporteCobranza } from '@/lib/cobranza/reporte-cobranza-service';
 import { obtenerReporteAgingCartera } from '@/lib/cobranza/aging-cartera-service';
 import { obtenerResumenDashboard } from '@/lib/cobranza/dashboard-service';
+import { obtenerInformeGerencial } from '@/lib/cobranza/informe-gerencial-service';
 import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
 import { DashboardResumenType } from '../contrato-mandante/types';
 
@@ -69,6 +71,36 @@ builder.queryField('resumenDashboardCobranza', (t) =>
         throw new GraphQLValidationError('Usuario no autenticado.');
       }
       return obtenerResumenDashboard(idusuario);
+    },
+  }),
+);
+
+builder.queryField('informeGerencial', (t) =>
+  t.field({
+    type: InformeGerencialType,
+    args: {
+      idmandante: t.arg.int({ required: true }),
+      periodo: t.arg.string({ required: true }),
+    },
+    resolve: async (_parent, args, ctx: GraphQLContext) => {
+      await requerirPermiso(ctx.usuario?.idusuario, PERMISO.REPORTE_READ);
+      const idusuario = ctx.usuario?.idusuario;
+      if (!idusuario) {
+        throw new GraphQLValidationError('Usuario no autenticado.');
+      }
+      try {
+        return await obtenerInformeGerencial(
+          args.idmandante,
+          idusuario,
+          args.periodo,
+        );
+      } catch (err) {
+        const msg =
+          err instanceof Error
+            ? err.message
+            : 'Error al generar informe gerencial.';
+        throw new GraphQLValidationError(msg);
+      }
     },
   }),
 );
