@@ -10,14 +10,20 @@ import {
   TimelinePrestamoEventoType,
   PrestamoFiltersSchema,
   BandejaFiltersSchema,
+  DesgloseSaldoPrestamoType,
 } from "./types";
 import type { Prisma } from "@prisma/client";
 import { requerirPermiso } from "@/lib/permissions/permission-service";
 import { PERMISO } from "@/lib/permissions/permiso-codes";
 import { filtroMandante, requerirAccesoMandante } from "@/lib/cobranza/mandante-scope";
+import {
+  requerirAccesoPrestamoCobrador,
+  wherePrestamoPorRol,
+} from "@/lib/cobranza/cobrador-scope";
 import { listarBandejaCobrador } from "@/lib/cobranza/bandeja-cobrador-service";
 import { listarHistorialEstados } from "@/lib/cobranza/estado-prestamo-service";
 import { obtenerTimelinePrestamo } from "@/lib/cobranza/prestamo-timeline-service";
+import { obtenerDesgloseSaldoPrestamo } from "@/lib/cobranza/prestamo-saldo-desglose-service";
 import {
   buildPaginationMeta,
   resolvePagination,
@@ -31,13 +37,18 @@ builder.queryField("prestamo", (t) =>
     args: { id: t.arg.int({ required: true }) },
     resolve: async (query, _parent, args, ctx) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.CARTERA_READ);
-      const mandanteFilter = await filtroMandante(ctx.usuario?.idusuario);
+      const idusuario = ctx.usuario?.idusuario;
+      const mandanteFilter = await filtroMandante(idusuario);
+      const scopeCobrador = idusuario
+        ? await wherePrestamoPorRol(idusuario)
+        : {};
       return ctx.prisma.tbl_prestamo.findFirst({
         ...(query as Record<string, unknown>),
         where: {
           idprestamo: args.id,
           deletedAt: null,
           idmandante: mandanteFilter,
+          ...scopeCobrador,
         },
       }) as never;
     },
@@ -59,11 +70,16 @@ builder.queryField("prestamos", (t) =>
         args.pageSize,
       );
       const filters = PrestamoFiltersSchema.parse(args.filters ?? {});
-      const mandanteFilter = await filtroMandante(ctx.usuario?.idusuario);
+      const idusuario = ctx.usuario?.idusuario;
+      const mandanteFilter = await filtroMandante(idusuario);
+      const scopeCobrador = idusuario
+        ? await wherePrestamoPorRol(idusuario)
+        : {};
 
       const where: Prisma.tbl_prestamoWhereInput = {
         deletedAt: null,
         idmandante: filters.idmandante ?? mandanteFilter,
+        ...scopeCobrador,
       };
 
       if (filters.idcampana) where.idcampana = filters.idcampana;
@@ -119,13 +135,18 @@ builder.queryField("prestamosPorCliente", (t) =>
     },
     resolve: async (_parent, args, ctx) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.CARTERA_READ);
-      const mandanteFilter = await filtroMandante(ctx.usuario?.idusuario);
+      const idusuario = ctx.usuario?.idusuario;
+      const mandanteFilter = await filtroMandante(idusuario);
+      const scopeCobrador = idusuario
+        ? await wherePrestamoPorRol(idusuario)
+        : {};
       const take = Math.min(Math.max(args.limit ?? 30, 1), 100);
       return ctx.prisma.tbl_prestamo.findMany({
         where: {
           idcliente: args.idcliente,
           deletedAt: null,
           idmandante: mandanteFilter,
+          ...scopeCobrador,
         },
         orderBy: { diasMora: "desc" },
         take,
@@ -202,6 +223,10 @@ builder.queryField('historialEstadosPrestamo', (t) =>
         return [];
       }
       await requerirAccesoMandante(ctx.usuario?.idusuario, prestamo.idmandante);
+      await requerirAccesoPrestamoCobrador(
+        ctx.usuario?.idusuario,
+        args.idprestamo,
+      );
       return listarHistorialEstados(args.idprestamo, args.limit ?? 50);
     },
   }),
@@ -225,6 +250,29 @@ builder.queryField('timelinePrestamo', (t) =>
         args.idprestamo,
         Math.min(Math.max(args.limite ?? 50, 1), TIMELINE_PRESTAMO_LIMITE_MAX),
       );
+    },
+  }),
+);
+
+builder.queryField('desgloseSaldoPrestamo', (t) =>
+  t.field({
+    type: DesgloseSaldoPrestamoType,
+    nullable: true,
+    args: { idprestamo: t.arg.int({ required: true }) },
+    resolve: async (_parent, args, ctx: GraphQLContext) => {
+      await requerirPermiso(ctx.usuario?.idusuario, PERMISO.CARTERA_READ);
+      const prestamo = await ctx.prisma.tbl_prestamo.findUnique({
+        where: { idprestamo: args.idprestamo },
+      });
+      if (!prestamo || prestamo.deletedAt) {
+        return null;
+      }
+      await requerirAccesoMandante(ctx.usuario?.idusuario, prestamo.idmandante);
+      await requerirAccesoPrestamoCobrador(
+        ctx.usuario?.idusuario,
+        args.idprestamo,
+      );
+      return obtenerDesgloseSaldoPrestamo(ctx.prisma, args.idprestamo);
     },
   }),
 );

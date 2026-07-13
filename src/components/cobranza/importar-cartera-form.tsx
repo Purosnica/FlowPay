@@ -14,9 +14,13 @@ import type {
   Campana,
   PlantillaImportacion,
   ResultadoImportacionCompleta,
+  FilaDesglosePreview,
+  ResumenDesglosePreview,
 } from '@/types/cobranza';
 import { ImportacionJobMonitor } from '@/components/cobranza/importacion-job-monitor';
+import { ImportDesglosePreviewTable } from '@/components/cobranza/import-desglose-preview-table';
 import { csrfHeaders } from '@/lib/security/csrf';
+import { ACCEPT_IMPORTACION } from '@/lib/cobranza/upload-limits';
 
 type TipoImportacion =
   | 'CARTERA'
@@ -39,6 +43,8 @@ interface VistaPreviaImportacion {
   duplicadosArchivo: { noPrestamo: string; filas: number[] }[];
   errores: { fila: number; mensaje: string }[];
   puedeImportar: boolean;
+  desgloseFilas: FilaDesglosePreview[];
+  resumenDesglose: ResumenDesglosePreview;
 }
 
 interface ImportarCarteraFormProps {
@@ -82,7 +88,10 @@ export function ImportarCarteraForm({ onSuccess }: ImportarCarteraFormProps) {
   }>(
     GET_CAMPANAS,
     { idmandante: idmandante as number },
-    { enabled: typeof idmandante === 'number' },
+    {
+      enabled: typeof idmandante === 'number',
+      requestOptions: { timeout: 120_000, suppressErrorToast: true },
+    },
   );
 
   const { data: plantillasData } = useGraphQLQuery<{
@@ -92,7 +101,10 @@ export function ImportarCarteraForm({ onSuccess }: ImportarCarteraFormProps) {
   }>(
     GET_PLANTILLAS_IMPORTACION,
     { idmandante: idmandante as number, page: 1, pageSize: 100 },
-    { enabled: typeof idmandante === 'number' },
+    {
+      enabled: typeof idmandante === 'number',
+      requestOptions: { timeout: 120_000, suppressErrorToast: true },
+    },
   );
 
   const createCampanaMutation = useGraphQLMutation(CREATE_CAMPANA, {
@@ -409,7 +421,7 @@ export function ImportarCarteraForm({ onSuccess }: ImportarCarteraFormProps) {
         </label>
         <input
           type="file"
-          accept=".xlsx,.xls,.xlsm,.csv"
+          accept={ACCEPT_IMPORTACION}
           onChange={(e) => {
             setArchivo(e.target.files?.[0] ?? null);
             setVistaPrevia(null);
@@ -496,6 +508,13 @@ export function ImportarCarteraForm({ onSuccess }: ImportarCarteraFormProps) {
                 ))}
               </ul>
             </div>
+          )}
+
+          {vistaPrevia.desgloseFilas.length > 0 && (
+            <ImportDesglosePreviewTable
+              filas={vistaPrevia.desgloseFilas}
+              resumen={vistaPrevia.resumenDesglose}
+            />
           )}
 
           <div className="mt-4 flex gap-2">

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { DeleteRowButton } from '@/components/ui/row-action-buttons';
 import { TablePagination } from '@/components/cobranza/data-table';
 import { usePaginatedPanel } from '@/hooks/use-paginated-panel';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
@@ -13,6 +14,16 @@ import {
 } from '@/lib/graphql/queries/cobranza.queries';
 import type { DocumentoPrestamo } from '@/types/cobranza';
 import { csrfHeaders } from '@/lib/security/csrf';
+
+function hrefDocumentoSeguro(url: string): string {
+  if (url.startsWith('/uploads/cobranza/')) {
+    const nombre = url.split('/').pop();
+    if (nombre) {
+      return `/api/cobranza/documentos/file/${nombre}`;
+    }
+  }
+  return url;
+}
 
 interface DocumentoPanelProps {
   idprestamo: number;
@@ -57,6 +68,7 @@ export function DocumentoPanel({ idprestamo }: DocumentoPanelProps) {
     try {
       const formData = new FormData();
       formData.append('archivo', file);
+      formData.append('idprestamo', String(idprestamo));
       const res = await fetch('/api/cobranza/documentos/upload', {
         method: 'POST',
         body: formData,
@@ -106,10 +118,10 @@ export function DocumentoPanel({ idprestamo }: DocumentoPanelProps) {
         </select>
         <input
           required
-          type="url"
+          type="text"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          placeholder="URL del documento"
+          placeholder="URL del documento o archivo subido"
           className="rounded border px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2"
         />
         <Button type="submit" disabled={createMutation.isPending}>
@@ -149,23 +161,19 @@ export function DocumentoPanel({ idprestamo }: DocumentoPanelProps) {
             <div>
               <span className="font-medium">{d.tipo}</span>
               <a
-                href={d.url}
+                href={hrefDocumentoSeguro(d.url)}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="ml-2 text-primary hover:underline"
               >
                 Ver
               </a>
             </div>
-            <Button
-              size="sm"
-              variant="outline"
+            <DeleteRowButton
               onClick={() =>
                 deleteMutation.mutate({ iddocumento: d.iddocumento })
               }
-            >
-              Eliminar
-            </Button>
+            />
           </li>
         ))}
       </ul>

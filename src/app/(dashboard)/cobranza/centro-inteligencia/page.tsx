@@ -1,15 +1,22 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { useGraphQLMutation } from '@/hooks/use-graphql-mutation';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
 import { AlertasOperativasPanel } from '@/components/cobranza/alertas-operativas-panel';
 import { ForecastPanel } from '@/components/cobranza/forecast-panel';
 import { MandanteSelect } from '@/components/cobranza/mandante-select';
 import { TendenciaRecuperacionChart } from '@/components/cobranza/tendencia-recuperacion-chart';
+import { AsyncPanel } from '@/components/ui/async-panel';
+import {
+  DashboardMetricStrip,
+  type DashboardMetric,
+} from '@/components/dashboard/dashboard-metric-strip';
 import {
   GET_CENTRO_INTELIGENCIA,
   GET_CENTRO_INTELIGENCIA_CHARTS,
@@ -20,17 +27,7 @@ import {
   type KpiCobranzaCore,
   formatearMoneda,
 } from '@/types/cobranza';
-
-
-function severidadClass(severidad: string): string {
-  if (severidad === 'critical') {
-    return 'border-red-300 bg-red-50 dark:border-red-900 dark:bg-red-950/30';
-  }
-  if (severidad === 'warning') {
-    return 'border-amber-300 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30';
-  }
-  return 'border-stroke bg-white dark:border-dark-3 dark:bg-gray-dark';
-}
+import { cn } from '@/lib/utils';
 
 const INSIGHT_DRILL_LINKS: Record<string, string> = {
   promesas: '/cobranza/bandeja?soloPromesaVencida=1',
@@ -39,23 +36,76 @@ const INSIGHT_DRILL_LINKS: Record<string, string> = {
   'aging-alto': '/cobranza/cartera',
 };
 
-function DrillCard({
-  href,
-  children,
-  className,
-}: {
-  href?: string;
-  children: ReactNode;
-  className?: string;
-}) {
-  if (!href) {
-    return <div className={className}>{children}</div>;
-  }
-  return (
-    <Link href={href} className={`block transition hover:border-primary ${className ?? ''}`}>
-      {children}
-    </Link>
-  );
+function insightBadgeVariant(
+  severidad: string,
+): 'danger' | 'warning' | 'info' | 'success' | 'default' {
+  if (severidad === 'critical') return 'danger';
+  if (severidad === 'warning') return 'warning';
+  if (severidad === 'info') return 'info';
+  if (severidad === 'ok' || severidad === 'success') return 'success';
+  return 'default';
+}
+
+function insightBadgeLabel(severidad: string): string {
+  if (severidad === 'critical') return 'Crítico';
+  if (severidad === 'warning') return 'Atención';
+  if (severidad === 'info') return 'Info';
+  if (severidad === 'ok' || severidad === 'success') return 'Estable';
+  return severidad;
+}
+
+function moraTone(pct: number): DashboardMetric['tone'] {
+  if (pct >= 50) return 'danger';
+  if (pct >= 20) return 'warning';
+  return 'default';
+}
+
+function buildOpsMetrics(
+  centro: CentroInteligenciaResumen,
+  kpis: KpiCobranzaCore | undefined,
+): DashboardMetric[] {
+  const saldoMoraPct = kpis?.carteraEnMoraPct ?? null;
+  const prestamosMoraPct = centro.prestamosEnMoraPct;
+
+  return [
+    {
+      label: 'Saldo en mora',
+      value: saldoMoraPct != null ? `${saldoMoraPct}%` : '—',
+      sub: kpis
+        ? `${formatearMoneda(kpis.carteraEnMora)} de ${formatearMoneda(kpis.carteraTotal)}`
+        : 'Por saldo de cartera',
+      href: '/cobranza/cartera',
+      tone: saldoMoraPct != null ? moraTone(saldoMoraPct) : 'default',
+    },
+    {
+      label: 'Préstamos en mora',
+      value: `${prestamosMoraPct}%`,
+      sub: 'Por conteo · Ver cartera',
+      href: '/cobranza/cartera',
+      tone: moraTone(prestamosMoraPct),
+    },
+    {
+      label: 'Tasa de contacto',
+      value: kpis ? `${kpis.tasaContactoPct}%` : '—',
+      sub: kpis ? `${kpis.gestionesMes} gestiones en el mes` : undefined,
+      href: '/cobranza/gestiones',
+    },
+    {
+      label: 'Promesas abiertas',
+      value: kpis ? String(kpis.promesasAbiertas) : '—',
+      href: '/cobranza/bandeja',
+    },
+    {
+      label: 'Acuerdos vigentes',
+      value: kpis ? String(kpis.acuerdosVigentes) : '—',
+      href: '/cobranza/cartera?estado=Con%20acuerdo',
+    },
+    {
+      label: 'Cartera total',
+      value: kpis ? formatearMoneda(kpis.carteraTotal) : '—',
+      href: '/cobranza/cartera',
+    },
+  ];
 }
 
 export default function CentroInteligenciaPage() {
@@ -63,7 +113,7 @@ export default function CentroInteligenciaPage() {
 
   const mandanteId = idmandante === '' ? undefined : idmandante;
 
-  const { data, isLoading, refetch } = useGraphQLQuery<{
+  const { data, isLoading, error, refetch } = useGraphQLQuery<{
     centroInteligencia: CentroInteligenciaResumen;
   }>(GET_CENTRO_INTELIGENCIA, { idmandante: mandanteId });
 
@@ -112,6 +162,8 @@ export default function CentroInteligenciaPage() {
   const tendencia = chartsData?.tendenciaRecuperacion ?? [];
   const rollRate = chartsData?.rollRateCartera;
   const forecast = chartsData?.forecastRecuperacion;
+  const recuperacionUp =
+    centro != null && centro.variacionRecuperacionPct >= 0;
 
   return (
     <div className="space-y-8">
@@ -129,7 +181,7 @@ export default function CentroInteligenciaPage() {
         }
       />
 
-      <div className="rounded-lg border border-stroke bg-white p-4 dark:border-dark-3 dark:bg-gray-dark">
+      <div className="rounded-xl border border-stroke bg-white p-4 shadow-sm dark:border-dark-3 dark:bg-gray-dark">
         <MandanteSelect
           value={idmandante}
           onChange={setIdmandante}
@@ -138,134 +190,103 @@ export default function CentroInteligenciaPage() {
         />
       </div>
 
-      {isLoading && (
-        <p className="text-sm text-gray-500">Analizando cartera...</p>
-      )}
-
-      {centro && (
+      <AsyncPanel
+        isLoading={isLoading}
+        error={error}
+        isEmpty={!centro}
+        loadingMessage="Analizando cartera..."
+        emptyMessage="Sin datos de inteligencia para el filtro seleccionado."
+        errorMessage="No se pudo cargar el centro de inteligencia."
+      >
         <>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <DrillCard
-              href="/cobranza/reportes"
-              className="rounded-lg border p-4 dark:border-dark-3"
-            >
-              <p className="text-xs text-gray-500">Salud de cartera</p>
-              <p className="mt-1 text-3xl font-bold text-primary">
-                {centro.saludCartera}
+          <div className="overflow-hidden rounded-xl border border-stroke bg-white shadow-sm dark:border-dark-3 dark:bg-gray-dark">
+            <div className="border-b border-stroke px-4 py-2.5 dark:border-dark-3">
+              <p className="text-xs text-gray-5">
+                Estado general de la cartera · actualiza al filtrar mandante
               </p>
-              <p className="text-xs text-gray-400">Índice 0-100 · Ver reportes</p>
-            </DrillCard>
-            <DrillCard
-              href="/cobranza/reportes"
-              className="rounded-lg border p-4 dark:border-dark-3"
-            >
-              <p className="text-xs text-gray-500">Recuperación del mes</p>
-              <p className="mt-1 text-2xl font-bold">
-                {formatearMoneda(centro.recuperacionMes)}
-              </p>
-              <p
-                className={`text-xs ${
-                  centro.variacionRecuperacionPct >= 0
-                    ? 'text-green-600'
-                    : 'text-red-600'
-                }`}
-              >
-                {centro.variacionRecuperacionPct >= 0 ? '+' : ''}
-                {centro.variacionRecuperacionPct}% vs mes anterior
-              </p>
-            </DrillCard>
-            <DrillCard
-              href="/cobranza/cartera"
-              className="rounded-lg border p-4 dark:border-dark-3"
-            >
-              <p className="text-xs text-gray-500">Saldo en mora</p>
-              <p className="mt-1 text-2xl font-bold">
-                {kpis ? `${kpis.carteraEnMoraPct}%` : '—'}
-              </p>
-              <p className="text-xs text-gray-400">
-                {kpis
-                  ? `${formatearMoneda(kpis.carteraEnMora)} de ${formatearMoneda(kpis.carteraTotal)}`
-                  : 'Por saldo de cartera'}
-              </p>
-            </DrillCard>
-            <DrillCard
-              href="/cobranza/cartera"
-              className="rounded-lg border p-4 dark:border-dark-3"
-            >
-              <p className="text-xs text-gray-500">Préstamos en mora</p>
-              <p className="mt-1 text-2xl font-bold">
-                {centro.prestamosEnMoraPct}%
-              </p>
-              <p className="text-xs text-gray-400">Por conteo · Ver cartera</p>
-            </DrillCard>
-          </div>
-
-          {kpis && (
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <DrillCard
-                href="/cobranza/gestiones"
-                className="rounded-lg border p-4 dark:border-dark-3"
-              >
-                <p className="text-xs text-gray-500">Tasa de contacto</p>
-                <p className="mt-1 text-2xl font-bold">{kpis.tasaContactoPct}%</p>
-                <p className="text-xs text-gray-400">
-                  {kpis.gestionesMes} gestiones en el mes
-                </p>
-              </DrillCard>
-              <DrillCard
-                href="/cobranza/bandeja"
-                className="rounded-lg border p-4 dark:border-dark-3"
-              >
-                <p className="text-xs text-gray-500">Promesas abiertas</p>
-                <p className="mt-1 text-2xl font-bold">{kpis.promesasAbiertas}</p>
-              </DrillCard>
-              <DrillCard
-                href="/cobranza/cartera?estado=Con%20acuerdo"
-                className="rounded-lg border p-4 dark:border-dark-3"
-              >
-                <p className="text-xs text-gray-500">Acuerdos vigentes</p>
-                <p className="mt-1 text-2xl font-bold">{kpis.acuerdosVigentes}</p>
-              </DrillCard>
-              <DrillCard
-                href="/cobranza/cartera"
-                className="rounded-lg border p-4 dark:border-dark-3"
-              >
-                <p className="text-xs text-gray-500">Cartera total</p>
-                <p className="mt-1 text-xl font-bold">
-                  {formatearMoneda(kpis.carteraTotal)}
-                </p>
-              </DrillCard>
             </div>
-          )}
+            <div className="grid grid-cols-1 divide-y divide-stroke sm:grid-cols-2 sm:divide-x sm:divide-y-0 dark:divide-dark-3">
+              <Link
+                href="/cobranza/reportes"
+                className="min-w-0 bg-primary/[0.06] px-5 py-5 transition-colors hover:bg-primary/[0.1] dark:bg-primary/10 dark:hover:bg-primary/15"
+              >
+                <p className="text-[11px] font-medium uppercase tracking-wide text-gray-5">
+                  Salud de cartera
+                </p>
+                <p className="mt-2 text-4xl font-bold tabular-nums text-primary">
+                  {centro?.saludCartera}
+                </p>
+                <p className="mt-1 text-xs text-gray-5">
+                  Índice 0-100 · Ver reportes
+                </p>
+              </Link>
+              <Link
+                href="/cobranza/reportes"
+                className="min-w-0 px-5 py-5 transition-colors hover:bg-primary/[0.06] dark:hover:bg-primary/10"
+              >
+                <p className="text-[11px] font-medium uppercase tracking-wide text-gray-5">
+                  Recuperación del mes
+                </p>
+                <p className="mt-2 text-3xl font-bold tabular-nums text-dark dark:text-white">
+                  {formatearMoneda(centro.recuperacionMes)}
+                </p>
+                <p
+                  className={cn(
+                    'mt-1 text-xs font-medium',
+                    recuperacionUp ? 'text-green-600' : 'text-red-600',
+                  )}
+                >
+                  {recuperacionUp ? '+' : ''}
+                  {centro.variacionRecuperacionPct}% vs mes anterior
+                </p>
+              </Link>
+            </div>
+          </div>
 
           <div>
-            <h2 className="mb-3 text-lg font-semibold">Alertas operativas</h2>
-            <AlertasOperativasPanel
-              promesasVencidas={centro.promesasVencidas}
-              acuerdosEnRiesgo={centro.acuerdosEnRiesgo}
-              reclamosFueraSla={centro.reclamosFueraSla}
-            />
+            <h2 className="mb-3 text-lg font-semibold text-dark dark:text-white">
+              Indicadores operativos
+            </h2>
+            <DashboardMetricStrip metrics={buildOpsMetrics(centro, kpis)} />
           </div>
+
+          <AlertasOperativasPanel
+            promesasVencidas={centro.promesasVencidas}
+            acuerdosEnRiesgo={centro.acuerdosEnRiesgo}
+            reclamosFueraSla={centro.reclamosFueraSla}
+          />
 
           {forecast && <ForecastPanel forecast={forecast} />}
 
           <div className="grid gap-6 lg:grid-cols-2">
             <div>
-              <h2 className="mb-3 text-lg font-semibold">Insights</h2>
+              <h2 className="mb-3 text-lg font-semibold text-dark dark:text-white">
+                Insights
+              </h2>
               <div className="space-y-3">
                 {centro.insights.map((insight) => {
                   const drillHref = INSIGHT_DRILL_LINKS[insight.id];
                   const inner = (
                     <>
                       <div className="flex items-start justify-between gap-2">
-                        <p className="font-medium">{insight.titulo}</p>
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                          <Badge
+                            variant={insightBadgeVariant(insight.severidad)}
+                            size="sm"
+                          >
+                            {insightBadgeLabel(insight.severidad)}
+                          </Badge>
+                          <p className="font-medium text-dark dark:text-white">
+                            {insight.titulo}
+                          </p>
+                        </div>
                         {insight.metrica && (
                           <span className="shrink-0 text-xs font-semibold text-primary">
                             {insight.metrica}
                           </span>
                         )}
                       </div>
-                      <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                      <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
                         {insight.descripcion}
                       </p>
                       {insight.accionSugerida && (
@@ -275,19 +296,20 @@ export default function CentroInteligenciaPage() {
                       )}
                     </>
                   );
+
+                  const cardClass =
+                    'block rounded-xl border border-stroke bg-white p-4 shadow-sm transition hover:border-primary dark:border-dark-3 dark:bg-gray-dark';
+
                   return drillHref ? (
                     <Link
                       key={insight.id}
                       href={drillHref}
-                      className={`block rounded-lg border p-4 transition hover:border-primary ${severidadClass(insight.severidad)}`}
+                      className={cardClass}
                     >
                       {inner}
                     </Link>
                   ) : (
-                    <div
-                      key={insight.id}
-                      className={`rounded-lg border p-4 ${severidadClass(insight.severidad)}`}
-                    >
+                    <div key={insight.id} className={cardClass}>
                       {inner}
                     </div>
                   );
@@ -302,22 +324,26 @@ export default function CentroInteligenciaPage() {
           </div>
 
           {rollRate && rollRate.buckets.length > 0 && (
-            <div>
-              <h2 className="mb-3 text-lg font-semibold">
-                Roll-rate de estados ({rollRate.periodoDesde} —{' '}
-                {rollRate.periodoHasta})
-              </h2>
-              <p className="mb-2 text-xs text-gray-500">
-                {rollRate.totalTransiciones} transiciones en el periodo
-              </p>
-              <div className="overflow-x-auto rounded-lg border dark:border-dark-3">
+            <Card className="rounded-xl" padding="md">
+              <CardHeader className="mb-2">
+                <div>
+                  <CardTitle>
+                    Movimiento de estados de cartera
+                  </CardTitle>
+                  <p className="mt-1 text-xs text-gray-5">
+                    {rollRate.periodoDesde} — {rollRate.periodoHasta} ·{' '}
+                    {rollRate.totalTransiciones} transiciones en el periodo
+                  </p>
+                </div>
+              </CardHeader>
+              <div className="overflow-x-auto rounded-lg border border-stroke dark:border-dark-3">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-gray-50 text-left dark:border-dark-3 dark:bg-dark-2">
-                      <th className="p-3">Origen</th>
-                      <th>Destino</th>
-                      <th>Cantidad</th>
-                      <th>% del origen</th>
+                      <th className="p-3 font-medium">Origen</th>
+                      <th className="font-medium">Destino</th>
+                      <th className="font-medium">Cantidad</th>
+                      <th className="font-medium">% del origen</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -328,17 +354,17 @@ export default function CentroInteligenciaPage() {
                       >
                         <td className="p-3">{b.estadoOrigen}</td>
                         <td>{b.estadoDestino}</td>
-                        <td>{b.cantidad}</td>
-                        <td>{b.pct}%</td>
+                        <td className="tabular-nums">{b.cantidad}</td>
+                        <td className="tabular-nums">{b.pct}%</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-            </div>
+            </Card>
           )}
         </>
-      )}
+      </AsyncPanel>
     </div>
   );
 }

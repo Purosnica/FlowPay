@@ -416,3 +416,26 @@ export function UploadIcon(props: IconProps) {
     </svg>
   );
 }
+
+export function EyeIcon(props: IconProps) {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 18 18"
+      fill="currentColor"
+      {...props}
+    >
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M9 3.375C5.522 3.375 2.68 5.512 1.406 8.437a.937.937 0 0 0 0 .876C2.68 12.238 5.522 14.375 9 14.375s6.32-2.137 7.594-5.062a.937.937 0 0 0 0-.876C15.32 5.512 12.478 3.375 9 3.375ZM.469 8.75C1.875 5.25 5.156 2.813 9 2.813s7.125 2.437 8.531 5.937c.125.312.125.688 0 1C16.125 13.25 12.844 15.688 9 15.688S1.875 13.25.469 9.75a1.5 1.5 0 0 1 0-1Z"
+      />
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M9 6.563a2.437 2.437 0 1 0 0 4.874 2.437 2.437 0 0 0 0-4.874ZM5.813 9a3.187 3.187 0 1 1 6.374 0 3.187 3.187 0 0 1-6.374 0Z"
+      />
+    </svg>
+  );
+}

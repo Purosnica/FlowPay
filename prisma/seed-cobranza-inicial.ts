@@ -64,25 +64,39 @@ export async function seedCobranzaInicial(): Promise<void> {
   const cobrador = await prisma.tbl_usuario.findUnique({
     where: { email: 'cobrador@flowpay.com' },
   });
+  const supervisor = await prisma.tbl_usuario.findUnique({
+    where: { email: 'supervisor@flowpay.com' },
+  });
+  const gerente = await prisma.tbl_usuario.findUnique({
+    where: { email: 'gerente@flowpay.com' },
+  });
+
+  const usuariosMandante = [cobrador, supervisor, gerente].filter(
+    (u): u is NonNullable<typeof u> => u !== null,
+  );
+
+  for (const usuario of usuariosMandante) {
+    await prisma.tbl_usuario_mandante.upsert({
+      where: {
+        idusuario_idmandante: {
+          idusuario: usuario.idusuario,
+          idmandante: mandante.idmandante,
+        },
+      },
+      create: {
+        idusuario: usuario.idusuario,
+        idmandante: mandante.idmandante,
+      },
+      update: {},
+    });
+    console.log(`  ✅ Usuario ${usuario.email} asignado a CREDICOMPRAS`);
+  }
+
   if (cobrador) {
     await prisma.tbl_usuario.update({
       where: { idusuario: cobrador.idusuario },
       data: { porcentajeComision: 3 },
     });
-    await prisma.tbl_usuario_mandante.upsert({
-      where: {
-        idusuario_idmandante: {
-          idusuario: cobrador.idusuario,
-          idmandante: mandante.idmandante,
-        },
-      },
-      create: {
-        idusuario: cobrador.idusuario,
-        idmandante: mandante.idmandante,
-      },
-      update: {},
-    });
-    console.log('  ✅ Cobrador asignado a CREDICOMPRAS');
   }
 
   const tramosComision = [

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { DeleteRowButton } from '@/components/ui/row-action-buttons';
 import { PaginatedDataTable } from '@/components/cobranza/paginated-data-table';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { useGraphQLMutation } from '@/hooks/use-graphql-mutation';
@@ -112,13 +113,9 @@ export function FiadorPanel({ idprestamo }: FiadorPanelProps) {
         onPageSizeChange={handlePageSizeChange}
         itemLabel="fiadores"
         rowActions={(f) => (
-          <Button
-            size="sm"
-            variant="outline"
+          <DeleteRowButton
             onClick={() => deleteMutation.mutate({ idfiador: f.idfiador })}
-          >
-            Eliminar
-          </Button>
+          />
         )}
       />
     </div>

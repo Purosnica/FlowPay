@@ -12,7 +12,12 @@ import { handleApiError } from '@/lib/api/error-handler';
 import { loginSchema } from '@/lib/validators/auth';
 import { checkRateLimit, RATE_LIMIT_CONFIG } from '@/lib/security/rate-limit-service';
 import { getRequestInfo } from '@/lib/middleware/auth';
-import { validarCsrfHeader } from '@/lib/security/csrf';
+import {
+  CSRF_COOKIE,
+  csrfCookieOptions,
+  generarTokenCsrf,
+  validarCsrfHeader,
+} from '@/lib/security/csrf';
 import { logger } from '@/lib/utils/logger';
 
 /**
@@ -103,6 +108,7 @@ export async function POST(req: NextRequest) {
       maxAge: 60 * 60 * 8,
       path: '/',
     });
+    response.cookies.set(CSRF_COOKIE, generarTokenCsrf(), csrfCookieOptions());
 
     return response;
   } catch (error) {

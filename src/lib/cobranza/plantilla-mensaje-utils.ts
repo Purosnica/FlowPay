@@ -1,10 +1,14 @@
 /**
- * Sustitución de variables en plantillas de cobro (WhatsApp / SMS).
+ * Sustitución de variables en plantillas de cobro (WhatsApp / SMS / Email).
  */
 
 import { simularAcuerdo } from './acuerdo-simulator';
-import { formatearMoneda ,type  Acuerdo,type  Prestamo,type  PrestamoCliente } from '@/types/cobranza';
-
+import {
+  formatearMoneda,
+  type Acuerdo,
+  type Prestamo,
+  type PrestamoCliente,
+} from '@/types/cobranza';
 
 export const PLANTILLA_VARIABLES_AYUDA = [
   '{{nombre}}',
@@ -20,18 +24,21 @@ export const PLANTILLA_VARIABLES_AYUDA = [
   '{{pagoMinimo}}',
   '{{telefono}}',
   '{{celular}}',
+  '{{email}}',
   '{{mandante}}',
   '{{moneda}}',
   '{{fechaVencimiento}}',
   '{{fechaLimite}}',
 ] as const;
 
-export interface PlantillaMensajeContext {  prestamo: Pick<
+export type PlantillaMensajeContext = {
+  prestamo: Pick<
     Prestamo,
     | 'noPrestamo'
     | 'saldoTotal'
     | 'diasMora'
     | 'interesMoratorio'
+    | 'gestionCobranza'
     | 'moneda'
     | 'fechaVencimiento'
   >;
@@ -44,6 +51,7 @@ export interface PlantillaMensajeContext {  prestamo: Pick<
     | 'numerodocumento'
     | 'celular'
     | 'telefono'
+    | 'email'
   > | null;
   mandanteNombre?: string | null;
   acuerdoVigente?: Pick<
@@ -55,13 +63,15 @@ export interface PlantillaMensajeContext {  prestamo: Pick<
     | 'pagoMinimo'
     | 'porcentajeDesc'
     | 'numeroCuotas'
+    | 'dispensarInteresMoratorio'
+    | 'dispensarGestionCobranza'
   > | null;
   /** Fecha límite promocional (ej. fin de feria de descuentos). */
   fechaLimite?: string | null;
   /** Porcentaje de descuento para simulación si no hay acuerdo. */
   porcentajeDescSimulado?: number;
   numeroCuotasSimulado?: number;
-}
+};
 
 function formatFecha(iso: string | null | undefined): string {
   if (!iso) {
@@ -80,6 +90,7 @@ export function buildPlantillaContextFromPrestamo(
       saldoTotal: prestamo.saldoTotal,
       diasMora: prestamo.diasMora,
       interesMoratorio: prestamo.interesMoratorio,
+      gestionCobranza: prestamo.gestionCobranza ?? 0,
       moneda: prestamo.moneda,
       fechaVencimiento: prestamo.fechaVencimiento,
     },
@@ -122,12 +133,14 @@ export function construirVariablesPlantilla(
     : simularAcuerdo({
         saldoTotal: prestamo.saldoTotal,
         interesMoratorio: prestamo.interesMoratorio,
+        gestionCobranza: prestamo.gestionCobranza ?? 0,
         porcentajeDesc: ctx.porcentajeDescSimulado ?? 10,
         numeroCuotas: ctx.numeroCuotasSimulado ?? 1,
       });
 
   const nombre = formatNombreCliente(cliente);
   const telefono = cliente?.celular ?? cliente?.telefono ?? '';
+  const email = cliente?.email ?? '';
   const mandante = mandanteNombre ?? '';
   const mandanteLegal = mandante.toUpperCase().includes('CREDICOMPRAS')
     ? 'TICTAC S.A.'
@@ -148,6 +161,7 @@ export function construirVariablesPlantilla(
     pagoMinimo: formatearMoneda(simAcuerdo.pagoMinimo, moneda),
     telefono,
     celular: telefono,
+    email,
     mandante,
     mandanteLegal,
     moneda,
@@ -181,4 +195,17 @@ export function enlaceWhatsApp(telefono: string, mensaje: string): string {
 export function enlaceSms(telefono: string, mensaje: string): string {
   const numero = normalizarTelefonoWhatsApp(telefono);
   return `sms:${numero}?body=${encodeURIComponent(mensaje)}`;
+}
+
+export function construirAsuntoCobroPlantilla(
+  plantillaNombre: string | undefined,
+  noPrestamo: string | undefined,
+): string {
+  if (plantillaNombre?.trim()) {
+    return plantillaNombre.trim();
+  }
+  if (noPrestamo?.trim()) {
+    return `Gestión de cobro - Préstamo ${noPrestamo.trim()}`;
+  }
+  return 'Gestión de cobro';
 }

@@ -2,6 +2,7 @@ import { builder ,type  GraphQLContext } from '../../builder';
 
 import { requerirPermiso } from '@/lib/permissions/permission-service';
 import { PERMISO } from '@/lib/permissions/permiso-codes';
+import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
 import {
   RolGestion,
   CreateRolInput,
@@ -43,7 +44,7 @@ async function mapRolGestion(
   });
 
   if (!rol) {
-    throw new Error('Rol no encontrado');
+    throw new GraphQLValidationError('Rol no encontrado');
   }
 
   return {
@@ -69,7 +70,7 @@ builder.mutationField('createRol', (t) =>
       });
 
       if (existe) {
-        throw new Error('Ya existe un rol con ese código');
+        throw new GraphQLValidationError('Ya existe un rol con ese código');
       }
 
       const rol = await ctx.prisma.tbl_rol.create({
@@ -98,7 +99,7 @@ builder.mutationField('updateRol', (t) =>
       });
 
       if (!rol) {
-        throw new Error('Rol no encontrado');
+        throw new GraphQLValidationError('Rol no encontrado');
       }
 
       if (data.codigo && data.codigo !== rol.codigo) {
@@ -111,7 +112,7 @@ builder.mutationField('updateRol', (t) =>
         });
 
         if (existe) {
-          throw new Error('Ya existe un rol con ese código');
+          throw new GraphQLValidationError('Ya existe un rol con ese código');
         }
       }
 
@@ -142,7 +143,7 @@ builder.mutationField('setPermisosRol', (t) =>
       });
 
       if (!rol) {
-        throw new Error('Rol no encontrado');
+        throw new GraphQLValidationError('Rol no encontrado');
       }
 
       const permisosValidos = await ctx.prisma.tbl_permiso.findMany({

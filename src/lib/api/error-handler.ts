@@ -5,10 +5,11 @@
  * y retornar respuestas apropiadas al frontend
  */
 
-import { NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
-import { ServicioError, ErrorCode } from "@/lib/services/error-types";
-import { logger } from "@/lib/utils/logger";
+import { NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
+import { ZodError } from 'zod';
+import { ServicioError, ErrorCode } from '@/lib/services/error-types';
+import { logger } from '@/lib/utils/logger';
 
 export interface ApiErrorResponse {
   success: false;
@@ -21,7 +22,7 @@ export interface ApiErrorResponse {
  * Maneja errores y retorna respuesta apropiada
  */
 export function handleApiError(error: unknown): NextResponse<ApiErrorResponse> {
-  logger.error("API Error", error instanceof Error ? error : undefined);
+  logger.error('API Error', error instanceof Error ? error : undefined);
 
   // Error de servicio personalizado
   if (error instanceof ServicioError) {
@@ -33,7 +34,23 @@ export function handleApiError(error: unknown): NextResponse<ApiErrorResponse> {
         code: error.code,
         detalles: error.detalles,
       },
-      { status: statusCode }
+      { status: statusCode },
+    );
+  }
+
+  // Error de validación Zod
+  if (error instanceof ZodError) {
+    const firstIssue = error.issues[0];
+    return NextResponse.json(
+      {
+        success: false,
+        error: firstIssue?.message || 'Datos de entrada inválidos',
+        code: 'VALIDACION_ERROR',
+        detalles: {
+          path: firstIssue?.path?.join('.') || undefined,
+        },
+      },
+      { status: 400 },
     );
   }
 
@@ -47,11 +64,10 @@ export function handleApiError(error: unknown): NextResponse<ApiErrorResponse> {
     return NextResponse.json(
       {
         success: false,
-        error: "Error de validación de datos",
-        code: "VALIDACION_ERROR",
-        detalles: { message: error.message },
+        error: 'Error de validación de datos',
+        code: 'VALIDACION_ERROR',
       },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -75,14 +91,14 @@ export function handleApiError(error: unknown): NextResponse<ApiErrorResponse> {
     );
   }
 
-  // Error genérico
+  // Error genérico: no filtrar detalles internos al cliente
   return NextResponse.json(
     {
       success: false,
-      error: errorMessage,
-      code: "INTERNAL_ERROR",
+      error: 'Error interno del servidor',
+      code: 'INTERNAL_ERROR',
     },
-    { status: 500 }
+    { status: 500 },
   );
 }
 

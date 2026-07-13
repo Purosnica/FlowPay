@@ -28,7 +28,7 @@ Evolución planificada post-preparación Enterprise (Fases 1–13).
 
 | ID | Iniciativa | Valor |
 |----|------------|-------|
-| PP-1 | `prisma migrate` formal (reemplazar `db push` en prod) | Gobernanza schema |
+| PP-1 | `prisma migrate` formal (baseline `20260711120000_baseline`) | Hecho — usar `migrate deploy` / `db:migrate:resolve-baseline` |
 | PP-2 | Object storage para uploads/import (S3/Azure) | Escalabilidad horizontal |
 | PP-3 | Observabilidad (logs estructurados, métricas APM) | Operaciones |
 | PP-4 | Backup y DR documentado | Continuidad |
@@ -64,10 +64,10 @@ Evolución planificada post-preparación Enterprise (Fases 1–13).
 
 | Item | Riesgo | Mitigación planificada |
 |------|--------|------------------------|
-| Uploads en disco local | Multi-instancia | PP-2 object storage |
+| Uploads en disco local | Multi-instancia | Aceptado por ahora (funcional) |
 | Rate limit in-memory en dev | Solo dev/test | OK por diseño |
 | Smoke test lento en BD remota | CI | Mock o BD efímera |
-| Admin con permisos extra en BD | Drift | Seed idempotente |
+| Admin con permisos extra en BD | Drift | `scripts/check-role-drift.ts` (incluye ADMIN/GERENTE) |
 
 ---
 

@@ -6,6 +6,7 @@ import { PERMISO } from "@/lib/permissions/permiso-codes";
 import { requerirAccesoMandante } from "@/lib/cobranza/mandante-scope";
 import { GraphQLValidationError } from "@/lib/errors/graphql-errors";
 import { asignarGestorConHistorial } from "@/lib/cobranza/asignacion-cartera-service";
+import { emitirNotificacionAsignacion } from "@/lib/cobranza/notificacion-emision-service";
 import {
   ESTADOS_PRESTAMO,
   transicionarEstadoPrestamo,
@@ -17,7 +18,6 @@ const TransicionEstadoInputSchema = z.object({
   idprestamo: z.number().int().positive(),
   estadoNuevo: z.string().min(1),
   motivo: z.string().optional(),
-  forzar: z.boolean().optional(),
 });
 
 builder.mutationField("createPrestamo", (t) =>
@@ -46,17 +46,20 @@ builder.mutationField("asignarGestorPrestamo", (t) =>
     },
     resolve: async (query, _parent, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.CARTERA_WRITE);
+      if (!ctx.usuario) {
+        throw new GraphQLValidationError('Debes estar autenticado.');
+      }
       const prestamo = await ctx.prisma.tbl_prestamo.findUnique({
         where: { idprestamo: args.idprestamo },
       });
       if (!prestamo || prestamo.deletedAt) {
         throw new GraphQLValidationError("Préstamo no encontrado.");
       }
-      await requerirAccesoMandante(ctx.usuario?.idusuario, prestamo.idmandante);
+      await requerirAccesoMandante(ctx.usuario.idusuario, prestamo.idmandante);
       await asignarGestorConHistorial(
         args.idprestamo,
         args.idgestor,
-        ctx.usuario?.idusuario ?? 0,
+        ctx.usuario.idusuario,
         args.motivo,
       );
       return ctx.prisma.tbl_prestamo.findUnique({
@@ -77,7 +80,11 @@ builder.mutationField('asignarGestorMasivo', (t) =>
     },
     resolve: async (_parent, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.CARTERA_WRITE);
-      let actualizados = 0;
+      if (!ctx.usuario) {
+        throw new GraphQLValidationError('Debes estar autenticado.');
+      }
+      const idusuario = ctx.usuario.idusuario;
+      const asignados: number[] = [];
       for (const idprestamo of args.idprestamos) {
         const prestamo = await ctx.prisma.tbl_prestamo.findUnique({
           where: { idprestamo },
@@ -85,16 +92,24 @@ builder.mutationField('asignarGestorMasivo', (t) =>
         if (!prestamo || prestamo.deletedAt) {
           continue;
         }
-        await requerirAccesoMandante(ctx.usuario?.idusuario, prestamo.idmandante);
+        await requerirAccesoMandante(idusuario, prestamo.idmandante);
         await asignarGestorConHistorial(
           idprestamo,
           args.idgestor,
-          ctx.usuario?.idusuario ?? 0,
+          idusuario,
           args.motivo,
+          { omitirNotificacion: true },
         );
-        actualizados++;
+        asignados.push(idprestamo);
       }
-      return actualizados;
+      if (asignados.length > 0) {
+        await emitirNotificacionAsignacion(
+          args.idgestor,
+          idusuario,
+          asignados,
+        );
+      }
+      return asignados.length;
     },
   }),
 );
@@ -124,15 +139,24 @@ builder.mutationField('transicionarEstadoPrestamo', (t) =>
         throw new GraphQLValidationError('Préstamo no encontrado.');
       }
       await requerirAccesoMandante(ctx.usuario?.idusuario, prestamo.idmandante);
-      await ctx.prisma.$transaction(async (tx) => {
-        await transicionarEstadoPrestamo(tx, {
-          idprestamo: data.idprestamo,
-          estadoNuevo: data.estadoNuevo,
-          idusuario: ctx.usuario?.idusuario,
-          motivo: data.motivo,
-          forzar: data.forzar,
+      try {
+        await ctx.prisma.$transaction(async (tx) => {
+          await transicionarEstadoPrestamo(tx, {
+            idprestamo: data.idprestamo,
+            estadoNuevo: data.estadoNuevo,
+            idusuario: ctx.usuario?.idusuario,
+            motivo: data.motivo,
+          });
         });
-      });
+      } catch (error: unknown) {
+        if (
+          error instanceof Error &&
+          error.message.startsWith('Transición no permitida')
+        ) {
+          throw new GraphQLValidationError(error.message);
+        }
+        throw error;
+      }
       return ctx.prisma.tbl_prestamo.findUniqueOrThrow({
         ...(query as Record<string, unknown>),
         where: { idprestamo: data.idprestamo },

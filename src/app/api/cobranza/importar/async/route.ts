@@ -3,13 +3,14 @@ import { NextResponse ,type  NextRequest } from 'next/server';
 import { z } from 'zod';
 import { requirePermission } from '@/lib/middleware/auth';
 import { PERMISO } from '@/lib/permissions/permiso-codes';
-import { crearImportacionJob, procesarImportacionesPendientes } from '@/lib/cobranza/import/importacion-job-service';
+import { crearImportacionJob, dispararProcesamientoImportaciones } from '@/lib/cobranza/import/importacion-job-service';
 import type { TipoImportacionCobranza } from '@/lib/cobranza/import/import-orchestrator';
 import {
+  esExtensionImportacionValida,
   MAX_IMPORT_FILE_BYTES,
   mensajeArchivoExcedeLimite,
+  mensajeFormatoImportacionNoSoportado,
 } from '@/lib/cobranza/upload-limits';
-import { obtenerImportMaxJobsPerRun } from '@/lib/scalability/scalability-config';
 
 export const maxDuration = 60;
 
@@ -40,6 +41,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     if (archivo.size > MAX_IMPORT_FILE_BYTES) {
       return NextResponse.json(
         { success: false, error: mensajeArchivoExcedeLimite(MAX_IMPORT_FILE_BYTES) },
+        { status: 400 },
+      );
+    }
+
+    if (!esExtensionImportacionValida(archivo.name)) {
+      return NextResponse.json(
+        { success: false, error: mensajeFormatoImportacionNoSoportado() },
         { status: 400 },
       );
     }
@@ -89,9 +97,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       idplantillaImp,
     });
 
-    void procesarImportacionesPendientes(obtenerImportMaxJobsPerRun()).catch(
-      () => undefined,
-    );
+    dispararProcesamientoImportaciones(req.nextUrl.origin);
 
     return NextResponse.json({
       success: true,

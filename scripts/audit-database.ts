@@ -129,6 +129,7 @@ async function liveStats(prisma: PrismaClient): Promise<void> {
     'tbl_auditoria',
     'tbl_usuario_mandante',
     'tbl_notificacion_lectura',
+    'tbl_notificacion',
   ];
 
   for (const table of tables) {
@@ -147,11 +148,18 @@ async function liveStats(prisma: PrismaClient): Promise<void> {
     Array<{ TABLE_NAME: string }>
   >(
     `SELECT TABLE_NAME FROM information_schema.TABLES
-     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tbl_notificacion_lectura'`,
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME IN ('tbl_notificacion_lectura', 'tbl_notificacion')`,
   );
-  if (missingNotif.length === 0) {
+  const existing = new Set(missingNotif.map((r) => r.TABLE_NAME));
+  if (!existing.has('tbl_notificacion_lectura')) {
     console.log(
       '\n⚠ tbl_notificacion_lectura NO existe en BD — ejecutar: npx prisma db push',
+    );
+  }
+  if (!existing.has('tbl_notificacion')) {
+    console.log(
+      '\n⚠ tbl_notificacion NO existe en BD — ejecutar: npx prisma db push',
     );
   }
 }
@@ -199,6 +207,7 @@ async function main(): Promise<void> {
     'tbl_liquidacion',
     'tbl_auditoria',
     'tbl_notificacion_lectura',
+    'tbl_notificacion',
   ];
   for (const table of critical) {
     const model = models.find((m) => m.table === table);
@@ -231,6 +240,7 @@ async function main(): Promise<void> {
   console.log('  tbl_auditoria: append-only — retención/archivado recomendado >1M filas');
   console.log('  tbl_prestamo_corte: crece con cada carga — OK con índice idprestamo+fechaCorte');
   console.log('  tbl_notificacion_lectura: bajo volumen — unique (idusuario, notificacionId)');
+  console.log('  tbl_notificacion: crece con actividad — índice (idusuario, leida, createdAt)');
 
   console.log('\n=== MEJORAS APLICADAS EN SCHEMA (Fase 5) ===');
   console.log('  tbl_usuario_mandante: @@index([idusuario])');

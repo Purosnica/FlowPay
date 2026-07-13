@@ -5,7 +5,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
-import { verifyPassword, simpleHash } from "./password";
+import { verifyPassword, simpleHash, hashPassword, isBcryptHash } from "./password";
 import { type JWTPayload , generateToken } from "./jwt";
 import { obtenerPermisosUsuario } from "@/lib/permissions/permission-service";
 
@@ -65,6 +65,7 @@ export async function authenticateUser(
     // Verificar contraseña
     // Soporta bcrypt (nuevo) y SHA-256 (legacy para migración)
     let passwordValid = false;
+    let requiereUpgradeHash = false;
 
     if (usuario.passwordHash) {
       // Usar verifyPassword que soporta bcrypt y SHA-256 legacy
@@ -73,9 +74,12 @@ export async function authenticateUser(
         usuario.passwordHash,
         usuario.salt || ""
       );
+      requiereUpgradeHash =
+        passwordValid && !isBcryptHash(usuario.passwordHash);
     } else if (usuario.password) {
       // Para usuarios existentes sin hash/salt, comparar hash simple SHA-256
       passwordValid = simpleHash(credentials.password) === usuario.password;
+      requiereUpgradeHash = passwordValid;
     } else {
       return {
         success: false,
@@ -90,15 +94,30 @@ export async function authenticateUser(
       };
     }
 
+    if (requiereUpgradeHash) {
+      const { hash, salt } = await hashPassword(credentials.password);
+      await prisma.tbl_usuario.update({
+        where: { idusuario: usuario.idusuario },
+        data: {
+          passwordHash: hash,
+          salt,
+          password: null,
+        },
+      });
+    }
+
     // Generar token JWT
     const permisos = await obtenerPermisosUsuario(usuario.idusuario);
 
+    const ahora = Math.floor(Date.now() / 1000);
     const payload: JWTPayload = {
       idusuario: usuario.idusuario,
       email: usuario.email,
       nombre: usuario.nombre,
       idrol: usuario.idrol || 0,
       permisos,
+      sessionStartedAt: ahora,
+      permisosAt: ahora,
     };
 
     const token = generateToken(payload);
@@ -124,13 +143,12 @@ export async function authenticateUser(
       },
     };
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : "Error desconocido";
     logger.error("Error en autenticación", error instanceof Error ? error : undefined, {
       email: credentials.email,
     });
     return {
       success: false,
-      error: errorMessage || "Error al autenticar usuario",
+      error: "Error al autenticar usuario",
     };
   }
 }

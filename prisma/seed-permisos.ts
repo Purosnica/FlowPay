@@ -95,17 +95,26 @@ export async function seedPermisos() {
   );
   console.log(`  ✅ ${countAdmin} permisos asignados a ADMIN`);
 
-  const rolCobrador = await prisma.tbl_rol.findUnique({
+  let rolCobrador = await prisma.tbl_rol.findUnique({
     where: { codigo: 'COBRADOR' },
   });
 
-  if (rolCobrador) {
-    const count = await asignarPermisosARol(
-      rolCobrador.idrol,
-      PERMISOS_COBRADOR,
-    );
-    console.log(`  ✅ ${count} permisos asignados a COBRADOR`);
+  if (!rolCobrador) {
+    rolCobrador = await prisma.tbl_rol.create({
+      data: {
+        codigo: 'COBRADOR',
+        descripcion: 'Cobrador de cartera',
+        estado: true,
+      },
+    });
+    console.log('  ✅ Rol COBRADOR creado');
   }
+
+  const countCobrador = await asignarPermisosARol(
+    rolCobrador.idrol,
+    PERMISOS_COBRADOR,
+  );
+  console.log(`  ✅ ${countCobrador} permisos asignados a COBRADOR`);
 
   let rolSupervisor = await prisma.tbl_rol.findUnique({
     where: { codigo: 'SUPERVISOR' },

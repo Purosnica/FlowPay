@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { rateLimiter, RATE_LIMIT_CONFIG } from '@/lib/security/rate-limit';
 import { usarRateLimitDb } from '@/lib/scalability/scalability-config';
+import { logger } from '@/lib/utils/logger';
 
 export { RATE_LIMIT_CONFIG };
 
@@ -34,6 +35,7 @@ async function checkRateLimitDb(
 
 /**
  * Rate limit compatible con múltiples instancias (DB en producción).
+ * Si la BD falla en producción → fail-closed (deniega) para no abrir bypass.
  */
 export async function checkRateLimit(
   identifier: string,
@@ -46,7 +48,14 @@ export async function checkRateLimit(
 
   try {
     return await checkRateLimitDb(identifier, maxRequests, windowMs);
-  } catch {
+  } catch (error) {
+    logger.error(
+      'Rate limit DB falló',
+      error instanceof Error ? error : undefined,
+    );
+    if (process.env.NODE_ENV === 'production') {
+      return false;
+    }
     return rateLimiter.check(identifier, maxRequests, windowMs);
   }
 }

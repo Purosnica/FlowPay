@@ -90,6 +90,9 @@ function convertirValor(
     case 'gestionCobranza':
     case 'seguroSvsd':
     case 'cargosAdmin':
+    case 'devolucionSaldoFavor':
+    case 'descuentosArchivo':
+    case 'totalPagosArchivo':
     case 'tipoCambio':
       return parseNumero(raw);
     case 'diasMora':

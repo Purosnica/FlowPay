@@ -4,14 +4,17 @@ import { useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { ClientPaginatedDataTable } from '@/components/cobranza/client-paginated-data-table';
 import { Button } from '@/components/ui/button';
-import { KpiCard } from '@/components/cobranza/kpi-card';
+import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { MandanteSelect } from '@/components/cobranza/mandante-select';
 import { TendenciaRecuperacionChart } from '@/components/cobranza/tendencia-recuperacion-chart';
+import { ForecastPanel } from '@/components/cobranza/forecast-panel';
 import { PageHeader } from '@/components/ui/page-header';
-import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import {
-  GET_REPORTES_DASHBOARD,
-} from '@/lib/graphql/queries/cobranza.queries';
+  DashboardMetricStrip,
+  type DashboardMetric,
+} from '@/components/dashboard/dashboard-metric-strip';
+import { useGraphQLQuery } from '@/hooks/use-graphql-query';
+import { GET_REPORTES_DASHBOARD } from '@/lib/graphql/queries/cobranza.queries';
 import {
   type AgingTramoReporte,
   type KpiCobranzaCore,
@@ -19,11 +22,85 @@ import {
   type ReporteCobranza,
   formatearMoneda,
 } from '@/types/cobranza';
-
 import { exportReporteCsv } from '@/lib/cobranza/export-reporte-csv';
 import { exportAgingCsv } from '@/lib/cobranza/export-aging-csv';
 import { ReporteAgingChart } from '@/components/cobranza/reporte-aging-chart';
 import { periodoActual } from '@/lib/cobranza/periodo-utils';
+import { cn } from '@/lib/utils';
+
+function moraTone(pct: number): DashboardMetric['tone'] {
+  if (pct >= 50) return 'danger';
+  if (pct >= 20) return 'warning';
+  return 'default';
+}
+
+function buildOpsMetrics(
+  kpis: KpiCobranzaCore,
+  reporte: ReporteCobranza | undefined,
+  usarPeriodo: boolean,
+  periodo: string,
+): DashboardMetric[] {
+  const metrics: DashboardMetric[] = [
+    {
+      label: 'Tasa de contacto',
+      value: `${kpis.tasaContactoPct}%`,
+      sub: `${kpis.gestionesMes} gestiones en el mes`,
+    },
+    {
+      label: 'Promesas abiertas',
+      value: String(kpis.promesasAbiertas),
+    },
+    {
+      label: 'Acuerdos vigentes',
+      value: String(
+        reporte?.totalAcuerdosVigentes ?? kpis.acuerdosVigentes,
+      ),
+    },
+  ];
+
+  if (reporte) {
+    metrics.push(
+      {
+        label: 'Préstamos en cartera',
+        value: String(reporte.totalPrestamos),
+        sub: `${reporte.prestamosEnMora} en mora`,
+        tone: moraTone(
+          reporte.totalPrestamos > 0
+            ? (reporte.prestamosEnMora / reporte.totalPrestamos) * 100
+            : 0,
+        ),
+      },
+      {
+        label: 'Cartera total',
+        value: formatearMoneda(reporte.saldoCartera),
+      },
+      {
+        label: 'Recuperado',
+        value: formatearMoneda(reporte.totalRecuperado),
+        sub: usarPeriodo
+          ? `Periodo ${reporte.periodo ?? periodo}`
+          : 'Histórico',
+        tone: 'success',
+      },
+      {
+        label: 'Tasa recuperación',
+        value: `${reporte.tasaRecuperacion}%`,
+        tone:
+          reporte.tasaRecuperacion >= 50
+            ? 'success'
+            : reporte.tasaRecuperacion > 0
+              ? 'primary'
+              : 'default',
+      },
+      {
+        label: 'Gestiones',
+        value: String(reporte.totalGestiones),
+      },
+    );
+  }
+
+  return metrics;
+}
 
 export default function ReportesPage() {
   const [idmandante, setIdmandante] = useState<number | ''>('');
@@ -39,6 +116,7 @@ export default function ReportesPage() {
       recuperadoMesActual: number;
       forecastFinMes: number;
       runRateDiario: number;
+      diasRestantesMes: number | null;
       metaMes: number | null;
       pctMeta: number | null;
     };
@@ -93,33 +171,77 @@ export default function ReportesPage() {
     [],
   );
 
+  const handleExportKpis = () => {
+    if (!reporte) return;
+    const csv = exportReporteCsv(reporte);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `reporte-cobranza-${reporte.periodo ?? 'historico'}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportAging = () => {
+    if (!aging) return;
+    const csv = exportAgingCsv(aging);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `aging-cartera-${mandanteId}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader
         title="Reportes de cobranza"
         description="Indicadores de cartera, aging, recuperación y desempeño por gestor."
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              disabled={!reporte}
+              onClick={handleExportKpis}
+            >
+              Exportar KPIs
+            </Button>
+            <Button
+              variant="outline"
+              disabled={!aging}
+              onClick={handleExportAging}
+            >
+              Exportar aging
+            </Button>
+          </div>
+        }
       />
 
-      <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-dark">
+      <div className="rounded-xl border border-stroke bg-white p-4 shadow-sm dark:border-dark-3 dark:bg-gray-dark">
         <div className="grid gap-4 sm:grid-cols-3">
           <MandanteSelect
             value={idmandante}
             onChange={setIdmandante}
             label="Mandante"
-            selectClassName="w-full rounded border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
+            selectClassName="w-full rounded border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2"
           />
           <div>
-            <label className="mb-1 block text-sm font-medium">Periodo</label>
+            <label className="mb-1 block text-sm font-medium text-dark dark:text-white">
+              Periodo
+            </label>
             <input
               type="month"
-              className="w-full rounded border border-gray-300 px-3 py-2 text-sm disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800"
+              className="w-full rounded border border-stroke px-3 py-2 text-sm disabled:opacity-50 dark:border-dark-3 dark:bg-dark-2"
               value={periodo}
               disabled={!usarPeriodo}
               onChange={(e) => setPeriodo(e.target.value)}
             />
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-            <label className="flex items-center gap-2 text-sm">
+          <div className="flex items-end">
+            <label className="flex items-center gap-2 pb-2 text-sm text-dark dark:text-white">
               <input
                 type="checkbox"
                 checked={usarPeriodo}
@@ -127,48 +249,6 @@ export default function ReportesPage() {
               />
               Filtrar por periodo
             </label>
-            <Button
-              variant="outline"
-              disabled={!reporte}
-              onClick={() => {
-                if (!reporte) {
-                  return;
-                }
-                const csv = exportReporteCsv(reporte);
-                const blob = new Blob([csv], {
-                  type: 'text/csv;charset=utf-8;',
-                });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `reporte-cobranza-${reporte.periodo ?? 'historico'}.csv`;
-                a.click();
-                URL.revokeObjectURL(url);
-              }}
-            >
-              Exportar KPIs
-            </Button>
-            <Button
-              variant="outline"
-              disabled={!aging}
-              onClick={() => {
-                if (!aging) {
-                  return;
-                }
-                const csv = exportAgingCsv(aging);
-                const blob = new Blob([csv], {
-                  type: 'text/csv;charset=utf-8;',
-                });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `aging-cartera-${mandanteId}.csv`;
-                a.click();
-                URL.revokeObjectURL(url);
-              }}
-            >
-              Exportar aging
-            </Button>
           </div>
         </div>
       </div>
@@ -187,126 +267,121 @@ export default function ReportesPage() {
         <p className="text-sm text-gray-500">Cargando reportes...</p>
       )}
 
-      {forecastRecuperacion && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <KpiCard
-            label="Recuperado mes actual"
-            value={formatearMoneda(forecastRecuperacion.recuperadoMesActual)}
-            sub={
-              forecastRecuperacion.pctMeta != null
-                ? `${forecastRecuperacion.pctMeta}% de meta mensual`
-                : undefined
-            }
-          />
-          <KpiCard
-            label="Run-rate diario"
-            value={formatearMoneda(forecastRecuperacion.runRateDiario)}
-          />
-          <KpiCard
-            label="Forecast fin de mes"
-            value={formatearMoneda(forecastRecuperacion.forecastFinMes)}
-            sub="Proyección lineal"
-          />
-          {forecastRecuperacion.metaMes != null && (
-            <KpiCard
-              label="Meta del mes"
-              value={formatearMoneda(forecastRecuperacion.metaMes)}
+      {kpis && (
+        <>
+          <div className="overflow-hidden rounded-xl border border-stroke bg-white shadow-sm dark:border-dark-3 dark:bg-gray-dark">
+            <div className="border-b border-stroke px-4 py-2.5 dark:border-dark-3">
+              <p className="text-xs text-gray-5">
+                Resumen del mandante · actualiza al cambiar filtros
+              </p>
+            </div>
+            <div className="grid grid-cols-1 divide-y divide-stroke sm:grid-cols-2 sm:divide-x sm:divide-y-0 dark:divide-dark-3">
+              <div className="min-w-0 bg-primary/[0.06] px-5 py-5 dark:bg-primary/10">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-gray-5">
+                  Recuperación del mes
+                </p>
+                <p className="mt-2 text-3xl font-bold tabular-nums text-primary">
+                  {formatearMoneda(kpis.recuperacionMes)}
+                </p>
+                {forecastRecuperacion?.pctMeta != null && (
+                  <p className="mt-1 text-xs text-gray-5">
+                    {forecastRecuperacion.pctMeta}% de meta mensual
+                  </p>
+                )}
+              </div>
+              <div className="min-w-0 px-5 py-5">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-gray-5">
+                  Saldo en mora
+                </p>
+                <p
+                  className={cn(
+                    'mt-2 text-3xl font-bold tabular-nums',
+                    kpis.carteraEnMoraPct >= 50
+                      ? 'text-red-700 dark:text-red-300'
+                      : kpis.carteraEnMoraPct >= 20
+                        ? 'text-amber-700 dark:text-amber-300'
+                        : 'text-dark dark:text-white',
+                  )}
+                >
+                  {kpis.carteraEnMoraPct}%
+                </p>
+                <p className="mt-1 text-xs text-gray-5">
+                  {formatearMoneda(kpis.carteraEnMora)} de{' '}
+                  {formatearMoneda(kpis.carteraTotal)}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {forecastRecuperacion && (
+            <ForecastPanel
+              forecast={{
+                recuperadoMesActual: forecastRecuperacion.recuperadoMesActual,
+                runRateDiario: forecastRecuperacion.runRateDiario,
+                forecastFinMes: forecastRecuperacion.forecastFinMes,
+                diasRestantesMes:
+                  forecastRecuperacion.diasRestantesMes ?? undefined,
+                metaMes: forecastRecuperacion.metaMes,
+                pctMeta: forecastRecuperacion.pctMeta,
+              }}
             />
           )}
-        </div>
-      )}
 
-      {kpis && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <KpiCard
-            label="Saldo en mora"
-            value={`${kpis.carteraEnMoraPct}%`}
-            sub={`${formatearMoneda(kpis.carteraEnMora)} de cartera`}
-          />
-          <KpiCard
-            label="Tasa de contacto"
-            value={`${kpis.tasaContactoPct}%`}
-            sub={`${kpis.gestionesMes} gestiones en el mes`}
-          />
-          <KpiCard
-            label="Promesas abiertas"
-            value={String(kpis.promesasAbiertas)}
-          />
-          <KpiCard
-            label="Recuperación del mes"
-            value={formatearMoneda(kpis.recuperacionMes)}
-          />
-        </div>
+          <div>
+            <h2 className="mb-3 text-lg font-semibold text-dark dark:text-white">
+              Indicadores operativos
+            </h2>
+            <DashboardMetricStrip
+              metrics={buildOpsMetrics(
+                kpis,
+                reporte,
+                usarPeriodo,
+                periodo,
+              )}
+            />
+          </div>
+        </>
       )}
 
       {aging && (
-        <div>
-          <h2 className="mb-3 text-lg font-medium">Aging de cartera</h2>
-          <ReporteAgingChart tramos={aging.tramos} />
-          <p className="mb-3 text-sm text-gray-500">
-            Distribución por días de mora · Saldo total{' '}
-            {formatearMoneda(aging.saldoCarteraTotal)} ·{' '}
-            {aging.totalPrestamos} préstamos
-          </p>
-          <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            {aging.tramos.map((t) => (
-              <div
-                key={t.tramo}
-                className="rounded-lg border border-stroke p-3 dark:border-dark-3"
-              >
-                <p className="text-xs text-gray-500">{t.tramo}</p>
-                <p className="text-lg font-bold">{t.cantidadPrestamos}</p>
-                <p className="text-xs text-gray-500">
-                  {formatearMoneda(t.saldoTotal)} ({t.porcentajeSaldo}%)
-                </p>
-              </div>
-            ))}
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold text-dark dark:text-white">
+              Aging de cartera
+            </h2>
+            <p className="mt-1 text-sm text-gray-5">
+              Distribución por días de mora · Saldo total{' '}
+              {formatearMoneda(aging.saldoCarteraTotal)} ·{' '}
+              {aging.totalPrestamos} préstamos
+            </p>
           </div>
-          <ClientPaginatedDataTable
-            columns={agingColumns}
-            data={aging.tramos}
-            emptyMessage="Sin datos de aging."
-            itemLabel="tramos"
-            initialPageSize={10}
-          />
+          <ReporteAgingChart tramos={aging.tramos} />
+          <Card className="rounded-xl" padding="md">
+            <CardHeader className="mb-2">
+              <CardTitle className="text-base">Detalle por tramo</CardTitle>
+            </CardHeader>
+            <ClientPaginatedDataTable
+              columns={agingColumns}
+              data={aging.tramos}
+              emptyMessage="Sin datos de aging."
+              itemLabel="tramos"
+              initialPageSize={10}
+            />
+          </Card>
         </div>
       )}
 
       {reporte && (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <KpiCard
-              label="Préstamos en cartera"
-              value={String(reporte.totalPrestamos)}
-              sub={`${reporte.prestamosEnMora} en mora`}
-            />
-            <KpiCard
-              label="Cartera total"
-              value={formatearMoneda(reporte.saldoCartera)}
-            />
-            <KpiCard
-              label="Recuperado"
-              value={formatearMoneda(reporte.totalRecuperado)}
-              sub={
-                usarPeriodo ? `Periodo ${reporte.periodo ?? periodo}` : 'Histórico'
-              }
-            />
-            <KpiCard
-              label="Tasa recuperación"
-              value={`${reporte.tasaRecuperacion}%`}
-            />
-            <KpiCard
-              label="Gestiones"
-              value={String(reporte.totalGestiones)}
-            />
-            <KpiCard
-              label="Acuerdos vigentes"
-              value={String(reporte.totalAcuerdosVigentes)}
-            />
-          </div>
-
-          <div>
-            <h2 className="mb-3 text-lg font-medium">Desempeño por gestor</h2>
+          <Card className="rounded-xl" padding="md">
+            <CardHeader className="mb-2">
+              <div>
+                <CardTitle>Desempeño por gestor</CardTitle>
+                <p className="mt-1 text-xs text-gray-5">
+                  Gestiones y montos recuperados en el periodo seleccionado
+                </p>
+              </div>
+            </CardHeader>
             <ClientPaginatedDataTable
               columns={gestorColumns}
               data={reporte.porGestor}
@@ -314,7 +389,7 @@ export default function ReportesPage() {
               itemLabel="gestores"
               initialPageSize={10}
             />
-          </div>
+          </Card>
 
           {tendencia.length > 0 && (
             <TendenciaRecuperacionChart

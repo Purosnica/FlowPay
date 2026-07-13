@@ -2,8 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import type { ApexOptions } from 'apexcharts';
-import { formatearMoneda } from '@/types/cobranza';
-import type { DashboardGerenteEquipo } from '@/types/cobranza';
+import { formatearMoneda, type DashboardGerenteEquipo } from '@/types/cobranza';
 
 const Chart = dynamic(() => import('react-apexcharts'), { ssr: false });
 

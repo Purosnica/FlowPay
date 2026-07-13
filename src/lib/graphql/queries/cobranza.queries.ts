@@ -155,6 +155,32 @@ export const GET_PRESTAMO = `
   }
 `;
 
+export const GET_DESGLOSE_SALDO_PRESTAMO = `
+  query GetDesgloseSaldoPrestamo($idprestamo: Int!) {
+    desgloseSaldoPrestamo(idprestamo: $idprestamo) {
+      montoPrestamo
+      interes
+      gestionCobranza
+      comisionCav
+      comisionInsitu
+      mantenimientoValor
+      seguroSvsd
+      cargosAdmin
+      devolucionSaldoFavor
+      descuentosArchivo
+      interesMoratorio
+      subtotalComponentes
+      totalPagosAplicados
+      saldoCalculado
+      saldoRegistrado
+      baseAcuerdo
+      descuentoAcuerdoVigente
+      diferencia
+      cuadra
+    }
+  }
+`;
+
 export const GET_GESTIONES_HOY = `
   query MisGestionesHoy(
     $page: Int
@@ -236,6 +262,8 @@ export const GET_ACUERDOS = `
       numeroCuotas
       montoCuota
       pagoMinimo
+      dispensarInteresMoratorio
+      dispensarGestionCobranza
       fechaInicio
       estado
       cuotas {
@@ -293,6 +321,8 @@ export const SIMULAR_ACUERDO = `
       montoAcordado
       montoCuota
       pagoMinimo
+      interesMoratorioExcluido
+      gestionCobranzaExcluida
     }
   }
 `;
@@ -748,6 +778,12 @@ export const MARCAR_LIQUIDACION_PAGADA = `
       idliquidacion
       estado
     }
+  }
+`;
+
+export const ANULAR_LIQUIDACION = `
+  mutation AnularLiquidacion($idliquidacion: Int!) {
+    anularLiquidacion(idliquidacion: $idliquidacion)
   }
 `;
 
@@ -1879,6 +1915,7 @@ export const GET_REPORTES_DASHBOARD = `
     }
     forecastRecuperacion(idmandante: $idmandante) {
       recuperadoMesActual
+      diasRestantesMes
       runRateDiario
       forecastFinMes
       metaMes

@@ -21,7 +21,7 @@ import {
 import { obtenerReporteAgingCartera } from '../src/lib/cobranza/aging-cartera-service';
 import { simularAcuerdo } from '../src/lib/cobranza/acuerdo-simulator';
 import { csrfHeaders } from '../src/lib/security/csrf';
-import { requerirAccesoCliente } from '../src/lib/cobranza/mandante-scope';
+import { requerirAccesoCliente, obtenerMandantesPermitidos } from '../src/lib/cobranza/mandante-scope';
 import { GraphQLPermissionError } from '../src/lib/errors/graphql-errors';
 
 const prisma = new PrismaClient();
@@ -338,6 +338,30 @@ async function checkScopeCliente(adminId: number): Promise<void> {
   }
 }
 
+async function checkScopeSupervisorMandante(
+  supervisorId: number,
+  cobradorId: number,
+  mandanteId: number | null,
+): Promise<void> {
+  if (!supervisorId || !cobradorId || !mandanteId) {
+    check('Scope supervisor mandante', false, 'datos demo incompletos');
+    return;
+  }
+
+  const mandantesSupervisor = await obtenerMandantesPermitidos(supervisorId);
+  check(
+    'Supervisor ve mandantes de su equipo',
+    mandantesSupervisor.includes(mandanteId),
+    `ids=${mandantesSupervisor.join(',')}`,
+  );
+
+  const mandantesCobrador = await obtenerMandantesPermitidos(cobradorId);
+  check(
+    'Cobrador ve mandante asignado',
+    mandantesCobrador.includes(mandanteId),
+  );
+}
+
 async function checkHttpLive(): Promise<void> {
   const baseUrl = process.env.SMOKE_BASE_URL?.replace(/\/$/, '');
   if (!baseUrl) {
@@ -363,10 +387,12 @@ async function checkHttpLive(): Promise<void> {
     String(loginSinCsrf.status),
   );
 
+  const origin = new URL(baseUrl).origin;
   const loginRes = await fetch(`${baseUrl}/api/auth/login`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      Origin: origin,
       ...csrfHeaders(),
     },
     credentials: 'include',
@@ -389,11 +415,20 @@ async function checkHttpLive(): Promise<void> {
 
   const setCookie = loginRes.headers.get('set-cookie') ?? '';
   const tokenMatch = setCookie.match(/auth-token=([^;]+)/);
-  const cookie = tokenMatch ? `auth-token=${tokenMatch[1]}` : '';
+  const csrfMatch = setCookie.match(/flowpay-csrf=([^;]+)/);
+  const csrfToken = csrfMatch ? decodeURIComponent(csrfMatch[1]) : '';
+  const cookie = tokenMatch
+    ? `auth-token=${tokenMatch[1]}${csrfToken ? `; flowpay-csrf=${csrfToken}` : ''}`
+    : '';
+  const csrfMutationHeaders = {
+    ...csrfHeaders(),
+    Origin: origin,
+    ...(csrfToken ? { 'x-flowpay-csrf': csrfToken } : {}),
+  };
 
   if (cookie) {
     const meRes = await fetch(`${baseUrl}/api/auth/me`, {
-      headers: { Cookie: cookie, ...csrfHeaders() },
+      headers: { Cookie: cookie, ...csrfMutationHeaders },
       credentials: 'include',
     });
     const meData = (await meRes.json()) as {
@@ -415,7 +450,7 @@ async function checkHttpLive(): Promise<void> {
       headers: {
         'Content-Type': 'application/json',
         Cookie: cookie,
-        ...csrfHeaders(),
+        ...csrfMutationHeaders,
       },
       credentials: 'include',
       body: JSON.stringify({
@@ -438,6 +473,7 @@ async function checkHttpLive(): Promise<void> {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      Origin: origin,
       ...csrfHeaders(),
     },
     credentials: 'include',
@@ -501,6 +537,11 @@ async function main(): Promise<void> {
 
   process.stdout.write('\n📋 Scope multi-mandante\n');
   await checkScopeCliente(adminId);
+  await checkScopeSupervisorMandante(
+    supervisorId,
+    cobradorId,
+    mandanteId,
+  );
 
   process.stdout.write('\n📋 Servicios cobranza\n');
   await checkServicios(adminId, mandanteId);

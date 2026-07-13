@@ -14,6 +14,7 @@ import {
 import type { PlantillaMensaje } from '@/types/cobranza';
 import { ImportacionJobMonitor } from '@/components/cobranza/importacion-job-monitor';
 import { csrfHeaders } from '@/lib/security/csrf';
+import { ACCEPT_IMPORTACION } from '@/lib/cobranza/upload-limits';
 
 interface PasoWizard {
   orden: number;
@@ -302,7 +303,7 @@ export function CampanaWizard() {
             <label className="mb-1 block text-sm font-medium">Archivo Excel/CSV</label>
             <input
               type="file"
-              accept=".xlsx,.xls,.xlsm,.csv"
+              accept={ACCEPT_IMPORTACION}
               onChange={(e) => setArchivo(e.target.files?.[0] ?? null)}
             />
           </div>

@@ -4,9 +4,11 @@ import { Gestion, CreateGestionInput, CreateGestionInputSchema } from "./types";
 import { requerirPermiso } from "@/lib/permissions/permission-service";
 import { PERMISO } from "@/lib/permissions/permiso-codes";
 import { requerirAccesoMandante } from "@/lib/cobranza/mandante-scope";
+import { requerirAccesoPrestamoCobrador } from "@/lib/cobranza/cobrador-scope";
 import { validarHorarioCobranza } from "@/lib/cobranza/horario-cobranza-service";
 import { validarContactoParaGestion } from "@/lib/cobranza/contacto-compliance-service";
 import { registrarAuditoria } from "@/lib/cobranza/auditoria-service";
+import { emitirNotificacionGestion } from "@/lib/cobranza/notificacion-emision-service";
 import { transicionarEstadoPrestamo } from "@/lib/cobranza/estado-prestamo-service";
 import { GraphQLValidationError } from "@/lib/errors/graphql-errors";
 
@@ -27,6 +29,10 @@ builder.mutationField("createGestion", (t) =>
         throw new GraphQLValidationError("Préstamo no encontrado.");
       }
       await requerirAccesoMandante(ctx.usuario.idusuario, prestamo.idmandante);
+      await requerirAccesoPrestamoCobrador(
+        ctx.usuario.idusuario,
+        data.idprestamo,
+      );
 
       const horario = await validarHorarioCobranza(new Date(), prestamo.idmandante);
       if (!horario.permitido) {
@@ -102,6 +108,8 @@ builder.mutationField("createGestion", (t) =>
 
         return created;
       });
+
+      await emitirNotificacionGestion(gestion.idgestion);
 
       return ctx.prisma.tbl_gestion.findUniqueOrThrow({
         ...(query as Record<string, unknown>),

@@ -12,6 +12,7 @@ import {
   resolvePagination,
 } from '../../helpers/graphql-helpers';
 import { LISTA_USUARIOS_ACTIVOS_LIMIT } from '@/lib/cobranza/performance-limits';
+import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
 
 export const UsuarioBasico = builder
   .objectRef<{
@@ -237,7 +238,9 @@ builder.mutationField('actualizarComisionUsuarioMandante', (t) =>
       });
 
       if (!asignacion) {
-        throw new Error('El usuario no está asignado a este mandante.');
+        throw new GraphQLValidationError(
+          'El usuario no está asignado a este mandante.',
+        );
       }
 
       const updated = await ctx.prisma.tbl_usuario_mandante.update({

@@ -1,13 +1,11 @@
 /**
- * MIDDLEWARE DE AUTENTICACIÓN Y PERMISOS
- * 
- * Este middleware valida la autenticación y permisos para las API Routes
+ * Middleware de autenticación y permisos para API Routes.
  */
 
-import type { NextRequest } from "next/server";
-import { requerirPermiso } from "@/lib/permissions/permission-service";
-import { verifyToken } from "@/lib/auth/jwt";
-import { getUserById } from "@/lib/auth/auth-service";
+import type { NextRequest } from 'next/server';
+import { requerirPermiso } from '@/lib/permissions/permission-service';
+import { verifyToken } from '@/lib/auth/jwt';
+import { getUserById } from '@/lib/auth/auth-service';
 
 export interface UsuarioAutenticado {
   idusuario: number;
@@ -16,43 +14,15 @@ export interface UsuarioAutenticado {
   idrol: number;
 }
 
-/**
- * Obtiene el token JWT desde la request
- */
 function getTokenFromRequest(req: NextRequest): string | null {
-  // Intentar obtener desde header Authorization
-  const authHeader = req.headers.get("authorization");
-  if (authHeader?.startsWith("Bearer ")) {
-    const token = authHeader.replace("Bearer ", "");
-    if (process.env.NODE_ENV === "development") {
-      // eslint-disable-next-line no-console
-      console.log("[Auth] Token encontrado en header Authorization");
-    }
-    return token;
+  const authHeader = req.headers.get('authorization');
+  if (authHeader?.startsWith('Bearer ')) {
+    return authHeader.replace('Bearer ', '');
   }
 
-  // Intentar obtener desde cookie
-  const tokenCookie = req.cookies.get("auth-token");
+  const tokenCookie = req.cookies.get('auth-token');
   if (tokenCookie) {
-    if (process.env.NODE_ENV === "development") {
-      // eslint-disable-next-line no-console
-      console.log("[Auth] Token encontrado en cookie");
-    }
     return tokenCookie.value;
-  }
-
-  if (process.env.NODE_ENV === "development") {
-    // eslint-disable-next-line no-console
-    console.log("[Auth] No se encontró token en header ni cookie");
-    // eslint-disable-next-line no-console
-    console.log("[Auth] Headers disponibles:", Array.from(req.headers.entries()).map((entry) => entry[0]));
-     
-    const cookieNames: string[] = [];
-    req.cookies.getAll().forEach((cookie) => {
-      cookieNames.push(cookie.name);
-    });
-    // eslint-disable-next-line no-console
-    console.log("[Auth] Cookies disponibles:", cookieNames);
   }
 
   return null;
@@ -62,7 +32,7 @@ function getTokenFromRequest(req: NextRequest): string | null {
  * Obtiene el usuario autenticado desde la request
  */
 export async function getCurrentUser(
-  req: NextRequest
+  req: NextRequest,
 ): Promise<UsuarioAutenticado | null> {
   try {
     const token = getTokenFromRequest(req);
@@ -70,10 +40,8 @@ export async function getCurrentUser(
       return null;
     }
 
-    // Verificar y decodificar token
     const payload = verifyToken(token);
 
-    // Obtener usuario de la base de datos para verificar que aún existe y está activo
     const usuario = await getUserById(payload.idusuario);
     if (!usuario) {
       return null;
@@ -86,7 +54,6 @@ export async function getCurrentUser(
       idrol: usuario.idrol || 0,
     };
   } catch {
-    // Token inválido o expirado
     return null;
   }
 }
@@ -95,11 +62,11 @@ export async function getCurrentUser(
  * Middleware que requiere autenticación
  */
 export async function requireAuth(
-  req: NextRequest
+  req: NextRequest,
 ): Promise<UsuarioAutenticado> {
   const usuario = await getCurrentUser(req);
   if (!usuario) {
-    throw new Error("No autenticado. Por favor, inicia sesión.");
+    throw new Error('No autenticado. Por favor, inicia sesión.');
   }
   return usuario;
 }
@@ -109,7 +76,7 @@ export async function requireAuth(
  */
 export async function requirePermission(
   req: NextRequest,
-  permiso: string
+  permiso: string,
 ): Promise<UsuarioAutenticado> {
   const usuario = await requireAuth(req);
   await requerirPermiso(usuario.idusuario, permiso);
@@ -117,18 +84,39 @@ export async function requirePermission(
 }
 
 /**
- * Obtiene información de la request para auditoría
+ * Obtiene IP del cliente para rate-limit / auditoría.
+ * No confía en X-Forwarded-For enviado por el cliente salvo TRUST_PROXY=true
+ * (reverse proxy que sobrescribe/añade el hop).
  */
 export function getRequestInfo(req: NextRequest): {
   ip: string | null;
   userAgent: string | null;
 } {
   return {
-    ip:
-      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-      req.headers.get("x-real-ip") ||
-      null,
-    userAgent: req.headers.get("user-agent") || null,
+    ip: resolverIpCliente(req),
+    userAgent: req.headers.get('user-agent') || null,
   };
 }
 
+function resolverIpCliente(req: NextRequest): string | null {
+  const realIp = req.headers.get('x-real-ip')?.trim();
+  if (realIp) {
+    return realIp;
+  }
+
+  const trustProxy = process.env.TRUST_PROXY === 'true';
+  if (!trustProxy) {
+    return null;
+  }
+
+  const xff = req.headers.get('x-forwarded-for');
+  if (!xff) {
+    return null;
+  }
+  // Con proxy en modo append, el último hop es el añadido por la infra.
+  const partes = xff
+    .split(',')
+    .map((p) => p.trim())
+    .filter(Boolean);
+  return partes.length > 0 ? (partes[partes.length - 1] ?? null) : null;
+}

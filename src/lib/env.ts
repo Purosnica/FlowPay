@@ -9,13 +9,6 @@ const envSchema = z.object({
     ? z.string().url().optional()
     : z.string().url('DATABASE_URL debe ser una URL válida'),
 
-  NEXTAUTH_SECRET: isDevelopment
-    ? z.string().min(1).optional()
-    : z.string().min(32, 'NEXTAUTH_SECRET debe tener al menos 32 caracteres'),
-  NEXTAUTH_URL: isDevelopment
-    ? z.string().url().optional()
-    : z.string().url('NEXTAUTH_URL debe ser una URL válida'),
-
   JWT_SECRET: isProduction
     ? z.string().min(32, 'JWT_SECRET debe tener al menos 32 caracteres')
     : z.string().min(1).optional(),
@@ -38,14 +31,23 @@ const envSchema = z.object({
   IMPORT_MAX_CONCURRENT: z.coerce.number().int().positive().default(1),
   AUDIT_RETENTION_DAYS: z.coerce.number().int().positive().default(90),
   CRON_RETENTION_DAYS: z.coerce.number().int().positive().default(90),
+
+  SMTP_HOST: z.string().min(1).optional(),
+  SMTP_PORT: z.coerce.number().int().positive().default(587),
+  SMTP_SECURE: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((v) => v === 'true'),
+  SMTP_USER: z.string().email().optional(),
+  SMTP_PASS: z.string().min(1).optional(),
+  SMTP_FROM: z.string().email().optional(),
+  SMTP_FROM_NAME: z.string().min(1).optional().default('Cobranza TicTac'),
 });
 
 function getEnv() {
   try {
     return envSchema.parse({
       DATABASE_URL: process.env.DATABASE_URL,
-      NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
-      NEXTAUTH_URL: process.env.NEXTAUTH_URL || 'http://localhost:3000',
       JWT_SECRET: process.env.JWT_SECRET,
       CRON_SECRET: process.env.CRON_SECRET,
       NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
@@ -55,6 +57,13 @@ function getEnv() {
       IMPORT_MAX_CONCURRENT: process.env.IMPORT_MAX_CONCURRENT,
       AUDIT_RETENTION_DAYS: process.env.AUDIT_RETENTION_DAYS,
       CRON_RETENTION_DAYS: process.env.CRON_RETENTION_DAYS,
+      SMTP_HOST: process.env.SMTP_HOST,
+      SMTP_PORT: process.env.SMTP_PORT,
+      SMTP_SECURE: process.env.SMTP_SECURE,
+      SMTP_USER: process.env.SMTP_USER,
+      SMTP_PASS: process.env.SMTP_PASS,
+      SMTP_FROM: process.env.SMTP_FROM,
+      SMTP_FROM_NAME: process.env.SMTP_FROM_NAME,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

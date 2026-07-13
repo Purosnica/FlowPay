@@ -38,15 +38,23 @@ const BANDEJA_INCLUDE = {
 
     select: {
 
+      idcliente: true,
+
       primer_nombres: true,
 
+      segundo_nombres: true,
+
       primer_apellido: true,
+
+      segundo_apellido: true,
 
       numerodocumento: true,
 
       celular: true,
 
       telefono: true,
+
+      email: true,
 
     },
 

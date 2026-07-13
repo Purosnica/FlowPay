@@ -12,6 +12,7 @@ import { useBandejaPresets } from '@/hooks/use-bandeja-presets';
 import { presetCoincideConFiltros } from '@/lib/cobranza/bandeja-presets';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/auth-context';
 
 interface BandejaFiltersPanelProps {
   filters: BandejaFilters;
@@ -34,9 +35,10 @@ export function BandejaFiltersPanel({
   const tramoId = useId();
   const ordenId = useId();
   const searchId = useId();
+  const { usuario } = useAuth();
 
   const { todos, personalizados, guardarPreset, eliminarPreset } =
-    useBandejaPresets();
+    useBandejaPresets(usuario?.idusuario ?? null);
   const [nombreNuevoPreset, setNombreNuevoPreset] = useState('');
   const [mostrarGuardar, setMostrarGuardar] = useState(false);
 

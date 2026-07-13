@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { DeleteRowButton } from '@/components/ui/row-action-buttons';
 import { PaginatedDataTable } from '@/components/cobranza/paginated-data-table';
 import { usePaginatedPanel } from '@/hooks/use-paginated-panel';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
@@ -146,15 +147,11 @@ export function DeudorContactoPanel({ idcliente }: DeudorContactoPanelProps) {
         onPageSizeChange={handlePageSizeChange}
         itemLabel="contactos"
         rowActions={(c) => (
-          <Button
-            size="sm"
-            variant="outline"
+          <DeleteRowButton
             onClick={() =>
               deleteMutation.mutate({ idcontacto: c.idcontacto })
             }
-          >
-            Eliminar
-          </Button>
+          />
         )}
       />
     </div>

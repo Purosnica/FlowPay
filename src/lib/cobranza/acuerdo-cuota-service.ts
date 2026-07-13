@@ -1,12 +1,15 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { decimalToNumber } from './decimal-utils';
+import { decimalToNumber, roundMoney } from './decimal-utils';
 import {
   CLAVE_ACUERDO_DIAS_GRACIA,
   obtenerConfigNumerica,
 } from './configuracion-cobranza-service';
 import { registrarAuditoria } from './auditoria-service';
-import { transicionarEstadoPrestamo } from './estado-prestamo-service';
+import {
+  sincronizarEstadoPorSaldo,
+  transicionarEstadoPrestamo,
+} from './estado-prestamo-service';
 import { sincronizarMoraPrestamo } from './dias-mora-service';
 
 type Tx = Prisma.TransactionClient;
@@ -20,12 +23,18 @@ export async function generarCuotasAcuerdo(
     fechaInicio: Date;
   },
 ): Promise<void> {
-  const montoCuota = params.montoAcordado / params.numeroCuotas;
+  const montoBase = roundMoney(params.montoAcordado / params.numeroCuotas);
   const cuotas = [];
+  let acumulado = 0;
 
   for (let i = 0; i < params.numeroCuotas; i++) {
     const fechaVencimiento = new Date(params.fechaInicio);
     fechaVencimiento.setMonth(fechaVencimiento.getMonth() + i);
+    const esUltima = i === params.numeroCuotas - 1;
+    const montoCuota = esUltima
+      ? roundMoney(params.montoAcordado - acumulado)
+      : montoBase;
+    acumulado = roundMoney(acumulado + montoCuota);
     cuotas.push({
       idacuerdo: params.idacuerdo,
       numeroCuota: i + 1,
@@ -49,7 +58,7 @@ export async function evaluarCuotasAcuerdo(
   });
 
   if (!acuerdo || acuerdo.estado !== 'VIGENTE') {
-    return acuerdo?.estado as 'VIGENTE' | 'CUMPLIDO' | 'ROTO' ?? 'VIGENTE';
+    return (acuerdo?.estado as 'VIGENTE' | 'CUMPLIDO' | 'ROTO') ?? 'VIGENTE';
   }
 
   const diasGracia = await obtenerConfigNumerica(CLAVE_ACUERDO_DIAS_GRACIA);
@@ -88,13 +97,24 @@ export async function evaluarCuotasAcuerdo(
       where: { idprestamo: acuerdo.idprestamo },
       data: { reportableCentralRiesgo: true },
     });
-    await transicionarEstadoPrestamo(tx, {
-      idprestamo: acuerdo.idprestamo,
-      estadoNuevo: 'Vencido',
-      idusuario,
-      motivo: 'Acuerdo cumplido',
-      forzar: true,
+    await sincronizarEstadoPorSaldo(tx, acuerdo.idprestamo, idusuario);
+
+    const prestamo = await tx.tbl_prestamo.findUnique({
+      where: { idprestamo: acuerdo.idprestamo },
+      select: { estado: true, saldoTotal: true, diasMora: true },
     });
+    if (prestamo && prestamo.estado === 'Con acuerdo') {
+      const saldo = decimalToNumber(prestamo.saldoTotal);
+      const estadoNuevo =
+        saldo <= 0 ? 'Cancelado' : prestamo.diasMora > 0 ? 'Vencido' : 'Vigente';
+      await transicionarEstadoPrestamo(tx, {
+        idprestamo: acuerdo.idprestamo,
+        estadoNuevo,
+        idusuario,
+        motivo: 'Acuerdo cumplido',
+      });
+    }
+
     await sincronizarMoraPrestamo(tx, acuerdo.idprestamo, idusuario);
     return 'CUMPLIDO';
   }
@@ -113,7 +133,6 @@ export async function evaluarCuotasAcuerdo(
       estadoNuevo: 'Vencido',
       idusuario,
       motivo: 'Acuerdo roto por cuota vencida',
-      forzar: true,
     });
     await registrarAuditoria(tx, {
       idusuario,
@@ -173,7 +192,55 @@ export async function marcarCuotaPagadaPorMonto(
         where: { idcuota: cuota.idcuota },
         data: { estado: 'PAGADA', idpago },
       });
-      restante -= montoCuota;
+      restante = roundMoney(restante - montoCuota);
     }
+  }
+}
+
+/**
+ * Revierte cuotas marcadas por un pago y reevalúa el acuerdo.
+ */
+export async function revertirCuotasPorPago(
+  tx: Tx,
+  idpago: number,
+  idusuario?: number | null,
+): Promise<void> {
+  const cuotas = await tx.tbl_acuerdo_cuota.findMany({
+    where: { idpago, estado: 'PAGADA' },
+    select: { idcuota: true, idacuerdo: true },
+  });
+  if (cuotas.length === 0) {
+    return;
+  }
+
+  const idacuerdos = [...new Set(cuotas.map((c) => c.idacuerdo))];
+
+  for (const cuota of cuotas) {
+    await tx.tbl_acuerdo_cuota.update({
+      where: { idcuota: cuota.idcuota },
+      data: { estado: 'PENDIENTE', idpago: null },
+    });
+  }
+
+  for (const idacuerdo of idacuerdos) {
+    const acuerdo = await tx.tbl_acuerdo.findUnique({
+      where: { idacuerdo },
+    });
+    if (!acuerdo || acuerdo.deletedAt) {
+      continue;
+    }
+
+    if (acuerdo.estado === 'CUMPLIDO') {
+      await tx.tbl_acuerdo.update({
+        where: { idacuerdo },
+        data: { estado: 'VIGENTE' },
+      });
+      await tx.tbl_prestamo.update({
+        where: { idprestamo: acuerdo.idprestamo },
+        data: { reportableCentralRiesgo: false },
+      });
+    }
+
+    await evaluarCuotasAcuerdo(tx, idacuerdo, idusuario);
   }
 }

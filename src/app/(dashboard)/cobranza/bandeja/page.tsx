@@ -346,6 +346,7 @@ function BandejaPageContent() {
         {enviarPrestamo && enviarContext && (
           <EnviarCobroPanel
             idmandante={enviarPrestamo.idmandante}
+            idprestamo={enviarPrestamo.idprestamo}
             context={enviarContext}
             compact
           />

@@ -32,13 +32,68 @@ function testCsrf(): void {
   const headers = csrfHeaders();
   assert.equal(headers[CSRF_HEADER], CSRF_HEADER_VALUE);
 
-  const req = new Request('http://localhost/api/test', {
+  // Sin Origin/Referer → rechazar
+  const sinOrigen = new Request('http://localhost/api/test', {
     headers,
   });
-  assert.equal(validarCsrfHeader(req), true);
+  assert.equal(validarCsrfHeader(sinOrigen), false);
+
+  const sameOrigin = new Request('http://localhost/api/test', {
+    headers: {
+      ...headers,
+      origin: 'http://localhost',
+    },
+  });
+  assert.equal(validarCsrfHeader(sameOrigin), true);
+
+  const sameReferer = new Request('http://localhost/api/test', {
+    headers: {
+      ...headers,
+      referer: 'http://localhost/login',
+    },
+  });
+  assert.equal(validarCsrfHeader(sameReferer), true);
+
+  const crossOrigin = new Request('http://localhost/api/test', {
+    headers: {
+      ...headers,
+      origin: 'https://evil.example',
+    },
+  });
+  assert.equal(validarCsrfHeader(crossOrigin), false);
 
   const bad = new Request('http://localhost/api/test');
   assert.equal(validarCsrfHeader(bad), false);
+
+  const token = 'abc123csrf';
+  const withCookieOk = new Request('http://localhost/api/test', {
+    headers: {
+      ...headers,
+      cookie: `flowpay-csrf=${token}`,
+      'x-flowpay-csrf': token,
+      origin: 'http://localhost',
+    },
+  });
+  assert.equal(validarCsrfHeader(withCookieOk), true);
+
+  const withCookieBad = new Request('http://localhost/api/test', {
+    headers: {
+      ...headers,
+      cookie: `flowpay-csrf=${token}`,
+      'x-flowpay-csrf': 'otro',
+      origin: 'http://localhost',
+    },
+  });
+  assert.equal(validarCsrfHeader(withCookieBad), false);
+
+  const withCookieMissingHeader = new Request('http://localhost/api/test', {
+    headers: {
+      ...headers,
+      cookie: `flowpay-csrf=${token}`,
+      origin: 'http://localhost',
+    },
+  });
+  assert.equal(validarCsrfHeader(withCookieMissingHeader), false);
 }
 
 function testScalabilityConfig(): void {

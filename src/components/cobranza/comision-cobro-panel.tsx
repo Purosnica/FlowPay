@@ -4,6 +4,10 @@ import { useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
+import {
+  DeleteRowButton,
+  EditRowButton,
+} from '@/components/ui/row-action-buttons';
 import { PaginatedDataTable } from '@/components/cobranza/paginated-data-table';
 import { usePaginatedPanel } from '@/hooks/use-paginated-panel';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
@@ -264,9 +268,7 @@ export function ComisionCobroPanel({
         itemLabel="comisiones"
         rowActions={(c) => (
           <div className="flex justify-end gap-2">
-            <Button
-              size="sm"
-              variant="outline"
+            <EditRowButton
               onClick={() => {
                 setEditing(c);
                 setForm({
@@ -276,19 +278,13 @@ export function ComisionCobroPanel({
                   estado: c.estado,
                 });
               }}
-            >
-              Editar
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
+            />
+            <DeleteRowButton
               disabled={deleteMutation.isPending}
               onClick={() =>
                 deleteMutation.mutate({ idcomision: c.idcomision })
               }
-            >
-              Eliminar
-            </Button>
+            />
           </div>
         )}
       />

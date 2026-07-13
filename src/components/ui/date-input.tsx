@@ -75,6 +75,8 @@ export const DateInput = forwardRef<HTMLInputElement, DateInputProps>(
           fpRef.current.destroy();
         }
       };
+      // value se sincroniza en el efecto siguiente (evitar recrear flatpickr)
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- value sync separado
     }, [mode, enableTime, dateFormat, time24hr, inline, minDate, maxDate, disable, enable, onChange]);
 
     // Sincronizar valor externo

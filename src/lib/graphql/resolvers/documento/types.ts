@@ -1,12 +1,19 @@
-import { definePrismaObject } from "../../helpers/prisma-object";
+import { definePrismaObject } from '../../helpers/prisma-object';
 import { builder } from '../../builder';
 import { z } from 'zod';
+import { esDocumentoUrlPermitida } from '@/lib/cobranza/documento-storage';
 
 export const CreateDocumentoInputSchema = z.object({
   idprestamo: z.number().int().positive().optional(),
   idcliente: z.number().int().positive().optional(),
   tipo: z.enum(['RECIBO', 'PODER', 'EVIDENCIA', 'GRABACION', 'CONTRATO']),
-  url: z.string().url(),
+  url: z
+    .string()
+    .min(1)
+    .refine(esDocumentoUrlPermitida, {
+      message:
+        'URL no permitida. Use un archivo subido o un enlace https seguro.',
+    }),
 });
 
 export const CreateDocumentoInput = builder

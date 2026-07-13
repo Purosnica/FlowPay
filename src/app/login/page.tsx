@@ -32,6 +32,10 @@ export default function LoginPage() {
     formState: { errors },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+    },
   });
 
   // Redirigir si ya está autenticado
@@ -121,14 +125,6 @@ export default function LoginPage() {
               )}
             </Button>
           </form>
-
-          <div className="mt-4 rounded-lg bg-blue-50 p-4 text-center text-sm dark:bg-blue-900/20">
-            <p className="mb-2 font-semibold text-blue-800 dark:text-blue-200">
-              Credenciales de Prueba:
-            </p>
-            <p className="text-blue-700 dark:text-blue-300">Email: admin@flowpay.com</p>
-            <p className="text-blue-700 dark:text-blue-300">Contraseña: admin123</p>
-          </div>
         </CardContent>
       </Card>
     </div>

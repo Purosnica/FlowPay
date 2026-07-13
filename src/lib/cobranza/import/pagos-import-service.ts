@@ -110,8 +110,25 @@ export async function importarPagosHistoricos(
         cacheGestores,
       );
 
+      // Idempotencia dentro de la misma transacción (anti TOCTOU).
+      let omitidoPorDuplicado = false;
       await prisma.$transaction(async (tx) => {
-        await tx.tbl_pago.create({
+        const duplicado = await tx.tbl_pago.findFirst({
+          where: {
+            idprestamo: prestamo.idprestamo,
+            monto,
+            fechaPago,
+            medio: 'IMPORTADO',
+            deletedAt: null,
+          },
+          select: { idpago: true },
+        });
+        if (duplicado) {
+          omitidoPorDuplicado = true;
+          return;
+        }
+
+        const created = await tx.tbl_pago.create({
           data: {
             idmandante: params.idmandante,
             idprestamo: prestamo.idprestamo,
@@ -128,9 +145,16 @@ export async function importarPagosHistoricos(
           idprestamo: prestamo.idprestamo,
           monto,
           fechaPago,
+          idpago: created.idpago,
+          idusuario: params.idusuario,
         });
       }, IMPORT_TRANSACTION_OPTIONS);
-      resultado.pagosCreados++;
+
+      if (omitidoPorDuplicado) {
+        resultado.omitidos++;
+      } else {
+        resultado.pagosCreados++;
+      }
     } catch (error) {
       resultado.errores.push({
         fila: fila.fila,

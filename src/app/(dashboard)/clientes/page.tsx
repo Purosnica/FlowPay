@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { DeleteRowButton } from "@/components/ui/row-action-buttons";
 import { Modal } from "@/components/ui/modal";
 import { ClienteTable } from "@/components/clientes/cliente-table";
 import { TablePagination } from "@/components/cobranza/data-table";
@@ -18,6 +19,9 @@ import {
   UPDATE_CLIENTE,
   DELETE_CLIENTE,
 } from "@/lib/graphql/queries/cliente.queries";
+import { PermissionGate } from "@/components/auth/permission-gate";
+import { PERMISO } from "@/lib/permissions/permiso-codes";
+import { usePuede } from "@/hooks/use-permisos";
 import type {
   Cliente,
   ClienteFilters,
@@ -40,6 +44,7 @@ export default function ClientesPage() {
   const [clienteToDelete, setClienteToDelete] = useState<number | null>(null);
 
   const queryClient = useQueryClient();
+  const puedeEscribir = usePuede(PERMISO.CARTERA_WRITE);
 
   // Query para obtener clientes
   const { data, isLoading, error } = useGraphQLQuery<{
@@ -208,7 +213,9 @@ export default function ClientesPage() {
         <h1 className="text-2xl font-bold text-dark dark:text-white">
           Gestión de Clientes
         </h1>
-        <Button onClick={handleCreate}>Nuevo Cliente</Button>
+        <PermissionGate permiso={PERMISO.CARTERA_WRITE}>
+          <Button onClick={handleCreate}>Nuevo Cliente</Button>
+        </PermissionGate>
       </div>
 
       <ClienteFiltersComponent
@@ -227,8 +234,8 @@ export default function ClientesPage() {
         <ClienteTable
           data={clientesData?.clientes || []}
           columns={columns}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
+          onEdit={puedeEscribir ? handleEdit : undefined}
+          onDelete={puedeEscribir ? handleDelete : undefined}
           isLoading={isLoading}
         />
 
@@ -294,13 +301,14 @@ export default function ClientesPage() {
             >
               Cancelar
             </Button>
-            <Button
-              variant="danger"
+            <DeleteRowButton
+              size="md"
+              label={
+                deleteMutation.isPending ? "Eliminando..." : "Eliminar"
+              }
               onClick={handleConfirmDelete}
               disabled={deleteMutation.isPending}
-            >
-              {deleteMutation.isPending ? "Eliminando..." : "Eliminar"}
-            </Button>
+            />
           </div>
         </div>
       </Modal>

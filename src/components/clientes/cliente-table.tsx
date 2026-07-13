@@ -9,7 +9,10 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import {
+  DeleteRowButton,
+  EditRowButton,
+} from "@/components/ui/row-action-buttons";
 import type { Cliente } from "@/types/cliente";
 
 interface ClienteTableProps {
@@ -117,22 +120,12 @@ export function ClienteTable({
                 <td className="px-4 py-3">
                   <div className="flex gap-2">
                     {onEdit && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onEdit(row.original)}
-                      >
-                        Editar
-                      </Button>
+                      <EditRowButton onClick={() => onEdit(row.original)} />
                     )}
                     {onDelete && (
-                      <Button
-                        variant="danger"
-                        size="sm"
+                      <DeleteRowButton
                         onClick={() => onDelete(row.original.idcliente)}
-                      >
-                        Eliminar
-                      </Button>
+                      />
                     )}
                   </div>
                 </td>

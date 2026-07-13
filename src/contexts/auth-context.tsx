@@ -96,6 +96,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ email, password }),
       });
 
+      const contentType = response.headers.get('content-type') ?? '';
+      if (!contentType.includes('application/json')) {
+        return {
+          success: false,
+          error:
+            'El servidor no respondió correctamente. Recarga la página e intenta de nuevo.',
+        };
+      }
+
       const data = (await response.json()) as {
         success: boolean;
         usuario?: Usuario;

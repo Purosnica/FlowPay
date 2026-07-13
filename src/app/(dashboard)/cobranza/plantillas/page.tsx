@@ -5,6 +5,10 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
+import {
+  DeleteRowButton,
+  EditRowButton,
+} from '@/components/ui/row-action-buttons';
 import { Modal } from '@/components/ui/modal';
 import { PaginatedDataTable } from '@/components/cobranza/paginated-data-table';
 import { useScopedPagination } from '@/hooks/use-scoped-pagination';
@@ -166,26 +170,18 @@ function PlantillasPageContent() {
             itemLabel="plantillas"
             rowActions={(p) => (
               <div className="flex justify-end gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
+                <EditRowButton
                   onClick={() => {
                     setSelected(p);
                     setModalOpen(true);
                   }}
-                >
-                  Editar
-                </Button>
-                <Button
-                  size="sm"
-                  variant="danger"
+                />
+                <DeleteRowButton
                   disabled={deleteMutation.isPending}
                   onClick={() =>
                     deleteMutation.mutate({ id: p.idplantillaImp })
                   }
-                >
-                  Eliminar
-                </Button>
+                />
               </div>
             )}
           />

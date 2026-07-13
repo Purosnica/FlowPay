@@ -5,12 +5,12 @@ import {
   CreateFiadorInputSchema,
   UpdateFiadorInputSchema,
 } from './types';
-import { builder ,type  GraphQLContext } from '../../builder';
-
+import { builder, type GraphQLContext } from '../../builder';
 
 import { requerirPermiso } from '@/lib/permissions/permission-service';
 import { PERMISO } from '@/lib/permissions/permiso-codes';
 import { requerirAccesoMandante } from '@/lib/cobranza/mandante-scope';
+import { requerirAccesoPrestamoCobrador } from '@/lib/cobranza/cobrador-scope';
 import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
 import { createPageType } from '../../helpers/create-page-type';
 import { resolvePaginatedPrismaQuery } from '../../helpers/paginated-prisma-resolver';
@@ -34,6 +34,10 @@ builder.queryField('fiadores', (t) =>
         throw new GraphQLValidationError('Préstamo no encontrado.');
       }
       await requerirAccesoMandante(ctx.usuario?.idusuario, prestamo.idmandante);
+      await requerirAccesoPrestamoCobrador(
+        ctx.usuario?.idusuario,
+        args.idprestamo,
+      );
 
       const where = { idprestamo: args.idprestamo, deletedAt: null };
 
@@ -68,6 +72,10 @@ builder.mutationField('createFiador', (t) =>
         throw new GraphQLValidationError('Préstamo no encontrado.');
       }
       await requerirAccesoMandante(ctx.usuario?.idusuario, prestamo.idmandante);
+      await requerirAccesoPrestamoCobrador(
+        ctx.usuario?.idusuario,
+        data.idprestamo,
+      );
       return ctx.prisma.tbl_fiador.create({
         ...(query as Record<string, unknown>),
         data,
@@ -96,6 +104,10 @@ builder.mutationField('updateFiador', (t) =>
         ctx.usuario?.idusuario,
         existente.prestamo.idmandante,
       );
+      await requerirAccesoPrestamoCobrador(
+        ctx.usuario?.idusuario,
+        existente.idprestamo,
+      );
       return ctx.prisma.tbl_fiador.update({
         ...(query as Record<string, unknown>),
         where: { idfiador },
@@ -121,6 +133,10 @@ builder.mutationField('deleteFiador', (t) =>
       await requerirAccesoMandante(
         ctx.usuario?.idusuario,
         existente.prestamo.idmandante,
+      );
+      await requerirAccesoPrestamoCobrador(
+        ctx.usuario?.idusuario,
+        existente.idprestamo,
       );
       await ctx.prisma.tbl_fiador.update({
         where: { idfiador: args.idfiador },

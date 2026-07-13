@@ -6,34 +6,44 @@ import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { GET_PLANTILLAS_MENSAJE } from '@/lib/graphql/queries/cobranza.queries';
 import {
   aplicarVariablesPlantilla,
+  construirAsuntoCobroPlantilla,
   construirVariablesPlantilla,
   enlaceSms,
   enlaceWhatsApp,
   PLANTILLA_VARIABLES_AYUDA,
   type PlantillaMensajeContext,
 } from '@/lib/cobranza/plantilla-mensaje-utils';
+import { csrfHeaders } from '@/lib/security/csrf';
 import type { PlantillaMensaje } from '@/types/cobranza';
 
 interface EnviarCobroPanelProps {
   idmandante: number;
+  idprestamo: number;
   idcliente?: number;
   context: PlantillaMensajeContext;
   telefonoOverride?: string;
+  emailOverride?: string;
   compact?: boolean;
   onUseAsNota?: (texto: string) => void;
 }
 
 export function EnviarCobroPanel({
   idmandante,
+  idprestamo,
   context,
   telefonoOverride,
+  emailOverride,
   compact = false,
   onUseAsNota,
 }: EnviarCobroPanelProps) {
   const [canalFiltro, setCanalFiltro] = useState<string>('TODOS');
   const [idplantillaSel, setIdplantillaSel] = useState<number | ''>('');
   const [mensajeEditado, setMensajeEditado] = useState('');
+  const [asuntoEditado, setAsuntoEditado] = useState('');
   const [copiado, setCopiado] = useState(false);
+  const [enviandoEmail, setEnviandoEmail] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
 
   const { data: plantillasData, isLoading } = useGraphQLQuery<{
     plantillasMensaje: {
@@ -73,18 +83,43 @@ export function EnviarCobroPanel({
     context.cliente?.telefono ??
     '';
 
+  const emailDeudor =
+    emailOverride ?? context.cliente?.email ?? '';
+
   const plantillaActiva = plantillas.find(
     (p) => p.idplantilla === idplantillaSel,
   );
+
+  const esCanalEmail = plantillaActiva?.canal === 'EMAIL';
 
   const mensajePreview = useMemo(() => {
     const base = mensajeEditado || plantillaActiva?.contenido || '';
     return aplicarVariablesPlantilla(base, vars);
   }, [mensajeEditado, plantillaActiva, vars]);
 
+  const asuntoPreview = useMemo(() => {
+    const base =
+      asuntoEditado ||
+      construirAsuntoCobroPlantilla(
+        plantillaActiva?.nombre,
+        context.prestamo.noPrestamo,
+      );
+    return aplicarVariablesPlantilla(base, vars);
+  }, [
+    asuntoEditado,
+    plantillaActiva?.nombre,
+    context.prestamo.noPrestamo,
+    vars,
+  ]);
+
   const seleccionarPlantilla = (p: PlantillaMensaje) => {
     setIdplantillaSel(p.idplantilla);
     setMensajeEditado(p.contenido);
+    setAsuntoEditado(
+      construirAsuntoCobroPlantilla(p.nombre, context.prestamo.noPrestamo),
+    );
+    setEmailStatus(null);
+    setEmailError(null);
   };
 
   const copiarMensaje = async () => {
@@ -94,6 +129,47 @@ export function EnviarCobroPanel({
     await navigator.clipboard.writeText(mensajePreview);
     setCopiado(true);
     setTimeout(() => setCopiado(false), 2000);
+  };
+
+  const enviarPorEmail = async () => {
+    if (!emailDeudor.trim() || !mensajePreview.trim()) {
+      return;
+    }
+    setEnviandoEmail(true);
+    setEmailStatus(null);
+    setEmailError(null);
+    try {
+      const res = await fetch('/api/cobranza/enviar-email', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...csrfHeaders(),
+        },
+        body: JSON.stringify({
+          to: emailDeudor.trim(),
+          subject: asuntoPreview.trim(),
+          body: mensajePreview,
+          idprestamo,
+          idplantilla:
+            typeof idplantillaSel === 'number' ? idplantillaSel : undefined,
+        }),
+      });
+      const json = (await res.json()) as {
+        success: boolean;
+        error?: string;
+      };
+      if (!res.ok || !json.success) {
+        throw new Error(json.error ?? 'No se pudo enviar el correo');
+      }
+      setEmailStatus(`Correo enviado a ${emailDeudor.trim()}`);
+    } catch (err) {
+      setEmailError(
+        err instanceof Error ? err.message : 'Error al enviar correo',
+      );
+    } finally {
+      setEnviandoEmail(false);
+    }
   };
 
   if (isLoading) {
@@ -158,6 +234,21 @@ export function EnviarCobroPanel({
         </p>
       )}
 
+      {(esCanalEmail || emailDeudor) && (
+        <div>
+          <label className="mb-1 block text-sm font-medium">
+            Asunto del correo
+          </label>
+          <input
+            type="text"
+            value={asuntoEditado}
+            onChange={(e) => setAsuntoEditado(e.target.value)}
+            placeholder="Asunto..."
+            className="w-full rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2 dark:text-white"
+          />
+        </div>
+      )}
+
       <div>
         <label className="mb-1 block text-sm font-medium">
           Mensaje {plantillaActiva ? '(editable)' : ''}
@@ -180,6 +271,11 @@ export function EnviarCobroPanel({
 
       <div className="rounded-lg border border-stroke bg-gray-50 p-3 text-sm dark:border-dark-3 dark:bg-dark-2">
         <p className="mb-1 text-xs font-medium text-gray-500">Vista previa</p>
+        {(esCanalEmail || emailDeudor) && asuntoPreview && (
+          <p className="mb-2 text-xs text-gray-600 dark:text-gray-400">
+            Asunto: {asuntoPreview}
+          </p>
+        )}
         <p className="whitespace-pre-wrap">{mensajePreview || '—'}</p>
       </div>
 
@@ -211,6 +307,16 @@ export function EnviarCobroPanel({
             </a>
           </>
         )}
+        {emailDeudor && mensajePreview && (
+          <Button
+            type="button"
+            size="sm"
+            disabled={enviandoEmail || !asuntoPreview.trim()}
+            onClick={() => void enviarPorEmail()}
+          >
+            {enviandoEmail ? 'Enviando...' : 'Enviar email'}
+          </Button>
+        )}
         {onUseAsNota && mensajePreview && (
           <Button
             type="button"
@@ -223,9 +329,29 @@ export function EnviarCobroPanel({
         )}
       </div>
 
-      {!telefono && (
+      {emailDeudor && (
+        <p className="text-xs text-gray-500">
+          Destinatario: {emailDeudor}
+        </p>
+      )}
+      {emailStatus && (
+        <p className="text-xs text-green-700 dark:text-green-400">
+          {emailStatus}
+        </p>
+      )}
+      {emailError && (
+        <p className="text-xs text-red-600 dark:text-red-400">{emailError}</p>
+      )}
+
+      {!telefono && !emailDeudor && (
         <p className="text-xs text-amber-600">
-          Sin teléfono del deudor: puede copiar el mensaje manualmente.
+          Sin teléfono ni email del deudor: puede copiar el mensaje
+          manualmente.
+        </p>
+      )}
+      {telefono && !emailDeudor && (
+        <p className="text-xs text-amber-600">
+          Sin email del deudor: no se puede enviar por correo.
         </p>
       )}
     </div>

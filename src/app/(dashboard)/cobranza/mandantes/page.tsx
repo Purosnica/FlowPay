@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
+import { EditRowButton } from '@/components/ui/row-action-buttons';
 import { Modal } from '@/components/ui/modal';
 import { PageHeader } from '@/components/ui/page-header';
 import { PaginatedDataTable } from '@/components/cobranza/paginated-data-table';
@@ -31,6 +32,8 @@ import {
 } from '@/lib/graphql/queries/cobranza.queries';
 import { usePagination } from '@/hooks/use-pagination';
 import type { Mandante, UsuarioBasico, UsuarioMandanteAsignado } from '@/types/cobranza';
+import { PermissionGate } from '@/components/auth/permission-gate';
+import { PERMISO } from '@/lib/permissions/permiso-codes';
 
 export default function MandantesPage() {
   const queryClient = useQueryClient();
@@ -184,14 +187,16 @@ export default function MandantesPage() {
         title="Mandantes"
         description="Acreedores / clientes de la agencia"
         actions={
-          <Button
-            onClick={() => {
-              setSelected(undefined);
-              setModalOpen(true);
-            }}
-          >
-            Nuevo mandante
-          </Button>
+          <PermissionGate permiso={PERMISO.MANDANTE_WRITE}>
+            <Button
+              onClick={() => {
+                setSelected(undefined);
+                setModalOpen(true);
+              }}
+            >
+              Nuevo mandante
+            </Button>
+          </PermissionGate>
         }
       />
 
@@ -214,76 +219,74 @@ export default function MandantesPage() {
               <Link href={`/cobranza/mandantes/${m.idmandante}`}>
                 <Button size="sm">Gestionar</Button>
               </Link>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setTipificacionMandante(m);
-                  setTipificacionModal(true);
-                }}
-              >
-                Tipificación
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setContratoMandante(m);
-                  setContratoModal(true);
-                }}
-              >
-                Contratos
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setHorarioMandante(m);
-                  setHorarioModal(true);
-                }}
-              >
-                Horarios
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setPoliticaMandante(m);
-                  setPoliticaModal(true);
-                }}
-              >
-                Políticas
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setComisionMandante(m);
-                  setComisionModal(true);
-                }}
-              >
-                Recuperación
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setAssignMandante(m);
-                  setAssignModal(true);
-                }}
-              >
-                Usuarios
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setSelected(m);
-                  setModalOpen(true);
-                }}
-              >
-                Editar
-              </Button>
+              <PermissionGate permiso={PERMISO.MANDANTE_WRITE}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setTipificacionMandante(m);
+                    setTipificacionModal(true);
+                  }}
+                >
+                  Tipificación
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setContratoMandante(m);
+                    setContratoModal(true);
+                  }}
+                >
+                  Contratos
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setHorarioMandante(m);
+                    setHorarioModal(true);
+                  }}
+                >
+                  Horarios
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setPoliticaMandante(m);
+                    setPoliticaModal(true);
+                  }}
+                >
+                  Políticas
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setComisionMandante(m);
+                    setComisionModal(true);
+                  }}
+                >
+                  Recuperación
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setAssignMandante(m);
+                    setAssignModal(true);
+                  }}
+                >
+                  Usuarios
+                </Button>
+                <EditRowButton
+                  onClick={() => {
+                    setSelected(m);
+                    setModalOpen(true);
+                  }}
+                />
+              </PermissionGate>
             </div>
           )}
         />

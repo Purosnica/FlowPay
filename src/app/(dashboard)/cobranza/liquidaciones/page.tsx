@@ -8,6 +8,7 @@ import { Modal } from '@/components/ui/modal';
 import { PaginatedDataTable } from '@/components/cobranza/paginated-data-table';
 import { MandanteSelect } from '@/components/cobranza/mandante-select';
 import { PageHeader } from '@/components/ui/page-header';
+import { AsyncPanel } from '@/components/ui/async-panel';
 import { usePagination } from '@/hooks/use-pagination';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { useGraphQLMutation } from '@/hooks/use-graphql-mutation';
@@ -18,6 +19,7 @@ import {
   GENERAR_LIQUIDACION,
   EMITIR_LIQUIDACION,
   MARCAR_LIQUIDACION_PAGADA,
+  ANULAR_LIQUIDACION,
 } from '@/lib/graphql/queries/cobranza.queries';
 import { type Liquidacion, type SimulacionLiquidacion , formatearMoneda } from '@/types/cobranza';
 
@@ -115,6 +117,13 @@ export default function LiquidacionesPage() {
     },
   });
 
+  const anularMutation = useGraphQLMutation(ANULAR_LIQUIDACION, {
+    onSuccess: () => {
+      invalidate();
+      refetch();
+    },
+  });
+
   const columns = useMemo<ColumnDef<Liquidacion>[]>(
     () => [
       { accessorKey: 'periodo', header: 'Periodo' },
@@ -159,18 +168,32 @@ export default function LiquidacionesPage() {
                 Detalle
               </Button>
               {liq.estado === 'BORRADOR' && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={emitirMutation.isPending}
-                  onClick={() =>
-                    emitirMutation.mutate({
-                      idliquidacion: liq.idliquidacion,
-                    })
-                  }
-                >
-                  Emitir
-                </Button>
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={emitirMutation.isPending}
+                    onClick={() =>
+                      emitirMutation.mutate({
+                        idliquidacion: liq.idliquidacion,
+                      })
+                    }
+                  >
+                    Emitir
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={anularMutation.isPending}
+                    onClick={() =>
+                      anularMutation.mutate({
+                        idliquidacion: liq.idliquidacion,
+                      })
+                    }
+                  >
+                    Anular
+                  </Button>
+                </>
               )}
               {liq.estado === 'EMITIDA' && (
                 <Button
@@ -191,7 +214,7 @@ export default function LiquidacionesPage() {
         },
       },
     ],
-    [emitirMutation, pagadaMutation],
+    [emitirMutation, pagadaMutation, anularMutation],
   );
 
   const handleSimular = () => {
@@ -349,16 +372,12 @@ export default function LiquidacionesPage() {
         title="Detalle de liquidación"
         size="lg"
       >
-        {loadingDetalle && (
-          <p className="text-sm text-gray-500">Cargando líneas...</p>
-        )}
-        {(detalleData?.liquidacionDetalle ?? []).length === 0 &&
-          !loadingDetalle && (
-            <p className="text-sm text-gray-500">
-              Sin detalle guardado. Genere o regenere el borrador.
-            </p>
-          )}
-        {(detalleData?.liquidacionDetalle ?? []).length > 0 && (
+        <AsyncPanel
+          isLoading={loadingDetalle}
+          isEmpty={(detalleData?.liquidacionDetalle ?? []).length === 0}
+          loadingMessage="Cargando líneas..."
+          emptyMessage="Sin detalle guardado. Genere o regenere el borrador."
+        >
           <div className="max-h-96 overflow-auto text-sm">
             <table className="w-full">
               <thead>
@@ -381,7 +400,7 @@ export default function LiquidacionesPage() {
               </tbody>
             </table>
           </div>
-        )}
+        </AsyncPanel>
       </Modal>
     </div>
   );

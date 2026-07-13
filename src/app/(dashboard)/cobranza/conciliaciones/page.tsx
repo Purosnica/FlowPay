@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
+import { ViewRowButton } from '@/components/ui/row-action-buttons';
 import { KpiCard } from '@/components/cobranza/kpi-card';
 import { PaginatedDataTable } from '@/components/cobranza/paginated-data-table';
 import { MandanteSelect } from '@/components/cobranza/mandante-select';
@@ -206,15 +207,12 @@ export default function ConciliacionesPage() {
                   Desmarcar
                 </Button>
               )}
-              <Button
-                size="sm"
-                variant="outline"
+              <ViewRowButton
+                label="Ver préstamo"
                 onClick={() =>
                   router.push(`/cobranza/prestamos/${p.idprestamo}`)
                 }
-              >
-                Ver préstamo
-              </Button>
+              />
             </div>
           )}
         />

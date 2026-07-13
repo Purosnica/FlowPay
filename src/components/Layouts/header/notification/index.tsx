@@ -46,7 +46,10 @@ export function Notification() {
 
   const { data, refetch } = useGraphQLQuery<{
     notificacionesOperativas: NotificacionItem[];
-  }>(GET_NOTIFICACIONES_OPERATIVAS, undefined, { enabled: habilitado });
+  }>(GET_NOTIFICACIONES_OPERATIVAS, undefined, {
+    enabled: habilitado,
+    refetchInterval: 30_000,
+  });
 
   const marcarLeidasMutation = useGraphQLMutation(MARCAR_NOTIFICACIONES_LEIDAS, {
     onSuccess: () => {
@@ -54,7 +57,10 @@ export function Notification() {
     },
   });
 
-  const notificaciones = data?.notificacionesOperativas ?? [];
+  const notificaciones = useMemo(
+    () => data?.notificacionesOperativas ?? [],
+    [data?.notificacionesOperativas],
+  );
   const noLeidas = useMemo(
     () => notificaciones.filter((n) => !n.leida).length,
     [notificaciones],

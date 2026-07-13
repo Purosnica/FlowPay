@@ -7,6 +7,7 @@ import {
 import { requerirPermiso } from '@/lib/permissions/permission-service';
 import { PERMISO } from '@/lib/permissions/permiso-codes';
 import {
+  anularLiquidacionBorrador,
   emitirLiquidacion,
   generarLiquidacion,
   marcarLiquidacionPagada,
@@ -86,6 +87,26 @@ builder.mutationField('marcarLiquidacionPagada', (t) =>
         ...(query as Record<string, unknown>),
         where: { idliquidacion: args.idliquidacion },
       }) as never;
+    },
+  }),
+);
+
+builder.mutationField('anularLiquidacion', (t) =>
+  t.field({
+    type: 'Boolean',
+    args: { idliquidacion: t.arg.int({ required: true }) },
+    resolve: async (_parent, args, ctx: GraphQLContext) => {
+      await requerirPermiso(ctx.usuario?.idusuario, PERMISO.LIQUIDACION_WRITE);
+      const idusuario = ctx.usuario?.idusuario;
+      if (!idusuario) {
+        throw new GraphQLValidationError('Usuario no autenticado.');
+      }
+      try {
+        await anularLiquidacionBorrador(args.idliquidacion, idusuario);
+      } catch (err) {
+        throw wrapServiceError(err);
+      }
+      return true;
     },
   }),
 );

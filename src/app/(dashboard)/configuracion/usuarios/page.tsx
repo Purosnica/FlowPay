@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
+import { EditRowButton } from '@/components/ui/row-action-buttons';
 import { Modal } from '@/components/ui/modal';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PaginatedDataTable } from '@/components/cobranza/paginated-data-table';
@@ -258,16 +259,12 @@ export default function UsuariosAdminPage() {
               puedeEscribir
                 ? (row) => (
                     <div className="flex gap-1">
-                      <Button
-                        size="sm"
-                        variant="outline"
+                      <EditRowButton
                         onClick={() => {
                           setSelectedUsuario(row);
                           setModalOpen(true);
                         }}
-                      >
-                        Editar
-                      </Button>
+                      />
                       <Button
                         size="sm"
                         variant="outline"

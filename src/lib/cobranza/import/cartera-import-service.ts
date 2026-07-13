@@ -21,12 +21,14 @@ import { obtenerCatalogosImportacion ,type  CatalogosImportacion } from './catal
 import { parseNombreCliente ,type  NombreClienteParseado } from './parse-nombre-cliente';
 
 import { parseTelefonos } from './parse-value';
+import { extraerDatosFinancierosCartera } from './cartera-financiero-helpers';
 import {
   detectarDuplicadosArchivo,
   limpiarDocumento,
   parsearArchivoCartera,
   valorFecha,
   valorNumero,
+  valorNumeroNullable,
   valorTexto,
 } from './cartera-parse-helpers';
 import type {
@@ -371,7 +373,12 @@ async function procesarFilaCartera(
     resultado.clientesActualizados++;
   }
 
-  const saldoNuevo = valorNumero(fila.valores.saldoTotal);
+  const datosFinancieros = extraerDatosFinancierosCartera(fila);
+  const saldoNuevo = datosFinancieros.saldoTotal;
+  const diasMoraImportada = Math.max(
+    0,
+    Math.trunc(valorNumeroNullable(fila.valores.diasMora) ?? 0),
+  );
   resultado.saldoTotalCartera += saldoNuevo;
 
   const prestamoExistente = cachePrestamos.get(noPrestamo);
@@ -389,6 +396,18 @@ async function procesarFilaCartera(
       where: { idprestamo: prestamoExistente.idprestamo },
       data: {
         saldoTotal: saldoNuevo,
+        diasMora: diasMoraImportada,
+        montoPrestamo: datosFinancieros.montoPrestamo,
+        interes: datosFinancieros.interes,
+        interesMoratorio: datosFinancieros.interesMoratorio,
+        comisionCav: datosFinancieros.comisionCav,
+        comisionInsitu: datosFinancieros.comisionInsitu,
+        mantenimientoValor: datosFinancieros.mantenimientoValor,
+        gestionCobranza: datosFinancieros.gestionCobranza,
+        seguroSvsd: datosFinancieros.seguroSvsd,
+        cargosAdmin: datosFinancieros.cargosAdmin,
+        devolucionSaldoFavor: datosFinancieros.devolucionSaldoFavor,
+        descuentosArchivo: datosFinancieros.descuentosArchivo,
         idcampana: params.idcampana,
         deletedAt: null,
         estado: estadoFila,
@@ -402,12 +421,14 @@ async function procesarFilaCartera(
     prestamoId = prestamo.idprestamo;
     resultado.prestamosActualizados++;
 
-    await sincronizarMoraPrestamo(
-      db,
-      prestamoId,
-      params.idusuario,
-      params.fechaCorte,
-    );
+    if (valorNumeroNullable(fila.valores.diasMora) === null) {
+      await sincronizarMoraPrestamo(
+        db,
+        prestamoId,
+        params.idusuario,
+        params.fechaCorte,
+      );
+    }
 
     detallePrestamos.push({
       idprestamo: prestamoId,
@@ -467,15 +488,18 @@ async function procesarFilaCartera(
       moneda,
       tipoCambio: valorNumero(fila.valores.tipoCambio) || undefined,
       saldoTotal: saldoNuevo,
-      montoPrestamo: valorNumero(fila.valores.montoPrestamo),
-      interes: valorNumero(fila.valores.interes),
-      interesMoratorio: valorNumero(fila.valores.interesMoratorio),
-      comisionCav: valorNumero(fila.valores.comisionCav),
-      comisionInsitu: valorNumero(fila.valores.comisionInsitu),
-      mantenimientoValor: valorNumero(fila.valores.mantenimientoValor),
-      gestionCobranza: valorNumero(fila.valores.gestionCobranza),
-      seguroSvsd: valorNumero(fila.valores.seguroSvsd),
-      cargosAdmin: valorNumero(fila.valores.cargosAdmin),
+      diasMora: diasMoraImportada,
+      montoPrestamo: datosFinancieros.montoPrestamo,
+      interes: datosFinancieros.interes,
+      interesMoratorio: datosFinancieros.interesMoratorio,
+      comisionCav: datosFinancieros.comisionCav,
+      comisionInsitu: datosFinancieros.comisionInsitu,
+      mantenimientoValor: datosFinancieros.mantenimientoValor,
+      gestionCobranza: datosFinancieros.gestionCobranza,
+      seguroSvsd: datosFinancieros.seguroSvsd,
+      cargosAdmin: datosFinancieros.cargosAdmin,
+      devolucionSaldoFavor: datosFinancieros.devolucionSaldoFavor,
+      descuentosArchivo: datosFinancieros.descuentosArchivo,
     };
 
     const prestamo = await db.tbl_prestamo.create({ data: prestamoData });
@@ -492,12 +516,14 @@ async function procesarFilaCartera(
       idusuario: params.idusuario,
       motivo: 'Importación de cartera',
     });
-    await sincronizarMoraPrestamo(
-      db,
-      prestamoId,
-      params.idusuario,
-      params.fechaCorte,
-    );
+    if (valorNumeroNullable(fila.valores.diasMora) === null) {
+      await sincronizarMoraPrestamo(
+        db,
+        prestamoId,
+        params.idusuario,
+        params.fechaCorte,
+      );
+    }
 
     if (idgestorAsignado) {
       resultado.gestoresAsignados++;
@@ -512,11 +538,10 @@ async function procesarFilaCartera(
     });
   }
 
-  const diasMoraCorte = await resolverDiasMoraPrestamo(
-    db,
-    prestamoId,
-    params.fechaCorte,
-  );
+  const diasMoraCorte =
+    valorNumeroNullable(fila.valores.diasMora) === null
+      ? await resolverDiasMoraPrestamo(db, prestamoId, params.fechaCorte)
+      : diasMoraImportada;
 
   await db.tbl_prestamo_corte.create({
     data: {

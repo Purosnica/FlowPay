@@ -4,7 +4,7 @@ import { env } from '@/lib/env';
 import { notificationService } from '@/lib/notifications/notification-service';
 import { clientErrorLogger } from '@/lib/errors/client-error-logger';
 import { type StructuredError, ErrorCode } from '@/lib/errors/types';
-import { CSRF_HEADER, CSRF_HEADER_VALUE } from '@/lib/security/csrf';
+import { CSRF_HEADER, CSRF_HEADER_VALUE, CSRF_TOKEN_HEADER, CSRF_COOKIE } from '@/lib/security/csrf';
 
 // Instancia de axios configurada para la aplicación
 export const apiClient = axios.create({
@@ -15,6 +15,31 @@ export const apiClient = axios.create({
   },
   timeout: 30000,
   withCredentials: true,
+});
+
+function leerTokenCsrfDelDocumento(): string | null {
+  if (typeof document === 'undefined') {
+    return null;
+  }
+  const match = document.cookie
+    .split('; ')
+    .find((row) => row.startsWith(`${CSRF_COOKIE}=`));
+  if (!match) {
+    return null;
+  }
+  return decodeURIComponent(match.slice(CSRF_COOKIE.length + 1)) || null;
+}
+
+apiClient.interceptors.request.use((config) => {
+  const method = (config.method ?? 'get').toLowerCase();
+  if (['post', 'put', 'patch', 'delete'].includes(method)) {
+    config.headers.set(CSRF_HEADER, CSRF_HEADER_VALUE);
+    const token = leerTokenCsrfDelDocumento();
+    if (token) {
+      config.headers.set(CSRF_TOKEN_HEADER, token);
+    }
+  }
+  return config;
 });
 
 /**
@@ -180,8 +205,10 @@ apiClient.interceptors.response.use(
         });
       }
 
-      // Mostrar notificación solo si no es un 401 esperado
-      if (!isExpected401) {
+      const suppressToast = error.config?.suppressErrorToast === true;
+
+      // Mostrar notificación solo si no es un 401 esperado ni toast suprimido
+      if (!isExpected401 && !suppressToast) {
         notificationService.error(
           "Error",
           structuredError.userMessage

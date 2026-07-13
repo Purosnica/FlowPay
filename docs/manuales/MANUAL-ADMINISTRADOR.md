@@ -70,7 +70,7 @@ Sub-jobs: acuerdos vencidos, mora, castigo, promesas, reclamos SLA, importacione
 | Control | Comportamiento |
 |---------|----------------|
 | Sesión | Cookie HTTP-only, JWT 8h, sin token en JSON |
-| CSRF | Header `x-flowpay-request: 1` en mutaciones |
+| CSRF | Header `x-flowpay-request: 1` + cookie `flowpay-csrf` / header `x-flowpay-csrf` |
 | GraphQL | Sin introspection en producción |
 | Cron | Solo `Authorization: Bearer CRON_SECRET` |
 | Rate limit | Login por email; distribuido en prod (`tbl_rate_limit`) |
@@ -99,8 +99,23 @@ Variables obligatorias en producción (`src/lib/env.ts`):
 DATABASE_URL
 JWT_SECRET          # ≥32 caracteres
 CRON_SECRET         # ≥16 caracteres
-NEXTAUTH_SECRET     # ≥32 caracteres
-NEXTAUTH_URL
+```
+
+Auth: JWT propio (cookie `auth-token`). No se usa NextAuth.
+
+Detrás de reverse proxy en producción, configurar `X-Real-IP` (o
+`TRUST_PROXY=true` para usar el último hop de `X-Forwarded-For`).
+
+SMTP (opcional, cobros por email):
+
+```
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=...
+SMTP_PASS=            # App Password Google, 16 chars SIN espacios
+SMTP_FROM=...
+SMTP_FROM_NAME=...
 ```
 
 Opcionales de escalabilidad:
@@ -114,10 +129,18 @@ AUDIT_RETENTION_DAYS=90
 Post-deploy:
 
 ```bash
-npx prisma db push
-npm run db:seed          # solo entornos nuevos
+# BD nueva:
+npx prisma migrate deploy
+npm run db:seed
+
+# BD ya existente (antes usaba db push): marcar baseline y listo
+npm run db:migrate:resolve-baseline
+# (solo una vez; luego solo migrate deploy en deploys nuevos)
+
 npm run qa:gate
 ```
+
+`db push` queda solo para prototipo local rápido; en staging/prod usar migraciones.
 
 ---
 

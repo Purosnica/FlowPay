@@ -11,21 +11,17 @@ Plataforma empresarial de recuperación de cartera.
 ```bash
 npm install
 cp .env.example .env   # configurar DATABASE_URL, JWT_SECRET
-npx prisma db push
+npx prisma migrate deploy
+# BD ya existente con db push: npm run db:migrate:resolve-baseline (una vez)
 npm run db:seed
 npm run dev
 ```
 
 Abrir [http://localhost:3000](http://localhost:3000)
 
-### Usuarios demo (seed)
-
-| Rol | Email | Contraseña |
-|-----|-------|------------|
-| Admin | admin@flowpay.com | admin123 |
-| Supervisor | supervisor@flowpay.com | supervisor123 |
-| Gerente | gerente@flowpay.com | gerente123 |
-| Cobrador | cobrador@flowpay.com | cobrador123 |
+Usuarios de desarrollo: se crean con `npm run db:seed`. Las contraseñas
+solo aparecen en la salida de la consola del seed — no las uses en
+staging/producción y cámbialas de inmediato si el seed corrió ahí.
 
 ---
 

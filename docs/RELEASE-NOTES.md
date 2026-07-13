@@ -9,7 +9,7 @@ Release de consolidación: seguridad, performance, escalabilidad, QA, UAT y docu
 ### Seguridad (Fase 8)
 
 - Sesión solo por cookie HTTP-only; JWT 8h; token eliminado de respuestas JSON
-- CSRF: header `x-flowpay-request` en mutaciones
+- CSRF: header `x-flowpay-request` + cookie double-submit `flowpay-csrf` / `x-flowpay-csrf`
 - GraphQL: introspection deshabilitada en producción
 - Cron: autenticación exclusiva Bearer (`CRON_SECRET`)
 - Rate limit de login por email (distribuido en prod vía `tbl_rate_limit`)
@@ -66,12 +66,9 @@ Variables nuevas/requeridas en producción:
 
 ### Usuarios demo
 
-| Rol | Email | Contraseña |
-|-----|-------|------------|
-| Admin | admin@flowpay.com | admin123 |
-| Supervisor | supervisor@flowpay.com | supervisor123 |
-| Gerente | gerente@flowpay.com | gerente123 |
-| Cobrador | cobrador@flowpay.com | cobrador123 |
+Solo para entorno local vía `npm run db:seed`. Las contraseñas se imprimen
+en consola al sembrar; **no** se documentan aquí. En staging/producción
+rotar o eliminar esas cuentas.
 
 ---
 

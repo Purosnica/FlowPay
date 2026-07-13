@@ -71,6 +71,14 @@ const MATRIZ_RUTAS: RutaExpectativa[] = [
     porRol: { COBRADOR: true, SUPERVISOR: true, GERENTE: true, ADMIN: true },
   },
   {
+    ruta: '/clientes',
+    porRol: { COBRADOR: true, SUPERVISOR: true, GERENTE: true, ADMIN: true },
+  },
+  {
+    ruta: '/cobranza/mandantes',
+    porRol: { COBRADOR: true, SUPERVISOR: true, GERENTE: true, ADMIN: true },
+  },
+  {
     ruta: '/cobranza/reportes',
     porRol: { COBRADOR: true, SUPERVISOR: true, GERENTE: true, ADMIN: true },
   },
@@ -97,6 +105,10 @@ const MATRIZ_RUTAS: RutaExpectativa[] = [
   {
     ruta: '/configuracion/usuarios',
     porRol: { COBRADOR: false, SUPERVISOR: false, GERENTE: true, ADMIN: true },
+  },
+  {
+    ruta: '/configuracion',
+    porRol: { COBRADOR: false, SUPERVISOR: false, GERENTE: false, ADMIN: true },
   },
   {
     ruta: '/configuracion/auditoria',

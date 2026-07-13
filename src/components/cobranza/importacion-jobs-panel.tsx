@@ -4,10 +4,29 @@ import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { GET_IMPORTACION_JOBS } from '@/lib/graphql/queries/cobranza.queries';
 import type { ImportacionJob } from '@/types/cobranza';
 
+const IMPORT_QUERY_OPTIONS = {
+  timeout: 120_000,
+  suppressErrorToast: true,
+} as const;
+
 export function ImportacionJobsPanel() {
   const { data, isLoading, refetch } = useGraphQLQuery<{
     importacionJobs: ImportacionJob[];
-  }>(GET_IMPORTACION_JOBS, { limite: 15 });
+  }>(
+    GET_IMPORTACION_JOBS,
+    { limite: 15 },
+    {
+      requestOptions: IMPORT_QUERY_OPTIONS,
+      staleTime: 0,
+      refetchInterval: (query) => {
+        const jobs = query.state.data?.importacionJobs ?? [];
+        const hayActivos = jobs.some(
+          (j) => j.estado === 'PENDIENTE' || j.estado === 'PROCESANDO',
+        );
+        return hayActivos ? 5000 : false;
+      },
+    },
+  );
 
   const jobs = data?.importacionJobs ?? [];
   const hayActivos = jobs.some(
@@ -67,8 +86,9 @@ export function ImportacionJobsPanel() {
       </ul>
       {hayActivos && (
         <p className="mt-2 text-xs text-gray-500">
-          Los jobs pendientes se procesan vía cron o al ejecutar operaciones de
-          cobranza.
+          Procesando archivos grandes puede tardar varios minutos. El progreso se
+          actualiza automáticamente; ignore avisos de timeout mientras el job
+          siga en PROCESANDO.
         </p>
       )}
     </div>

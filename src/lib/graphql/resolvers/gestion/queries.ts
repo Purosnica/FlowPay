@@ -4,6 +4,7 @@ import { GestionPage, PromesaVencidaType } from "./types";
 import { requerirPermiso } from "@/lib/permissions/permission-service";
 import { PERMISO } from "@/lib/permissions/permiso-codes";
 import { filtroMandante, requerirAccesoMandante } from "@/lib/cobranza/mandante-scope";
+import { whereGestionPorRol } from "@/lib/cobranza/cobrador-scope";
 import { obtenerPromesasVencidas } from "@/lib/cobranza/promesas-vencidas-service";
 import { GraphQLValidationError } from "@/lib/errors/graphql-errors";
 import {
@@ -27,6 +28,9 @@ builder.queryField("gestiones", (t) =>
         args.pageSize,
       );
       const mandanteFilter = await filtroMandante(ctx.usuario?.idusuario);
+      const scopeCobrador = ctx.usuario?.idusuario
+        ? await whereGestionPorRol(ctx.usuario.idusuario)
+        : {};
 
       if (args.idmandante) {
         await requerirAccesoMandante(ctx.usuario?.idusuario, args.idmandante);
@@ -36,6 +40,7 @@ builder.queryField("gestiones", (t) =>
         deletedAt: null,
         idmandante: args.idmandante ?? mandanteFilter,
         ...(args.idprestamo ? { idprestamo: args.idprestamo } : {}),
+        ...scopeCobrador,
       };
 
       const [gestiones, total] = await Promise.all([

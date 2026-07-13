@@ -4,6 +4,7 @@ import { builder ,type  GraphQLContext } from '../../builder';
 import { requerirPermiso } from '@/lib/permissions/permission-service';
 import { PERMISO } from '@/lib/permissions/permiso-codes';
 import { requerirAccesoMandante } from '@/lib/cobranza/mandante-scope';
+import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
 import { validarHorarioCobranza } from '@/lib/cobranza/horario-cobranza-service';
 import { ValidacionHorarioType } from '../contrato-mandante/types';
 import { createPageType } from '../../helpers/create-page-type';
@@ -96,7 +97,7 @@ builder.mutationField('updateHorarioCobranza', (t) =>
         where: { idhorario: args.idhorario },
       });
       if (!horario) {
-        throw new Error('Horario no encontrado.');
+        throw new GraphQLValidationError('Horario no encontrado.');
       }
       if (horario.idmandante) {
         await requerirAccesoMandante(

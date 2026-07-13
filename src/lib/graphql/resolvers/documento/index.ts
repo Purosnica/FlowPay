@@ -3,15 +3,23 @@ import {
   CreateDocumentoInput,
   CreateDocumentoInputSchema,
 } from './types';
-import { builder ,type  GraphQLContext } from '../../builder';
-
+import { builder, type GraphQLContext } from '../../builder';
 
 import { requerirPermiso } from '@/lib/permissions/permission-service';
 import { PERMISO } from '@/lib/permissions/permiso-codes';
-import { requerirAccesoMandante, requerirAccesoCliente, filtroMandante } from '@/lib/cobranza/mandante-scope';
+import {
+  requerirAccesoMandante,
+  requerirAccesoCliente,
+  filtroMandante,
+} from '@/lib/cobranza/mandante-scope';
+import {
+  requerirAccesoPrestamoCobrador,
+  requerirAccesoClienteCobrador,
+} from '@/lib/cobranza/cobrador-scope';
 import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
 import { createPageType } from '../../helpers/create-page-type';
 import { resolvePaginatedPrismaQuery } from '../../helpers/paginated-prisma-resolver';
+import { esDocumentoUrlInterna } from '@/lib/cobranza/documento-storage';
 
 const DocumentoPage = createPageType('DocumentoPage', Documento, 'documentos');
 
@@ -33,15 +41,24 @@ builder.queryField('documentos', (t) =>
         const prestamo = await ctx.prisma.tbl_prestamo.findUnique({
           where: { idprestamo: args.idprestamo },
         });
-        if (prestamo) {
-          await requerirAccesoMandante(
-            ctx.usuario?.idusuario,
-            prestamo.idmandante,
-          );
+        if (!prestamo || prestamo.deletedAt) {
+          throw new GraphQLValidationError('Préstamo no encontrado.');
         }
+        await requerirAccesoMandante(
+          ctx.usuario?.idusuario,
+          prestamo.idmandante,
+        );
+        await requerirAccesoPrestamoCobrador(
+          ctx.usuario?.idusuario,
+          args.idprestamo,
+        );
       }
       if (args.idcliente) {
         await requerirAccesoCliente(ctx.usuario?.idusuario, args.idcliente);
+        await requerirAccesoClienteCobrador(
+          ctx.usuario?.idusuario,
+          args.idcliente,
+        );
       }
 
       const mandanteFilter = await filtroMandante(ctx.usuario?.idusuario);
@@ -98,6 +115,11 @@ builder.mutationField('createDocumento', (t) =>
           'Indique idprestamo o idcliente.',
         );
       }
+      if (!esDocumentoUrlInterna(data.url)) {
+        throw new GraphQLValidationError(
+          'Solo se permiten documentos subidos en la aplicación.',
+        );
+      }
       if (data.idprestamo) {
         const prestamo = await ctx.prisma.tbl_prestamo.findUnique({
           where: { idprestamo: data.idprestamo },
@@ -109,9 +131,17 @@ builder.mutationField('createDocumento', (t) =>
           ctx.usuario?.idusuario,
           prestamo.idmandante,
         );
+        await requerirAccesoPrestamoCobrador(
+          ctx.usuario?.idusuario,
+          data.idprestamo,
+        );
       }
       if (data.idcliente) {
         await requerirAccesoCliente(ctx.usuario?.idusuario, data.idcliente);
+        await requerirAccesoClienteCobrador(
+          ctx.usuario?.idusuario,
+          data.idcliente,
+        );
       }
       return ctx.prisma.tbl_documento.create({
         ...(query as Record<string, unknown>),
@@ -144,8 +174,16 @@ builder.mutationField('deleteDocumento', (t) =>
           ctx.usuario?.idusuario,
           doc.prestamo.idmandante,
         );
+        await requerirAccesoPrestamoCobrador(
+          ctx.usuario?.idusuario,
+          doc.prestamo.idprestamo,
+        );
       } else if (doc.idcliente) {
         await requerirAccesoCliente(ctx.usuario?.idusuario, doc.idcliente);
+        await requerirAccesoClienteCobrador(
+          ctx.usuario?.idusuario,
+          doc.idcliente,
+        );
       }
       await ctx.prisma.tbl_documento.update({
         where: { iddocumento: args.iddocumento },

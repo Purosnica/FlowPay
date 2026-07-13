@@ -1,24 +1,31 @@
 import { type UseQueryOptions , useQuery } from "@tanstack/react-query";
 
-import { graphqlRequest, GraphQLRequestError } from "@/lib/graphql/client";
+import {
+  graphqlRequest,
+  GraphQLRequestError,
+  type GraphQLRequestOptions,
+} from "@/lib/graphql/client";
 import { useAuth } from "@/contexts/auth-context";
 
 export function useGraphQLQuery<T = unknown>(
   query: string,
   variables?: Record<string, unknown>,
-  options?: Omit<UseQueryOptions<T>, "queryKey" | "queryFn">
+  options?: Omit<UseQueryOptions<T>, "queryKey" | "queryFn"> & {
+    requestOptions?: GraphQLRequestOptions;
+  },
 ) {
   const { usuario, loading: authLoading } = useAuth();
+  const { requestOptions, ...queryOptions } = options ?? {};
 
   // Determinar si la query debe estar habilitada
   const isAuthenticated = !authLoading && !!usuario;
-  const enabled = options?.enabled !== undefined 
-    ? options.enabled && isAuthenticated 
+  const enabled = queryOptions?.enabled !== undefined
+    ? queryOptions.enabled && isAuthenticated
     : isAuthenticated;
 
   return useQuery<T>({
     queryKey: [query, variables],
-    queryFn: () => graphqlRequest<T>(query, variables),
+    queryFn: () => graphqlRequest<T>(query, variables, requestOptions),
     retry: (failureCount, error) => {
       // No reintentar en errores 4xx (client errors)
       if (error instanceof GraphQLRequestError) {
@@ -31,7 +38,7 @@ export function useGraphQLQuery<T = unknown>(
     },
     staleTime: 60 * 1000, // 1 minuto por defecto
     gcTime: 5 * 60 * 1000, // 5 minutos (antes cacheTime)
-    ...options,
+    ...queryOptions,
     enabled, // Sobrescribir enabled con el valor calculado (debe ir después de ...options)
   });
 }

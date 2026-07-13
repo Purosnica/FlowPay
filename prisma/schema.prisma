@@ -230,6 +230,7 @@ model tbl_usuario {
   asignacionesGestorNuevo      tbl_prestamo_asignacion_historial[] @relation("gestor_nuevo")
   estadosPrestamoRegistrados   tbl_prestamo_estado_historial[]
   notificacionesLeidas         tbl_notificacion_lectura[]
+  notificaciones               tbl_notificacion[]
 
   @@index([idrol])
   @@index([idsupervisor])
@@ -518,6 +519,8 @@ model tbl_prestamo {
   gestionCobranza    Decimal @default(0) @db.Decimal(14, 2)
   seguroSvsd         Decimal @default(0) @db.Decimal(14, 2)
   cargosAdmin        Decimal @default(0) @db.Decimal(14, 2)
+  devolucionSaldoFavor Decimal @default(0) @db.Decimal(14, 2)
+  descuentosArchivo    Decimal @default(0) @db.Decimal(14, 2)
 
   reportableCentralRiesgo Boolean @default(true) // false si hay acuerdo vigente
 
@@ -780,10 +783,12 @@ model tbl_acuerdo {
   idmandante     Int
   idprestamo     Int
   idgestion      Int?
-  baseNegociable Decimal   @db.Decimal(14, 2) // saldoTotal + interesMoratorio
+  baseNegociable Decimal   @db.Decimal(14, 2) // saldo + moratorio/gestión no dispensados
   porcentajeDesc Decimal   @db.Decimal(5, 2)
   montoDescuento Decimal   @db.Decimal(14, 2) // base * %
   montoAcordado  Decimal   @db.Decimal(14, 2) // base - descuento
+  dispensarInteresMoratorio Boolean @default(false)
+  dispensarGestionCobranza  Boolean @default(false)
   numeroCuotas   Int       @default(1)
   montoCuota     Decimal   @db.Decimal(14, 2) // acordado / cuotas
   pagoMinimo     Decimal?  @db.Decimal(14, 2) // cuota / 2
@@ -818,6 +823,8 @@ model tbl_pago {
   tipoCambio Decimal?  @db.Decimal(10, 4)
   medio      String? // EFECTIVO / TRANSFERENCIA / etc.
   aplicado   Boolean   @default(false) // conciliación con siguiente corte
+  /// Snapshot de mora al aplicar el pago (comisiones / liquidación).
+  diasMoraAplicacion Int?
   reciboUrl  String?
   deletedAt  DateTime?
   createdAt  DateTime  @default(now())
@@ -834,6 +841,7 @@ model tbl_pago {
   @@index([idgestor])
   @@index([fechaPago, aplicado])
   @@index([idmandante, deletedAt, aplicado, fechaPago])
+  @@index([idprestamo, fechaPago, monto, medio])
   @@map("tbl_pago")
 }
 
@@ -841,6 +849,8 @@ model tbl_liquidacion {
   idliquidacion   Int       @id @default(autoincrement())
   idmandante      Int
   periodo         String // "2026-03"
+  /// Igual a periodo si activa; null si soft-delete (permite unique con MySQL).
+  periodoActivo   String?
   totalRecuperado Decimal   @db.Decimal(14, 2)
   totalComision   Decimal   @db.Decimal(14, 2)
   estado          String // BORRADOR / EMITIDA / PAGADA
@@ -851,6 +861,7 @@ model tbl_liquidacion {
   mandante tbl_mandante @relation(fields: [idmandante], references: [idmandante])
   detalle  tbl_liquidacion_detalle[]
 
+  @@unique([idmandante, periodoActivo])
   @@index([idmandante])
   @@index([idmandante, periodo, deletedAt])
   @@map("tbl_liquidacion")
@@ -1009,7 +1020,7 @@ model tbl_plantilla_mensaje {
   idplantilla Int       @id @default(autoincrement())
   idmandante  Int
   nombre      String
-  canal       String // WHATSAPP / SMS / LLAMADA / CARTA
+  canal       String // WHATSAPP / SMS / LLAMADA / CARTA / EMAIL
   etapa       String? // PREVENTIVA / ADMINISTRATIVA / EXTRAJUDICIAL...
   contenido   String    @db.Text
   estado      Boolean   @default(true)
@@ -1168,6 +1179,27 @@ model tbl_notificacion_lectura {
   @@unique([idusuario, notificacionId])
   @@index([idusuario, leidaEn])
   @@map("tbl_notificacion_lectura")
+}
+
+model tbl_notificacion {
+  idnotificacion Int       @id @default(autoincrement())
+  idusuario      Int
+  tipo           String
+  severidad      String    @default("info")
+  titulo         String
+  mensaje        String    @db.Text
+  url            String?
+  entidad        String?
+  entidadId      Int?
+  leida          Boolean   @default(false)
+  leidaEn        DateTime?
+  createdAt      DateTime  @default(now())
+
+  usuario tbl_usuario @relation(fields: [idusuario], references: [idusuario], onDelete: Cascade)
+
+  @@index([idusuario, leida, createdAt])
+  @@index([idusuario, createdAt])
+  @@map("tbl_notificacion")
 }
 
 model tbl_usuario_mandante {

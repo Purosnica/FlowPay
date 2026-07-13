@@ -9,6 +9,7 @@ import {
 import { requerirPermiso } from "@/lib/permissions/permission-service";
 import { PERMISO } from "@/lib/permissions/permiso-codes";
 import { filtroMandante, requerirAccesoMandante } from "@/lib/cobranza/mandante-scope";
+import { requerirAccesoPrestamoCobrador } from "@/lib/cobranza/cobrador-scope";
 import { simularAcuerdo } from "@/lib/cobranza/acuerdo-simulator";
 import { decimalToNumber } from "@/lib/cobranza/decimal-utils";
 import {
@@ -33,6 +34,10 @@ builder.queryField("simularAcuerdo", (t) =>
         throw new GraphQLValidationError("Préstamo no encontrado.");
       }
       await requerirAccesoMandante(ctx.usuario?.idusuario, prestamo.idmandante);
+      await requerirAccesoPrestamoCobrador(
+        ctx.usuario?.idusuario,
+        input.idprestamo,
+      );
 
       try {
         validarPorcentajeContraMandante(
@@ -70,8 +75,11 @@ builder.queryField("simularAcuerdo", (t) =>
       return simularAcuerdo({
         saldoTotal: decimalToNumber(prestamo.saldoTotal),
         interesMoratorio: decimalToNumber(prestamo.interesMoratorio),
+        gestionCobranza: decimalToNumber(prestamo.gestionCobranza),
         porcentajeDesc: input.porcentajeDesc,
         numeroCuotas: input.numeroCuotas,
+        dispensarInteresMoratorio: input.dispensarInteresMoratorio,
+        dispensarGestionCobranza: input.dispensarGestionCobranza,
       });
     },
   }),
@@ -101,6 +109,10 @@ builder.queryField("acuerdos", (t) =>
       if (!prestamo) {
         throw new GraphQLValidationError('Préstamo no encontrado o sin acceso.');
       }
+      await requerirAccesoPrestamoCobrador(
+        ctx.usuario?.idusuario,
+        args.idprestamo,
+      );
 
       return ctx.prisma.tbl_acuerdo.findMany({
         where: {

@@ -70,7 +70,6 @@ export const TransicionEstadoInput = builder.inputRef('TransicionEstadoInput').i
     idprestamo: t.int({ required: true }),
     estadoNuevo: t.string({ required: true }),
     motivo: t.string({ required: false }),
-    forzar: t.boolean({ required: false }),
   }),
 });
 
@@ -162,6 +161,50 @@ export const PrestamoFiltersInput = builder.inputRef("PrestamoFiltersInput").imp
     idgestorAsignado: t.int({ required: false }),
     estado: t.string({ required: false }),
     search: t.string({ required: false }),
+  }),
+});
+
+export const DesgloseSaldoPrestamoType = builder.objectRef<{
+  montoPrestamo: number;
+  interes: number;
+  gestionCobranza: number;
+  comisionCav: number;
+  comisionInsitu: number;
+  mantenimientoValor: number;
+  seguroSvsd: number;
+  cargosAdmin: number;
+  devolucionSaldoFavor: number;
+  descuentosArchivo: number;
+  interesMoratorio: number;
+  subtotalComponentes: number;
+  totalPagosAplicados: number;
+  saldoCalculado: number;
+  saldoRegistrado: number;
+  baseAcuerdo: number;
+  descuentoAcuerdoVigente: number;
+  diferencia: number;
+  cuadra: boolean;
+}>('DesgloseSaldoPrestamo').implement({
+  fields: (t) => ({
+    montoPrestamo: t.exposeFloat('montoPrestamo'),
+    interes: t.exposeFloat('interes'),
+    gestionCobranza: t.exposeFloat('gestionCobranza'),
+    comisionCav: t.exposeFloat('comisionCav'),
+    comisionInsitu: t.exposeFloat('comisionInsitu'),
+    mantenimientoValor: t.exposeFloat('mantenimientoValor'),
+    seguroSvsd: t.exposeFloat('seguroSvsd'),
+    cargosAdmin: t.exposeFloat('cargosAdmin'),
+    devolucionSaldoFavor: t.exposeFloat('devolucionSaldoFavor'),
+    descuentosArchivo: t.exposeFloat('descuentosArchivo'),
+    interesMoratorio: t.exposeFloat('interesMoratorio'),
+    subtotalComponentes: t.exposeFloat('subtotalComponentes'),
+    totalPagosAplicados: t.exposeFloat('totalPagosAplicados'),
+    saldoCalculado: t.exposeFloat('saldoCalculado'),
+    saldoRegistrado: t.exposeFloat('saldoRegistrado'),
+    baseAcuerdo: t.exposeFloat('baseAcuerdo'),
+    descuentoAcuerdoVigente: t.exposeFloat('descuentoAcuerdoVigente'),
+    diferencia: t.exposeFloat('diferencia'),
+    cuadra: t.exposeBoolean('cuadra'),
   }),
 });
 

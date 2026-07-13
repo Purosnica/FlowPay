@@ -3,10 +3,16 @@ import { builder } from "../../builder";
 import { z } from "zod";
 import { exposeDecimal } from "../../helpers/graphql-helpers";
 
+const dispensasAcuerdoSchema = {
+  dispensarInteresMoratorio: z.boolean().default(false),
+  dispensarGestionCobranza: z.boolean().default(false),
+};
+
 export const SimularAcuerdoInputSchema = z.object({
   idprestamo: z.number().int().positive(),
   porcentajeDesc: z.number().min(0).max(100),
   numeroCuotas: z.number().int().min(1).default(1),
+  ...dispensasAcuerdoSchema,
 });
 
 export const CreateAcuerdoInputSchema = SimularAcuerdoInputSchema.extend({
@@ -21,6 +27,8 @@ export const SimularAcuerdoInput = builder.inputRef("SimularAcuerdoInput").imple
     idprestamo: t.int({ required: true }),
     porcentajeDesc: t.float({ required: true }),
     numeroCuotas: t.int({ required: false, defaultValue: 1 }),
+    dispensarInteresMoratorio: t.boolean({ required: false, defaultValue: false }),
+    dispensarGestionCobranza: t.boolean({ required: false, defaultValue: false }),
   }),
 });
 
@@ -31,6 +39,8 @@ export const CreateAcuerdoInput = builder.inputRef("CreateAcuerdoInput").impleme
     numeroCuotas: t.int({ required: false, defaultValue: 1 }),
     idgestion: t.int({ required: false }),
     fechaInicio: t.field({ type: "DateTime", required: true }),
+    dispensarInteresMoratorio: t.boolean({ required: false, defaultValue: false }),
+    dispensarGestionCobranza: t.boolean({ required: false, defaultValue: false }),
   }),
 });
 
@@ -40,6 +50,8 @@ export const SimulacionAcuerdoResult = builder.objectRef<{
   montoAcordado: number;
   montoCuota: number;
   pagoMinimo: number;
+  interesMoratorioExcluido: number;
+  gestionCobranzaExcluida: number;
 }>("SimulacionAcuerdoResult").implement({
   fields: (t) => ({
     baseNegociable: t.exposeFloat("baseNegociable"),
@@ -47,6 +59,8 @@ export const SimulacionAcuerdoResult = builder.objectRef<{
     montoAcordado: t.exposeFloat("montoAcordado"),
     montoCuota: t.exposeFloat("montoCuota"),
     pagoMinimo: t.exposeFloat("pagoMinimo"),
+    interesMoratorioExcluido: t.exposeFloat("interesMoratorioExcluido"),
+    gestionCobranzaExcluida: t.exposeFloat("gestionCobranzaExcluida"),
   }),
 });
 
@@ -63,6 +77,8 @@ export const Acuerdo = definePrismaObject("tbl_acuerdo", {
     numeroCuotas: t.exposeInt("numeroCuotas"),
     montoCuota: exposeDecimal(t, "montoCuota"),
     pagoMinimo: exposeDecimal(t, "pagoMinimo"),
+    dispensarInteresMoratorio: t.exposeBoolean("dispensarInteresMoratorio"),
+    dispensarGestionCobranza: t.exposeBoolean("dispensarGestionCobranza"),
     fechaInicio: t.expose("fechaInicio", { type: "DateTime" }),
     estado: t.exposeString("estado"),
     createdAt: t.expose("createdAt", { type: "DateTime" }),

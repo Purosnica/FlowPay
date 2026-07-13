@@ -26,8 +26,10 @@ export function TendenciaRecuperacionChart({
 
   return (
     <div>
-      <h2 className="mb-3 text-lg font-semibold">{titulo}</h2>
-      <div className="space-y-2 rounded-lg border p-4 dark:border-dark-3">
+      <h2 className="mb-3 text-lg font-semibold text-dark dark:text-white">
+        {titulo}
+      </h2>
+      <div className="space-y-2 rounded-xl border border-stroke bg-white p-4 shadow-sm dark:border-dark-3 dark:bg-gray-dark">
         {tendencia.map((t) => (
           <div key={t.periodo}>
             <div className="mb-1 flex justify-between text-xs">

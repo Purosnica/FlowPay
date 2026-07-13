@@ -2,6 +2,7 @@ import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { requerirAccesoMandante } from '@/lib/cobranza/mandante-scope';
 import { registrarAuditoria } from '@/lib/cobranza/auditoria-service';
+import { emitirNotificacionAsignacion } from '@/lib/cobranza/notificacion-emision-service';
 import { decimalToNumber } from '@/lib/cobranza/decimal-utils';
 import { diasMoraEnTramo } from '@/lib/cobranza/tramos-mora';
 
@@ -245,6 +246,7 @@ export async function asignarGestorConHistorial(
   idgestorNuevo: number,
   idusuario: number,
   motivo?: string | null,
+  opciones?: { omitirNotificacion?: boolean },
 ): Promise<void> {
   const prestamo = await prisma.tbl_prestamo.findUnique({
     where: { idprestamo },
@@ -288,6 +290,14 @@ export async function asignarGestorConHistorial(
       motivo,
     }),
   });
+
+  if (!opciones?.omitirNotificacion) {
+    await emitirNotificacionAsignacion(
+      idgestorNuevo,
+      idusuario,
+      [idprestamo],
+    );
+  }
 }
 
 /** Lotes para evitar miles de queries secuenciales en asignaciones masivas. */
@@ -392,6 +402,14 @@ async function aplicarDistribucionEnLotes(
       }, ASIGNACION_TRANSACTION_OPTIONS);
 
       asignados += batch.length;
+    }
+
+    if (idgestor !== idusuario && idprestamos.length > 0) {
+      await emitirNotificacionAsignacion(
+        idgestor,
+        idusuario,
+        idprestamos,
+      );
     }
   }
 

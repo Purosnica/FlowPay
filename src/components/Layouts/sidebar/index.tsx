@@ -41,8 +41,10 @@ export function Sidebar() {
           item.url === pathname ||
           item.items?.some((subItem) => subItem.url === pathname);
 
-        if (isActiveParent && !expandedItems.includes(item.title) && item.items?.length) {
-          toggleExpanded(item.title);
+        if (isActiveParent && item.items?.length) {
+          setExpandedItems((prev) =>
+            prev.includes(item.title) ? prev : [item.title],
+          );
         }
       });
     });

@@ -1,13 +1,31 @@
 /**
  * API ROUTE: LOGOUT
- * 
+ *
  * POST /api/auth/logout
  * Cierra la sesión del usuario
  */
 
-import { type NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from 'next/server';
 
-import { requireAuth } from "@/lib/middleware/auth";
+import { requireAuth } from '@/lib/middleware/auth';
+import { CSRF_COOKIE } from '@/lib/security/csrf';
+
+function limpiarCookiesSesion(response: NextResponse): void {
+  response.cookies.set('auth-token', '', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 0,
+    path: '/',
+  });
+  response.cookies.set(CSRF_COOKIE, '', {
+    httpOnly: false,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 0,
+    path: '/',
+  });
+}
 
 /**
  * POST /api/auth/logout
@@ -15,43 +33,23 @@ import { requireAuth } from "@/lib/middleware/auth";
  */
 export async function POST(req: NextRequest) {
   try {
-    // Verificar que el usuario esté autenticado
     await requireAuth(req);
 
-    // Crear respuesta
     const response = NextResponse.json({
       success: true,
-      message: "Sesión cerrada exitosamente",
+      message: 'Sesión cerrada exitosamente',
     });
-
-    // Eliminar cookie de autenticación estableciendo maxAge a 0
-    response.cookies.set("auth-token", "", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 0, // Eliminar cookie inmediatamente
-      path: "/",
-    });
-
+    limpiarCookiesSesion(response);
     return response;
   } catch {
-    // Si no está autenticado, igualmente eliminar la cookie
     const response = NextResponse.json(
       {
         success: true,
-        message: "Sesión cerrada",
+        message: 'Sesión cerrada',
       },
-      { status: 200 }
+      { status: 200 },
     );
-
-    // Eliminar cookie de autenticación estableciendo maxAge a 0
-    response.cookies.set("auth-token", "", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 0, // Eliminar cookie inmediatamente
-      path: "/",
-    });
+    limpiarCookiesSesion(response);
     return response;
   }
 }

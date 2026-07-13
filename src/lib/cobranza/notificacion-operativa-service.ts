@@ -9,6 +9,7 @@ import {
 import {
   obtenerIdsNotificacionesLeidas,
 } from './notificacion-lectura-service';
+import { obtenerNotificacionesPersistidas } from './notificacion-service';
 
 export interface NotificacionOperativa {
   id: string;
@@ -46,8 +47,13 @@ export async function obtenerNotificacionesOperativas(
     ahora.getTime() - diasSinGestionAlerta * 86400000,
   );
 
-  const [reclamosSla, promesasVencidas, acuerdosRiesgo, sinGestion] =
-    await Promise.all([
+  const [
+    reclamosSla,
+    promesasVencidas,
+    acuerdosRiesgo,
+    sinGestion,
+    persistidas,
+  ] = await Promise.all([
       prisma.tbl_reclamo.findMany({
         where: {
           deletedAt: null,
@@ -84,7 +90,14 @@ export async function obtenerNotificacionesOperativas(
           },
         },
       }),
-    ]);
+    obtenerNotificacionesPersistidas(idusuario, limite),
+  ]);
+
+  notificaciones.push(...persistidas);
+
+  const leidasPersistidas = new Map(
+    persistidas.map((n) => [n.id, n.leida]),
+  );
 
   for (const r of reclamosSla) {
     const nombre = `${r.cliente.primer_nombres} ${r.cliente.primer_apellido}`.trim();
@@ -139,10 +152,17 @@ export async function obtenerNotificacionesOperativas(
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
     .slice(0, limite);
 
-  const ids = ordenadas.map((n) => n.id);
-  const leidas = await obtenerIdsNotificacionesLeidas(idusuario, ids);
+  const sinteticas = ordenadas.filter(
+    (n) => !n.id.startsWith('notif-'),
+  );
+  const leidasSinteticas = await obtenerIdsNotificacionesLeidas(
+    idusuario,
+    sinteticas.map((n) => n.id),
+  );
   return ordenadas.map((n) => ({
     ...n,
-    leida: leidas.has(n.id),
+    leida: leidasPersistidas.has(n.id)
+      ? (leidasPersistidas.get(n.id) ?? false)
+      : leidasSinteticas.has(n.id),
   }));
 }

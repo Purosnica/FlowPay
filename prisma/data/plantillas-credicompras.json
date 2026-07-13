@@ -6,6 +6,12 @@
     "contenido": "DESPACHO LEGAL *CYCCO*\n\nDEUDOR: *{{nombre}}*\n\nID: *{{prestamo}}*\n\nCEDULA: *{{documento}}*\n\nPor este medio notificamos la representación legal *{{mandanteLegal}}*, debido a su cuenta pendiente proveniente de *{{mandante}}* Referente a la negativa que demuestra a los requerimientos de pagó que se le han brindado más la falta de prontitud para conciliar la deuda, sumado el ignorar o hacer caso omiso de nuestras llamadas telefónicas, se decidió promover aviso Extrajudicial.\n\nSe le hará comunicar a su domicilio y trabajo documento con tramite a iniciar el proceso. Ya que no accedió a conciliar su deuda con dicha entidad. Para mayor información llámenos o escribanos a los números wsp (505) 88888888 o (505) 9999999\n\nAtentamente,\n\nLic. Brittany\n\nJefe legal.\n\nDpto. Ejecuciones Legales"
   },
   {
+    "nombre": "SMS COBRO CORTO",
+    "canal": "SMS",
+    "etapa": "ADMINISTRATIVA",
+    "contenido": "{{mandanteLegal}}: Sr(a) {{nombre}}, prestamo {{prestamo}} saldo {{saldo}}, {{diasMora}} dias mora. Contactenos para regularizar. Gracias."
+  },
+  {
     "nombre": "SMS PROMOCION DE DESCUENTO",
     "canal": "SMS",
     "etapa": "ADMINISTRATIVA",
@@ -22,5 +28,17 @@
     "canal": "WHATSAPP",
     "etapa": "EXTRAJUDICIAL",
     "contenido": "DESPACHO LEGAL *CYCCO*\n\nDEUDOR: *{{nombre}}*\n\nID: *{{prestamo}}*\n\nCEDULA: *{{documento}}*\n\nEstimado Sr@. {{nombre}} nuevamente le escribimos del despacho *{{mandanteLegal}}* en representación de *{{mandante}}*, Le informamos que su cuenta aún se encuentra en nuestro despacho de cobro.\n\nEstamos tratando de apoyarle con la cancelación de su obligación, pero él hacer caso omiso de atender nuestras llamadas demuestra su falta de interés en honrar está su obligación, por lo que requerimos comunicarse con nuestra oficina en las próximas 48 horas para evitar mayores complicaciones; al mismo tiempo le invitamos a aprovechar la oportunidad única para poder cancelar su cuenta de forma inmediata a través de nuestros planes de descuento. Llámenos o escríbanos a los wsp Tigo (505) 88888888 - (505) 99999999 / Claro (505) 505 77777777 que con mucho gusto le atenderemos.\n\nAtentamente,\n\nLic. Brittany\n\nJefe legal.\n\nDpto. Ejecuciones Legales"
+  },
+  {
+    "nombre": "EMAIL GESTION DE COBRO",
+    "canal": "EMAIL",
+    "etapa": "ADMINISTRATIVA",
+    "contenido": "Estimado(a) Sr(a). {{nombre}},\n\nLe saludamos de {{mandanteLegal}} en representación de {{mandante}}.\n\nPor este medio le notificamos que su cuenta se encuentra en gestión de cobro con el siguiente detalle:\n\n• Préstamo / ID: {{prestamo}}\n• Documento: {{documento}}\n• Saldo pendiente: {{saldo}}\n• Días de mora: {{diasMora}}\n• Fecha de vencimiento: {{fechaVencimiento}}\n\nLe solicitamos comunicarse con nuestra área de cobranza a la brevedad para regularizar su obligación o conocer las opciones de pago y descuento disponibles (válidas hasta el {{fechaLimite}}).\n\nPuede responder a este correo o contactarnos a cobranza@tictaccredit.com.\n\nAtentamente,\n\nÁrea de Cobranza\n{{mandanteLegal}}\ncobranza@tictaccredit.com"
+  },
+  {
+    "nombre": "EMAIL PROMOCION DE DESCUENTO",
+    "canal": "EMAIL",
+    "etapa": "ADMINISTRATIVA",
+    "contenido": "Estimado(a) Sr(a). {{nombre}},\n\nEn {{mandanteLegal}}, en conjunto con {{mandante}}, queremos ayudarle a cancelar su deuda.\n\nDetalle de su cuenta:\n• Préstamo / ID: {{prestamo}}\n• Documento: {{documento}}\n• Saldo actual: {{saldo}}\n• Días de mora: {{diasMora}}\n\nLe ofrecemos condiciones especiales de pago y descuentos exclusivos si realiza su pago antes del {{fechaLimite}}.\n\nNo deje pasar esta oportunidad. Responda este correo o escríbanos a cobranza@tictaccredit.com para reactivar su gestión sin compromiso.\n\nAtentamente,\n\nÁrea de Cobranza\n{{mandanteLegal}}\ncobranza@tictaccredit.com"
   }
 ]

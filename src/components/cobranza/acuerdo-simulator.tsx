@@ -4,17 +4,20 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { SIMULAR_ACUERDO } from '@/lib/graphql/queries/cobranza.queries';
-import { type SimulacionAcuerdo , formatearMoneda } from '@/types/cobranza';
-
+import { type SimulacionAcuerdo, formatearMoneda } from '@/types/cobranza';
 
 interface AcuerdoSimulatorProps {
   idprestamo: number;
   moneda?: string;
   descuentoMaximo?: number;
+  interesMoratorio?: number;
+  gestionCobranza?: number;
   onConfirm: (params: {
     porcentajeDesc: number;
     numeroCuotas: number;
     fechaInicio: string;
+    dispensarInteresMoratorio: boolean;
+    dispensarGestionCobranza: boolean;
   }) => void;
   isLoading?: boolean;
 }
@@ -23,11 +26,17 @@ export function AcuerdoSimulator({
   idprestamo,
   moneda = 'NIO',
   descuentoMaximo = 100,
+  interesMoratorio = 0,
+  gestionCobranza = 0,
   onConfirm,
   isLoading,
 }: AcuerdoSimulatorProps) {
   const [porcentajeDesc, setPorcentajeDesc] = useState(10);
   const [numeroCuotas, setNumeroCuotas] = useState(1);
+  const [dispensarInteresMoratorio, setDispensarInteresMoratorio] =
+    useState(false);
+  const [dispensarGestionCobranza, setDispensarGestionCobranza] =
+    useState(false);
   const [fechaInicio, setFechaInicio] = useState(
     new Date().toISOString().slice(0, 10),
   );
@@ -37,7 +46,13 @@ export function AcuerdoSimulator({
   }>(
     SIMULAR_ACUERDO,
     {
-      input: { idprestamo, porcentajeDesc, numeroCuotas },
+      input: {
+        idprestamo,
+        porcentajeDesc,
+        numeroCuotas,
+        dispensarInteresMoratorio,
+        dispensarGestionCobranza,
+      },
     },
     { enabled: false },
   );
@@ -46,14 +61,22 @@ export function AcuerdoSimulator({
     if (idprestamo > 0) {
       refetch();
     }
-  }, [idprestamo, porcentajeDesc, numeroCuotas, refetch]);
+  }, [
+    idprestamo,
+    porcentajeDesc,
+    numeroCuotas,
+    dispensarInteresMoratorio,
+    dispensarGestionCobranza,
+    refetch,
+  ]);
 
   const sim = data?.simularAcuerdo;
 
   return (
     <div className="space-y-4">
       <p className="text-sm text-gray-6">
-        Base negociable = saldo total + interés moratorio (FICHA DE REGISTRO).
+        Base negociable = saldo + interés moratorio + gestión de cobranza (los
+        montos marcados como dispensados se excluyen del acuerdo).
       </p>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -93,6 +116,42 @@ export function AcuerdoSimulator({
             className="w-full rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2 dark:text-white"
           />
         </div>
+      </div>
+
+      <div className="space-y-2 rounded-lg border border-stroke p-4 dark:border-dark-3">
+        <p className="text-sm font-medium text-dark dark:text-white">
+          Dispensa en el acuerdo
+        </p>
+        <label className="flex cursor-pointer items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={dispensarInteresMoratorio}
+            onChange={(e) => setDispensarInteresMoratorio(e.target.checked)}
+            className="mt-0.5 rounded border-stroke"
+            disabled={interesMoratorio <= 0}
+          />
+          <span>
+            Excluir interés moratorio
+            <span className="block text-xs text-gray-6">
+              Monto actual: {formatearMoneda(interesMoratorio, moneda)}
+            </span>
+          </span>
+        </label>
+        <label className="flex cursor-pointer items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={dispensarGestionCobranza}
+            onChange={(e) => setDispensarGestionCobranza(e.target.checked)}
+            className="mt-0.5 rounded border-stroke"
+            disabled={gestionCobranza <= 0}
+          />
+          <span>
+            Excluir gestión de cobranza
+            <span className="block text-xs text-gray-6">
+              Monto actual: {formatearMoneda(gestionCobranza, moneda)}
+            </span>
+          </span>
+        </label>
       </div>
 
       {error && (
@@ -137,6 +196,22 @@ export function AcuerdoSimulator({
               {formatearMoneda(sim.pagoMinimo, moneda)}
             </p>
           </div>
+          {sim.interesMoratorioExcluido > 0 && (
+            <div>
+              <span className="text-gray-6">Moratorio dispensado</span>
+              <p className="font-medium text-green-600">
+                −{formatearMoneda(sim.interesMoratorioExcluido, moneda)}
+              </p>
+            </div>
+          )}
+          {sim.gestionCobranzaExcluida > 0 && (
+            <div>
+              <span className="text-gray-6">Gestión dispensada</span>
+              <p className="font-medium text-green-600">
+                −{formatearMoneda(sim.gestionCobranzaExcluida, moneda)}
+              </p>
+            </div>
+          )}
         </div>
       )}
 
@@ -146,6 +221,8 @@ export function AcuerdoSimulator({
             porcentajeDesc,
             numeroCuotas,
             fechaInicio: new Date(fechaInicio).toISOString(),
+            dispensarInteresMoratorio,
+            dispensarGestionCobranza,
           })
         }
         disabled={isLoading || !sim}

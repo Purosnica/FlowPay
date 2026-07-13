@@ -45,6 +45,7 @@ export interface Prestamo {
   montoPrestamo: number;
   interes: number;
   interesMoratorio: number;
+  gestionCobranza?: number;
   reportableCentralRiesgo: boolean;
   fechaPrestamo: string | null;
   fechaVencimiento: string | null;
@@ -52,6 +53,52 @@ export interface Prestamo {
   cliente?: PrestamoCliente;
   mandante?: Mandante;
   gestor?: { idusuario: number; nombre: string } | null;
+}
+
+export interface DesgloseSaldoPrestamo {
+  montoPrestamo: number;
+  interes: number;
+  gestionCobranza: number;
+  comisionCav: number;
+  comisionInsitu: number;
+  mantenimientoValor: number;
+  seguroSvsd: number;
+  cargosAdmin: number;
+  devolucionSaldoFavor: number;
+  descuentosArchivo: number;
+  interesMoratorio: number;
+  subtotalComponentes: number;
+  totalPagosAplicados: number;
+  saldoCalculado: number;
+  saldoRegistrado: number;
+  baseAcuerdo: number;
+  descuentoAcuerdoVigente: number;
+  diferencia: number;
+  cuadra: boolean;
+}
+
+export interface FilaDesglosePreview {
+  fila: number;
+  noPrestamo: string;
+  subtotalComponentes: number;
+  interesMoratorio: number;
+  baseAcuerdo: number;
+  totalPagosAplicados: number;
+  saldoCalculado: number;
+  saldoArchivo: number;
+  diferencia: number;
+  cuadra: boolean;
+}
+
+export interface ResumenDesglosePreview {
+  filasAnalizadas: number;
+  filasCuadran: number;
+  filasConDiferencia: number;
+  totalSubtotalComponentes: number;
+  totalInteresMoratorio: number;
+  totalPagos: number;
+  totalSaldoCalculado: number;
+  totalSaldoArchivo: number;
 }
 
 export interface PrestamoFilters {
@@ -126,6 +173,8 @@ export interface SimulacionAcuerdo {
   montoAcordado: number;
   montoCuota: number;
   pagoMinimo: number;
+  interesMoratorioExcluido: number;
+  gestionCobranzaExcluida: number;
 }
 
 export interface AcuerdoCuota {
@@ -146,6 +195,8 @@ export interface Acuerdo {
   numeroCuotas: number;
   montoCuota: number;
   pagoMinimo: number | null;
+  dispensarInteresMoratorio: boolean;
+  dispensarGestionCobranza: boolean;
   fechaInicio: string;
   estado: string;
   cuotas?: AcuerdoCuota[];

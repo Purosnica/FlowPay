@@ -11,6 +11,8 @@ import {
   toggleBloqueoAsignacion,
   type MetodoAsignacion,
 } from '@/lib/cobranza/asignacion-cartera-service';
+import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
+import { requerirAccesoPrestamoCobrador } from '@/lib/cobranza/cobrador-scope';
 
 const MetodosAsignacion = [
   'POR_MORA',
@@ -107,7 +109,7 @@ builder.queryField('simularAsignacionCartera', (t) =>
       const filtros = FiltrosAsignacionSchema.parse(args.filtros);
       const metodo = args.metodo as MetodoAsignacion;
       if (!MetodosAsignacion.includes(metodo)) {
-        throw new Error('Método de asignación inválido.');
+        throw new GraphQLValidationError('Método de asignación inválido.');
       }
       return simularAsignacionCartera(
         ctx.usuario?.idusuario ?? 0,
@@ -128,6 +130,10 @@ builder.queryField('historialAsignacionPrestamo', (t) =>
     },
     resolve: async (_parent, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.CARTERA_READ);
+      await requerirAccesoPrestamoCobrador(
+        ctx.usuario?.idusuario,
+        args.idprestamo,
+      );
       const take = Math.min(Math.max(args.limit ?? 50, 1), 100);
       return listarHistorialAsignacion(
         ctx.usuario?.idusuario ?? 0,

@@ -4,6 +4,7 @@ import { Pago } from "./types";
 import { requerirPermiso } from "@/lib/permissions/permission-service";
 import { PERMISO } from "@/lib/permissions/permiso-codes";
 import { filtroMandante } from "@/lib/cobranza/mandante-scope";
+import { requerirAccesoPrestamoCobrador } from "@/lib/cobranza/cobrador-scope";
 import { createPageType } from "../../helpers/create-page-type";
 import { resolvePaginatedPrismaQuery } from "../../helpers/paginated-prisma-resolver";
 import { listarPagosConciliacion } from "@/lib/cobranza/pagos-conciliacion-service";
@@ -108,6 +109,10 @@ builder.queryField("pagos", (t) =>
     },
     resolve: async (_parent, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.PAGO_READ);
+      await requerirAccesoPrestamoCobrador(
+        ctx.usuario?.idusuario,
+        args.idprestamo,
+      );
       const mandanteFilter = await filtroMandante(ctx.usuario?.idusuario);
 
       const where = {

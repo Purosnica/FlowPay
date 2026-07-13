@@ -4,9 +4,8 @@ import { useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { Modal } from '@/components/ui/modal';
+import { ViewRowButton } from '@/components/ui/row-action-buttons';
 import { PermissionGate } from '@/components/auth/permission-gate';
 import { PERMISO } from '@/lib/permissions/permiso-codes';
 import { usePagination } from '@/hooks/use-pagination';
@@ -15,18 +14,13 @@ import { CarteraFilters } from '@/components/cobranza/cartera-filters';
 import { PageHeader } from '@/components/ui/page-header';
 import { SearchParamsBoundary } from '@/components/ui/search-params-boundary';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
-import { useGraphQLMutation } from '@/hooks/use-graphql-mutation';
+import { GET_PRESTAMOS } from '@/lib/graphql/queries/cobranza.queries';
 import {
-  GET_PRESTAMOS,
-  GET_USUARIOS_MANDANTE,
-  ASIGNAR_GESTOR_PRESTAMO,
-  ASIGNAR_GESTOR_MASIVO,
-} from '@/lib/graphql/queries/cobranza.queries';
-import { type Prestamo, type PrestamoFilters, type UsuarioBasico ,
+  type Prestamo,
+  type PrestamoFilters,
   formatearMoneda,
   nombreCompletoCliente,
 } from '@/types/cobranza';
-
 
 function filtrosDesdeUrl(searchParams: URLSearchParams): PrestamoFilters {
   const filters: PrestamoFilters = {};
@@ -58,7 +52,6 @@ function filtrosDesdeUrl(searchParams: URLSearchParams): PrestamoFilters {
 function CarteraPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const queryClient = useQueryClient();
   const {
     queryVars,
     handlePageChange,
@@ -68,11 +61,6 @@ function CarteraPageContent() {
   const [filters, setFilters] = useState<PrestamoFilters>(() =>
     filtrosDesdeUrl(searchParams),
   );
-  const [assignModal, setAssignModal] = useState(false);
-  const [assignPrestamo, setAssignPrestamo] = useState<Prestamo | undefined>();
-  const [bulkModal, setBulkModal] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  const [idgestor, setIdgestor] = useState<number | ''>('');
 
   const { data, isLoading, error } = useGraphQLQuery<{
     prestamos: {
@@ -90,64 +78,8 @@ function CarteraPageContent() {
   const prestamosData = data?.prestamos;
   const listaPrestamos = prestamosData?.prestamos ?? [];
 
-  const assignMandanteId =
-    assignPrestamo?.idmandante ??
-    filters.idmandante ??
-    listaPrestamos.find((p) => selectedIds.has(p.idprestamo))?.idmandante ??
-    0;
-
-  const { data: usuariosData } = useGraphQLQuery<{
-    usuariosMandante: UsuarioBasico[];
-  }>(
-    GET_USUARIOS_MANDANTE,
-    { idmandante: assignMandanteId },
-    { enabled: (assignModal || bulkModal) && assignMandanteId > 0 },
-  );
-
-  const assignMutation = useGraphQLMutation(ASIGNAR_GESTOR_PRESTAMO, {
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [GET_PRESTAMOS] });
-      setAssignModal(false);
-      setAssignPrestamo(undefined);
-      setIdgestor('');
-    },
-  });
-
-  const bulkMutation = useGraphQLMutation(ASIGNAR_GESTOR_MASIVO, {
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [GET_PRESTAMOS] });
-      setBulkModal(false);
-      setSelectedIds(new Set());
-      setIdgestor('');
-    },
-  });
-
-  const toggleSelect = (id: number) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
-
   const columns = useMemo<ColumnDef<Prestamo>[]>(
     () => [
-      {
-        id: 'select',
-        header: '',
-        cell: ({ row }) => (
-          <input
-            type="checkbox"
-            checked={selectedIds.has(row.original.idprestamo)}
-            onClick={(e) => e.stopPropagation()}
-            onChange={() => toggleSelect(row.original.idprestamo)}
-          />
-        ),
-      },
       {
         accessorKey: 'noPrestamo',
         header: 'No. Préstamo',
@@ -212,20 +144,25 @@ function CarteraPageContent() {
           row.original.reportableCentralRiesgo ? 'Sí' : 'No (acuerdo)',
       },
     ],
-    [selectedIds],
+    [],
   );
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Cartera de Cobranza"
-        description="Préstamos asignados por mandante"
+        description="Consulta y seguimiento de préstamos por mandante"
         actions={
-          <PermissionGate permiso={PERMISO.CARTERA_WRITE}>
-            <Link href="/cobranza/importar">
-              <Button variant="outline">Importar cartera</Button>
-            </Link>
-          </PermissionGate>
+          <div className="flex flex-wrap gap-2">
+            <PermissionGate permiso={PERMISO.CARTERA_WRITE}>
+              <Link href="/cobranza/asignacion">
+                <Button variant="outline">Asignar cartera</Button>
+              </Link>
+              <Link href="/cobranza/importar">
+                <Button variant="outline">Importar cartera</Button>
+              </Link>
+            </PermissionGate>
+          </div>
         }
       />
 
@@ -238,29 +175,8 @@ function CarteraPageContent() {
         onReset={() => {
           setFilters({});
           resetPage();
-          setSelectedIds(new Set());
         }}
       />
-
-      {selectedIds.size > 0 && (
-        <PermissionGate permiso={PERMISO.CARTERA_WRITE}>
-          <div className="flex items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
-            <span className="text-sm">
-              {selectedIds.size} préstamo(s) seleccionado(s)
-            </span>
-            <Button size="sm" onClick={() => setBulkModal(true)}>
-              Asignar gestor masivo
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setSelectedIds(new Set())}
-            >
-              Limpiar
-            </Button>
-          </div>
-        </PermissionGate>
-      )}
 
       <div className="rounded-lg bg-white p-6 shadow-1 dark:bg-gray-dark">
         {error && (
@@ -280,109 +196,14 @@ function CarteraPageContent() {
           onPageSizeChange={handlePageSizeChange}
           itemLabel="préstamos"
           rowActions={(p) => (
-            <div className="flex justify-end gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setAssignPrestamo(p);
-                  setAssignModal(true);
-                }}
-              >
-                Asignar
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() =>
-                  router.push(`/cobranza/prestamos/${p.idprestamo}`)
-                }
-              >
-                Ver
-              </Button>
-            </div>
+            <ViewRowButton
+              onClick={() =>
+                router.push(`/cobranza/prestamos/${p.idprestamo}`)
+              }
+            />
           )}
         />
       </div>
-
-      <Modal
-        isOpen={assignModal}
-        onClose={() => {
-          setAssignModal(false);
-          setAssignPrestamo(undefined);
-        }}
-        title={`Asignar gestor — ${assignPrestamo?.noPrestamo ?? ''}`}
-        size="md"
-      >
-        <div className="space-y-3">
-          <select
-            value={idgestor}
-            onChange={(e) =>
-              setIdgestor(e.target.value ? Number(e.target.value) : '')
-            }
-            className="w-full rounded border px-3 py-2 text-sm"
-          >
-            <option value="">Seleccionar gestor...</option>
-            {(usuariosData?.usuariosMandante ?? []).map((u) => (
-              <option key={u.idusuario} value={u.idusuario}>
-                {u.nombre}
-              </option>
-            ))}
-          </select>
-          <Button
-            disabled={!idgestor || !assignPrestamo || assignMutation.isPending}
-            onClick={() => {
-              if (assignPrestamo && idgestor) {
-                assignMutation.mutate({
-                  idprestamo: assignPrestamo.idprestamo,
-                  idgestor,
-                });
-              }
-            }}
-          >
-            Asignar gestor
-          </Button>
-        </div>
-      </Modal>
-
-      <Modal
-        isOpen={bulkModal}
-        onClose={() => setBulkModal(false)}
-        title={`Asignar gestor — ${selectedIds.size} préstamos`}
-        size="md"
-      >
-        <div className="space-y-3">
-          <select
-            value={idgestor}
-            onChange={(e) =>
-              setIdgestor(e.target.value ? Number(e.target.value) : '')
-            }
-            className="w-full rounded border px-3 py-2 text-sm"
-          >
-            <option value="">Seleccionar gestor...</option>
-            {(usuariosData?.usuariosMandante ?? []).map((u) => (
-              <option key={u.idusuario} value={u.idusuario}>
-                {u.nombre}
-              </option>
-            ))}
-          </select>
-          <Button
-            disabled={
-              !idgestor || selectedIds.size === 0 || bulkMutation.isPending
-            }
-            onClick={() => {
-              if (idgestor) {
-                bulkMutation.mutate({
-                  idprestamos: Array.from(selectedIds),
-                  idgestor,
-                });
-              }
-            }}
-          >
-            Asignar a {selectedIds.size} préstamos
-          </Button>
-        </div>
-      </Modal>
     </div>
   );
 }

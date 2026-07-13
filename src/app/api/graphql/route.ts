@@ -12,6 +12,7 @@ import { ErrorCode } from '@/lib/errors/types';
 import {
   GraphQLPermissionError,
   GraphQLAuthenticationError,
+  GraphQLValidationError,
 } from '@/lib/errors/graphql-errors';
 import { useRequireAuthPlugin } from '@/lib/graphql/plugins/require-auth-plugin';
 
@@ -87,6 +88,13 @@ const { handleRequest } = createYoga({
                   };
                 }
 
+                if (originalError instanceof GraphQLValidationError) {
+                  return {
+                    ...error,
+                    extensions: originalError.extensions,
+                  };
+                }
+
                 if (error.extensions) {
                   return error;
                 }
@@ -120,10 +128,11 @@ const { handleRequest } = createYoga({
 
                 return {
                   ...error,
+                  message: 'Error interno del servidor',
                   extensions: {
                     code: ErrorCode.INTERNAL_SERVER_ERROR,
                     statusCode: 500,
-                    userMessage: error.message,
+                    userMessage: 'Error interno del servidor',
                     timestamp: new Date().toISOString(),
                   },
                 };
@@ -186,16 +195,19 @@ export async function GET(request: NextRequest) {
   try {
     return await handleGraphQLRequest(request);
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Error desconocido';
     logger.error(
       'GraphQL GET Error',
       error instanceof Error ? error : undefined,
     );
-    return new Response(JSON.stringify({ errors: [{ message: errorMessage }] }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({
+        errors: [{ message: 'Error interno del servidor' }],
+      }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      },
+    );
   }
 }
 
@@ -203,28 +215,35 @@ export async function POST(request: NextRequest) {
   try {
     return await handleGraphQLRequest(request);
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Error desconocido';
     logger.error(
       'GraphQL POST Error',
       error instanceof Error ? error : undefined,
     );
 
     const errorWithExtensions = error as {
-      extensions?: { statusCode?: number };
+      message?: string;
+      extensions?: { statusCode?: number; userMessage?: string; code?: string };
     };
-    if (errorWithExtensions.extensions) {
+
+    if (errorWithExtensions.extensions?.statusCode) {
+      const status = errorWithExtensions.extensions.statusCode;
+      const safeMessage =
+        status >= 500
+          ? 'Error interno del servidor'
+          : (errorWithExtensions.extensions.userMessage ??
+            errorWithExtensions.message ??
+            'Solicitud no válida');
       return new Response(
         JSON.stringify({
           errors: [
             {
-              message: errorMessage,
+              message: safeMessage,
               extensions: errorWithExtensions.extensions,
             },
           ],
         }),
         {
-          status: errorWithExtensions.extensions.statusCode || 500,
+          status,
           headers: { 'Content-Type': 'application/json' },
         },
       );
@@ -234,7 +253,7 @@ export async function POST(request: NextRequest) {
       JSON.stringify({
         errors: [
           {
-            message: errorMessage,
+            message: 'Error interno del servidor',
             extensions: {
               code: 'INTERNAL_SERVER_ERROR',
               statusCode: 500,

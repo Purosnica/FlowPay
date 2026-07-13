@@ -28,7 +28,10 @@ export function DashboardForecastStrip({
     {
       label: 'Forecast fin de mes',
       value: formatearMoneda(forecast.forecastFinMes),
-      sub: `${forecast.diasRestantesMes} días rest.`,
+      sub:
+        forecast.diasRestantesMes != null
+          ? `${forecast.diasRestantesMes} días rest.`
+          : 'Proyección lineal',
       primary: true,
     },
     ...(forecast.metaMes != null

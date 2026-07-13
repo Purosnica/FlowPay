@@ -11,8 +11,10 @@ import { previsualizarImportacionCartera } from '@/lib/cobranza/import/cartera-p
 import { registrarAuditoria } from '@/lib/cobranza/auditoria-service';
 import { prisma } from '@/lib/prisma';
 import {
+  esExtensionImportacionValida,
   MAX_IMPORT_FILE_BYTES,
   mensajeArchivoExcedeLimite,
+  mensajeFormatoImportacionNoSoportado,
 } from '@/lib/cobranza/upload-limits';
 
 /** Importaciones grandes (700+ filas) pueden tardar varios minutos. */
@@ -71,12 +73,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const extension = archivo.name.split('.').pop()?.toLowerCase();
-    if (!extension || !['xlsx', 'xls', 'xlsm', 'csv'].includes(extension)) {
+    if (!esExtensionImportacionValida(archivo.name)) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Formato no soportado. Use .xlsx, .xls, .xlsm o .csv',
+          error: mensajeFormatoImportacionNoSoportado(),
         },
         { status: 400 },
       );

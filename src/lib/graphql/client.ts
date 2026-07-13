@@ -67,6 +67,8 @@ function extractStructuredErrorFromGraphQL(error: GraphQLError): StructuredError
 export interface GraphQLRequestOptions {
   /** Timeout en ms; por defecto usa el de apiClient (30s). */
   timeout?: number;
+  /** No mostrar toast global si la petición falla por red o timeout. */
+  suppressErrorToast?: boolean;
 }
 
 /**
@@ -87,7 +89,12 @@ export async function graphqlRequest<T = unknown>(
         query,
         variables,
       },
-      options?.timeout ? { timeout: options.timeout } : undefined,
+      {
+        ...(options?.timeout ? { timeout: options.timeout } : {}),
+        ...(options?.suppressErrorToast
+          ? { suppressErrorToast: true }
+          : {}),
+      },
     );
 
     // Si hay errores en la respuesta GraphQL

@@ -30,6 +30,8 @@ export interface ImportarCobranzaParams {
   fechaCorte?: Date;
   nombreHoja?: string;
   idplantillaImp?: number;
+  /** Actualiza el progreso del job async (pct 0–100). */
+  onProgreso?: (progresoPct: number) => Promise<void>;
 }
 
 export async function importarCobranza(
@@ -54,6 +56,7 @@ export async function importarCobranza(
       nombreHoja: params.nombreHoja ?? 'data',
       idplantillaImp: params.idplantillaImp,
     });
+    await params.onProgreso?.(params.tipo === 'COMPLETO' ? 70 : 90);
   }
 
   if (
@@ -97,6 +100,7 @@ export async function importarCobranza(
     if (partes.length > 0) {
       resultado.gestiones = combinarResultadosGestiones(partes);
     }
+    await params.onProgreso?.(params.tipo === 'COMPLETO' ? 85 : 90);
   }
 
   if (params.tipo === 'PAGOS' || params.tipo === 'COMPLETO') {
@@ -107,7 +111,9 @@ export async function importarCobranza(
       nombreArchivo: params.nombreArchivo,
       nombreHoja: params.tipo === 'PAGOS' ? params.nombreHoja : 'PAGOS',
     });
+    await params.onProgreso?.(90);
   }
 
+  await params.onProgreso?.(95);
   return resultado;
 }

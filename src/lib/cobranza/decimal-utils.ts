@@ -27,8 +27,11 @@ export function decimalToString(value: Decimal | number | string | null | undefi
 }
 
 /**
- * Redondea a 2 decimales (montos monetarios).
+ * Redondea a 2 decimales (montos monetarios) vía centavos enteros.
  */
 export function roundMoney(value: number): number {
-  return Math.round(value * 100) / 100;
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+  return Math.round(Number(`${value}e2`)) / 100;
 }

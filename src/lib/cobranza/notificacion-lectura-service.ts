@@ -1,4 +1,8 @@
 import { prisma } from '@/lib/prisma';
+import {
+  esIdNotificacionPersistida,
+  marcarNotificacionesPersistidasLeidas,
+} from './notificacion-service';
 
 export async function obtenerIdsNotificacionesLeidas(
   idusuario: number,
@@ -27,8 +31,15 @@ export async function marcarNotificacionesLeidas(
     return 0;
   }
 
-  let marcadas = 0;
-  for (const notificacionId of notificacionIds) {
+  const persistidas = notificacionIds.filter(esIdNotificacionPersistida);
+  const sinteticas = notificacionIds.filter((id) => !esIdNotificacionPersistida(id));
+
+  let marcadas = await marcarNotificacionesPersistidasLeidas(
+    idusuario,
+    persistidas,
+  );
+
+  for (const notificacionId of sinteticas) {
     await prisma.tbl_notificacion_lectura.upsert({
       where: {
         idusuario_notificacionId: {
@@ -41,5 +52,6 @@ export async function marcarNotificacionesLeidas(
     });
     marcadas += 1;
   }
+
   return marcadas;
 }

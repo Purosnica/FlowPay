@@ -9,7 +9,9 @@ Versión alineada con evolución Fases 4–11.
 
 ```bash
 npm install
-npx prisma db push
+npx prisma migrate deploy
+# Si la BD ya existía con db push (una sola vez):
+# npm run db:migrate:resolve-baseline
 npm run db:seed
 npm run dev
 ```
@@ -174,7 +176,7 @@ Mandante de prueba: **CREDICOMPRAS** (si existe tras seed).
 | # | Escenario | Verificación |
 |---|-----------|--------------|
 | SEC1 | Cookie-only | DevTools → Application → token no en localStorage |
-| SEC2 | CSRF | Login sin header `x-flowpay-request` → 403 |
+| SEC2 | CSRF | Login sin `x-flowpay-request` → 403; con cookie CSRF, header `x-flowpay-csrf` debe coincidir |
 | SEC3 | Scope cliente | Cobrador de mandante A no ve contactos de cliente de mandante B |
 | SEC4 | GraphQL anónimo | Introspection sin sesión → rechazado en producción |
 | SEC5 | Rate limit login | 6+ intentos fallidos → 429 |

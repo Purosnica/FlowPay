@@ -25,6 +25,7 @@ import { HorarioAlerta } from '@/components/cobranza/horario-alerta';
 import { EnviarCobroPanel } from '@/components/cobranza/enviar-cobro-panel';
 import { PrestamoEstadoHistorialPanel } from '@/components/cobranza/prestamo-estado-historial-panel';
 import { PrestamoTimelinePanel } from '@/components/cobranza/prestamo-timeline-panel';
+import { PrestamoSaldoDesglosePanel } from '@/components/cobranza/prestamo-saldo-desglose-panel';
 import { buildPlantillaContextFromPrestamo } from '@/lib/cobranza/plantilla-mensaje-utils';
 import { PaginatedDataTable } from '@/components/cobranza/paginated-data-table';
 import { usePagination } from '@/hooks/use-pagination';
@@ -294,6 +295,18 @@ export default function PrestamoDetailPage({ params }: PageProps) {
           </p>
         </div>
         <div className="rounded-lg bg-white p-4 shadow-1 dark:bg-gray-dark">
+          <p className="text-xs text-gray-6">Interés</p>
+          <p className="text-lg font-bold">
+            {formatearMoneda(prestamo.interes, prestamo.moneda)}
+          </p>
+        </div>
+        <div className="rounded-lg bg-white p-4 shadow-1 dark:bg-gray-dark">
+          <p className="text-xs text-gray-6">Gestión de cobranza</p>
+          <p className="text-lg font-bold">
+            {formatearMoneda(prestamo.gestionCobranza ?? 0, prestamo.moneda)}
+          </p>
+        </div>
+        <div className="rounded-lg bg-white p-4 shadow-1 dark:bg-gray-dark">
           <p className="text-xs text-gray-6">Estado</p>
           <p className="text-lg font-bold">{prestamo.estado}</p>
         </div>
@@ -315,6 +328,11 @@ export default function PrestamoDetailPage({ params }: PageProps) {
         </TabsList>
 
         <TabsContent value="resumen">
+        <div className="space-y-6">
+          <PrestamoSaldoDesglosePanel
+            idprestamo={idprestamo}
+            moneda={prestamo.moneda}
+          />
         <div className="rounded-lg bg-white p-6 shadow-1 dark:bg-gray-dark">
           <dl className="grid grid-cols-1 gap-4 md:grid-cols-2 text-sm">
             <div>
@@ -328,6 +346,22 @@ export default function PrestamoDetailPage({ params }: PageProps) {
             <div>
               <dt className="text-gray-6">Monto préstamo</dt>
               <dd>{formatearMoneda(prestamo.montoPrestamo, prestamo.moneda)}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-6">Interés</dt>
+              <dd>{formatearMoneda(prestamo.interes, prestamo.moneda)}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-6">Gestión de cobranza</dt>
+              <dd>
+                {formatearMoneda(prestamo.gestionCobranza ?? 0, prestamo.moneda)}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-gray-6">Interés moratorio</dt>
+              <dd>
+                {formatearMoneda(prestamo.interesMoratorio, prestamo.moneda)}
+              </dd>
             </div>
             <div>
               <dt className="text-gray-6">Central de riesgo</dt>
@@ -355,6 +389,7 @@ export default function PrestamoDetailPage({ params }: PageProps) {
             <PrestamoTimelinePanel idprestamo={idprestamo} compact />
           </div>
         </div>
+        </div>
         </TabsContent>
 
         <TabsContent value="gestiones">
@@ -380,6 +415,8 @@ export default function PrestamoDetailPage({ params }: PageProps) {
               idprestamo={idprestamo}
               moneda={prestamo.moneda}
               descuentoMaximo={Number(prestamo.mandante?.descuentoMaximo ?? 100)}
+              interesMoratorio={Number(prestamo.interesMoratorio)}
+              gestionCobranza={Number(prestamo.gestionCobranza ?? 0)}
               isLoading={acuerdoMutation.isPending}
               onConfirm={(params) =>
                 acuerdoMutation.mutate({
@@ -407,6 +444,22 @@ export default function PrestamoDetailPage({ params }: PageProps) {
                         Acordado:{' '}
                         {formatearMoneda(a.montoAcordado, prestamo.moneda)}
                       </p>
+                      {(a.dispensarInteresMoratorio ||
+                        a.dispensarGestionCobranza) && (
+                        <p className="text-xs text-green-700 dark:text-green-300">
+                          Dispensa:{' '}
+                          {[
+                            a.dispensarInteresMoratorio
+                              ? 'interés moratorio'
+                              : null,
+                            a.dispensarGestionCobranza
+                              ? 'gestión de cobranza'
+                              : null,
+                          ]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </p>
+                      )}
                       {(a.cuotas ?? []).length > 0 && (
                         <ul className="mt-2 space-y-1 text-xs text-gray-600">
                           {a.cuotas?.map((c) => (
@@ -443,24 +496,11 @@ export default function PrestamoDetailPage({ params }: PageProps) {
                           onClick={() =>
                             acuerdoEstadoMutation.mutate({
                               idacuerdo: a.idacuerdo,
-                              estado: 'CUMPLIDO',
-                            })
-                          }
-                        >
-                          Cumplido
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={acuerdoEstadoMutation.isPending}
-                          onClick={() =>
-                            acuerdoEstadoMutation.mutate({
-                              idacuerdo: a.idacuerdo,
                               estado: 'ROTO',
                             })
                           }
                         >
-                          Roto
+                          Marcar roto
                         </Button>
                       </div>
                     )}
@@ -542,6 +582,7 @@ export default function PrestamoDetailPage({ params }: PageProps) {
             <h2 className="mb-4 font-semibold">Enviar cobro</h2>
             <EnviarCobroPanel
               idmandante={prestamo.idmandante}
+              idprestamo={idprestamo}
               idcliente={cliente?.idcliente}
               context={plantillaContext}
               onUseAsNota={(texto) => {

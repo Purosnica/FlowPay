@@ -110,6 +110,22 @@ export async function importarGestiones(
           })
         : null;
 
+      // Idempotencia suave: evita reimportar la misma gestión.
+      const duplicado = await prisma.tbl_gestion.findFirst({
+        where: {
+          idprestamo: prestamo.idprestamo,
+          idgestor,
+          nota,
+          fechaGestion,
+          deletedAt: null,
+        },
+        select: { idgestion: true },
+      });
+      if (duplicado) {
+        resultado.omitidos++;
+        continue;
+      }
+
       await prisma.tbl_gestion.create({
         data: {
           idmandante: params.idmandante,

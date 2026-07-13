@@ -6,6 +6,10 @@ import { useQueryClient } from '@tanstack/react-query';
 import { PaginatedDataTable } from '@/components/cobranza/paginated-data-table';
 import { usePaginatedPanel } from '@/hooks/use-paginated-panel';
 import { Button } from '@/components/ui/button';
+import {
+  DeleteRowButton,
+  EditRowButton,
+} from '@/components/ui/row-action-buttons';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { useGraphQLMutation } from '@/hooks/use-graphql-mutation';
 import {
@@ -165,9 +169,7 @@ export function PoliticaDescuentoPanel({ mandante }: PoliticaDescuentoPanelProps
         itemLabel="políticas"
         rowActions={(p) => (
           <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="outline"
+            <EditRowButton
               onClick={() => {
                 setEditing(p);
                 setForm({
@@ -177,18 +179,12 @@ export function PoliticaDescuentoPanel({ mandante }: PoliticaDescuentoPanelProps
                   estado: p.estado,
                 });
               }}
-            >
-              Editar
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
+            />
+            <DeleteRowButton
               onClick={() =>
                 deleteMutation.mutate({ idpolitica: p.idpolitica })
               }
-            >
-              Eliminar
-            </Button>
+            />
           </div>
         )}
       />

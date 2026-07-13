@@ -4,6 +4,7 @@ import { Acuerdo, CreateAcuerdoInput, CreateAcuerdoInputSchema } from "./types";
 import { requerirPermiso } from "@/lib/permissions/permission-service";
 import { PERMISO } from "@/lib/permissions/permiso-codes";
 import { requerirAccesoMandante } from "@/lib/cobranza/mandante-scope";
+import { requerirAccesoPrestamoCobrador } from "@/lib/cobranza/cobrador-scope";
 import { simularAcuerdo } from "@/lib/cobranza/acuerdo-simulator";
 import { decimalToNumber } from "@/lib/cobranza/decimal-utils";
 import {
@@ -12,6 +13,7 @@ import {
   validarPorcentajeContraPolitica,
 } from "@/lib/cobranza/politica-descuento-service";
 import { registrarAuditoria } from "@/lib/cobranza/auditoria-service";
+import { emitirNotificacionAcuerdo } from "@/lib/cobranza/notificacion-emision-service";
 import { generarCuotasAcuerdo, evaluarCuotasAcuerdo } from "@/lib/cobranza/acuerdo-cuota-service";
 import { marcarEstadoAcuerdoVigente, transicionarEstadoPrestamo } from "@/lib/cobranza/estado-prestamo-service";
 import { sincronizarMoraPrestamo } from "@/lib/cobranza/dias-mora-service";
@@ -38,6 +40,10 @@ builder.mutationField("createAcuerdo", (t) =>
         throw new GraphQLValidationError("Préstamo no encontrado.");
       }
       await requerirAccesoMandante(ctx.usuario?.idusuario, prestamo.idmandante);
+      await requerirAccesoPrestamoCobrador(
+        ctx.usuario?.idusuario,
+        input.idprestamo,
+      );
 
       const acuerdoVigente = await ctx.prisma.tbl_acuerdo.findFirst({
         where: {
@@ -101,8 +107,11 @@ builder.mutationField("createAcuerdo", (t) =>
       const sim = simularAcuerdo({
         saldoTotal: decimalToNumber(prestamo.saldoTotal),
         interesMoratorio: decimalToNumber(prestamo.interesMoratorio),
+        gestionCobranza: decimalToNumber(prestamo.gestionCobranza),
         porcentajeDesc: input.porcentajeDesc,
         numeroCuotas: input.numeroCuotas,
+        dispensarInteresMoratorio: input.dispensarInteresMoratorio,
+        dispensarGestionCobranza: input.dispensarGestionCobranza,
       });
 
       const acuerdo = await ctx.prisma.$transaction(async (tx) => {
@@ -118,6 +127,8 @@ builder.mutationField("createAcuerdo", (t) =>
             numeroCuotas: input.numeroCuotas,
             montoCuota: sim.montoCuota,
             pagoMinimo: sim.pagoMinimo,
+            dispensarInteresMoratorio: input.dispensarInteresMoratorio,
+            dispensarGestionCobranza: input.dispensarGestionCobranza,
             fechaInicio: input.fechaInicio,
             estado: "VIGENTE",
           },
@@ -156,11 +167,20 @@ builder.mutationField("createAcuerdo", (t) =>
             idprestamo: input.idprestamo,
             montoAcordado: sim.montoAcordado,
             porcentajeDesc: input.porcentajeDesc,
+            dispensarInteresMoratorio: input.dispensarInteresMoratorio,
+            dispensarGestionCobranza: input.dispensarGestionCobranza,
           }),
         });
 
         return created;
       });
+
+      if (ctx.usuario?.idusuario) {
+        await emitirNotificacionAcuerdo(
+          acuerdo.idacuerdo,
+          ctx.usuario.idusuario,
+        );
+      }
 
       return ctx.prisma.tbl_acuerdo.findUniqueOrThrow({
         ...(query as Record<string, unknown>),
@@ -170,7 +190,7 @@ builder.mutationField("createAcuerdo", (t) =>
   }),
 );
 
-const ESTADOS_ACUERDO = ['VIGENTE', 'CUMPLIDO', 'ROTO'] as const;
+const ESTADOS_ACUERDO_MANUAL = ['VIGENTE', 'ROTO'] as const;
 
 builder.mutationField("actualizarEstadoAcuerdo", (t) =>
   t.prismaField({
@@ -182,9 +202,18 @@ builder.mutationField("actualizarEstadoAcuerdo", (t) =>
     resolve: async (query, _parent, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.ACUERDO_WRITE);
       const estado = args.estado.toUpperCase();
-      if (!ESTADOS_ACUERDO.includes(estado as (typeof ESTADOS_ACUERDO)[number])) {
+      if (estado === 'CUMPLIDO') {
         throw new GraphQLValidationError(
-          `Estado inválido. Valores permitidos: ${ESTADOS_ACUERDO.join(', ')}`,
+          'El estado CUMPLIDO solo se asigna automáticamente al aplicar pagos.',
+        );
+      }
+      if (
+        !ESTADOS_ACUERDO_MANUAL.includes(
+          estado as (typeof ESTADOS_ACUERDO_MANUAL)[number],
+        )
+      ) {
+        throw new GraphQLValidationError(
+          `Estado inválido. Valores permitidos: ${ESTADOS_ACUERDO_MANUAL.join(', ')}`,
         );
       }
       const acuerdo = await ctx.prisma.tbl_acuerdo.findUnique({
@@ -194,15 +223,18 @@ builder.mutationField("actualizarEstadoAcuerdo", (t) =>
         throw new GraphQLValidationError("Acuerdo no encontrado.");
       }
       await requerirAccesoMandante(ctx.usuario?.idusuario, acuerdo.idmandante);
+      await requerirAccesoPrestamoCobrador(
+        ctx.usuario?.idusuario,
+        acuerdo.idprestamo,
+      );
 
-      const estadosFinales = ['CUMPLIDO', 'ROTO'];
       const updated = await ctx.prisma.$transaction(async (tx) => {
         const result = await tx.tbl_acuerdo.update({
           where: { idacuerdo: args.idacuerdo },
           data: { estado },
         });
 
-        if (estadosFinales.includes(estado)) {
+        if (estado === 'ROTO') {
           const otroVigente = await tx.tbl_acuerdo.findFirst({
             where: {
               idprestamo: acuerdo.idprestamo,
@@ -217,15 +249,13 @@ builder.mutationField("actualizarEstadoAcuerdo", (t) =>
               data: { reportableCentralRiesgo: true },
             });
           }
-          if (estado === 'ROTO') {
-            await transicionarEstadoPrestamo(tx, {
-              idprestamo: acuerdo.idprestamo,
-              estadoNuevo: 'Vencido',
-              idusuario: ctx.usuario?.idusuario,
-              motivo: 'Acuerdo marcado como roto',
-              forzar: true,
-            });
-          }
+          await transicionarEstadoPrestamo(tx, {
+            idprestamo: acuerdo.idprestamo,
+            estadoNuevo: 'Vencido',
+            idusuario: ctx.usuario?.idusuario,
+            motivo: 'Acuerdo marcado como roto',
+            forzar: true,
+          });
         } else if (estado === 'VIGENTE') {
           await tx.tbl_prestamo.update({
             where: { idprestamo: acuerdo.idprestamo },

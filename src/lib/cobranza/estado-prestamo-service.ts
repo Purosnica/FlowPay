@@ -21,7 +21,7 @@ const TRANSICIONES: Record<string, string[]> = {
   Vigente: ['Vencido', 'En negociación', 'Con acuerdo', 'Cancelado', 'Finalizado', 'Pendiente revisión'],
   Vencido: ['En negociación', 'Con acuerdo', 'Castigo', 'Cancelado', 'Finalizado', 'Pendiente revisión'],
   'En negociación': ['Con acuerdo', 'Vencido', 'Cancelado', 'Castigo'],
-  'Con acuerdo': ['Vencido', 'Cancelado', 'Finalizado', 'Castigo'],
+  'Con acuerdo': ['Vigente', 'Vencido', 'Cancelado', 'Finalizado', 'Castigo'],
   'Pendiente revisión': ['Vigente', 'Vencido', 'Cancelado', 'Finalizado'],
   Castigo: ['Cancelado', 'Finalizado'],
   Cancelado: [],

@@ -1,20 +1,27 @@
-import { builder ,type  GraphQLContext } from "../../builder";
+import { builder, type GraphQLContext } from '../../builder';
 
-import { Pago, CreatePagoInput, CreatePagoInputSchema } from "./types";
-import { requerirPermiso } from "@/lib/permissions/permission-service";
-import { PERMISO } from "@/lib/permissions/permiso-codes";
-import { requerirAccesoMandante } from "@/lib/cobranza/mandante-scope";
-import { registrarAuditoria } from "@/lib/cobranza/auditoria-service";
+import { Pago, CreatePagoInput, CreatePagoInputSchema } from './types';
+import { requerirPermiso } from '@/lib/permissions/permission-service';
+import { PERMISO } from '@/lib/permissions/permiso-codes';
+import { requerirAccesoMandante } from '@/lib/cobranza/mandante-scope';
+import { requerirAccesoPrestamoCobrador } from '@/lib/cobranza/cobrador-scope';
+import { registrarAuditoria } from '@/lib/cobranza/auditoria-service';
+import { emitirNotificacionPago } from '@/lib/cobranza/notificacion-emision-service';
 import {
   aplicarPagoAlPrestamo,
+  marcarPagoComoAplicadoAtomico,
+  marcarPagoComoNoAplicadoAtomico,
   revertirPagoDelPrestamo,
-} from "@/lib/cobranza/pago-aplicacion-service";
-import { obtenerConfigBooleana, CLAVE_PAGO_AUTO_APLICAR } from "@/lib/cobranza/configuracion-cobranza-service";
-import { decimalToNumber } from "@/lib/cobranza/decimal-utils";
-import { GraphQLValidationError } from "@/lib/errors/graphql-errors";
-import { validarPagoAnticipado } from "@/lib/cobranza/pago-validacion-service";
+} from '@/lib/cobranza/pago-aplicacion-service';
+import {
+  obtenerConfigBooleana,
+  CLAVE_PAGO_AUTO_APLICAR,
+} from '@/lib/cobranza/configuracion-cobranza-service';
+import { decimalToNumber } from '@/lib/cobranza/decimal-utils';
+import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
+import { validarPagoAnticipado } from '@/lib/cobranza/pago-validacion-service';
 
-builder.mutationField("createPago", (t) =>
+builder.mutationField('createPago', (t) =>
   t.prismaField({
     type: Pago,
     args: { input: t.arg({ type: CreatePagoInput, required: true }) },
@@ -26,9 +33,32 @@ builder.mutationField("createPago", (t) =>
         where: { idprestamo: data.idprestamo },
       });
       if (!prestamo || prestamo.deletedAt) {
-        throw new GraphQLValidationError("Préstamo no encontrado.");
+        throw new GraphQLValidationError('Préstamo no encontrado.');
       }
-      await requerirAccesoMandante(ctx.usuario?.idusuario, prestamo.idmandante);
+      await requerirAccesoMandante(
+        ctx.usuario?.idusuario,
+        prestamo.idmandante,
+      );
+      await requerirAccesoPrestamoCobrador(
+        ctx.usuario?.idusuario,
+        data.idprestamo,
+      );
+
+      if (data.idacuerdo != null) {
+        const acuerdo = await ctx.prisma.tbl_acuerdo.findFirst({
+          where: {
+            idacuerdo: data.idacuerdo,
+            idprestamo: data.idprestamo,
+            deletedAt: null,
+          },
+          select: { idacuerdo: true, estado: true },
+        });
+        if (!acuerdo) {
+          throw new GraphQLValidationError(
+            'El acuerdo no pertenece al préstamo indicado.',
+          );
+        }
+      }
 
       const pago = await ctx.prisma.$transaction(async (tx) => {
         await validarPagoAnticipado(tx, {
@@ -66,37 +96,31 @@ builder.mutationField("createPago", (t) =>
             });
             if (acuerdoVigente) {
               idacuerdo = acuerdoVigente.idacuerdo;
-              await tx.tbl_pago.update({
-                where: { idpago: created.idpago },
-                data: { idacuerdo, aplicado: true },
-              });
-            } else {
-              await tx.tbl_pago.update({
-                where: { idpago: created.idpago },
-                data: { aplicado: true },
-              });
             }
-          } else {
-            await tx.tbl_pago.update({
-              where: { idpago: created.idpago },
-              data: { aplicado: true },
-            });
           }
 
-          await aplicarPagoAlPrestamo(tx, {
-            idprestamo: created.idprestamo,
-            monto,
-            fechaPago: created.fechaPago,
-            idacuerdo,
-            idpago: created.idpago,
-          });
+          const marcado = await marcarPagoComoAplicadoAtomico(
+            tx,
+            created.idpago,
+            { idacuerdo },
+          );
+          if (marcado) {
+            await aplicarPagoAlPrestamo(tx, {
+              idprestamo: created.idprestamo,
+              monto,
+              fechaPago: created.fechaPago,
+              idacuerdo,
+              idpago: created.idpago,
+              idusuario: ctx.usuario?.idusuario,
+            });
+          }
         }
 
         await registrarAuditoria(tx, {
           idusuario: ctx.usuario?.idusuario,
-          entidad: "tbl_pago",
+          entidad: 'tbl_pago',
           entidadId: created.idpago,
-          accion: autoAplicar ? "CREATE_AUTO_APLICADO" : "CREATE",
+          accion: autoAplicar ? 'CREATE_AUTO_APLICADO' : 'CREATE',
           detalle: JSON.stringify({
             idprestamo: data.idprestamo,
             monto: data.monto,
@@ -109,6 +133,8 @@ builder.mutationField("createPago", (t) =>
           where: { idpago: created.idpago },
         });
       });
+
+      await emitirNotificacionPago(pago.idpago);
 
       return ctx.prisma.tbl_pago.findUniqueOrThrow({
         ...(query as Record<string, unknown>),
@@ -134,6 +160,10 @@ builder.mutationField('marcarPagoAplicado', (t) =>
         throw new GraphQLValidationError('Pago no encontrado.');
       }
       await requerirAccesoMandante(ctx.usuario?.idusuario, pago.idmandante);
+      await requerirAccesoPrestamoCobrador(
+        ctx.usuario?.idusuario,
+        pago.idprestamo,
+      );
 
       if (pago.aplicado === args.aplicado) {
         return ctx.prisma.tbl_pago.findUniqueOrThrow({
@@ -157,10 +187,6 @@ builder.mutationField('marcarPagoAplicado', (t) =>
           });
           if (acuerdoVigente) {
             idacuerdo = acuerdoVigente.idacuerdo;
-            await tx.tbl_pago.update({
-              where: { idpago: args.idpago },
-              data: { idacuerdo },
-            });
           }
         }
 
@@ -170,24 +196,37 @@ builder.mutationField('marcarPagoAplicado', (t) =>
             monto,
             fechaPago: pago.fechaPago,
           });
+          const marcado = await marcarPagoComoAplicadoAtomico(
+            tx,
+            args.idpago,
+            { idacuerdo },
+          );
+          if (!marcado) {
+            return;
+          }
           await aplicarPagoAlPrestamo(tx, {
             idprestamo: pago.idprestamo,
             monto,
             fechaPago: pago.fechaPago,
             idacuerdo,
             idpago: args.idpago,
+            idusuario: ctx.usuario?.idusuario,
           });
         } else {
+          const desmarcado = await marcarPagoComoNoAplicadoAtomico(
+            tx,
+            args.idpago,
+          );
+          if (!desmarcado) {
+            return;
+          }
           await revertirPagoDelPrestamo(tx, {
             idprestamo: pago.idprestamo,
             monto,
+            idpago: args.idpago,
+            idusuario: ctx.usuario?.idusuario,
           });
         }
-
-        await tx.tbl_pago.update({
-          where: { idpago: args.idpago },
-          data: { aplicado: args.aplicado },
-        });
 
         await registrarAuditoria(tx, {
           idusuario: ctx.usuario?.idusuario,

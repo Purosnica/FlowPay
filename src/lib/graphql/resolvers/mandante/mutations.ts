@@ -13,6 +13,7 @@ import {
 import { requerirPermiso } from "@/lib/permissions/permission-service";
 import { PERMISO } from "@/lib/permissions/permiso-codes";
 import { requerirAccesoMandante } from "@/lib/cobranza/mandante-scope";
+import { GraphQLValidationError } from "@/lib/errors/graphql-errors";
 
 builder.mutationField("createMandante", (t) =>
   t.prismaField({
@@ -76,7 +77,7 @@ builder.mutationField('cerrarCampana', (t) =>
         where: { idcampana: args.idcampana },
       });
       if (!campana || campana.deletedAt) {
-        throw new Error('Campaña no encontrada.');
+        throw new GraphQLValidationError('Campaña no encontrada.');
       }
       await requerirAccesoMandante(ctx.usuario?.idusuario, campana.idmandante);
       return ctx.prisma.tbl_campana.update({

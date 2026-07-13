@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
+import { DeleteRowButton } from '@/components/ui/row-action-buttons';
 import { PaginatedDataTable } from '@/components/cobranza/paginated-data-table';
 import { usePaginatedPanel } from '@/hooks/use-paginated-panel';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
@@ -158,15 +159,11 @@ export function ContratoMandantePanel({ mandante }: ContratoMandantePanelProps) 
             >
               {c.estado ? 'Desactivar' : 'Activar'}
             </Button>
-            <Button
-              size="sm"
-              variant="outline"
+            <DeleteRowButton
               onClick={() =>
                 deleteMutation.mutate({ idcontrato: c.idcontrato })
               }
-            >
-              Eliminar
-            </Button>
+            />
           </div>
         )}
       />

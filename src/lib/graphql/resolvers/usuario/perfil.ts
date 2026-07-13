@@ -10,9 +10,15 @@ import {
   actualizarMiPerfil,
 } from '@/lib/logic/perfil-logic';
 
+import {
+  GraphQLAuthenticationError,
+} from '@/lib/errors/graphql-errors';
+
 function requerirAutenticado(ctx: GraphQLContext): number {
   if (!ctx.usuario?.idusuario) {
-    throw new Error('No autenticado. Por favor, inicia sesión.');
+    throw new GraphQLAuthenticationError(
+      'No autenticado. Por favor, inicia sesión.',
+    );
   }
   return ctx.usuario.idusuario;
 }
