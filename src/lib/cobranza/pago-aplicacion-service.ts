@@ -223,7 +223,8 @@ export async function marcarPagoComoAplicadoAtomico(
   idpago: number,
   extra?: { idacuerdo?: number | null },
 ): Promise<boolean> {
-  const data: Prisma.tbl_pagoUpdateManyMutationInput = {
+  // Unchecked: updateMany no admite FKs en UpdateManyMutationInput.
+  const data: Prisma.tbl_pagoUncheckedUpdateManyInput = {
     aplicado: true,
   };
   if (extra?.idacuerdo != null) {
