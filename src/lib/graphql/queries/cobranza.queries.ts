@@ -781,6 +781,15 @@ export const MARCAR_LIQUIDACION_PAGADA = `
   }
 `;
 
+export const REVERTIR_LIQUIDACION_PAGADA = `
+  mutation RevertirLiquidacionPagada($idliquidacion: Int!) {
+    revertirLiquidacionPagada(idliquidacion: $idliquidacion) {
+      idliquidacion
+      estado
+    }
+  }
+`;
+
 export const ANULAR_LIQUIDACION = `
   mutation AnularLiquidacion($idliquidacion: Int!) {
     anularLiquidacion(idliquidacion: $idliquidacion)

@@ -104,6 +104,11 @@ export async function aplicarPagoAlPrestamo(
     )?.idacuerdo;
 
   if (idacuerdo && params.idpago) {
+    // Vincular pago al acuerdo para acumular abonos y evaluar cumplimiento.
+    await tx.tbl_pago.update({
+      where: { idpago: params.idpago },
+      data: { idacuerdo },
+    });
     await marcarCuotaPagadaPorMonto(tx, idacuerdo, monto, params.idpago);
   }
 

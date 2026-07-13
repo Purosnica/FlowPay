@@ -14,6 +14,54 @@ import { sincronizarMoraPrestamo } from './dias-mora-service';
 
 type Tx = Prisma.TransactionClient;
 
+const TOLERANCIA_CUOTA = 0.99;
+
+export interface CuotaParaAbono {
+  idcuota: number;
+  numeroCuota: number;
+  montoCuota: number;
+  estado: string;
+}
+
+export interface ResultadoAbonoCuota {
+  idcuota: number;
+  /** Estado objetivo tras el abono (VENCIDA se preserva si no quedó pagada). */
+  estadoNuevo: 'PAGADA' | 'PENDIENTE' | 'VENCIDA';
+}
+
+/**
+ * Distribuye el total pagado en cuotas (orden ASC).
+ * Acumula abonos parciales: varios pagos suman hasta cubrir cada cuota.
+ */
+export function calcularAbonoCuotasPorTotal(
+  cuotas: CuotaParaAbono[],
+  totalPagado: number,
+): ResultadoAbonoCuota[] {
+  let disponible = roundMoney(Math.max(0, totalPagado));
+  const ordenadas = [...cuotas].sort(
+    (a, b) => a.numeroCuota - b.numeroCuota,
+  );
+  const resultados: ResultadoAbonoCuota[] = [];
+  let coberturaAgotada = false;
+
+  for (const cuota of ordenadas) {
+    const montoCuota = roundMoney(cuota.montoCuota);
+
+    if (!coberturaAgotada && disponible >= montoCuota * TOLERANCIA_CUOTA) {
+      resultados.push({ idcuota: cuota.idcuota, estadoNuevo: 'PAGADA' });
+      disponible = roundMoney(disponible - montoCuota);
+      continue;
+    }
+
+    coberturaAgotada = true;
+    const estadoNuevo =
+      cuota.estado === 'VENCIDA' ? 'VENCIDA' : 'PENDIENTE';
+    resultados.push({ idcuota: cuota.idcuota, estadoNuevo });
+  }
+
+  return resultados;
+}
+
 export async function generarCuotasAcuerdo(
   tx: Tx,
   params: {
@@ -170,59 +218,118 @@ export async function procesarAcuerdosVencidos(
   return { evaluados: vigentes.length, rotos };
 }
 
-export async function marcarCuotaPagadaPorMonto(
+/**
+ * Marca cuotas PAGADA según el total de pagos aplicados del acuerdo
+ * (abonos parciales se acumulan entre pagos).
+ */
+export async function sincronizarCuotasAcuerdoPorPagos(
   tx: Tx,
   idacuerdo: number,
-  montoPago: number,
-  idpago: number,
+  idpagoReferencia?: number | null,
 ): Promise<void> {
-  const cuotasPendientes = await tx.tbl_acuerdo_cuota.findMany({
-    where: { idacuerdo, estado: { in: ['PENDIENTE', 'VENCIDA'] } },
-    orderBy: { numeroCuota: 'asc' },
-  });
+  const [agg, cuotas, ultimoPago] = await Promise.all([
+    tx.tbl_pago.aggregate({
+      where: {
+        idacuerdo,
+        aplicado: true,
+        deletedAt: null,
+      },
+      _sum: { monto: true },
+    }),
+    tx.tbl_acuerdo_cuota.findMany({
+      where: { idacuerdo },
+      orderBy: { numeroCuota: 'asc' },
+    }),
+    idpagoReferencia
+      ? Promise.resolve({ idpago: idpagoReferencia })
+      : tx.tbl_pago.findFirst({
+          where: { idacuerdo, aplicado: true, deletedAt: null },
+          orderBy: [{ fechaPago: 'desc' }, { idpago: 'desc' }],
+          select: { idpago: true },
+        }),
+  ]);
 
-  let restante = montoPago;
-  for (const cuota of cuotasPendientes) {
-    if (restante <= 0) {
-      break;
+  const totalPagado = decimalToNumber(agg._sum.monto);
+  const plan = calcularAbonoCuotasPorTotal(
+    cuotas.map((c) => ({
+      idcuota: c.idcuota,
+      numeroCuota: c.numeroCuota,
+      montoCuota: decimalToNumber(c.montoCuota),
+      estado: c.estado,
+    })),
+    totalPagado,
+  );
+
+  for (const item of plan) {
+    const actual = cuotas.find((c) => c.idcuota === item.idcuota);
+    if (!actual) {
+      continue;
     }
-    const montoCuota = decimalToNumber(cuota.montoCuota);
-    if (restante >= montoCuota * 0.99) {
-      await tx.tbl_acuerdo_cuota.update({
-        where: { idcuota: cuota.idcuota },
-        data: { estado: 'PAGADA', idpago },
-      });
-      restante = roundMoney(restante - montoCuota);
+
+    const mismoEstado = actual.estado === item.estadoNuevo;
+    const faltaIdpago =
+      item.estadoNuevo === 'PAGADA' &&
+      actual.idpago == null &&
+      ultimoPago?.idpago != null;
+
+    if (mismoEstado && !faltaIdpago) {
+      continue;
     }
+
+    await tx.tbl_acuerdo_cuota.update({
+      where: { idcuota: item.idcuota },
+      data: {
+        estado: item.estadoNuevo,
+        idpago:
+          item.estadoNuevo === 'PAGADA' ? (ultimoPago?.idpago ?? null) : null,
+      },
+    });
   }
 }
 
+/** Compat: sincroniza cuotas del acuerdo (acumula parciales). */
+export async function marcarCuotaPagadaPorMonto(
+  tx: Tx,
+  idacuerdo: number,
+  _montoPago: number,
+  idpago: number,
+): Promise<void> {
+  await sincronizarCuotasAcuerdoPorPagos(tx, idacuerdo, idpago);
+}
+
 /**
- * Revierte cuotas marcadas por un pago y reevalúa el acuerdo.
+ * Revierte el efecto de un pago sobre cuotas y re-sincroniza el acuerdo.
  */
 export async function revertirCuotasPorPago(
   tx: Tx,
   idpago: number,
   idusuario?: number | null,
 ): Promise<void> {
-  const cuotas = await tx.tbl_acuerdo_cuota.findMany({
-    where: { idpago, estado: 'PAGADA' },
-    select: { idcuota: true, idacuerdo: true },
+  const pago = await tx.tbl_pago.findUnique({
+    where: { idpago },
+    select: { idacuerdo: true },
   });
-  if (cuotas.length === 0) {
+
+  const cuotasConPago = await tx.tbl_acuerdo_cuota.findMany({
+    where: { idpago },
+    select: { idacuerdo: true },
+  });
+
+  const idacuerdos = new Set<number>();
+  if (pago?.idacuerdo != null) {
+    idacuerdos.add(pago.idacuerdo);
+  }
+  for (const c of cuotasConPago) {
+    idacuerdos.add(c.idacuerdo);
+  }
+
+  if (idacuerdos.size === 0) {
     return;
   }
 
-  const idacuerdos = [...new Set(cuotas.map((c) => c.idacuerdo))];
-
-  for (const cuota of cuotas) {
-    await tx.tbl_acuerdo_cuota.update({
-      where: { idcuota: cuota.idcuota },
-      data: { estado: 'PENDIENTE', idpago: null },
-    });
-  }
-
   for (const idacuerdo of idacuerdos) {
+    await sincronizarCuotasAcuerdoPorPagos(tx, idacuerdo);
+
     const acuerdo = await tx.tbl_acuerdo.findUnique({
       where: { idacuerdo },
     });

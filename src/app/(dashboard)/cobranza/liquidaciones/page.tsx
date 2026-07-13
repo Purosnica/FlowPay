@@ -19,6 +19,7 @@ import {
   GENERAR_LIQUIDACION,
   EMITIR_LIQUIDACION,
   MARCAR_LIQUIDACION_PAGADA,
+  REVERTIR_LIQUIDACION_PAGADA,
   ANULAR_LIQUIDACION,
 } from '@/lib/graphql/queries/cobranza.queries';
 import { type Liquidacion, type SimulacionLiquidacion , formatearMoneda } from '@/types/cobranza';
@@ -117,6 +118,16 @@ export default function LiquidacionesPage() {
     },
   });
 
+  const revertirPagadaMutation = useGraphQLMutation(
+    REVERTIR_LIQUIDACION_PAGADA,
+    {
+      onSuccess: () => {
+        invalidate();
+        refetch();
+      },
+    },
+  );
+
   const anularMutation = useGraphQLMutation(ANULAR_LIQUIDACION, {
     onSuccess: () => {
       invalidate();
@@ -168,32 +179,18 @@ export default function LiquidacionesPage() {
                 Detalle
               </Button>
               {liq.estado === 'BORRADOR' && (
-                <>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={emitirMutation.isPending}
-                    onClick={() =>
-                      emitirMutation.mutate({
-                        idliquidacion: liq.idliquidacion,
-                      })
-                    }
-                  >
-                    Emitir
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={anularMutation.isPending}
-                    onClick={() =>
-                      anularMutation.mutate({
-                        idliquidacion: liq.idliquidacion,
-                      })
-                    }
-                  >
-                    Anular
-                  </Button>
-                </>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={emitirMutation.isPending}
+                  onClick={() =>
+                    emitirMutation.mutate({
+                      idliquidacion: liq.idliquidacion,
+                    })
+                  }
+                >
+                  Emitir
+                </Button>
               )}
               {liq.estado === 'EMITIDA' && (
                 <Button
@@ -209,12 +206,47 @@ export default function LiquidacionesPage() {
                   Marcar pagada
                 </Button>
               )}
+              {liq.estado === 'PAGADA' && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={revertirPagadaMutation.isPending}
+                  onClick={() =>
+                    revertirPagadaMutation.mutate({
+                      idliquidacion: liq.idliquidacion,
+                    })
+                  }
+                >
+                  Revertir pago
+                </Button>
+              )}
+              {(liq.estado === 'BORRADOR' ||
+                liq.estado === 'EMITIDA' ||
+                liq.estado === 'PAGADA') && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={anularMutation.isPending}
+                  onClick={() =>
+                    anularMutation.mutate({
+                      idliquidacion: liq.idliquidacion,
+                    })
+                  }
+                >
+                  Anular
+                </Button>
+              )}
             </div>
           );
         },
       },
     ],
-    [emitirMutation, pagadaMutation, anularMutation],
+    [
+      emitirMutation,
+      pagadaMutation,
+      revertirPagadaMutation,
+      anularMutation,
+    ],
   );
 
   const handleSimular = () => {
