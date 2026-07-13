@@ -18,7 +18,7 @@ import {
 } from '@/lib/cobranza/upload-limits';
 
 /** Importaciones grandes (700+ filas) pueden tardar varios minutos. */
-export const maxDuration = 600;
+export const maxDuration = 300;
 const TIPOS: TipoImportacionCobranza[] = [
   'CARTERA',
   'GESTIONES',
