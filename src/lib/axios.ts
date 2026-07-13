@@ -5,9 +5,26 @@ import { clientErrorLogger } from '@/lib/errors/client-error-logger';
 import { type StructuredError, ErrorCode } from '@/lib/errors/types';
 import { CSRF_HEADER, CSRF_HEADER_VALUE, CSRF_TOKEN_HEADER, CSRF_COOKIE } from '@/lib/security/csrf';
 
-/** Solo NEXT_PUBLIC_*: este módulo se usa en el cliente. No importar @/lib/env. */
-const apiBaseUrl =
-  process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
+/**
+ * Base URL del API en el cliente.
+ * Por defecto same-origin ('') para respetar CSP connect-src 'self'.
+ * En producción ignora localhost (misconfiguración típica en Vercel).
+ * No importar @/lib/env (secrets de servidor).
+ */
+function resolveApiBaseUrl(): string {
+  const configured = process.env.NEXT_PUBLIC_API_URL?.trim() || '';
+  if (!configured) {
+    return '';
+  }
+  const isLocalhost =
+    configured.includes('localhost') || configured.includes('127.0.0.1');
+  if (process.env.NODE_ENV === 'production' && isLocalhost) {
+    return '';
+  }
+  return configured;
+}
+
+const apiBaseUrl = resolveApiBaseUrl();
 
 // Instancia de axios configurada para la aplicación
 export const apiClient = axios.create({
