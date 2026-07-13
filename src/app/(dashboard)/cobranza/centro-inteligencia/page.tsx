@@ -198,6 +198,7 @@ export default function CentroInteligenciaPage() {
         emptyMessage="Sin datos de inteligencia para el filtro seleccionado."
         errorMessage="No se pudo cargar el centro de inteligencia."
       >
+        {centro ? (
         <>
           <div className="overflow-hidden rounded-xl border border-stroke bg-white shadow-sm dark:border-dark-3 dark:bg-gray-dark">
             <div className="border-b border-stroke px-4 py-2.5 dark:border-dark-3">
@@ -214,7 +215,7 @@ export default function CentroInteligenciaPage() {
                   Salud de cartera
                 </p>
                 <p className="mt-2 text-4xl font-bold tabular-nums text-primary">
-                  {centro?.saludCartera}
+                  {centro.saludCartera}
                 </p>
                 <p className="mt-1 text-xs text-gray-5">
                   Índice 0-100 · Ver reportes
@@ -364,6 +365,7 @@ export default function CentroInteligenciaPage() {
             </Card>
           )}
         </>
+        ) : null}
       </AsyncPanel>
     </div>
   );
