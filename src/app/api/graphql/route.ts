@@ -22,15 +22,22 @@ interface FormattableGraphQLError {
   extensions?: Record<string, unknown>;
 }
 
+/** Contexto de Route Handler App Router (Next 15+). */
+interface NextRouteContext {
+  params: Promise<Record<string, string>>;
+}
+
 const introspectionPlugins =
   process.env.NODE_ENV === 'production'
     ? // eslint-disable-next-line react-hooks/rules-of-hooks -- plugin GraphQL Yoga, no React hook
       [useValidationRule(NoSchemaIntrospectionCustomRule)]
     : [];
 
-const { handleRequest } = createYoga({
+const { handleRequest } = createYoga<NextRouteContext>({
   schema,
   graphqlEndpoint: '/api/graphql',
+  // Yoga debe usar el Response de Next; sin esto retorna undefined → 500 vacío.
+  fetchAPI: { Response },
   context: async ({ request }) => {
     try {
       const usuario = await getCurrentUser(request as NextRequest);
@@ -145,7 +152,10 @@ const { handleRequest } = createYoga({
   ],
 });
 
-async function handleGraphQLRequest(request: NextRequest): Promise<Response> {
+async function handleGraphQLRequest(
+  request: NextRequest,
+  routeContext: NextRouteContext,
+): Promise<Response> {
   if (request.method === 'POST' && !validarCsrfHeader(request)) {
     return new Response(
       JSON.stringify({
@@ -188,12 +198,15 @@ async function handleGraphQLRequest(request: NextRequest): Promise<Response> {
     );
   }
 
-  return handleRequest(request, {} as Record<string, unknown>);
+  return handleRequest(request, routeContext);
 }
 
-export async function GET(request: NextRequest) {
+export async function GET(
+  request: NextRequest,
+  routeContext: NextRouteContext,
+) {
   try {
-    return await handleGraphQLRequest(request);
+    return await handleGraphQLRequest(request, routeContext);
   } catch (error) {
     logger.error(
       'GraphQL GET Error',
@@ -211,9 +224,19 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function OPTIONS(
+  request: NextRequest,
+  routeContext: NextRouteContext,
+) {
+  return handleRequest(request, routeContext);
+}
+
+export async function POST(
+  request: NextRequest,
+  routeContext: NextRouteContext,
+) {
   try {
-    return await handleGraphQLRequest(request);
+    return await handleGraphQLRequest(request, routeContext);
   } catch (error) {
     logger.error(
       'GraphQL POST Error',
