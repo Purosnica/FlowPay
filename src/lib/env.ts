@@ -17,11 +17,8 @@ const envSchema = z.object({
     ? z.string().min(16, 'CRON_SECRET debe tener al menos 16 caracteres')
     : z.string().min(1).optional(),
 
-  NEXT_PUBLIC_API_URL: z
-    .string()
-    .url()
-    .optional()
-    .default('http://localhost:3000'),
+  // Vacío / ausente = same-origin (recomendado en Vercel y producción).
+  NEXT_PUBLIC_API_URL: z.union([z.string().url(), z.literal('')]).optional(),
 
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 

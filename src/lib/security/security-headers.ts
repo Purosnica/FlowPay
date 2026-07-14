@@ -15,13 +15,29 @@ export function applySecurityHeaders(response: NextResponse): void {
     ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
     : "script-src 'self' 'unsafe-inline'";
 
+  const connectSrc = ["'self'"];
+  if (isDev) {
+    connectSrc.push('ws:', 'wss:');
+  }
+  const configuredApi = process.env.NEXT_PUBLIC_API_URL?.trim();
+  if (configuredApi) {
+    try {
+      const apiOrigin = new URL(configuredApi).origin;
+      if (!connectSrc.includes(apiOrigin)) {
+        connectSrc.push(apiOrigin);
+      }
+    } catch {
+      // URL inválida: no ampliar connect-src
+    }
+  }
+
   const csp = [
     "default-src 'self'",
     scriptSrc,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https:",
     "font-src 'self' data:",
-    "connect-src 'self'",
+    `connect-src ${connectSrc.join(' ')}`,
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",

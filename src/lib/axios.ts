@@ -8,17 +8,27 @@ import { CSRF_HEADER, CSRF_HEADER_VALUE, CSRF_TOKEN_HEADER, CSRF_COOKIE } from '
 /**
  * Base URL del API en el cliente.
  * Por defecto same-origin ('') para respetar CSP connect-src 'self'.
- * En producción ignora localhost (misconfiguración típica en Vercel).
+ * En producción siempre same-origin: la API es esta misma app Next.js.
+ * Evita bloqueos CSP en dominio custom / previews de Vercel cuando
+ * NEXT_PUBLIC_API_URL apunta a otro host (p. ej. *.vercel.app).
  * No importar @/lib/env (secrets de servidor).
  */
 function resolveApiBaseUrl(): string {
+  if (process.env.NODE_ENV === 'production') {
+    return '';
+  }
   const configured = process.env.NEXT_PUBLIC_API_URL?.trim() || '';
   if (!configured) {
     return '';
   }
-  const isLocalhost =
-    configured.includes('localhost') || configured.includes('127.0.0.1');
-  if (process.env.NODE_ENV === 'production' && isLocalhost) {
+  try {
+    if (typeof window !== 'undefined') {
+      const origin = new URL(configured).origin;
+      if (origin === window.location.origin) {
+        return '';
+      }
+    }
+  } catch {
     return '';
   }
   return configured;
