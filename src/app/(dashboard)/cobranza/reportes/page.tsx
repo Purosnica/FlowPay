@@ -15,7 +15,13 @@ import {
   type DashboardMetric,
 } from '@/components/dashboard/dashboard-metric-strip';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
+import { usePermisos } from '@/hooks/use-permisos';
 import { GET_REPORTES_DASHBOARD } from '@/lib/graphql/queries/cobranza.queries';
+import {
+  REPORTE_KEY,
+  REPORTE_PATH_KEY,
+  usuarioPuedeVerReporte,
+} from '@/lib/permissions/reporte-permisos';
 import {
   type AgingTramoReporte,
   type KpiCobranzaCore,
@@ -107,8 +113,80 @@ export default function ReportesPage() {
   const [idmandante, setIdmandante] = useState<number | ''>('');
   const [periodo, setPeriodo] = useState(periodoActual());
   const [usarPeriodo, setUsarPeriodo] = useState(true);
+  const permisos = usePermisos();
+  const puedeHubCobranza = usuarioPuedeVerReporte(
+    permisos,
+    REPORTE_KEY.hub,
+  );
 
   const mandanteId = idmandante === '' ? 0 : idmandante;
+
+  const hubLinks = useMemo(() => {
+    const links: Array<{
+      href: string;
+      label: string;
+      key: (typeof REPORTE_KEY)[keyof typeof REPORTE_KEY];
+    }> = [
+      {
+        href: '/cobranza/reportes/informe-gerencial',
+        label: 'Informe gerencial',
+        key: REPORTE_KEY.informeGerencial,
+      },
+      {
+        href: '/cobranza/reportes/informe-gestiones',
+        label: 'Informe de gestiones',
+        key: REPORTE_KEY.informeGestiones,
+      },
+      {
+        href: '/cobranza/reportes/ganancias',
+        label: 'Ganancias',
+        key: REPORTE_KEY.ganancias,
+      },
+      {
+        href: '/cobranza/reportes/comisiones-cobradores',
+        label: 'Comisiones',
+        key: REPORTE_KEY.comisionesCobradores,
+      },
+      {
+        href: '/cobranza/reportes/efectividad',
+        label: 'Efectividad',
+        key: REPORTE_KEY.efectividad,
+      },
+      {
+        href: '/cobranza/reportes/cumplimiento-acuerdos',
+        label: 'Acuerdos',
+        key: REPORTE_KEY.cumplimientoAcuerdos,
+      },
+      {
+        href: '/cobranza/reportes/cartera-sin-gestion',
+        label: 'Sin gestión',
+        key: REPORTE_KEY.carteraSinGestion,
+      },
+    ];
+    return links.filter((l) => usuarioPuedeVerReporte(permisos, l.key));
+  }, [permisos]);
+
+  const quickLinks = useMemo(() => {
+    return (
+      [
+        ['margen-mandantes', 'Margen mandantes'],
+        ['comisiones-vs-proyeccion', 'Comisiones vs proy.'],
+        ['ingreso-tramo-mora', 'Ingreso por tramo'],
+        ['promesas-pago', 'Promesas'],
+        ['productividad-diaria', 'Productividad'],
+        ['recontactos', 'Recontactos'],
+        ['reclamos-sla', 'SLA reclamos'],
+        ['migracion-mora', 'Migración mora'],
+        ['concentracion-riesgo', 'Concentración'],
+        ['cuotas-vencidas', 'Cuotas vencidas'],
+        ['cumplimiento-metas', 'Metas'],
+        ['supervisor-equipo', 'Supervisor/equipo'],
+      ] as const
+    ).filter(([slug]) => {
+      const key = REPORTE_PATH_KEY[slug];
+      return key ? usuarioPuedeVerReporte(permisos, key) : false;
+    });
+  }, [permisos]);
 
   const { data, isLoading, error } = useGraphQLQuery<{
     reporteCobranza: ReporteCobranza;
@@ -130,7 +208,7 @@ export default function ReportesPage() {
       periodo: usarPeriodo ? periodo : null,
       meses: 6,
     },
-    { enabled: mandanteId > 0 },
+    { enabled: mandanteId > 0 && puedeHubCobranza },
   );
 
   const reporte = data?.reporteCobranza;
@@ -203,36 +281,50 @@ export default function ReportesPage() {
         description="Indicadores de cartera, aging, recuperación y desempeño por gestor."
         actions={
           <div className="flex flex-wrap gap-2">
-            <Link
-              href="/cobranza/reportes/informe-gerencial"
-              className="inline-flex h-10 items-center justify-center rounded-lg border-2 border-primary px-4 text-base font-semibold text-primary transition-all hover:bg-primary hover:text-white dark:border-primary dark:text-primary dark:hover:bg-primary dark:hover:text-white"
-            >
-              Informe gerencial
-            </Link>
-            <Link
-              href="/cobranza/reportes/informe-gestiones"
-              className="inline-flex h-10 items-center justify-center rounded-lg border-2 border-primary px-4 text-base font-semibold text-primary transition-all hover:bg-primary hover:text-white dark:border-primary dark:text-primary dark:hover:bg-primary dark:hover:text-white"
-            >
-              Informe de gestiones
-            </Link>
-            <Button
-              variant="outline"
-              disabled={!reporte}
-              onClick={handleExportKpis}
-            >
-              Exportar KPIs
-            </Button>
-            <Button
-              variant="outline"
-              disabled={!aging}
-              onClick={handleExportAging}
-            >
-              Exportar aging
-            </Button>
+            {hubLinks.map((l) => (
+              <Link
+                key={l.href}
+                href={l.href}
+                className="inline-flex h-10 items-center justify-center rounded-lg border-2 border-primary px-4 text-base font-semibold text-primary transition-all hover:bg-primary hover:text-white dark:border-primary dark:text-primary dark:hover:bg-primary dark:hover:text-white"
+              >
+                {l.label}
+              </Link>
+            ))}
+            {puedeHubCobranza ? (
+              <>
+                <Button
+                  variant="outline"
+                  disabled={!reporte}
+                  onClick={handleExportKpis}
+                >
+                  Exportar KPIs
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={!aging}
+                  onClick={handleExportAging}
+                >
+                  Exportar aging
+                </Button>
+              </>
+            ) : null}
           </div>
         }
       />
 
+      {quickLinks.length > 0 ? (
+        <div className="flex flex-wrap gap-2 text-sm">
+          {quickLinks.map(([slug, label]) => (
+            <Link
+              key={slug}
+              href={`/cobranza/reportes/${slug}`}
+              className="rounded-md border border-stroke px-3 py-1.5 text-dark transition hover:border-primary hover:text-primary dark:border-dark-3 dark:text-white"
+            >
+              {label}
+            </Link>
+          ))}
+        </div>
+      ) : null}
       <div className="rounded-xl border border-stroke bg-white p-4 shadow-sm dark:border-dark-3 dark:bg-gray-dark">
         <div className="grid gap-4 sm:grid-cols-3">
           <MandanteSelect
@@ -268,7 +360,7 @@ export default function ReportesPage() {
 
       {error && (
         <p className="text-sm text-red-600">
-          Error al cargar reporte. Verifique permiso REPORTE_READ.
+          Error al cargar reporte. Verifique permisos de reportes (cobranza).
         </p>
       )}
 

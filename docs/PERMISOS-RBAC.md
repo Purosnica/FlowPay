@@ -8,13 +8,7 @@
 
 ## Resumen ejecutivo
 
-El sistema tiene **18 permisos** en 3 categorías:
-
-| Categoría | Tipo | Permisos |
-|-----------|------|----------|
-| ADMINISTRACION | Administrativo | `USER_READ`, `USER_WRITE` |
-| CONFIGURACION | Administrativo | `CONFIG_SYSTEM` |
-| COBRANZA | Operativo | 15 permisos restantes |
+El sistema tiene permisos RBAC en 3 categorías (ver `PERMISOS_CATALOGO` en `permiso-codes.ts`). Los reportes se controlan por **grupos** (`REPORTE_*_READ`) más el comodín legacy `REPORTE_READ`.
 
 **Principio de diseño:**
 
@@ -82,10 +76,10 @@ El sistema tiene **18 permisos** en 3 categorías:
 
 | Rol | Permisos |
 |-----|----------|
-| **COBRADOR** | Cartera lectura, mandante lectura, gestión, acuerdos, pagos, reportes |
-| **SUPERVISOR** | Cobrador + cartera escritura, inteligencia, equipo, liquidación lectura |
-| **GERENTE** | Supervisor + liquidación escritura, usuarios lectura |
-| **ADMIN** | Todos los permisos |
+| **COBRADOR** | Cartera lectura, mandante lectura, gestión, acuerdos, pagos, `REPORTE_COBRANZA_READ`, `REPORTE_OPERACION_READ` |
+| **SUPERVISOR** | Cobrador + cartera escritura, inteligencia, equipo, liquidación lectura, `REPORTE_RIESGO_READ`, `REPORTE_EQUIPO_READ` |
+| **GERENTE** | Supervisor + liquidación escritura, usuarios lectura, `REPORTE_FINANZAS_READ`, `REPORTE_GERENCIAL_READ` |
+| **ADMIN** | Todos los permisos (incl. comodín `REPORTE_READ`) |
 
 Definidos en `PERMISOS_COBRADOR`, `PERMISOS_SUPERVISOR`, `PERMISOS_GERENTE`, `PERMISOS_ADMIN`.
 
@@ -278,16 +272,28 @@ Definidos en `PERMISOS_COBRADOR`, `PERMISOS_SUPERVISOR`, `PERMISOS_GERENTE`, `PE
 
 ### COBRANZA — Analítica (operativo)
 
-#### `REPORTE_READ`
+#### `REPORTE_READ` (comodín legacy)
 
 | Aspecto | Detalle |
 |---------|---------|
-| **Permite** | Reportes de cobranza, aging, recuperación, export CSV |
-| **No permite** | Centro de inteligencia avanzado ni dashboards de equipo |
-| **Módulos** | Reportes |
-| **Middleware** | `/cobranza/reportes` |
-| **GraphQL** | `reporteCobranza`, `agingCartera`, `forecastRecuperacion`, etc. |
-| **Frontend** | Nav Reportes, widgets dashboard |
+| **Permite** | Acceso a **todos** los reportes (equivalente a tener todos los grupos) |
+| **Preferir** | Grupos granulares abajo. Se mantiene por compatibilidad. |
+| **Registro** | `src/lib/permissions/reporte-permisos.ts` |
+
+#### Grupos granulares
+
+| Código | Cubierta |
+|--------|----------|
+| `REPORTE_COBRANZA_READ` | Hub KPIs / aging / forecast |
+| `REPORTE_FINANZAS_READ` | Ganancias, comisiones, margen, ingreso tramo, vs proyección |
+| `REPORTE_OPERACION_READ` | Efectividad, gestiones, promesas, productividad, recontactos |
+| `REPORTE_RIESGO_READ` | Acuerdos, sin gestión, migración mora, concentración, cuotas, SLA |
+| `REPORTE_GERENCIAL_READ` | Informe gerencial |
+| `REPORTE_EQUIPO_READ` | Cumplimiento metas, supervisor vs equipo |
+
+Cada query/ruta/nav consulta el registro `REPORTE_PERMISO_MAP` + el comodín `REPORTE_READ` vía `permisosDeReporte()` / `requerirReporte()`.
+
+**Escalar a permiso por reporte o por usuario:** cambiar valores del mapa a códigos finos (p. ej. `REPORTE_GANANCIAS_READ`) y asignarlos al rol o al usuario; no hace falta reescribir N resolvers.
 
 #### `INTELIGENCIA_READ`
 
@@ -324,10 +330,12 @@ Ver `PERMISOS_COBRADOR`, `PERMISOS_SUPERVISOR`, `PERMISOS_GERENTE`, `PERMISOS_AD
 
 1. Agregar entrada en `PERMISOS_CATALOGO` (`permiso-codes.ts`).
 2. Ejecutar `npx tsx prisma/seed-permisos.ts` (upsert automático).
-3. Proteger resolver GraphQL con `requerirPermiso()`.
-4. Agregar regla en `route-permissions.ts` si hay página nueva.
-5. Agregar entrada en `sidebar/data/index.ts`.
-6. Actualizar esta documentación.
+3. Para **reportes**: registrar clave en `reporte-permisos.ts` (`REPORTE_KEY` + mapa) y usar `requerirReporte()` / `permisosDeReporte()` en resolver, ruta y nav.
+4. Proteger otras APIs con `requerirPermiso()` o `requerirAlgunPermiso()`.
+5. Agregar regla en `route-permissions.ts` si hay página nueva.
+6. Agregar entrada en `sidebar/data/index.ts`.
+7. Actualizar esta documentación.
+8. Tras seed de nuevos permisos de reportes: **re-login** (JWT cachea permisos).
 
 **No** crear permisos para jerarquía. Usar `role-codes.ts` + `equipo-scope.ts`.
 

@@ -278,7 +278,10 @@ builder.queryField('tendenciaRecuperacion', (t) =>
       meses: t.arg.int({ required: false, defaultValue: 6 }),
     },
     resolve: async (_p, args, ctx: GraphQLContext) => {
-      await requerirPermiso(ctx.usuario?.idusuario, PERMISO.REPORTE_READ);
+      await requerirAlgunPermiso(ctx.usuario?.idusuario, [
+        PERMISO.REPORTE_COBRANZA_READ,
+        PERMISO.REPORTE_READ,
+      ]);
       const idusuario = ctx.usuario?.idusuario;
       if (!idusuario) {
         throw new GraphQLValidationError('Usuario no autenticado.');
@@ -767,7 +770,10 @@ builder.queryField('forecastRecuperacion', (t) =>
       }),
     args: { idmandante: t.arg.int({ required: false }) },
     resolve: async (_p, args, ctx: GraphQLContext) => {
-      await requerirPermiso(ctx.usuario?.idusuario, PERMISO.REPORTE_READ);
+      await requerirAlgunPermiso(ctx.usuario?.idusuario, [
+        PERMISO.REPORTE_COBRANZA_READ,
+        PERMISO.REPORTE_READ,
+      ]);
       const idusuario = ctx.usuario?.idusuario;
       if (!idusuario) {
         throw new GraphQLValidationError('Usuario no autenticado.');
@@ -801,6 +807,7 @@ builder.queryField('kpisCobranzaCore', (t) =>
     args: { idmandante: t.arg.int({ required: false }) },
     resolve: async (_p, args, ctx: GraphQLContext) => {
       await requerirAlgunPermiso(ctx.usuario?.idusuario, [
+        PERMISO.REPORTE_COBRANZA_READ,
         PERMISO.REPORTE_READ,
         PERMISO.INTELIGENCIA_READ,
       ]);

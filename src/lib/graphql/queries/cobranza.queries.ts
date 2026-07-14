@@ -2259,3 +2259,284 @@ export const GET_INFORME_GESTIONES = `
     }
   }
 `;
+
+export const GET_REPORTE_GANANCIAS = `
+  query GetReporteGanancias($idmandante: Int!, $periodo: String!) {
+    reporteGanancias(idmandante: $idmandante, periodo: $periodo) {
+      idmandante
+      mandanteCodigo
+      mandanteNombre
+      periodo
+      cantidadPagos
+      totalRecuperado
+      totalIngresoEmpresa
+      totalComision
+      gananciaNeta
+      margenPct
+      porGestor {
+        idgestor
+        nombre
+        cantidadPagos
+        totalRecuperado
+        totalIngresoEmpresa
+        totalComision
+        gananciaNeta
+        margenPct
+      }
+      porTramoMora {
+        tramo
+        tramoMoraMin
+        tramoMoraMax
+        cantidadPagos
+        totalRecuperado
+        totalIngresoEmpresa
+        totalComision
+        gananciaNeta
+      }
+    }
+  }
+`;
+
+export const GET_REPORTE_COMISIONES_COBRADORES = `
+  query GetReporteComisionesCobradores(
+    $idmandante: Int!
+    $periodo: String
+  ) {
+    reporteComisionesCobradores(
+      idmandante: $idmandante
+      periodo: $periodo
+    ) {
+      idmandante
+      mandanteCodigo
+      mandanteNombre
+      periodo
+      totalComision
+      totalComisionBorrador
+      totalComisionEmitida
+      totalComisionPagada
+      cantidadLiquidaciones
+      porCobrador {
+        idliquidacion
+        periodo
+        estado
+        idgestor
+        nombreGestor
+        cantidadPagos
+        totalRecuperado
+        totalIngresoEmpresa
+        totalComision
+      }
+    }
+  }
+`;
+
+export const GET_REPORTE_EFECTIVIDAD = `
+  query GetReporteEfectividad($idmandante: Int!, $periodo: String!) {
+    reporteEfectividad(idmandante: $idmandante, periodo: $periodo) {
+      idmandante
+      mandanteCodigo
+      mandanteNombre
+      periodo
+      totalGestiones
+      totalGestionesEfectivas
+      efectividadPct
+      tasaContactoPct
+      totalRecuperado
+      porGestor {
+        idgestor
+        nombre
+        gestiones
+        gestionesEfectivas
+        efectividadPct
+        tasaContactoPct
+        montoRecuperado
+        prestamosAsignados
+        prestamosEnMora
+        saldoAsignado
+        recuperacionPct
+      }
+    }
+  }
+`;
+
+export const GET_REPORTE_CUMPLIMIENTO_ACUERDOS = `
+  query GetReporteCumplimientoAcuerdos(
+    $idmandante: Int!
+    $periodo: String!
+  ) {
+    reporteCumplimientoAcuerdos(
+      idmandante: $idmandante
+      periodo: $periodo
+    ) {
+      idmandante
+      mandanteCodigo
+      mandanteNombre
+      periodo
+      totalAcuerdos
+      vigentes
+      cumplidos
+      rotos
+      cumplimientoPct
+      montoAcordadoTotal
+      montoCumplido
+      acuerdos {
+        idacuerdo
+        noPrestamo
+        nombreCliente
+        nombreGestor
+        estado
+        montoAcordado
+        numeroCuotas
+        cuotasPendientes
+        cuotasPagadas
+        cuotasVencidas
+        fechaInicio
+      }
+    }
+  }
+`;
+
+export const GET_REPORTE_CARTERA_SIN_GESTION = `
+  query GetReporteCarteraSinGestion(
+    $idmandante: Int!
+    $diasSinGestion: Int
+  ) {
+    reporteCarteraSinGestion(
+      idmandante: $idmandante
+      diasSinGestion: $diasSinGestion
+    ) {
+      idmandante
+      mandanteCodigo
+      mandanteNombre
+      diasSinGestion
+      totalPrestamos
+      saldoTotal
+      resumenTramos {
+        diasUmbral
+        cantidadPrestamos
+        saldoTotal
+      }
+      prestamos {
+        idprestamo
+        noPrestamo
+        nombreCliente
+        nombreGestor
+        diasMora
+        saldoTotal
+        diasSinGestion
+        ultimaGestion
+      }
+    }
+  }
+`;
+export const GET_REPORTE_MARGEN_MANDANTES = `
+  query GetReporteMargenMandantes($periodo: String!) {
+    reporteMargenMandantes(periodo: $periodo) {
+      periodo totalRecuperado totalIngresoEmpresa totalComision gananciaNeta margenPct
+      porMandante { idmandante mandanteCodigo mandanteNombre cantidadPagos totalRecuperado totalIngresoEmpresa totalComision gananciaNeta margenPct }
+    }
+  }
+`;
+
+export const GET_REPORTE_COMISIONES_VS_PROYECCION = `
+  query GetReporteComisionesVsProyeccion($idmandante: Int!, $periodo: String!) {
+    reporteComisionesVsProyeccion(idmandante: $idmandante, periodo: $periodo) {
+      idmandante mandanteCodigo mandanteNombre periodo
+      proyectadoRecuperado proyectadoIngresoEmpresa proyectadoComision proyectadoPagos
+      liquidadoRecuperado liquidadoComision liquidacionEstado idliquidacion
+      diferencialComision diferencialRecuperado pctLiquidadoVsProyectado
+    }
+  }
+`;
+
+export const GET_REPORTE_INGRESO_TRAMO_MORA = `
+  query GetReporteIngresoTramoMora($idmandante: Int!, $periodo: String!) {
+    reporteIngresoTramoMora(idmandante: $idmandante, periodo: $periodo) {
+      idmandante mandanteCodigo mandanteNombre periodo totalIngresoEmpresa totalComision gananciaNeta
+      porTramo { tramo tramoMoraMin tramoMoraMax cantidadPagos totalRecuperado totalIngresoEmpresa totalComision gananciaNeta margenPct shareIngresoPct }
+    }
+  }
+`;
+
+export const GET_REPORTE_PROMESAS_PAGO = `
+  query GetReportePromesasPago($idmandante: Int!, $periodo: String!) {
+    reportePromesasPago(idmandante: $idmandante, periodo: $periodo) {
+      idmandante mandanteCodigo mandanteNombre periodo totalPromesas cumplidas vencidas pendientes cumplimientoPct montoPrometido montoCumplido
+      promesas { idgestion noPrestamo nombreCliente nombreGestor montoPromesa fechaPromesa estado diasVencidos }
+    }
+  }
+`;
+
+export const GET_REPORTE_PRODUCTIVIDAD_DIARIA = `
+  query GetReporteProductividadDiaria($idmandante: Int!, $periodo: String!) {
+    reporteProductividadDiaria(idmandante: $idmandante, periodo: $periodo) {
+      idmandante mandanteCodigo mandanteNombre periodo totalGestiones promedioGestionesDia
+      porDia { fecha idgestor nombreGestor gestiones gestionesEfectivas montoRecuperado }
+      porGestor { idgestor nombreGestor diasActivos totalGestiones promedioGestionesDia totalRecuperado }
+    }
+  }
+`;
+
+export const GET_REPORTE_RECONTACTOS = `
+  query GetReporteRecontactos($idmandante: Int!, $periodo: String!, $minGestiones: Int) {
+    reporteRecontactos(idmandante: $idmandante, periodo: $periodo, minGestiones: $minGestiones) {
+      idmandante mandanteCodigo mandanteNombre periodo minGestiones totalPrestamos saldoTotal
+      prestamos { idprestamo noPrestamo nombreCliente nombreGestor gestionesPeriodo diasMora saldoTotal ultimaGestion }
+    }
+  }
+`;
+
+export const GET_REPORTE_RECLAMOS_SLA = `
+  query GetReporteReclamosSla($idmandante: Int!) {
+    reporteReclamosSla(idmandante: $idmandante) {
+      idmandante mandanteCodigo mandanteNombre totalReclamos abiertos enProceso resueltos fueraSla pctFueraSla
+      reclamos { idreclamo estado descripcion fechaLimite createdAt fueraSla diasFueraSla noPrestamo nombreCliente }
+    }
+  }
+`;
+
+export const GET_REPORTE_MIGRACION_MORA = `
+  query GetReporteMigracionMora($idmandante: Int!, $periodo: String!) {
+    reporteMigracionMora(idmandante: $idmandante, periodo: $periodo) {
+      idmandante mandanteCodigo mandanteNombre periodo fechaOrigen fechaDestino totalPrestamos
+      migraciones { tramoOrigen tramoDestino cantidad saldoDestino pct }
+    }
+  }
+`;
+
+export const GET_REPORTE_CONCENTRACION_RIESGO = `
+  query GetReporteConcentracionRiesgo($idmandante: Int!, $topN: Int) {
+    reporteConcentracionRiesgo(idmandante: $idmandante, topN: $topN) {
+      idmandante mandanteCodigo mandanteNombre saldoMoraTotal
+      topDeudores { tipo id nombre cantidadPrestamos saldoMora shareSaldoPct }
+      topGestores { tipo id nombre cantidadPrestamos saldoMora shareSaldoPct }
+    }
+  }
+`;
+
+export const GET_REPORTE_CUOTAS_VENCIDAS = `
+  query GetReporteCuotasVencidas($idmandante: Int!) {
+    reporteCuotasVencidas(idmandante: $idmandante) {
+      idmandante mandanteCodigo mandanteNombre totalCuotas montoTotal
+      cuotas { idcuota idacuerdo noPrestamo nombreCliente nombreGestor numeroCuota montoCuota fechaVencimiento diasVencidos estadoAcuerdo }
+    }
+  }
+`;
+
+export const GET_REPORTE_CUMPLIMIENTO_METAS = `
+  query GetReporteCumplimientoMetas($idmandante: Int!, $periodo: String!) {
+    reporteCumplimientoMetas(idmandante: $idmandante, periodo: $periodo) {
+      idmandante mandanteCodigo mandanteNombre periodo metaRecuperacionMandante recuperadoMandante pctMetaMandante
+      cobradores { idgestor nombre metaRecuperacionMes recuperadoMes pctMetaRecuperacion metaGestionesSemana gestionesSemana pctMetaGestiones metaRecuperacionCumplida metaGestionesCumplida }
+    }
+  }
+`;
+
+export const GET_REPORTE_SUPERVISOR_EQUIPO = `
+  query GetReporteSupervisorEquipo($idmandante: Int!, $periodo: String!) {
+    reporteSupervisorEquipo(idmandante: $idmandante, periodo: $periodo) {
+      idmandante mandanteCodigo mandanteNombre periodo totalCobradores promedioRecuperado promedioEfectividad totalRecuperado
+      ranking { idgestor nombre gestiones gestionesEfectivas efectividadPct montoRecuperado brechaVsPromedioRecuperado brechaVsPromedioEfectividad }
+    }
+  }
+`;

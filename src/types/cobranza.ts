@@ -800,3 +800,438 @@ export interface InformeGestiones {
   totalGestiones: number;
   gestiones: InformeGestionItem[];
 }
+
+/** Ganancias del periodo (ingreso empresa − comisión cobrador). */
+export interface ReporteGananciasGestorItem {
+  idgestor: number | null;
+  nombre: string;
+  cantidadPagos: number;
+  totalRecuperado: number;
+  totalIngresoEmpresa: number;
+  totalComision: number;
+  gananciaNeta: number;
+  margenPct: number;
+}
+
+export interface ReporteGananciasTramoItem {
+  tramo: string;
+  tramoMoraMin: number;
+  tramoMoraMax: number | null;
+  cantidadPagos: number;
+  totalRecuperado: number;
+  totalIngresoEmpresa: number;
+  totalComision: number;
+  gananciaNeta: number;
+}
+
+export interface ReporteGanancias {
+  idmandante: number;
+  mandanteCodigo: string;
+  mandanteNombre: string;
+  periodo: string;
+  cantidadPagos: number;
+  totalRecuperado: number;
+  totalIngresoEmpresa: number;
+  totalComision: number;
+  gananciaNeta: number;
+  margenPct: number;
+  porGestor: ReporteGananciasGestorItem[];
+  porTramoMora: ReporteGananciasTramoItem[];
+}
+
+/** Comisiones a cobradores desde liquidaciones. */
+export interface ReporteComisionCobradorItem {
+  idliquidacion: number;
+  periodo: string;
+  estado: string;
+  idgestor: number | null;
+  nombreGestor: string;
+  cantidadPagos: number;
+  totalRecuperado: number;
+  totalIngresoEmpresa: number;
+  totalComision: number;
+}
+
+export interface ReporteComisionesCobradores {
+  idmandante: number;
+  mandanteCodigo: string;
+  mandanteNombre: string;
+  periodo: string | null;
+  totalComision: number;
+  totalComisionBorrador: number;
+  totalComisionEmitida: number;
+  totalComisionPagada: number;
+  cantidadLiquidaciones: number;
+  porCobrador: ReporteComisionCobradorItem[];
+}
+
+/** Efectividad operativa por cobrador. */
+export interface ReporteEfectividadGestorItem {
+  idgestor: number;
+  nombre: string;
+  gestiones: number;
+  gestionesEfectivas: number;
+  efectividadPct: number;
+  tasaContactoPct: number;
+  montoRecuperado: number;
+  prestamosAsignados: number;
+  prestamosEnMora: number;
+  saldoAsignado: number;
+  recuperacionPct: number;
+}
+
+export interface ReporteEfectividad {
+  idmandante: number;
+  mandanteCodigo: string;
+  mandanteNombre: string;
+  periodo: string;
+  totalGestiones: number;
+  totalGestionesEfectivas: number;
+  efectividadPct: number;
+  tasaContactoPct: number;
+  totalRecuperado: number;
+  porGestor: ReporteEfectividadGestorItem[];
+}
+
+/** Cumplimiento de acuerdos / promesas. */
+export interface ReporteCumplimientoAcuerdoItem {
+  idacuerdo: number;
+  noPrestamo: string;
+  nombreCliente: string;
+  nombreGestor: string | null;
+  estado: string;
+  montoAcordado: number;
+  numeroCuotas: number;
+  cuotasPendientes: number;
+  cuotasPagadas: number;
+  cuotasVencidas: number;
+  fechaInicio: string;
+}
+
+export interface ReporteCumplimientoAcuerdos {
+  idmandante: number;
+  mandanteCodigo: string;
+  mandanteNombre: string;
+  periodo: string;
+  totalAcuerdos: number;
+  vigentes: number;
+  cumplidos: number;
+  rotos: number;
+  cumplimientoPct: number;
+  montoAcordadoTotal: number;
+  montoCumplido: number;
+  acuerdos: ReporteCumplimientoAcuerdoItem[];
+}
+
+/** Cartera sin gestión reciente. */
+export interface ReporteCarteraSinGestionItem {
+  idprestamo: number;
+  noPrestamo: string;
+  nombreCliente: string;
+  nombreGestor: string | null;
+  diasMora: number;
+  saldoTotal: number;
+  diasSinGestion: number | null;
+  ultimaGestion: string | null;
+}
+
+export interface ReporteCarteraSinGestionResumenTramo {
+  diasUmbral: number;
+  cantidadPrestamos: number;
+  saldoTotal: number;
+}
+
+export interface ReporteCarteraSinGestion {
+  idmandante: number;
+  mandanteCodigo: string;
+  mandanteNombre: string;
+  diasSinGestion: number;
+  totalPrestamos: number;
+  saldoTotal: number;
+  resumenTramos: ReporteCarteraSinGestionResumenTramo[];
+  prestamos: ReporteCarteraSinGestionItem[];
+}
+
+/** Margen comparativo por mandante. */
+export interface ReporteMargenMandanteItem {
+  idmandante: number;
+  mandanteCodigo: string;
+  mandanteNombre: string;
+  cantidadPagos: number;
+  totalRecuperado: number;
+  totalIngresoEmpresa: number;
+  totalComision: number;
+  gananciaNeta: number;
+  margenPct: number;
+}
+
+export interface ReporteMargenMandantes {
+  periodo: string;
+  totalRecuperado: number;
+  totalIngresoEmpresa: number;
+  totalComision: number;
+  gananciaNeta: number;
+  margenPct: number;
+  porMandante: ReporteMargenMandanteItem[];
+}
+
+/** Comisiones proyectadas vs liquidación. */
+export interface ReporteComisionesVsProyeccion {
+  idmandante: number;
+  mandanteCodigo: string;
+  mandanteNombre: string;
+  periodo: string;
+  proyectadoRecuperado: number;
+  proyectadoIngresoEmpresa: number;
+  proyectadoComision: number;
+  proyectadoPagos: number;
+  liquidadoRecuperado: number;
+  liquidadoComision: number;
+  liquidacionEstado: string | null;
+  idliquidacion: number | null;
+  diferencialComision: number;
+  diferencialRecuperado: number;
+  pctLiquidadoVsProyectado: number;
+}
+
+/** Rentabilidad por tramo de mora (ingreso). */
+export interface ReporteIngresoTramoItem {
+  tramo: string;
+  tramoMoraMin: number;
+  tramoMoraMax: number | null;
+  cantidadPagos: number;
+  totalRecuperado: number;
+  totalIngresoEmpresa: number;
+  totalComision: number;
+  gananciaNeta: number;
+  margenPct: number;
+  shareIngresoPct: number;
+}
+
+export interface ReporteIngresoTramoMora {
+  idmandante: number;
+  mandanteCodigo: string;
+  mandanteNombre: string;
+  periodo: string;
+  totalIngresoEmpresa: number;
+  totalComision: number;
+  gananciaNeta: number;
+  porTramo: ReporteIngresoTramoItem[];
+}
+
+/** Cumplimiento de promesas de pago. */
+export interface ReportePromesaPagoItem {
+  idgestion: number;
+  noPrestamo: string;
+  nombreCliente: string;
+  nombreGestor: string | null;
+  montoPromesa: number;
+  fechaPromesa: string;
+  estado: string;
+  diasVencidos: number | null;
+}
+
+export interface ReportePromesasPago {
+  idmandante: number;
+  mandanteCodigo: string;
+  mandanteNombre: string;
+  periodo: string;
+  totalPromesas: number;
+  cumplidas: number;
+  vencidas: number;
+  pendientes: number;
+  cumplimientoPct: number;
+  montoPrometido: number;
+  montoCumplido: number;
+  promesas: ReportePromesaPagoItem[];
+}
+
+/** Productividad diaria por cobrador. */
+export interface ReporteProductividadDiaItem {
+  fecha: string;
+  idgestor: number;
+  nombreGestor: string;
+  gestiones: number;
+  gestionesEfectivas: number;
+  montoRecuperado: number;
+}
+
+export interface ReporteProductividadGestorResumen {
+  idgestor: number;
+  nombreGestor: string;
+  diasActivos: number;
+  totalGestiones: number;
+  promedioGestionesDia: number;
+  totalRecuperado: number;
+}
+
+export interface ReporteProductividadDiaria {
+  idmandante: number;
+  mandanteCodigo: string;
+  mandanteNombre: string;
+  periodo: string;
+  totalGestiones: number;
+  promedioGestionesDia: number;
+  porDia: ReporteProductividadDiaItem[];
+  porGestor: ReporteProductividadGestorResumen[];
+}
+
+/** Recontactos / reciclaje sin pago. */
+export interface ReporteRecontactoItem {
+  idprestamo: number;
+  noPrestamo: string;
+  nombreCliente: string;
+  nombreGestor: string | null;
+  gestionesPeriodo: number;
+  diasMora: number;
+  saldoTotal: number;
+  ultimaGestion: string | null;
+}
+
+export interface ReporteRecontactos {
+  idmandante: number;
+  mandanteCodigo: string;
+  mandanteNombre: string;
+  periodo: string;
+  minGestiones: number;
+  totalPrestamos: number;
+  saldoTotal: number;
+  prestamos: ReporteRecontactoItem[];
+}
+
+/** SLA de reclamos. */
+export interface ReporteReclamoSlaItem {
+  idreclamo: number;
+  estado: string;
+  descripcion: string;
+  fechaLimite: string;
+  createdAt: string;
+  fueraSla: boolean;
+  diasFueraSla: number | null;
+  noPrestamo: string | null;
+  nombreCliente: string;
+}
+
+export interface ReporteReclamosSla {
+  idmandante: number;
+  mandanteCodigo: string;
+  mandanteNombre: string;
+  totalReclamos: number;
+  abiertos: number;
+  enProceso: number;
+  resueltos: number;
+  fueraSla: number;
+  pctFueraSla: number;
+  reclamos: ReporteReclamoSlaItem[];
+}
+
+/** Migración de mora entre tramos. */
+export interface ReporteMigracionMoraItem {
+  tramoOrigen: string;
+  tramoDestino: string;
+  cantidad: number;
+  saldoDestino: number;
+  pct: number;
+}
+
+export interface ReporteMigracionMora {
+  idmandante: number;
+  mandanteCodigo: string;
+  mandanteNombre: string;
+  periodo: string;
+  fechaOrigen: string;
+  fechaDestino: string;
+  totalPrestamos: number;
+  migraciones: ReporteMigracionMoraItem[];
+}
+
+/** Concentración de riesgo. */
+export interface ReporteConcentracionItem {
+  tipo: string;
+  id: number;
+  nombre: string;
+  cantidadPrestamos: number;
+  saldoMora: number;
+  shareSaldoPct: number;
+}
+
+export interface ReporteConcentracionRiesgo {
+  idmandante: number;
+  mandanteCodigo: string;
+  mandanteNombre: string;
+  saldoMoraTotal: number;
+  topDeudores: ReporteConcentracionItem[];
+  topGestores: ReporteConcentracionItem[];
+}
+
+/** Cuotas de acuerdo vencidas. */
+export interface ReporteCuotaVencidaItem {
+  idcuota: number;
+  idacuerdo: number;
+  noPrestamo: string;
+  nombreCliente: string;
+  nombreGestor: string | null;
+  numeroCuota: number;
+  montoCuota: number;
+  fechaVencimiento: string;
+  diasVencidos: number;
+  estadoAcuerdo: string;
+}
+
+export interface ReporteCuotasVencidas {
+  idmandante: number;
+  mandanteCodigo: string;
+  mandanteNombre: string;
+  totalCuotas: number;
+  montoTotal: number;
+  cuotas: ReporteCuotaVencidaItem[];
+}
+
+/** Cumplimiento de metas. */
+export interface ReporteCumplimientoMetaItem {
+  idgestor: number;
+  nombre: string;
+  metaRecuperacionMes: number;
+  recuperadoMes: number;
+  pctMetaRecuperacion: number;
+  metaGestionesSemana: number;
+  gestionesSemana: number;
+  pctMetaGestiones: number;
+  metaRecuperacionCumplida: boolean;
+  metaGestionesCumplida: boolean;
+}
+
+export interface ReporteCumplimientoMetas {
+  idmandante: number;
+  mandanteCodigo: string;
+  mandanteNombre: string;
+  periodo: string;
+  metaRecuperacionMandante: number;
+  recuperadoMandante: number;
+  pctMetaMandante: number;
+  cobradores: ReporteCumplimientoMetaItem[];
+}
+
+/** Supervisor vs equipo. */
+export interface ReporteSupervisorEquipoItem {
+  idgestor: number;
+  nombre: string;
+  gestiones: number;
+  gestionesEfectivas: number;
+  efectividadPct: number;
+  montoRecuperado: number;
+  brechaVsPromedioRecuperado: number;
+  brechaVsPromedioEfectividad: number;
+}
+
+export interface ReporteSupervisorEquipo {
+  idmandante: number;
+  mandanteCodigo: string;
+  mandanteNombre: string;
+  periodo: string;
+  totalCobradores: number;
+  promedioRecuperado: number;
+  promedioEfectividad: number;
+  totalRecuperado: number;
+  ranking: ReporteSupervisorEquipoItem[];
+}

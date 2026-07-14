@@ -30,7 +30,7 @@ import {
 import { NextActionsPanel } from '@/components/dashboard/next-actions-panel';
 import { OnboardingGuide } from '@/components/onboarding/onboarding-guide';
 import { SearchParamsBoundary } from '@/components/ui/search-params-boundary';
-import { PERMISO } from '@/lib/permissions/permiso-codes';
+import { PERMISO, PERMISOS_REPORTE_CUALQUIERA } from '@/lib/permissions/permiso-codes';
 import {
   type DashboardResumenCobranza,
   type KpiCobranzaCore,
@@ -128,7 +128,9 @@ function DashboardPageContent() {
   const puedeCartera = permisos.includes(PERMISO.CARTERA_READ);
   const puedeConfig = permisos.includes(PERMISO.CONFIG_SYSTEM);
   const puedeImportar = permisos.includes(PERMISO.CARTERA_WRITE);
-  const puedeReportes = permisos.includes(PERMISO.REPORTE_READ);
+  const puedeReportes = PERMISOS_REPORTE_CUALQUIERA.some((p) =>
+    permisos.includes(p),
+  );
   const puedeKpisAnaliticos =
     puedeReportes || permisos.includes(PERMISO.INTELIGENCIA_READ);
 

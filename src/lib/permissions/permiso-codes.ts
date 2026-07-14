@@ -19,7 +19,14 @@ export const PERMISO = {
   PAGO_WRITE: 'PAGO_WRITE',
   LIQUIDACION_READ: 'LIQUIDACION_READ',
   LIQUIDACION_WRITE: 'LIQUIDACION_WRITE',
+  /** Comodín legacy: acceso a todos los reportes. */
   REPORTE_READ: 'REPORTE_READ',
+  REPORTE_COBRANZA_READ: 'REPORTE_COBRANZA_READ',
+  REPORTE_FINANZAS_READ: 'REPORTE_FINANZAS_READ',
+  REPORTE_OPERACION_READ: 'REPORTE_OPERACION_READ',
+  REPORTE_RIESGO_READ: 'REPORTE_RIESGO_READ',
+  REPORTE_GERENCIAL_READ: 'REPORTE_GERENCIAL_READ',
+  REPORTE_EQUIPO_READ: 'REPORTE_EQUIPO_READ',
   INTELIGENCIA_READ: 'INTELIGENCIA_READ',
   EQUIPO_READ: 'EQUIPO_READ',
 } as const;
@@ -147,8 +154,54 @@ export const PERMISOS_CATALOGO: PermisoDefinicion[] = [
   },
   {
     codigo: PERMISO.REPORTE_READ,
-    nombre: 'Ver Reportes',
-    descripcion: 'Consultar reportes analíticos de cobranza',
+    nombre: 'Ver todos los reportes',
+    descripcion:
+      'Acceso completo a reportes (comodín legacy). Preferir grupos granulares.',
+    categoria: 'COBRANZA',
+    tipo: 'operativo',
+  },
+  {
+    codigo: PERMISO.REPORTE_COBRANZA_READ,
+    nombre: 'Reportes de cobranza',
+    descripcion: 'Hub de KPIs, aging y forecast de cobranza',
+    categoria: 'COBRANZA',
+    tipo: 'operativo',
+  },
+  {
+    codigo: PERMISO.REPORTE_FINANZAS_READ,
+    nombre: 'Reportes financieros',
+    descripcion:
+      'Ganancias, comisiones, margen, ingreso por tramo y vs proyección',
+    categoria: 'COBRANZA',
+    tipo: 'operativo',
+  },
+  {
+    codigo: PERMISO.REPORTE_OPERACION_READ,
+    nombre: 'Reportes operativos',
+    descripcion:
+      'Efectividad, gestiones, promesas, productividad y recontactos',
+    categoria: 'COBRANZA',
+    tipo: 'operativo',
+  },
+  {
+    codigo: PERMISO.REPORTE_RIESGO_READ,
+    nombre: 'Reportes de riesgo',
+    descripcion:
+      'Acuerdos, cartera sin gestión, mora, concentración, cuotas y SLA',
+    categoria: 'COBRANZA',
+    tipo: 'operativo',
+  },
+  {
+    codigo: PERMISO.REPORTE_GERENCIAL_READ,
+    nombre: 'Informe gerencial',
+    descripcion: 'Acceso al informe gerencial',
+    categoria: 'COBRANZA',
+    tipo: 'operativo',
+  },
+  {
+    codigo: PERMISO.REPORTE_EQUIPO_READ,
+    nombre: 'Reportes de equipo',
+    descripcion: 'Cumplimiento de metas y supervisor vs equipo',
     categoria: 'COBRANZA',
     tipo: 'operativo',
   },
@@ -168,6 +221,22 @@ export const PERMISOS_CATALOGO: PermisoDefinicion[] = [
   },
 ];
 
+/** Grupos de reportes (sin el comodín REPORTE_READ). */
+export const PERMISOS_REPORTE_GRUPOS: PermisoCodigo[] = [
+  PERMISO.REPORTE_COBRANZA_READ,
+  PERMISO.REPORTE_FINANZAS_READ,
+  PERMISO.REPORTE_OPERACION_READ,
+  PERMISO.REPORTE_RIESGO_READ,
+  PERMISO.REPORTE_GERENCIAL_READ,
+  PERMISO.REPORTE_EQUIPO_READ,
+];
+
+/** Cualquier acceso al módulo Reportes (grupo o comodín). */
+export const PERMISOS_REPORTE_CUALQUIERA: PermisoCodigo[] = [
+  ...PERMISOS_REPORTE_GRUPOS,
+  PERMISO.REPORTE_READ,
+];
+
 /** Presets de rol — deben coincidir con prisma/seed-permisos.ts */
 export const PERMISOS_COBRADOR: PermisoCodigo[] = [
   PERMISO.CARTERA_READ,
@@ -178,7 +247,8 @@ export const PERMISOS_COBRADOR: PermisoCodigo[] = [
   PERMISO.ACUERDO_WRITE,
   PERMISO.PAGO_READ,
   PERMISO.PAGO_WRITE,
-  PERMISO.REPORTE_READ,
+  PERMISO.REPORTE_COBRANZA_READ,
+  PERMISO.REPORTE_OPERACION_READ,
 ];
 
 export const PERMISOS_SUPERVISOR: PermisoCodigo[] = [
@@ -187,12 +257,16 @@ export const PERMISOS_SUPERVISOR: PermisoCodigo[] = [
   PERMISO.INTELIGENCIA_READ,
   PERMISO.EQUIPO_READ,
   PERMISO.LIQUIDACION_READ,
+  PERMISO.REPORTE_RIESGO_READ,
+  PERMISO.REPORTE_EQUIPO_READ,
 ];
 
 export const PERMISOS_GERENTE: PermisoCodigo[] = [
   ...PERMISOS_SUPERVISOR,
   PERMISO.LIQUIDACION_WRITE,
   PERMISO.USER_READ,
+  PERMISO.REPORTE_FINANZAS_READ,
+  PERMISO.REPORTE_GERENCIAL_READ,
 ];
 
 export const PERMISOS_ADMIN: PermisoCodigo[] = PERMISOS_CATALOGO.map(
