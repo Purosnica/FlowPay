@@ -36,50 +36,16 @@ export const NAV_DATA: NavSection[] = [
         icon: Icons.PieChart,
         permisos: [PERMISO.CARTERA_READ, PERMISO.GESTION_READ],
         items: [
+          // Trabajo diario
           {
-            title: "Centro de Inteligencia",
-            url: "/cobranza/centro-inteligencia",
-            permiso: PERMISO.INTELIGENCIA_READ,
-          },
-          {
-            title: "Mi equipo",
-            url: "/cobranza/equipo",
-            permiso: PERMISO.EQUIPO_READ,
-          },
-          {
-            title: "Gamificación",
-            url: "/cobranza/gamificacion",
-            permiso: PERMISO.EQUIPO_READ,
-          },
-          {
-            title: "Mandantes",
-            url: "/cobranza/mandantes",
-            permiso: PERMISO.MANDANTE_READ,
-          },
-          {
-            title: "Plantillas",
-            url: "/cobranza/plantillas",
-            permiso: PERMISO.MANDANTE_READ,
-          },
-          {
-            title: "Plantillas mensaje",
-            url: "/cobranza/plantillas-mensaje",
-            permiso: PERMISO.MANDANTE_WRITE,
-          },
-          {
-            title: "Importar",
-            url: "/cobranza/importar",
-            permiso: PERMISO.CARTERA_WRITE,
-          },
-          {
-            title: "Historial cargas",
-            url: "/cobranza/historial-cargas",
+            title: "Mi bandeja",
+            url: "/cobranza/bandeja",
             permiso: PERMISO.CARTERA_READ,
           },
           {
-            title: "Asignación",
-            url: "/cobranza/asignacion",
-            permiso: PERMISO.CARTERA_WRITE,
+            title: "Mis gestiones",
+            url: "/cobranza/gestiones",
+            permiso: PERMISO.GESTION_READ,
           },
           {
             title: "Cartera",
@@ -97,25 +63,64 @@ export const NAV_DATA: NavSection[] = [
             permiso: PERMISO.CARTERA_WRITE,
           },
           {
-            title: "Mi bandeja",
-            url: "/cobranza/bandeja",
-            permiso: PERMISO.CARTERA_READ,
-          },
-          {
-            title: "Mis gestiones",
-            url: "/cobranza/gestiones",
-            permiso: PERMISO.GESTION_READ,
-          },
-          {
             title: "Reclamos",
             url: "/cobranza/reclamos",
             permiso: PERMISO.GESTION_READ,
+          },
+          // Supervisión
+          {
+            title: "Centro de Inteligencia",
+            url: "/cobranza/centro-inteligencia",
+            permiso: PERMISO.INTELIGENCIA_READ,
+          },
+          {
+            title: "Mi equipo",
+            url: "/cobranza/equipo",
+            permiso: PERMISO.EQUIPO_READ,
+          },
+          {
+            title: "Gamificación",
+            url: "/cobranza/gamificacion",
+            permiso: PERMISO.EQUIPO_READ,
+          },
+          // Carga y asignación de cartera
+          {
+            title: "Mandantes",
+            url: "/cobranza/mandantes",
+            permiso: PERMISO.MANDANTE_READ,
+          },
+          {
+            title: "Importar",
+            url: "/cobranza/importar",
+            permiso: PERMISO.CARTERA_WRITE,
+          },
+          {
+            title: "Historial cargas",
+            url: "/cobranza/historial-cargas",
+            permiso: PERMISO.CARTERA_READ,
+          },
+          {
+            title: "Asignación",
+            url: "/cobranza/asignacion",
+            permiso: PERMISO.CARTERA_WRITE,
+          },
+          // Configuración operativa
+          {
+            title: "Plantillas",
+            url: "/cobranza/plantillas",
+            permiso: PERMISO.MANDANTE_READ,
+          },
+          {
+            title: "Plantillas mensaje",
+            url: "/cobranza/plantillas-mensaje",
+            permiso: PERMISO.MANDANTE_WRITE,
           },
           {
             title: "Agencias",
             url: "/cobranza/agencias",
             permiso: PERMISO.CARTERA_READ,
           },
+          // Cierre financiero
           {
             title: "Liquidaciones",
             url: "/cobranza/liquidaciones",
@@ -133,85 +138,32 @@ export const NAV_DATA: NavSection[] = [
         icon: Icons.Table,
         permisos: [...PERMISOS_REPORTE_CUALQUIERA],
         items: [
+          // Hub e informes
           {
             title: "Reportes de cobranza",
             url: "/cobranza/reportes",
             permisos: permisosDeReporte(REPORTE_KEY.hub),
           },
           {
-            title: "Ganancias",
-            url: "/cobranza/reportes/ganancias",
-            permisos: permisosDeReporte(REPORTE_KEY.ganancias),
+            title: "Informe gerencial",
+            url: "/cobranza/reportes/informe-gerencial",
+            permisos: permisosDeReporte(REPORTE_KEY.informeGerencial),
           },
           {
-            title: "Comisiones cobradores",
-            url: "/cobranza/reportes/comisiones-cobradores",
-            permisos: permisosDeReporte(REPORTE_KEY.comisionesCobradores),
+            title: "Informe de gestiones",
+            url: "/cobranza/reportes/informe-gestiones",
+            permisos: permisosDeReporte(REPORTE_KEY.informeGestiones),
           },
+          // Desempeño operativo
           {
             title: "Efectividad",
             url: "/cobranza/reportes/efectividad",
             permisos: permisosDeReporte(REPORTE_KEY.efectividad),
           },
           {
-            title: "Cumplimiento acuerdos",
-            url: "/cobranza/reportes/cumplimiento-acuerdos",
-            permisos: permisosDeReporte(REPORTE_KEY.cumplimientoAcuerdos),
-          },
-          {
-            title: "Cartera sin gestión",
-            url: "/cobranza/reportes/cartera-sin-gestion",
-            permisos: permisosDeReporte(REPORTE_KEY.carteraSinGestion),
-          },
-          {
-            title: "Margen por mandante",
-            url: "/cobranza/reportes/margen-mandantes",
-            permisos: permisosDeReporte(REPORTE_KEY.margenMandantes),
-          },
-          {
-            title: "Comisiones vs proyección",
-            url: "/cobranza/reportes/comisiones-vs-proyeccion",
-            permisos: permisosDeReporte(REPORTE_KEY.comisionesVsProyeccion),
-          },
-          {
-            title: "Ingreso por tramo",
-            url: "/cobranza/reportes/ingreso-tramo-mora",
-            permisos: permisosDeReporte(REPORTE_KEY.ingresoTramoMora),
-          },
-          {
-            title: "Promesas de pago",
-            url: "/cobranza/reportes/promesas-pago",
-            permisos: permisosDeReporte(REPORTE_KEY.promesasPago),
-          },
-          {
             title: "Productividad diaria",
             url: "/cobranza/reportes/productividad-diaria",
             permisos: permisosDeReporte(REPORTE_KEY.productividadDiaria),
-          },
-          {
-            title: "Recontactos",
-            url: "/cobranza/reportes/recontactos",
-            permisos: permisosDeReporte(REPORTE_KEY.recontactos),
-          },
-          {
-            title: "SLA reclamos",
-            url: "/cobranza/reportes/reclamos-sla",
-            permisos: permisosDeReporte(REPORTE_KEY.reclamosSla),
-          },
-          {
-            title: "Migración de mora",
-            url: "/cobranza/reportes/migracion-mora",
-            permisos: permisosDeReporte(REPORTE_KEY.migracionMora),
-          },
-          {
-            title: "Concentración riesgo",
-            url: "/cobranza/reportes/concentracion-riesgo",
-            permisos: permisosDeReporte(REPORTE_KEY.concentracionRiesgo),
-          },
-          {
-            title: "Cuotas vencidas",
-            url: "/cobranza/reportes/cuotas-vencidas",
-            permisos: permisosDeReporte(REPORTE_KEY.cuotasVencidas),
           },
           {
             title: "Cumplimiento metas",
@@ -223,15 +175,73 @@ export const NAV_DATA: NavSection[] = [
             url: "/cobranza/reportes/supervisor-equipo",
             permisos: permisosDeReporte(REPORTE_KEY.supervisorEquipo),
           },
+          // Gestión y seguimiento
           {
-            title: "Informe gerencial",
-            url: "/cobranza/reportes/informe-gerencial",
-            permisos: permisosDeReporte(REPORTE_KEY.informeGerencial),
+            title: "Promesas de pago",
+            url: "/cobranza/reportes/promesas-pago",
+            permisos: permisosDeReporte(REPORTE_KEY.promesasPago),
           },
           {
-            title: "Informe de gestiones",
-            url: "/cobranza/reportes/informe-gestiones",
-            permisos: permisosDeReporte(REPORTE_KEY.informeGestiones),
+            title: "Cumplimiento acuerdos",
+            url: "/cobranza/reportes/cumplimiento-acuerdos",
+            permisos: permisosDeReporte(REPORTE_KEY.cumplimientoAcuerdos),
+          },
+          {
+            title: "Cuotas vencidas",
+            url: "/cobranza/reportes/cuotas-vencidas",
+            permisos: permisosDeReporte(REPORTE_KEY.cuotasVencidas),
+          },
+          {
+            title: "Cartera sin gestión",
+            url: "/cobranza/reportes/cartera-sin-gestion",
+            permisos: permisosDeReporte(REPORTE_KEY.carteraSinGestion),
+          },
+          {
+            title: "Recontactos",
+            url: "/cobranza/reportes/recontactos",
+            permisos: permisosDeReporte(REPORTE_KEY.recontactos),
+          },
+          {
+            title: "SLA reclamos",
+            url: "/cobranza/reportes/reclamos-sla",
+            permisos: permisosDeReporte(REPORTE_KEY.reclamosSla),
+          },
+          // Riesgo de cartera
+          {
+            title: "Migración de mora",
+            url: "/cobranza/reportes/migracion-mora",
+            permisos: permisosDeReporte(REPORTE_KEY.migracionMora),
+          },
+          {
+            title: "Concentración riesgo",
+            url: "/cobranza/reportes/concentracion-riesgo",
+            permisos: permisosDeReporte(REPORTE_KEY.concentracionRiesgo),
+          },
+          {
+            title: "Ingreso por tramo",
+            url: "/cobranza/reportes/ingreso-tramo-mora",
+            permisos: permisosDeReporte(REPORTE_KEY.ingresoTramoMora),
+          },
+          // Financiero
+          {
+            title: "Ganancias",
+            url: "/cobranza/reportes/ganancias",
+            permisos: permisosDeReporte(REPORTE_KEY.ganancias),
+          },
+          {
+            title: "Margen por mandante",
+            url: "/cobranza/reportes/margen-mandantes",
+            permisos: permisosDeReporte(REPORTE_KEY.margenMandantes),
+          },
+          {
+            title: "Comisiones cobradores",
+            url: "/cobranza/reportes/comisiones-cobradores",
+            permisos: permisosDeReporte(REPORTE_KEY.comisionesCobradores),
+          },
+          {
+            title: "Comisiones vs proyección",
+            url: "/cobranza/reportes/comisiones-vs-proyeccion",
+            permisos: permisosDeReporte(REPORTE_KEY.comisionesVsProyeccion),
           },
         ],
       },

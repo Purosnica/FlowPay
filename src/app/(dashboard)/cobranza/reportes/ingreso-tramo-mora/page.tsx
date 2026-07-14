@@ -19,6 +19,7 @@ import {
   type ReporteIngresoTramoMora,
   type ReporteIngresoTramoItem,
 } from '@/types/cobranza';
+import { exportReporteIngresoTramoMoraXlsx } from '@/lib/cobranza/export-reportes-avanzados-xlsx';
 
 export default function Page() {
   const [idmandante, setIdmandante] = useState<number | ''>('');
@@ -35,6 +36,9 @@ export default function Page() {
     { enabled: mandanteId > 0 && periodoValido },
   );
 
+  const [exportOk, setExportOk] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
+
   const reporte = data?.reporteIngresoTramoMora;
 
   const columns = useMemo<ColumnDef<ReporteIngresoTramoItem>[]>(
@@ -48,6 +52,20 @@ export default function Page() {
     ],
     [],
   );
+
+  function handleExport(): void {
+    if (!reporte) {
+      return;
+    }
+    setExportOk(null);
+    setExportError(null);
+    try {
+      exportReporteIngresoTramoMoraXlsx(reporte);
+      setExportOk('Archivo Excel descargado.');
+    } catch {
+      setExportError('No se pudo exportar el reporte.');
+    }
+  }
 
   const metrics = useMemo<DashboardMetric[]>(() => {
     if (!reporte) {
@@ -83,6 +101,13 @@ export default function Page() {
           </div>
           <Button
             type="button"
+            disabled={!reporte}
+            onClick={handleExport}
+          >
+            Exportar Excel
+          </Button>
+          <Button
+            type="button"
             variant="outline"
             disabled={!reporte || isFetching}
             onClick={() => void refetch()}
@@ -96,7 +121,18 @@ export default function Page() {
           Seleccione un mandante.
         </p>
       ) : (
-        <AsyncPanel
+        <>
+          {exportError ? (
+            <p className="text-sm text-red-600" role="alert">
+              {exportError}
+            </p>
+          ) : null}
+          {exportOk ? (
+            <p className="text-sm text-green-600" role="status">
+              {exportOk}
+            </p>
+          ) : null}
+          <AsyncPanel
           isLoading={isLoading}
           error={error}
           isEmpty={!reporte}
@@ -116,6 +152,7 @@ export default function Page() {
             </div>
           ) : null}
         </AsyncPanel>
+        </>
       )}
     </div>
   );

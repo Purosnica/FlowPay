@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { GET_REPORTE_GANANCIAS } from '@/lib/graphql/queries/cobranza.queries';
-import { exportReporteGananciasCsv } from '@/lib/cobranza/export-reportes-control-csv';
+import { exportReporteGananciasXlsx } from '@/lib/cobranza/export-reportes-control-xlsx';
 import { periodoActual } from '@/lib/cobranza/periodo-utils';
 import {
   formatearMoneda,
@@ -141,8 +141,8 @@ export default function ReporteGananciasPage() {
     }
     clearFeedback();
     try {
-      exportReporteGananciasCsv(reporte);
-      setExportOk('Reporte de ganancias exportado.');
+      exportReporteGananciasXlsx(reporte);
+      setExportOk('Archivo Excel descargado.');
     } catch {
       setExportError('No se pudo exportar el reporte.');
     }
@@ -192,7 +192,7 @@ export default function ReporteGananciasPage() {
             {isFetching ? 'Actualizando…' : 'Actualizar'}
           </Button>
           <Button type="button" disabled={!reporte} onClick={handleExport}>
-            Exportar CSV
+            Exportar Excel
           </Button>
         </div>
         {exportOk ? (

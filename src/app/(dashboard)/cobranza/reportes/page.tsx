@@ -29,8 +29,10 @@ import {
   type ReporteCobranza,
   formatearMoneda,
 } from '@/types/cobranza';
-import { exportReporteCsv } from '@/lib/cobranza/export-reporte-csv';
-import { exportAgingCsv } from '@/lib/cobranza/export-aging-csv';
+import {
+  exportAgingCarteraXlsx,
+  exportReporteCobranzaXlsx,
+} from '@/lib/cobranza/export-reporte-hub-xlsx';
 import { ReporteAgingChart } from '@/components/cobranza/reporte-aging-chart';
 import { periodoActual } from '@/lib/cobranza/periodo-utils';
 import { cn } from '@/lib/utils';
@@ -138,29 +140,29 @@ export default function ReportesPage() {
         key: REPORTE_KEY.informeGestiones,
       },
       {
-        href: '/cobranza/reportes/ganancias',
-        label: 'Ganancias',
-        key: REPORTE_KEY.ganancias,
-      },
-      {
-        href: '/cobranza/reportes/comisiones-cobradores',
-        label: 'Comisiones',
-        key: REPORTE_KEY.comisionesCobradores,
-      },
-      {
         href: '/cobranza/reportes/efectividad',
         label: 'Efectividad',
         key: REPORTE_KEY.efectividad,
       },
       {
-        href: '/cobranza/reportes/cumplimiento-acuerdos',
-        label: 'Acuerdos',
-        key: REPORTE_KEY.cumplimientoAcuerdos,
+        href: '/cobranza/reportes/productividad-diaria',
+        label: 'Productividad',
+        key: REPORTE_KEY.productividadDiaria,
+      },
+      {
+        href: '/cobranza/reportes/promesas-pago',
+        label: 'Promesas',
+        key: REPORTE_KEY.promesasPago,
       },
       {
         href: '/cobranza/reportes/cartera-sin-gestion',
         label: 'Sin gestión',
         key: REPORTE_KEY.carteraSinGestion,
+      },
+      {
+        href: '/cobranza/reportes/ganancias',
+        label: 'Ganancias',
+        key: REPORTE_KEY.ganancias,
       },
     ];
     return links.filter((l) => usuarioPuedeVerReporte(permisos, l.key));
@@ -169,18 +171,18 @@ export default function ReportesPage() {
   const quickLinks = useMemo(() => {
     return (
       [
-        ['margen-mandantes', 'Margen mandantes'],
-        ['comisiones-vs-proyeccion', 'Comisiones vs proy.'],
-        ['ingreso-tramo-mora', 'Ingreso por tramo'],
-        ['promesas-pago', 'Promesas'],
-        ['productividad-diaria', 'Productividad'],
+        ['cumplimiento-metas', 'Metas'],
+        ['supervisor-equipo', 'Supervisor/equipo'],
+        ['cumplimiento-acuerdos', 'Acuerdos'],
+        ['cuotas-vencidas', 'Cuotas vencidas'],
         ['recontactos', 'Recontactos'],
         ['reclamos-sla', 'SLA reclamos'],
         ['migracion-mora', 'Migración mora'],
         ['concentracion-riesgo', 'Concentración'],
-        ['cuotas-vencidas', 'Cuotas vencidas'],
-        ['cumplimiento-metas', 'Metas'],
-        ['supervisor-equipo', 'Supervisor/equipo'],
+        ['ingreso-tramo-mora', 'Ingreso por tramo'],
+        ['margen-mandantes', 'Margen mandantes'],
+        ['comisiones-cobradores', 'Comisiones'],
+        ['comisiones-vs-proyeccion', 'Comisiones vs proy.'],
       ] as const
     ).filter(([slug]) => {
       const key = REPORTE_PATH_KEY[slug];
@@ -252,26 +254,12 @@ export default function ReportesPage() {
 
   const handleExportKpis = () => {
     if (!reporte) return;
-    const csv = exportReporteCsv(reporte);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `reporte-cobranza-${reporte.periodo ?? 'historico'}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    exportReporteCobranzaXlsx(reporte);
   };
 
   const handleExportAging = () => {
     if (!aging) return;
-    const csv = exportAgingCsv(aging);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `aging-cartera-${mandanteId}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    exportAgingCarteraXlsx(aging);
   };
 
   return (
@@ -297,14 +285,14 @@ export default function ReportesPage() {
                   disabled={!reporte}
                   onClick={handleExportKpis}
                 >
-                  Exportar KPIs
+                  Exportar KPIs (Excel)
                 </Button>
                 <Button
                   variant="outline"
                   disabled={!aging}
                   onClick={handleExportAging}
                 >
-                  Exportar aging
+                  Exportar aging (Excel)
                 </Button>
               </>
             ) : null}

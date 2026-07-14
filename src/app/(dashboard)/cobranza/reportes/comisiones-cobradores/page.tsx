@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { GET_REPORTE_COMISIONES_COBRADORES } from '@/lib/graphql/queries/cobranza.queries';
-import { exportReporteComisionesCsv } from '@/lib/cobranza/export-reportes-control-csv';
+import { exportReporteComisionesXlsx } from '@/lib/cobranza/export-reportes-control-xlsx';
 import { periodoActual } from '@/lib/cobranza/periodo-utils';
 import {
   formatearMoneda,
@@ -111,8 +111,8 @@ export default function ReporteComisionesCobradoresPage() {
     }
     clearFeedback();
     try {
-      exportReporteComisionesCsv(reporte);
-      setExportOk('Reporte de comisiones exportado.');
+      exportReporteComisionesXlsx(reporte);
+      setExportOk('Archivo Excel descargado.');
     } catch {
       setExportError('No se pudo exportar el reporte.');
     }
@@ -174,7 +174,7 @@ export default function ReporteComisionesCobradoresPage() {
             {isFetching ? 'Actualizando…' : 'Actualizar'}
           </Button>
           <Button type="button" disabled={!reporte} onClick={handleExport}>
-            Exportar CSV
+            Exportar Excel
           </Button>
         </div>
         {exportOk ? (
