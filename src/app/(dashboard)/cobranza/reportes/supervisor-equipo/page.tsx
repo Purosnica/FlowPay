@@ -2,29 +2,36 @@
 
 import { useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { ClientPaginatedDataTable } from '@/components/cobranza/client-paginated-data-table';
-import { MandanteSelect } from '@/components/cobranza/mandante-select';
+import { ReporteFiltrosBar } from '@/components/cobranza/reporte-filtros-bar';
+import { ReporteTableSection } from '@/components/cobranza/reporte-table-section';
+import {
+  cellMoneda,
+  cellNumero,
+  cellPorcentaje,
+} from '@/components/cobranza/reporte-table-cells';
 import {
   DashboardMetricStrip,
   type DashboardMetric,
 } from '@/components/dashboard/dashboard-metric-strip';
-import { AsyncPanel } from '@/components/ui/async-panel';
-import { Button } from '@/components/ui/button';
+import { ReporteAsyncContent } from '@/components/cobranza/reporte-async-content';
 import { PageHeader } from '@/components/ui/page-header';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
+import { useReporteExportFeedback } from '@/hooks/use-reporte-export-feedback';
 import { GET_REPORTE_SUPERVISOR_EQUIPO } from '@/lib/graphql/queries/cobranza.queries';
+import { exportReporteSupervisorEquipoXlsx } from '@/lib/cobranza/export-reportes-avanzados-xlsx';
 import { periodoActual } from '@/lib/cobranza/periodo-utils';
 import {
   formatearMoneda,
   type ReporteSupervisorEquipo,
   type ReporteSupervisorEquipoItem,
 } from '@/types/cobranza';
-import { exportReporteSupervisorEquipoXlsx } from '@/lib/cobranza/export-reportes-avanzados-xlsx';
 
-export default function Page() {
+export default function ReporteSupervisorEquipoPage() {
   const [idmandante, setIdmandante] = useState<number | ''>('');
   const [periodo, setPeriodo] = useState(periodoActual());
-  
+  const { exportOk, exportError, clearFeedback, runExport } =
+    useReporteExportFeedback();
+
   const mandanteId = idmandante === '' ? 0 : idmandante;
   const periodoValido = /^\d{4}-\d{2}$/.test(periodo);
 
@@ -36,124 +43,130 @@ export default function Page() {
     { enabled: mandanteId > 0 && periodoValido },
   );
 
-  const [exportOk, setExportOk] = useState<string | null>(null);
-  const [exportError, setExportError] = useState<string | null>(null);
-
   const reporte = data?.reporteSupervisorEquipo;
-
-  const columns = useMemo<ColumnDef<ReporteSupervisorEquipoItem>[]>(
-    () => [
-      { accessorKey: 'nombre', header: 'Cobrador' },
-      { accessorKey: 'gestiones', header: 'Gestiones' },
-      { accessorKey: 'efectividadPct', header: 'Efectividad %', cell: ({ row }) => `${row.original.efectividadPct}%` },
-      { accessorKey: 'montoRecuperado', header: 'Recuperado', cell: ({ row }) => formatearMoneda(row.original.montoRecuperado) },
-      { accessorKey: 'brechaVsPromedioRecuperado', header: 'Brecha recup.', cell: ({ row }) => formatearMoneda(row.original.brechaVsPromedioRecuperado) },
-      { accessorKey: 'brechaVsPromedioEfectividad', header: 'Brecha efect.', cell: ({ row }) => `${row.original.brechaVsPromedioEfectividad}%` },
-    ],
-    [],
-  );
-
-  function handleExport(): void {
-    if (!reporte) {
-      return;
-    }
-    setExportOk(null);
-    setExportError(null);
-    try {
-      exportReporteSupervisorEquipoXlsx(reporte);
-      setExportOk('Archivo Excel descargado.');
-    } catch {
-      setExportError('No se pudo exportar el reporte.');
-    }
-  }
 
   const metrics = useMemo<DashboardMetric[]>(() => {
     if (!reporte) {
       return [];
     }
-    const r = reporte;
     return [
-      { label: 'Cobradores', value: String(r.totalCobradores) },
-      { label: 'Recuperado', value: formatearMoneda(r.totalRecuperado), tone: 'primary' },
-      { label: 'Promedio recup.', value: formatearMoneda(r.promedioRecuperado) },
-      { label: 'Promedio efect.', value: `${r.promedioEfectividad}%` },
+      { label: 'Cobradores', value: String(reporte.totalCobradores) },
+      {
+        label: 'Recuperado',
+        value: formatearMoneda(reporte.totalRecuperado),
+        tone: 'primary',
+      },
+      {
+        label: 'Promedio recup.',
+        value: formatearMoneda(reporte.promedioRecuperado),
+      },
+      {
+        label: 'Promedio efect.',
+        value: `${reporte.promedioEfectividad}%`,
+      },
     ];
   }, [reporte]);
 
+  const columns = useMemo<ColumnDef<ReporteSupervisorEquipoItem>[]>(
+    () => [
+      { accessorKey: 'nombre', header: 'Cobrador' },
+      {
+        accessorKey: 'gestiones',
+        header: 'Gestiones',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellNumero(row.original.gestiones),
+      },
+      {
+        accessorKey: 'efectividadPct',
+        header: 'Efectividad %',
+        meta: { align: 'right' },
+        cell: ({ row }) =>
+          cellPorcentaje(row.original.efectividadPct, { tone: true }),
+      },
+      {
+        accessorKey: 'montoRecuperado',
+        header: 'Recuperado',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellMoneda(row.original.montoRecuperado),
+      },
+      {
+        accessorKey: 'brechaVsPromedioRecuperado',
+        header: 'Brecha recup.',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellMoneda(row.original.brechaVsPromedioRecuperado),
+      },
+      {
+        accessorKey: 'brechaVsPromedioEfectividad',
+        header: 'Brecha efect.',
+        meta: { align: 'right' },
+        cell: ({ row }) =>
+          cellPorcentaje(row.original.brechaVsPromedioEfectividad),
+      },
+    ],
+    [],
+  );
+
   return (
-    <div className="space-y-4">
-      <PageHeader title="Supervisor vs equipo" description="Ranking del equipo con brechas vs promedio." />
-      <div className="space-y-3 rounded-lg border border-stroke bg-white p-4 dark:border-dark-3 dark:bg-gray-dark">
-        <div className="flex flex-wrap items-end gap-3">
-          <MandanteSelect
-            value={idmandante}
-            onChange={(v) => setIdmandante(v)}
-            required
-          />
-          <div>
-            <label htmlFor="periodo-supervisor-equipo" className="mb-1 block text-sm font-medium">Periodo</label>
-            <input
-              id="periodo-supervisor-equipo"
-              type="month"
-              value={periodo}
-              onChange={(e) => setPeriodo(e.target.value)}
-              className="rounded-md border border-stroke bg-transparent px-3 py-2 text-sm dark:border-dark-3"
-            />
-          </div>
-          <Button
-            type="button"
-            disabled={!reporte}
-            onClick={handleExport}
-          >
-            Exportar Excel
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={!reporte || isFetching}
-            onClick={() => void refetch()}
-          >
-            {isFetching ? 'Actualizando…' : 'Actualizar'}
-          </Button>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Supervisor vs equipo"
+        description="Ranking del equipo con brechas vs promedio."
+      />
+
+      <ReporteFiltrosBar
+        idmandante={idmandante}
+        onMandanteChange={(v) => {
+          clearFeedback();
+          setIdmandante(v);
+        }}
+        periodo={periodo}
+        onPeriodoChange={(v) => {
+          clearFeedback();
+          setPeriodo(v);
+        }}
+        periodoId="periodo-supervisor-equipo"
+        canExport={Boolean(reporte)}
+        isFetching={isFetching}
+        exportOk={exportOk}
+        exportError={exportError}
+        onRefresh={() => void refetch()}
+        onExport={() => {
+          if (!reporte) return;
+          runExport(() => exportReporteSupervisorEquipoXlsx(reporte));
+        }}
+      />
+
       {mandanteId === 0 ? (
-        <p className="text-sm text-dark-5 dark:text-dark-6">
-          Seleccione un mandante.
+        <p className="text-sm text-gray-5">
+          Seleccione un mandante y el periodo para generar el reporte.
         </p>
       ) : (
-        <>
-          {exportError ? (
-            <p className="text-sm text-red-600" role="alert">
-              {exportError}
-            </p>
-          ) : null}
-          {exportOk ? (
-            <p className="text-sm text-green-600" role="status">
-              {exportOk}
-            </p>
-          ) : null}
-          <AsyncPanel
+        <ReporteAsyncContent
           isLoading={isLoading}
           error={error}
-          isEmpty={!reporte}
-          emptyMessage="No se pudo cargar el reporte."
+          hasData={Boolean(reporte)}
         >
           {reporte ? (
-            <div className="space-y-4">
-              <DashboardMetricStrip metrics={metrics} />
-
-              <ClientPaginatedDataTable
+            <div className="space-y-6">
+              <div>
+                <h2 className="mb-3 text-lg font-semibold text-dark dark:text-white">
+                  Indicadores del equipo
+                </h2>
+                <DashboardMetricStrip metrics={metrics} />
+              </div>
+              <ReporteTableSection
+                title="Ranking del equipo"
+                description="Desempeño individual y brechas vs promedio del equipo"
                 columns={columns}
                 data={reporte.ranking}
                 emptyMessage="Sin equipo para comparar."
                 itemLabel="cobradores"
-                initialPageSize={25}
+                initialPageSize={20}
+                resetKey={`${mandanteId}-${periodo}`}
               />
             </div>
           ) : null}
-        </AsyncPanel>
-        </>
+        </ReporteAsyncContent>
       )}
     </div>
   );

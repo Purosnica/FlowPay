@@ -2,16 +2,22 @@
 
 import { useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { ClientPaginatedDataTable } from '@/components/cobranza/client-paginated-data-table';
-import { MandanteSelect } from '@/components/cobranza/mandante-select';
+import { ReporteFiltrosBar } from '@/components/cobranza/reporte-filtros-bar';
+import { ReporteTableSection } from '@/components/cobranza/reporte-table-section';
+import {
+  cellEstadoBadge,
+  cellMoneda,
+  cellNumero,
+  cellTexto,
+} from '@/components/cobranza/reporte-table-cells';
 import {
   DashboardMetricStrip,
   type DashboardMetric,
 } from '@/components/dashboard/dashboard-metric-strip';
-import { AsyncPanel } from '@/components/ui/async-panel';
-import { Button } from '@/components/ui/button';
+import { ReporteAsyncContent } from '@/components/cobranza/reporte-async-content';
 import { PageHeader } from '@/components/ui/page-header';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
+import { useReporteExportFeedback } from '@/hooks/use-reporte-export-feedback';
 import { GET_REPORTE_CUMPLIMIENTO_ACUERDOS } from '@/lib/graphql/queries/cobranza.queries';
 import { exportReporteCumplimientoXlsx } from '@/lib/cobranza/export-reportes-control-xlsx';
 import { periodoActual } from '@/lib/cobranza/periodo-utils';
@@ -24,8 +30,8 @@ import {
 export default function ReporteCumplimientoAcuerdosPage() {
   const [idmandante, setIdmandante] = useState<number | ''>('');
   const [periodo, setPeriodo] = useState(periodoActual());
-  const [exportOk, setExportOk] = useState<string | null>(null);
-  const [exportError, setExportError] = useState<string | null>(null);
+  const { exportOk, exportError, clearFeedback, runExport } =
+    useReporteExportFeedback();
 
   const mandanteId = idmandante === '' ? 0 : idmandante;
   const periodoValido = /^\d{4}-\d{2}$/.test(periodo);
@@ -75,124 +81,109 @@ export default function ReporteCumplimientoAcuerdosPage() {
       {
         accessorKey: 'nombreGestor',
         header: 'Gestor',
-        cell: ({ row }) => row.original.nombreGestor ?? '—',
+        cell: ({ row }) => cellTexto(row.original.nombreGestor),
       },
-      { accessorKey: 'estado', header: 'Estado' },
+      {
+        accessorKey: 'estado',
+        header: 'Estado',
+        cell: ({ row }) => cellEstadoBadge(row.original.estado),
+      },
       {
         accessorKey: 'montoAcordado',
         header: 'Monto',
-        cell: ({ row }) => formatearMoneda(row.original.montoAcordado),
+        meta: { align: 'right' },
+        cell: ({ row }) => cellMoneda(row.original.montoAcordado),
       },
-      { accessorKey: 'numeroCuotas', header: 'Cuotas' },
-      { accessorKey: 'cuotasPagadas', header: 'Pagadas' },
-      { accessorKey: 'cuotasPendientes', header: 'Pendientes' },
-      { accessorKey: 'cuotasVencidas', header: 'Vencidas' },
+      {
+        accessorKey: 'numeroCuotas',
+        header: 'Cuotas',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellNumero(row.original.numeroCuotas),
+      },
+      {
+        accessorKey: 'cuotasPagadas',
+        header: 'Pagadas',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellNumero(row.original.cuotasPagadas),
+      },
+      {
+        accessorKey: 'cuotasPendientes',
+        header: 'Pendientes',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellNumero(row.original.cuotasPendientes),
+      },
+      {
+        accessorKey: 'cuotasVencidas',
+        header: 'Vencidas',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellNumero(row.original.cuotasVencidas),
+      },
       { accessorKey: 'fechaInicio', header: 'Inicio' },
     ],
     [],
   );
 
-  function clearFeedback(): void {
-    setExportOk(null);
-    setExportError(null);
-  }
-
-  function handleExport(): void {
-    if (!reporte) {
-      return;
-    }
-    clearFeedback();
-    try {
-      exportReporteCumplimientoXlsx(reporte);
-      setExportOk('Archivo Excel descargado.');
-    } catch {
-      setExportError('No se pudo exportar el reporte.');
-    }
-  }
-
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <PageHeader
         title="Cumplimiento de acuerdos"
         description="Acuerdos del periodo: vigentes, cumplidos, rotos y avance de cuotas."
       />
 
-      <div className="space-y-3 rounded-lg border border-stroke bg-white p-4 dark:border-dark-3 dark:bg-gray-dark">
-        <div className="flex flex-wrap items-end gap-3">
-          <MandanteSelect
-            value={idmandante}
-            onChange={(v) => {
-              clearFeedback();
-              setIdmandante(v);
-            }}
-            required
-          />
-          <div>
-            <label
-              htmlFor="periodo-cumplimiento"
-              className="mb-1 block text-sm font-medium"
-            >
-              Periodo
-            </label>
-            <input
-              id="periodo-cumplimiento"
-              type="month"
-              value={periodo}
-              onChange={(e) => {
-                clearFeedback();
-                setPeriodo(e.target.value);
-              }}
-              className="rounded-md border border-stroke bg-transparent px-3 py-2 text-sm dark:border-dark-3"
-            />
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={!reporte || isFetching}
-            onClick={() => void refetch()}
-          >
-            {isFetching ? 'Actualizando…' : 'Actualizar'}
-          </Button>
-          <Button type="button" disabled={!reporte} onClick={handleExport}>
-            Exportar Excel
-          </Button>
-        </div>
-        {exportOk ? (
-          <p className="text-sm text-green-700 dark:text-green-400" role="status">
-            {exportOk}
-          </p>
-        ) : null}
-        {exportError ? (
-          <p className="text-sm text-red-600" role="alert">
-            {exportError}
-          </p>
-        ) : null}
-      </div>
+      <ReporteFiltrosBar
+        idmandante={idmandante}
+        onMandanteChange={(v) => {
+          clearFeedback();
+          setIdmandante(v);
+        }}
+        periodo={periodo}
+        onPeriodoChange={(v) => {
+          clearFeedback();
+          setPeriodo(v);
+        }}
+        periodoId="periodo-cumplimiento"
+        canExport={Boolean(reporte)}
+        isFetching={isFetching}
+        exportOk={exportOk}
+        exportError={exportError}
+        onRefresh={() => void refetch()}
+        onExport={() => {
+          if (!reporte) return;
+          runExport(() => exportReporteCumplimientoXlsx(reporte));
+        }}
+      />
 
       {mandanteId === 0 ? (
-        <p className="text-sm text-dark-5 dark:text-dark-6">
+        <p className="text-sm text-gray-5">
           Seleccione un mandante y el periodo para generar el reporte.
         </p>
       ) : (
-        <AsyncPanel
+        <ReporteAsyncContent
           isLoading={isLoading}
           error={error}
-          isEmpty={!reporte}
-          emptyMessage="No se pudo cargar el reporte de cumplimiento."
+          hasData={Boolean(reporte)}
         >
           {reporte ? (
-            <div className="space-y-4">
-              <DashboardMetricStrip metrics={metrics} />
-              <ClientPaginatedDataTable
+            <div className="space-y-6">
+              <div>
+                <h2 className="mb-3 text-lg font-semibold text-dark dark:text-white">
+                  Indicadores del periodo
+                </h2>
+                <DashboardMetricStrip metrics={metrics} />
+              </div>
+              <ReporteTableSection
+                title="Acuerdos del periodo"
+                description="Detalle de acuerdos creados y su avance de cuotas"
                 columns={columns}
                 data={reporte.acuerdos}
                 emptyMessage="Sin acuerdos creados en el periodo."
                 itemLabel="acuerdos"
-                initialPageSize={25}
+                initialPageSize={20}
+                resetKey={`${mandanteId}-${periodo}`}
               />
             </div>
           ) : null}
-        </AsyncPanel>
+        </ReporteAsyncContent>
       )}
     </div>
   );

@@ -2,29 +2,35 @@
 
 import { useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { ClientPaginatedDataTable } from '@/components/cobranza/client-paginated-data-table';
-import { MandanteSelect } from '@/components/cobranza/mandante-select';
+import { ReporteFiltrosBar } from '@/components/cobranza/reporte-filtros-bar';
+import { ReporteTableSection } from '@/components/cobranza/reporte-table-section';
+import {
+  cellMoneda,
+  cellNumero,
+  cellPorcentaje,
+} from '@/components/cobranza/reporte-table-cells';
 import {
   DashboardMetricStrip,
   type DashboardMetric,
 } from '@/components/dashboard/dashboard-metric-strip';
-import { AsyncPanel } from '@/components/ui/async-panel';
-import { Button } from '@/components/ui/button';
+import { ReporteAsyncContent } from '@/components/cobranza/reporte-async-content';
 import { PageHeader } from '@/components/ui/page-header';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
+import { useReporteExportFeedback } from '@/hooks/use-reporte-export-feedback';
 import { GET_REPORTE_MIGRACION_MORA } from '@/lib/graphql/queries/cobranza.queries';
 import { periodoActual } from '@/lib/cobranza/periodo-utils';
-import {
-  formatearMoneda,
-  type ReporteMigracionMora,
-  type ReporteMigracionMoraItem,
-} from '@/types/cobranza';
 import { exportReporteMigracionMoraXlsx } from '@/lib/cobranza/export-reportes-avanzados-xlsx';
+import type {
+  ReporteMigracionMora,
+  ReporteMigracionMoraItem,
+} from '@/types/cobranza';
 
 export default function Page() {
   const [idmandante, setIdmandante] = useState<number | ''>('');
   const [periodo, setPeriodo] = useState(periodoActual());
-  
+  const { exportOk, exportError, clearFeedback, runExport } =
+    useReporteExportFeedback();
+
   const mandanteId = idmandante === '' ? 0 : idmandante;
   const periodoValido = /^\d{4}-\d{2}$/.test(periodo);
 
@@ -36,35 +42,33 @@ export default function Page() {
     { enabled: mandanteId > 0 && periodoValido },
   );
 
-  const [exportOk, setExportOk] = useState<string | null>(null);
-  const [exportError, setExportError] = useState<string | null>(null);
-
   const reporte = data?.reporteMigracionMora;
 
   const columns = useMemo<ColumnDef<ReporteMigracionMoraItem>[]>(
     () => [
       { accessorKey: 'tramoOrigen', header: 'Origen' },
       { accessorKey: 'tramoDestino', header: 'Destino' },
-      { accessorKey: 'cantidad', header: 'Cantidad' },
-      { accessorKey: 'saldoDestino', header: 'Saldo', cell: ({ row }) => formatearMoneda(row.original.saldoDestino) },
-      { accessorKey: 'pct', header: '% del origen', cell: ({ row }) => `${row.original.pct}%` },
+      {
+        accessorKey: 'cantidad',
+        header: 'Cantidad',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellNumero(row.original.cantidad),
+      },
+      {
+        accessorKey: 'saldoDestino',
+        header: 'Saldo',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellMoneda(row.original.saldoDestino),
+      },
+      {
+        accessorKey: 'pct',
+        header: '% del origen',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellPorcentaje(row.original.pct),
+      },
     ],
     [],
   );
-
-  function handleExport(): void {
-    if (!reporte) {
-      return;
-    }
-    setExportOk(null);
-    setExportError(null);
-    try {
-      exportReporteMigracionMoraXlsx(reporte);
-      setExportOk('Archivo Excel descargado.');
-    } catch {
-      setExportError('No se pudo exportar el reporte.');
-    }
-  }
 
   const metrics = useMemo<DashboardMetric[]>(() => {
     if (!reporte) {
@@ -79,79 +83,66 @@ export default function Page() {
   }, [reporte]);
 
   return (
-    <div className="space-y-4">
-      <PageHeader title="Migración de mora" description="Movimiento de cartera entre tramos de mora." />
-      <div className="space-y-3 rounded-lg border border-stroke bg-white p-4 dark:border-dark-3 dark:bg-gray-dark">
-        <div className="flex flex-wrap items-end gap-3">
-          <MandanteSelect
-            value={idmandante}
-            onChange={(v) => setIdmandante(v)}
-            required
-          />
-          <div>
-            <label htmlFor="periodo-migracion-mora" className="mb-1 block text-sm font-medium">Periodo</label>
-            <input
-              id="periodo-migracion-mora"
-              type="month"
-              value={periodo}
-              onChange={(e) => setPeriodo(e.target.value)}
-              className="rounded-md border border-stroke bg-transparent px-3 py-2 text-sm dark:border-dark-3"
-            />
-          </div>
-          <Button
-            type="button"
-            disabled={!reporte}
-            onClick={handleExport}
-          >
-            Exportar Excel
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={!reporte || isFetching}
-            onClick={() => void refetch()}
-          >
-            {isFetching ? 'Actualizando…' : 'Actualizar'}
-          </Button>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Migración de mora"
+        description="Movimiento de cartera entre tramos de mora."
+      />
+
+      <ReporteFiltrosBar
+        idmandante={idmandante}
+        onMandanteChange={(v) => {
+          clearFeedback();
+          setIdmandante(v);
+        }}
+        periodo={periodo}
+        onPeriodoChange={(v) => {
+          clearFeedback();
+          setPeriodo(v);
+        }}
+        periodoId="periodo-migracion-mora"
+        canExport={Boolean(reporte)}
+        isFetching={isFetching}
+        exportOk={exportOk}
+        exportError={exportError}
+        onRefresh={() => void refetch()}
+        onExport={() => {
+          if (!reporte) return;
+          runExport(() => exportReporteMigracionMoraXlsx(reporte));
+        }}
+      />
+
       {mandanteId === 0 ? (
-        <p className="text-sm text-dark-5 dark:text-dark-6">
-          Seleccione un mandante.
+        <p className="text-sm text-gray-5">
+          Seleccione un mandante y el periodo para generar el reporte.
         </p>
       ) : (
-        <>
-          {exportError ? (
-            <p className="text-sm text-red-600" role="alert">
-              {exportError}
-            </p>
-          ) : null}
-          {exportOk ? (
-            <p className="text-sm text-green-600" role="status">
-              {exportOk}
-            </p>
-          ) : null}
-          <AsyncPanel
+        <ReporteAsyncContent
           isLoading={isLoading}
           error={error}
-          isEmpty={!reporte}
-          emptyMessage="No se pudo cargar el reporte."
+          hasData={Boolean(reporte)}
         >
           {reporte ? (
-            <div className="space-y-4">
-              <DashboardMetricStrip metrics={metrics} />
-
-              <ClientPaginatedDataTable
+            <div className="space-y-6">
+              <div>
+                <h2 className="mb-3 text-lg font-semibold text-dark dark:text-white">
+                  Indicadores del periodo
+                </h2>
+                <DashboardMetricStrip metrics={metrics} />
+              </div>
+              <ReporteTableSection
+                title="Migraciones entre tramos"
+                description="Cantidad, saldo y porcentaje por transición de mora"
                 columns={columns}
                 data={reporte.migraciones}
                 emptyMessage="Sin migraciones."
                 itemLabel="migraciones"
-                initialPageSize={25}
+                initialPageSize={20}
+                resetKey={`${mandanteId}-${periodo}`}
               />
             </div>
           ) : null}
-        </AsyncPanel>
-        </>
+        </ReporteAsyncContent>
       )}
     </div>
   );

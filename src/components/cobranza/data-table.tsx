@@ -7,11 +7,13 @@ import {
   getSortedRowModel,
   flexRender,
   type ColumnDef,
+  type OnChangeFn,
   type SortingState,
 } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PAGE_SIZE_OPTIONS } from '@/lib/pagination/pagination';
+import { cn } from '@/lib/utils';
 
 interface DataTableProps<T> {
   data: T[];
@@ -20,7 +22,16 @@ interface DataTableProps<T> {
   emptyMessage?: string;
   onRowClick?: (row: T) => void;
   rowActions?: (row: T) => React.ReactNode;
+  sorting?: SortingState;
+  onSortingChange?: OnChangeFn<SortingState>;
+  manualSorting?: boolean;
 }
+
+const ALIGN_CLASS = {
+  left: 'text-left',
+  right: 'text-right',
+  center: 'text-center',
+} as const;
 
 function DataTableInner<T>({
   data,
@@ -29,15 +40,22 @@ function DataTableInner<T>({
   emptyMessage = 'No se encontraron registros',
   onRowClick,
   rowActions,
+  sorting: sortingControlled,
+  onSortingChange,
+  manualSorting = false,
 }: DataTableProps<T>) {
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [sortingUncontrolled, setSortingUncontrolled] = useState<SortingState>(
+    [],
+  );
+  const sorting = sortingControlled ?? sortingUncontrolled;
 
   const table = useReactTable({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    onSortingChange: setSorting,
+    getSortedRowModel: manualSorting ? undefined : getSortedRowModel(),
+    manualSorting,
+    onSortingChange: onSortingChange ?? setSortingUncontrolled,
     state: { sorting },
   });
 
@@ -60,23 +78,55 @@ function DataTableInner<T>({
           {table.getHeaderGroups().map((headerGroup) => (
             <tr
               key={headerGroup.id}
-              className="border-b border-stroke dark:border-dark-3"
+              className="border-b border-stroke bg-gray-2/50 dark:border-dark-3 dark:bg-dark-2/40"
             >
-              {headerGroup.headers.map((header) => (
-                <th
-                  key={header.id}
-                  className="px-4 py-3 text-left text-sm font-medium text-dark dark:text-white"
-                >
-                  {header.isPlaceholder
-                    ? null
-                    : flexRender(
+              {headerGroup.headers.map((header) => {
+                const align = header.column.columnDef.meta?.align ?? 'left';
+                const canSort = header.column.getCanSort();
+                const sorted = header.column.getIsSorted();
+                return (
+                  <th
+                    key={header.id}
+                    className={cn(
+                      'px-4 py-3 text-sm font-semibold text-dark dark:text-white',
+                      ALIGN_CLASS[align],
+                      canSort && 'select-none',
+                    )}
+                  >
+                    {header.isPlaceholder ? null : canSort ? (
+                      <button
+                        type="button"
+                        className={cn(
+                          'inline-flex items-center gap-1 transition-colors hover:text-primary',
+                          align === 'right' && 'justify-end',
+                          align === 'center' && 'justify-center',
+                          align !== 'left' && 'w-full',
+                        )}
+                        onClick={header.column.getToggleSortingHandler()}
+                      >
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext(),
+                        )}
+                        <span className="text-xs text-gray-5" aria-hidden>
+                          {sorted === 'asc'
+                            ? '▲'
+                            : sorted === 'desc'
+                              ? '▼'
+                              : '⇅'}
+                        </span>
+                      </button>
+                    ) : (
+                      flexRender(
                         header.column.columnDef.header,
                         header.getContext(),
-                      )}
-                </th>
-              ))}
+                      )
+                    )}
+                  </th>
+                );
+              })}
               {rowActions && (
-                <th className="px-4 py-3 text-right text-sm font-medium text-dark dark:text-white">
+                <th className="px-4 py-3 text-right text-sm font-semibold text-dark dark:text-white">
                   Acciones
                 </th>
               )}
@@ -87,19 +137,31 @@ function DataTableInner<T>({
           {table.getRowModel().rows.map((row) => (
             <tr
               key={row.id}
-              className={`border-b border-stroke dark:border-dark-3 ${
-                onRowClick ? 'cursor-pointer hover:bg-gray-2 dark:hover:bg-dark-2' : ''
-              }`}
+              className={cn(
+                'border-b border-stroke transition-colors dark:border-dark-3',
+                onRowClick
+                  ? 'cursor-pointer hover:bg-gray-2 dark:hover:bg-dark-2'
+                  : 'hover:bg-gray-2/40 dark:hover:bg-dark-2/50',
+              )}
               onClick={() => onRowClick?.(row.original)}
             >
-              {row.getVisibleCells().map((cell) => (
-                <td
-                  key={cell.id}
-                  className="px-4 py-3 text-sm text-dark dark:text-white"
-                >
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </td>
-              ))}
+              {row.getVisibleCells().map((cell) => {
+                const align = cell.column.columnDef.meta?.align ?? 'left';
+                return (
+                  <td
+                    key={cell.id}
+                    className={cn(
+                      'px-4 py-3 text-sm text-dark dark:text-white',
+                      ALIGN_CLASS[align],
+                    )}
+                  >
+                    {flexRender(
+                      cell.column.columnDef.cell,
+                      cell.getContext(),
+                    )}
+                  </td>
+                );
+              })}
               {rowActions && (
                 <td
                   className="px-4 py-3 text-right"

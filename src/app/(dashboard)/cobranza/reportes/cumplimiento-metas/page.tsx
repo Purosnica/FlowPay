@@ -2,29 +2,36 @@
 
 import { useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { ClientPaginatedDataTable } from '@/components/cobranza/client-paginated-data-table';
-import { MandanteSelect } from '@/components/cobranza/mandante-select';
+import { ReporteFiltrosBar } from '@/components/cobranza/reporte-filtros-bar';
+import { ReporteTableSection } from '@/components/cobranza/reporte-table-section';
+import {
+  cellMoneda,
+  cellNumero,
+  cellPorcentaje,
+} from '@/components/cobranza/reporte-table-cells';
 import {
   DashboardMetricStrip,
   type DashboardMetric,
 } from '@/components/dashboard/dashboard-metric-strip';
-import { AsyncPanel } from '@/components/ui/async-panel';
-import { Button } from '@/components/ui/button';
+import { ReporteAsyncContent } from '@/components/cobranza/reporte-async-content';
 import { PageHeader } from '@/components/ui/page-header';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
+import { useReporteExportFeedback } from '@/hooks/use-reporte-export-feedback';
 import { GET_REPORTE_CUMPLIMIENTO_METAS } from '@/lib/graphql/queries/cobranza.queries';
+import { exportReporteCumplimientoMetasXlsx } from '@/lib/cobranza/export-reportes-avanzados-xlsx';
 import { periodoActual } from '@/lib/cobranza/periodo-utils';
 import {
   formatearMoneda,
-  type ReporteCumplimientoMetas,
   type ReporteCumplimientoMetaItem,
+  type ReporteCumplimientoMetas,
 } from '@/types/cobranza';
-import { exportReporteCumplimientoMetasXlsx } from '@/lib/cobranza/export-reportes-avanzados-xlsx';
 
-export default function Page() {
+export default function ReporteCumplimientoMetasPage() {
   const [idmandante, setIdmandante] = useState<number | ''>('');
   const [periodo, setPeriodo] = useState(periodoActual());
-  
+  const { exportOk, exportError, clearFeedback, runExport } =
+    useReporteExportFeedback();
+
   const mandanteId = idmandante === '' ? 0 : idmandante;
   const periodoValido = /^\d{4}-\d{2}$/.test(periodo);
 
@@ -36,124 +43,132 @@ export default function Page() {
     { enabled: mandanteId > 0 && periodoValido },
   );
 
-  const [exportOk, setExportOk] = useState<string | null>(null);
-  const [exportError, setExportError] = useState<string | null>(null);
-
   const reporte = data?.reporteCumplimientoMetas;
-
-  const columns = useMemo<ColumnDef<ReporteCumplimientoMetaItem>[]>(
-    () => [
-      { accessorKey: 'nombre', header: 'Cobrador' },
-      { accessorKey: 'recuperadoMes', header: 'Recuperado', cell: ({ row }) => formatearMoneda(row.original.recuperadoMes) },
-      { accessorKey: 'metaRecuperacionMes', header: 'Meta recup.', cell: ({ row }) => formatearMoneda(row.original.metaRecuperacionMes) },
-      { accessorKey: 'pctMetaRecuperacion', header: '% recup.', cell: ({ row }) => `${row.original.pctMetaRecuperacion}%` },
-      { accessorKey: 'gestionesSemana', header: 'Gest. semana' },
-      { accessorKey: 'metaGestionesSemana', header: 'Meta gest.' },
-      { accessorKey: 'pctMetaGestiones', header: '% gest.', cell: ({ row }) => `${row.original.pctMetaGestiones}%` },
-    ],
-    [],
-  );
-
-  function handleExport(): void {
-    if (!reporte) {
-      return;
-    }
-    setExportOk(null);
-    setExportError(null);
-    try {
-      exportReporteCumplimientoMetasXlsx(reporte);
-      setExportOk('Archivo Excel descargado.');
-    } catch {
-      setExportError('No se pudo exportar el reporte.');
-    }
-  }
 
   const metrics = useMemo<DashboardMetric[]>(() => {
     if (!reporte) {
       return [];
     }
-    const r = reporte;
     return [
-      { label: 'Meta mandante', value: formatearMoneda(r.metaRecuperacionMandante) },
-      { label: 'Recuperado', value: formatearMoneda(r.recuperadoMandante), tone: 'primary' },
-      { label: '% meta', value: `${r.pctMetaMandante}%` },
+      {
+        label: 'Meta mandante',
+        value: formatearMoneda(reporte.metaRecuperacionMandante),
+      },
+      {
+        label: 'Recuperado',
+        value: formatearMoneda(reporte.recuperadoMandante),
+        tone: 'primary',
+      },
+      { label: '% meta', value: `${reporte.pctMetaMandante}%` },
     ];
   }, [reporte]);
 
+  const columns = useMemo<ColumnDef<ReporteCumplimientoMetaItem>[]>(
+    () => [
+      { accessorKey: 'nombre', header: 'Cobrador' },
+      {
+        accessorKey: 'recuperadoMes',
+        header: 'Recuperado',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellMoneda(row.original.recuperadoMes),
+      },
+      {
+        accessorKey: 'metaRecuperacionMes',
+        header: 'Meta recup.',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellMoneda(row.original.metaRecuperacionMes),
+      },
+      {
+        accessorKey: 'pctMetaRecuperacion',
+        header: '% recup.',
+        meta: { align: 'right' },
+        cell: ({ row }) =>
+          cellPorcentaje(row.original.pctMetaRecuperacion, { tone: true }),
+      },
+      {
+        accessorKey: 'gestionesSemana',
+        header: 'Gest. semana',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellNumero(row.original.gestionesSemana),
+      },
+      {
+        accessorKey: 'metaGestionesSemana',
+        header: 'Meta gest.',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellNumero(row.original.metaGestionesSemana),
+      },
+      {
+        accessorKey: 'pctMetaGestiones',
+        header: '% gest.',
+        meta: { align: 'right' },
+        cell: ({ row }) =>
+          cellPorcentaje(row.original.pctMetaGestiones, { tone: true }),
+      },
+    ],
+    [],
+  );
+
   return (
-    <div className="space-y-4">
-      <PageHeader title="Cumplimiento de metas" description="Meta vs recuperación/gestiones por cobrador." />
-      <div className="space-y-3 rounded-lg border border-stroke bg-white p-4 dark:border-dark-3 dark:bg-gray-dark">
-        <div className="flex flex-wrap items-end gap-3">
-          <MandanteSelect
-            value={idmandante}
-            onChange={(v) => setIdmandante(v)}
-            required
-          />
-          <div>
-            <label htmlFor="periodo-cumplimiento-metas" className="mb-1 block text-sm font-medium">Periodo</label>
-            <input
-              id="periodo-cumplimiento-metas"
-              type="month"
-              value={periodo}
-              onChange={(e) => setPeriodo(e.target.value)}
-              className="rounded-md border border-stroke bg-transparent px-3 py-2 text-sm dark:border-dark-3"
-            />
-          </div>
-          <Button
-            type="button"
-            disabled={!reporte}
-            onClick={handleExport}
-          >
-            Exportar Excel
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={!reporte || isFetching}
-            onClick={() => void refetch()}
-          >
-            {isFetching ? 'Actualizando…' : 'Actualizar'}
-          </Button>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Cumplimiento de metas"
+        description="Meta vs recuperación/gestiones por cobrador."
+      />
+
+      <ReporteFiltrosBar
+        idmandante={idmandante}
+        onMandanteChange={(v) => {
+          clearFeedback();
+          setIdmandante(v);
+        }}
+        periodo={periodo}
+        onPeriodoChange={(v) => {
+          clearFeedback();
+          setPeriodo(v);
+        }}
+        periodoId="periodo-cumplimiento-metas"
+        canExport={Boolean(reporte)}
+        isFetching={isFetching}
+        exportOk={exportOk}
+        exportError={exportError}
+        onRefresh={() => void refetch()}
+        onExport={() => {
+          if (!reporte) return;
+          runExport(() => exportReporteCumplimientoMetasXlsx(reporte));
+        }}
+      />
+
       {mandanteId === 0 ? (
-        <p className="text-sm text-dark-5 dark:text-dark-6">
-          Seleccione un mandante.
+        <p className="text-sm text-gray-5">
+          Seleccione un mandante y el periodo para generar el reporte.
         </p>
       ) : (
-        <>
-          {exportError ? (
-            <p className="text-sm text-red-600" role="alert">
-              {exportError}
-            </p>
-          ) : null}
-          {exportOk ? (
-            <p className="text-sm text-green-600" role="status">
-              {exportOk}
-            </p>
-          ) : null}
-          <AsyncPanel
+        <ReporteAsyncContent
           isLoading={isLoading}
           error={error}
-          isEmpty={!reporte}
-          emptyMessage="No se pudo cargar el reporte."
+          hasData={Boolean(reporte)}
         >
           {reporte ? (
-            <div className="space-y-4">
-              <DashboardMetricStrip metrics={metrics} />
-
-              <ClientPaginatedDataTable
+            <div className="space-y-6">
+              <div>
+                <h2 className="mb-3 text-lg font-semibold text-dark dark:text-white">
+                  Indicadores del periodo
+                </h2>
+                <DashboardMetricStrip metrics={metrics} />
+              </div>
+              <ReporteTableSection
+                title="Cumplimiento por cobrador"
+                description="Meta vs recuperación y gestiones por cobrador"
                 columns={columns}
                 data={reporte.cobradores}
                 emptyMessage="Sin cobradores en el equipo."
                 itemLabel="cobradores"
-                initialPageSize={25}
+                initialPageSize={20}
+                resetKey={`${mandanteId}-${periodo}`}
               />
             </div>
           ) : null}
-        </AsyncPanel>
-        </>
+        </ReporteAsyncContent>
       )}
     </div>
   );

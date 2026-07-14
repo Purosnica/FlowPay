@@ -34,6 +34,7 @@ import {
   exportReporteCobranzaXlsx,
 } from '@/lib/cobranza/export-reporte-hub-xlsx';
 import { ReporteAgingChart } from '@/components/cobranza/reporte-aging-chart';
+import { cellMoneda } from '@/components/cobranza/reporte-table-cells';
 import { periodoActual } from '@/lib/cobranza/periodo-utils';
 import { cn } from '@/lib/utils';
 
@@ -228,7 +229,8 @@ export default function ReportesPage() {
       {
         accessorKey: 'montoRecuperado',
         header: 'Recuperado',
-        cell: ({ row }) => formatearMoneda(row.original.montoRecuperado),
+        meta: { align: 'right' },
+        cell: ({ row }) => cellMoneda(row.original.montoRecuperado),
       },
     ],
     [],
@@ -241,7 +243,8 @@ export default function ReportesPage() {
       {
         accessorKey: 'saldoTotal',
         header: 'Saldo',
-        cell: ({ row }) => formatearMoneda(row.original.saldoTotal),
+        meta: { align: 'right' },
+        cell: ({ row }) => cellMoneda(row.original.saldoTotal),
       },
       {
         accessorKey: 'porcentajeSaldo',
@@ -459,6 +462,7 @@ export default function ReportesPage() {
               emptyMessage="Sin datos de aging."
               itemLabel="tramos"
               initialPageSize={10}
+              resetKey={`${mandanteId}-${periodo}-${usarPeriodo}`}
             />
           </Card>
         </div>
@@ -481,6 +485,7 @@ export default function ReportesPage() {
               emptyMessage="Sin gestiones ni pagos en el periodo."
               itemLabel="gestores"
               initialPageSize={10}
+              resetKey={`${mandanteId}-${periodo}-${usarPeriodo}`}
             />
           </Card>
 

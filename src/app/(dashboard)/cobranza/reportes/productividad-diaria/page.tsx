@@ -2,30 +2,35 @@
 
 import { useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { ClientPaginatedDataTable } from '@/components/cobranza/client-paginated-data-table';
-import { MandanteSelect } from '@/components/cobranza/mandante-select';
+import { ReporteFiltrosBar } from '@/components/cobranza/reporte-filtros-bar';
+import { ReporteTableSection } from '@/components/cobranza/reporte-table-section';
+import {
+  cellMoneda,
+  cellNumero,
+} from '@/components/cobranza/reporte-table-cells';
 import {
   DashboardMetricStrip,
   type DashboardMetric,
 } from '@/components/dashboard/dashboard-metric-strip';
-import { AsyncPanel } from '@/components/ui/async-panel';
-import { Button } from '@/components/ui/button';
+import { ReporteAsyncContent } from '@/components/cobranza/reporte-async-content';
 import { PageHeader } from '@/components/ui/page-header';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
+import { useReporteExportFeedback } from '@/hooks/use-reporte-export-feedback';
 import { GET_REPORTE_PRODUCTIVIDAD_DIARIA } from '@/lib/graphql/queries/cobranza.queries';
-import { periodoActual } from '@/lib/cobranza/periodo-utils';
-import {
-  formatearMoneda,
-  type ReporteProductividadDiaria,
-  type ReporteProductividadGestorResumen,
-  type ReporteProductividadDiaItem,
-} from '@/types/cobranza';
 import { exportReporteProductividadDiariaXlsx } from '@/lib/cobranza/export-reportes-avanzados-xlsx';
+import { periodoActual } from '@/lib/cobranza/periodo-utils';
+import type {
+  ReporteProductividadDiaItem,
+  ReporteProductividadDiaria,
+  ReporteProductividadGestorResumen,
+} from '@/types/cobranza';
 
-export default function Page() {
+export default function ReporteProductividadDiariaPage() {
   const [idmandante, setIdmandante] = useState<number | ''>('');
   const [periodo, setPeriodo] = useState(periodoActual());
-  
+  const { exportOk, exportError, clearFeedback, runExport } =
+    useReporteExportFeedback();
+
   const mandanteId = idmandante === '' ? 0 : idmandante;
   const periodoValido = /^\d{4}-\d{2}$/.test(periodo);
 
@@ -37,139 +42,148 @@ export default function Page() {
     { enabled: mandanteId > 0 && periodoValido },
   );
 
-  const [exportOk, setExportOk] = useState<string | null>(null);
-  const [exportError, setExportError] = useState<string | null>(null);
-
   const reporte = data?.reporteProductividadDiaria;
-
-  const columns = useMemo<ColumnDef<ReporteProductividadGestorResumen>[]>(
-    () => [
-      { accessorKey: 'nombreGestor', header: 'Cobrador' },
-      { accessorKey: 'diasActivos', header: 'Días activos' },
-      { accessorKey: 'totalGestiones', header: 'Gestiones' },
-      { accessorKey: 'promedioGestionesDia', header: 'Promedio/día' },
-      { accessorKey: 'totalRecuperado', header: 'Recuperado', cell: ({ row }) => formatearMoneda(row.original.totalRecuperado) },
-    ],
-    [],
-  );
-
-  const secondaryColumns = useMemo<ColumnDef<ReporteProductividadDiaItem>[]>(
-    () => [
-      { accessorKey: 'fecha', header: 'Fecha' },
-      { accessorKey: 'nombreGestor', header: 'Cobrador' },
-      { accessorKey: 'gestiones', header: 'Gestiones' },
-      { accessorKey: 'gestionesEfectivas', header: 'Efectivas' },
-      { accessorKey: 'montoRecuperado', header: 'Recuperado', cell: ({ row }) => formatearMoneda(row.original.montoRecuperado) },
-    ],
-    [],
-  );
-
-  function handleExport(): void {
-    if (!reporte) {
-      return;
-    }
-    setExportOk(null);
-    setExportError(null);
-    try {
-      exportReporteProductividadDiariaXlsx(reporte);
-      setExportOk('Archivo Excel descargado.');
-    } catch {
-      setExportError('No se pudo exportar el reporte.');
-    }
-  }
 
   const metrics = useMemo<DashboardMetric[]>(() => {
     if (!reporte) {
       return [];
     }
-    const r = reporte;
     return [
-      { label: 'Gestiones', value: String(r.totalGestiones) },
-      { label: 'Promedio/día', value: String(r.promedioGestionesDia) },
+      { label: 'Gestiones', value: String(reporte.totalGestiones) },
+      { label: 'Promedio/día', value: String(reporte.promedioGestionesDia) },
     ];
   }, [reporte]);
 
+  const porDiaColumns = useMemo<ColumnDef<ReporteProductividadDiaItem>[]>(
+    () => [
+      { accessorKey: 'fecha', header: 'Fecha' },
+      { accessorKey: 'nombreGestor', header: 'Cobrador' },
+      {
+        accessorKey: 'gestiones',
+        header: 'Gestiones',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellNumero(row.original.gestiones),
+      },
+      {
+        accessorKey: 'gestionesEfectivas',
+        header: 'Efectivas',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellNumero(row.original.gestionesEfectivas),
+      },
+      {
+        accessorKey: 'montoRecuperado',
+        header: 'Recuperado',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellMoneda(row.original.montoRecuperado),
+      },
+    ],
+    [],
+  );
+
+  const porGestorColumns = useMemo<
+    ColumnDef<ReporteProductividadGestorResumen>[]
+  >(
+    () => [
+      { accessorKey: 'nombreGestor', header: 'Cobrador' },
+      {
+        accessorKey: 'diasActivos',
+        header: 'Días activos',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellNumero(row.original.diasActivos),
+      },
+      {
+        accessorKey: 'totalGestiones',
+        header: 'Gestiones',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellNumero(row.original.totalGestiones),
+      },
+      {
+        accessorKey: 'promedioGestionesDia',
+        header: 'Promedio/día',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellNumero(row.original.promedioGestionesDia),
+      },
+      {
+        accessorKey: 'totalRecuperado',
+        header: 'Recuperado',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellMoneda(row.original.totalRecuperado),
+      },
+    ],
+    [],
+  );
+
   return (
-    <div className="space-y-4">
-      <PageHeader title="Productividad diaria" description="Gestiones y recuperación por día y cobrador." />
-      <div className="space-y-3 rounded-lg border border-stroke bg-white p-4 dark:border-dark-3 dark:bg-gray-dark">
-        <div className="flex flex-wrap items-end gap-3">
-          <MandanteSelect
-            value={idmandante}
-            onChange={(v) => setIdmandante(v)}
-            required
-          />
-          <div>
-            <label htmlFor="periodo-productividad-diaria" className="mb-1 block text-sm font-medium">Periodo</label>
-            <input
-              id="periodo-productividad-diaria"
-              type="month"
-              value={periodo}
-              onChange={(e) => setPeriodo(e.target.value)}
-              className="rounded-md border border-stroke bg-transparent px-3 py-2 text-sm dark:border-dark-3"
-            />
-          </div>
-          <Button
-            type="button"
-            disabled={!reporte}
-            onClick={handleExport}
-          >
-            Exportar Excel
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={!reporte || isFetching}
-            onClick={() => void refetch()}
-          >
-            {isFetching ? 'Actualizando…' : 'Actualizar'}
-          </Button>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Productividad diaria"
+        description="Gestiones y recuperación por día y cobrador."
+      />
+
+      <ReporteFiltrosBar
+        idmandante={idmandante}
+        onMandanteChange={(v) => {
+          clearFeedback();
+          setIdmandante(v);
+        }}
+        periodo={periodo}
+        onPeriodoChange={(v) => {
+          clearFeedback();
+          setPeriodo(v);
+        }}
+        periodoId="periodo-productividad-diaria"
+        canExport={Boolean(reporte)}
+        isFetching={isFetching}
+        exportOk={exportOk}
+        exportError={exportError}
+        onRefresh={() => void refetch()}
+        onExport={() => {
+          if (!reporte) return;
+          runExport(() => exportReporteProductividadDiariaXlsx(reporte));
+        }}
+      />
+
       {mandanteId === 0 ? (
-        <p className="text-sm text-dark-5 dark:text-dark-6">
-          Seleccione un mandante.
+        <p className="text-sm text-gray-5">
+          Seleccione un mandante y el periodo para generar el reporte.
         </p>
       ) : (
-        <>
-          {exportError ? (
-            <p className="text-sm text-red-600" role="alert">
-              {exportError}
-            </p>
-          ) : null}
-          {exportOk ? (
-            <p className="text-sm text-green-600" role="status">
-              {exportOk}
-            </p>
-          ) : null}
-          <AsyncPanel
+        <ReporteAsyncContent
           isLoading={isLoading}
           error={error}
-          isEmpty={!reporte}
-          emptyMessage="No se pudo cargar el reporte."
+          hasData={Boolean(reporte)}
         >
           {reporte ? (
-            <div className="space-y-4">
-              <DashboardMetricStrip metrics={metrics} />
-
-              <ClientPaginatedDataTable
-                columns={columns}
-                data={reporte.porGestor}
-                emptyMessage="Sin actividad."
-                itemLabel="cobradores"
-                initialPageSize={25}
-              />
-              <ClientPaginatedDataTable
-                columns={secondaryColumns}
+            <div className="space-y-6">
+              <div>
+                <h2 className="mb-3 text-lg font-semibold text-dark dark:text-white">
+                  Indicadores del periodo
+                </h2>
+                <DashboardMetricStrip metrics={metrics} />
+              </div>
+              <ReporteTableSection
+                title="Por día"
+                description="Gestiones y recuperación diarias por cobrador"
+                columns={porDiaColumns}
                 data={reporte.porDia}
                 emptyMessage="Sin detalle diario."
                 itemLabel="filas"
-                initialPageSize={25}
+                initialPageSize={20}
+                resetKey={`${mandanteId}-${periodo}`}
+              />
+              <ReporteTableSection
+                title="Por gestor"
+                description="Resumen de productividad por cobrador en el periodo"
+                columns={porGestorColumns}
+                data={reporte.porGestor}
+                emptyMessage="Sin actividad."
+                itemLabel="cobradores"
+                initialPageSize={20}
+                resetKey={`${mandanteId}-${periodo}`}
               />
             </div>
           ) : null}
-        </AsyncPanel>
-        </>
+        </ReporteAsyncContent>
       )}
     </div>
   );

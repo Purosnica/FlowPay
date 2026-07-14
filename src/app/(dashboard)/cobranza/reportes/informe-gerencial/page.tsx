@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { MandanteSelect } from '@/components/cobranza/mandante-select';
 import { InformeGerencialDocument } from '@/components/cobranza/informe-gerencial-document';
 import { PageHeader } from '@/components/ui/page-header';
-import { AsyncPanel } from '@/components/ui/async-panel';
+import { ReporteAsyncContent } from '@/components/cobranza/reporte-async-content';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { GET_INFORME_GERENCIAL } from '@/lib/graphql/queries/cobranza.queries';
 import { exportInformePagosXlsx } from '@/lib/cobranza/export-informe-pagos-xlsx';
@@ -235,11 +235,11 @@ export default function InformeGerencialPage() {
           informe.
         </p>
       ) : (
-        <AsyncPanel
+        <ReporteAsyncContent
           isLoading={isLoading}
           error={error}
-          isEmpty={!informe}
-          emptyMessage="No se pudo cargar el informe."
+          hasData={Boolean(informe)}
+          emptyMessage="Sin datos de informe para los filtros seleccionados."
         >
           {informe ? (
             <div className="overflow-hidden rounded-lg border border-stroke bg-white shadow-sm dark:border-dark-3 print:border-0 print:shadow-none">
@@ -250,7 +250,7 @@ export default function InformeGerencialPage() {
               />
             </div>
           ) : null}
-        </AsyncPanel>
+        </ReporteAsyncContent>
       )}
 
       <style>{`

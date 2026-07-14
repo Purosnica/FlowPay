@@ -2,29 +2,42 @@
 
 import { useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { ClientPaginatedDataTable } from '@/components/cobranza/client-paginated-data-table';
-import { MandanteSelect } from '@/components/cobranza/mandante-select';
+import {
+  FILTER_INPUT_CLASS,
+  ReporteFiltrosBar,
+} from '@/components/cobranza/reporte-filtros-bar';
+import { ReporteTableSection } from '@/components/cobranza/reporte-table-section';
+import {
+  cellMoneda,
+  cellMoraDias,
+  cellNumero,
+  cellPrestamoLink,
+  cellTexto,
+} from '@/components/cobranza/reporte-table-cells';
 import {
   DashboardMetricStrip,
   type DashboardMetric,
 } from '@/components/dashboard/dashboard-metric-strip';
-import { AsyncPanel } from '@/components/ui/async-panel';
-import { Button } from '@/components/ui/button';
+import { ReporteAsyncContent } from '@/components/cobranza/reporte-async-content';
 import { PageHeader } from '@/components/ui/page-header';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
+import { useReporteExportFeedback } from '@/hooks/use-reporte-export-feedback';
 import { GET_REPORTE_RECONTACTOS } from '@/lib/graphql/queries/cobranza.queries';
 import { periodoActual } from '@/lib/cobranza/periodo-utils';
+import { exportReporteRecontactosXlsx } from '@/lib/cobranza/export-reportes-avanzados-xlsx';
 import {
   formatearMoneda,
   type ReporteRecontactos,
   type ReporteRecontactoItem,
 } from '@/types/cobranza';
-import { exportReporteRecontactosXlsx } from '@/lib/cobranza/export-reportes-avanzados-xlsx';
 
 export default function Page() {
   const [idmandante, setIdmandante] = useState<number | ''>('');
   const [periodo, setPeriodo] = useState(periodoActual());
   const [minGestiones, setMinGestiones] = useState(3);
+  const { exportOk, exportError, clearFeedback, runExport } =
+    useReporteExportFeedback();
+
   const mandanteId = idmandante === '' ? 0 : idmandante;
   const periodoValido = /^\d{4}-\d{2}$/.test(periodo);
 
@@ -36,37 +49,48 @@ export default function Page() {
     { enabled: mandanteId > 0 && periodoValido },
   );
 
-  const [exportOk, setExportOk] = useState<string | null>(null);
-  const [exportError, setExportError] = useState<string | null>(null);
-
   const reporte = data?.reporteRecontactos;
 
   const columns = useMemo<ColumnDef<ReporteRecontactoItem>[]>(
     () => [
-      { accessorKey: 'noPrestamo', header: 'Préstamo' },
+      {
+        accessorKey: 'noPrestamo',
+        header: 'Préstamo',
+        cell: ({ row }) =>
+          cellPrestamoLink(row.original.idprestamo, row.original.noPrestamo),
+      },
       { accessorKey: 'nombreCliente', header: 'Cliente' },
-      { accessorKey: 'nombreGestor', header: 'Gestor', cell: ({ row }) => row.original.nombreGestor ?? '—' },
-      { accessorKey: 'gestionesPeriodo', header: 'Gestiones' },
-      { accessorKey: 'diasMora', header: 'Mora' },
-      { accessorKey: 'saldoTotal', header: 'Saldo', cell: ({ row }) => formatearMoneda(row.original.saldoTotal) },
-      { accessorKey: 'ultimaGestion', header: 'Última gestión', cell: ({ row }) => row.original.ultimaGestion ?? '—' },
+      {
+        accessorKey: 'nombreGestor',
+        header: 'Gestor',
+        cell: ({ row }) => cellTexto(row.original.nombreGestor),
+      },
+      {
+        accessorKey: 'gestionesPeriodo',
+        header: 'Gestiones',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellNumero(row.original.gestionesPeriodo),
+      },
+      {
+        accessorKey: 'diasMora',
+        header: 'Mora',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellMoraDias(row.original.diasMora),
+      },
+      {
+        accessorKey: 'saldoTotal',
+        header: 'Saldo',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellMoneda(row.original.saldoTotal),
+      },
+      {
+        accessorKey: 'ultimaGestion',
+        header: 'Última gestión',
+        cell: ({ row }) => cellTexto(row.original.ultimaGestion),
+      },
     ],
     [],
   );
-
-  function handleExport(): void {
-    if (!reporte) {
-      return;
-    }
-    setExportOk(null);
-    setExportError(null);
-    try {
-      exportReporteRecontactosXlsx(reporte);
-      setExportOk('Archivo Excel descargado.');
-    } catch {
-      setExportError('No se pudo exportar el reporte.');
-    }
-  }
 
   const metrics = useMemo<DashboardMetric[]>(() => {
     if (!reporte) {
@@ -81,93 +105,89 @@ export default function Page() {
   }, [reporte]);
 
   return (
-    <div className="space-y-4">
-      <PageHeader title="Recontactos sin pago" description="Préstamos con muchas gestiones y sin pago aplicado." />
-      <div className="space-y-3 rounded-lg border border-stroke bg-white p-4 dark:border-dark-3 dark:bg-gray-dark">
-        <div className="flex flex-wrap items-end gap-3">
-          <MandanteSelect
-            value={idmandante}
-            onChange={(v) => setIdmandante(v)}
-            required
-          />
-          <div>
-            <label htmlFor="periodo-recontactos" className="mb-1 block text-sm font-medium">Periodo</label>
-            <input
-              id="periodo-recontactos"
-              type="month"
-              value={periodo}
-              onChange={(e) => setPeriodo(e.target.value)}
-              className="rounded-md border border-stroke bg-transparent px-3 py-2 text-sm dark:border-dark-3"
-            />
-          </div>
-          <div>
-            <label htmlFor="min-gest-recontactos" className="mb-1 block text-sm font-medium">Mín. gestiones</label>
-            <select
-              id="min-gest-recontactos"
-              value={minGestiones}
-              onChange={(e) => setMinGestiones(Number(e.target.value))}
-              className="rounded-md border border-stroke bg-transparent px-3 py-2 text-sm dark:border-dark-3"
-            >
-              <option value={2}>2</option>
-              <option value={3}>3</option>
-              <option value={5}>5</option>
-              <option value={8}>8</option>
-            </select>
-          </div>
-          <Button
-            type="button"
-            disabled={!reporte}
-            onClick={handleExport}
+    <div className="space-y-6">
+      <PageHeader
+        title="Recontactos sin pago"
+        description="Préstamos con muchas gestiones y sin pago aplicado."
+      />
+
+      <ReporteFiltrosBar
+        idmandante={idmandante}
+        onMandanteChange={(v) => {
+          clearFeedback();
+          setIdmandante(v);
+        }}
+        periodo={periodo}
+        onPeriodoChange={(v) => {
+          clearFeedback();
+          setPeriodo(v);
+        }}
+        periodoId="periodo-recontactos"
+        canExport={Boolean(reporte)}
+        isFetching={isFetching}
+        exportOk={exportOk}
+        exportError={exportError}
+        onRefresh={() => void refetch()}
+        onExport={() => {
+          if (!reporte) return;
+          runExport(() => exportReporteRecontactosXlsx(reporte));
+        }}
+      >
+        <div>
+          <label
+            htmlFor="min-gest-recontactos"
+            className="mb-1 block text-sm font-medium text-dark dark:text-white"
           >
-            Exportar Excel
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={!reporte || isFetching}
-            onClick={() => void refetch()}
+            Mín. gestiones
+          </label>
+          <select
+            id="min-gest-recontactos"
+            value={minGestiones}
+            onChange={(e) => {
+              clearFeedback();
+              setMinGestiones(Number(e.target.value));
+            }}
+            className={FILTER_INPUT_CLASS}
           >
-            {isFetching ? 'Actualizando…' : 'Actualizar'}
-          </Button>
+            <option value={2}>2</option>
+            <option value={3}>3</option>
+            <option value={5}>5</option>
+            <option value={8}>8</option>
+          </select>
         </div>
-      </div>
+      </ReporteFiltrosBar>
+
       {mandanteId === 0 ? (
-        <p className="text-sm text-dark-5 dark:text-dark-6">
-          Seleccione un mandante.
+        <p className="text-sm text-gray-5">
+          Seleccione un mandante y el periodo para generar el reporte.
         </p>
       ) : (
-        <>
-          {exportError ? (
-            <p className="text-sm text-red-600" role="alert">
-              {exportError}
-            </p>
-          ) : null}
-          {exportOk ? (
-            <p className="text-sm text-green-600" role="status">
-              {exportOk}
-            </p>
-          ) : null}
-          <AsyncPanel
+        <ReporteAsyncContent
           isLoading={isLoading}
           error={error}
-          isEmpty={!reporte}
-          emptyMessage="No se pudo cargar el reporte."
+          hasData={Boolean(reporte)}
         >
           {reporte ? (
-            <div className="space-y-4">
-              <DashboardMetricStrip metrics={metrics} />
-
-              <ClientPaginatedDataTable
+            <div className="space-y-6">
+              <div>
+                <h2 className="mb-3 text-lg font-semibold text-dark dark:text-white">
+                  Indicadores del periodo
+                </h2>
+                <DashboardMetricStrip metrics={metrics} />
+              </div>
+              <ReporteTableSection
+                title="Préstamos en recontacto"
+                description="Casos con gestiones sin pago en el umbral seleccionado"
                 columns={columns}
                 data={reporte.prestamos}
                 emptyMessage="Sin recontactos en el umbral."
                 itemLabel="préstamos"
-                initialPageSize={25}
+                initialPageSize={20}
+                resetKey={`${mandanteId}-${periodo}-${minGestiones}`}
               />
             </div>
           ) : null}
-        </AsyncPanel>
-        </>
+        </ReporteAsyncContent>
       )}
     </div>
   );

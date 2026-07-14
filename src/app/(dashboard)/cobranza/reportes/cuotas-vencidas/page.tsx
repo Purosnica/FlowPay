@@ -2,30 +2,37 @@
 
 import { useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { ClientPaginatedDataTable } from '@/components/cobranza/client-paginated-data-table';
-import { MandanteSelect } from '@/components/cobranza/mandante-select';
+import { ReporteFiltrosBar } from '@/components/cobranza/reporte-filtros-bar';
+import { ReporteTableSection } from '@/components/cobranza/reporte-table-section';
+import {
+  cellEstadoBadge,
+  cellMoneda,
+  cellMoraDias,
+  cellNumero,
+  cellTexto,
+} from '@/components/cobranza/reporte-table-cells';
 import {
   DashboardMetricStrip,
   type DashboardMetric,
 } from '@/components/dashboard/dashboard-metric-strip';
-import { AsyncPanel } from '@/components/ui/async-panel';
-import { Button } from '@/components/ui/button';
+import { ReporteAsyncContent } from '@/components/cobranza/reporte-async-content';
 import { PageHeader } from '@/components/ui/page-header';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
+import { useReporteExportFeedback } from '@/hooks/use-reporte-export-feedback';
 import { GET_REPORTE_CUOTAS_VENCIDAS } from '@/lib/graphql/queries/cobranza.queries';
+import { exportReporteCuotasVencidasXlsx } from '@/lib/cobranza/export-reportes-avanzados-xlsx';
 import {
   formatearMoneda,
   type ReporteCuotasVencidas,
   type ReporteCuotaVencidaItem,
 } from '@/types/cobranza';
-import { exportReporteCuotasVencidasXlsx } from '@/lib/cobranza/export-reportes-avanzados-xlsx';
 
 export default function Page() {
   const [idmandante, setIdmandante] = useState<number | ''>('');
-  
-  
+  const { exportOk, exportError, clearFeedback, runExport } =
+    useReporteExportFeedback();
+
   const mandanteId = idmandante === '' ? 0 : idmandante;
-  
 
   const { data, isLoading, error, refetch, isFetching } = useGraphQLQuery<{
     reporteCuotasVencidas: ReporteCuotasVencidas;
@@ -35,38 +42,44 @@ export default function Page() {
     { enabled: mandanteId > 0 },
   );
 
-  const [exportOk, setExportOk] = useState<string | null>(null);
-  const [exportError, setExportError] = useState<string | null>(null);
-
   const reporte = data?.reporteCuotasVencidas;
 
   const columns = useMemo<ColumnDef<ReporteCuotaVencidaItem>[]>(
     () => [
       { accessorKey: 'noPrestamo', header: 'Préstamo' },
       { accessorKey: 'nombreCliente', header: 'Cliente' },
-      { accessorKey: 'nombreGestor', header: 'Gestor', cell: ({ row }) => row.original.nombreGestor ?? '—' },
-      { accessorKey: 'numeroCuota', header: 'Cuota' },
-      { accessorKey: 'montoCuota', header: 'Monto', cell: ({ row }) => formatearMoneda(row.original.montoCuota) },
+      {
+        accessorKey: 'nombreGestor',
+        header: 'Gestor',
+        cell: ({ row }) => cellTexto(row.original.nombreGestor),
+      },
+      {
+        accessorKey: 'numeroCuota',
+        header: 'Cuota',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellNumero(row.original.numeroCuota),
+      },
+      {
+        accessorKey: 'montoCuota',
+        header: 'Monto',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellMoneda(row.original.montoCuota),
+      },
       { accessorKey: 'fechaVencimiento', header: 'Vence' },
-      { accessorKey: 'diasVencidos', header: 'Días' },
-      { accessorKey: 'estadoAcuerdo', header: 'Acuerdo' },
+      {
+        accessorKey: 'diasVencidos',
+        header: 'Días',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellMoraDias(row.original.diasVencidos),
+      },
+      {
+        accessorKey: 'estadoAcuerdo',
+        header: 'Acuerdo',
+        cell: ({ row }) => cellEstadoBadge(row.original.estadoAcuerdo),
+      },
     ],
     [],
   );
-
-  function handleExport(): void {
-    if (!reporte) {
-      return;
-    }
-    setExportOk(null);
-    setExportError(null);
-    try {
-      exportReporteCuotasVencidasXlsx(reporte);
-      setExportOk('Archivo Excel descargado.');
-    } catch {
-      setExportError('No se pudo exportar el reporte.');
-    }
-  }
 
   const metrics = useMemo<DashboardMetric[]>(() => {
     if (!reporte) {
@@ -80,69 +93,60 @@ export default function Page() {
   }, [reporte]);
 
   return (
-    <div className="space-y-4">
-      <PageHeader title="Cuotas vencidas de acuerdos" description="Cuotas en estado VENCIDA pendientes de gestión." />
-      <div className="space-y-3 rounded-lg border border-stroke bg-white p-4 dark:border-dark-3 dark:bg-gray-dark">
-        <div className="flex flex-wrap items-end gap-3">
-          <MandanteSelect
-            value={idmandante}
-            onChange={(v) => setIdmandante(v)}
-            required
-          />
-          <Button
-            type="button"
-            disabled={!reporte}
-            onClick={handleExport}
-          >
-            Exportar Excel
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={!reporte || isFetching}
-            onClick={() => void refetch()}
-          >
-            {isFetching ? 'Actualizando…' : 'Actualizar'}
-          </Button>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Cuotas vencidas de acuerdos"
+        description="Cuotas en estado VENCIDA pendientes de gestión."
+      />
+
+      <ReporteFiltrosBar
+        idmandante={idmandante}
+        onMandanteChange={(v) => {
+          clearFeedback();
+          setIdmandante(v);
+        }}
+        canExport={Boolean(reporte)}
+        isFetching={isFetching}
+        exportOk={exportOk}
+        exportError={exportError}
+        onRefresh={() => void refetch()}
+        onExport={() => {
+          if (!reporte) return;
+          runExport(() => exportReporteCuotasVencidasXlsx(reporte));
+        }}
+      />
+
       {mandanteId === 0 ? (
-        <p className="text-sm text-dark-5 dark:text-dark-6">
-          Seleccione un mandante.
+        <p className="text-sm text-gray-5">
+          Seleccione un mandante para generar el reporte.
         </p>
       ) : (
-        <>
-          {exportError ? (
-            <p className="text-sm text-red-600" role="alert">
-              {exportError}
-            </p>
-          ) : null}
-          {exportOk ? (
-            <p className="text-sm text-green-600" role="status">
-              {exportOk}
-            </p>
-          ) : null}
-          <AsyncPanel
+        <ReporteAsyncContent
           isLoading={isLoading}
           error={error}
-          isEmpty={!reporte}
-          emptyMessage="No se pudo cargar el reporte."
+          hasData={Boolean(reporte)}
         >
           {reporte ? (
-            <div className="space-y-4">
-              <DashboardMetricStrip metrics={metrics} />
-
-              <ClientPaginatedDataTable
+            <div className="space-y-6">
+              <div>
+                <h2 className="mb-3 text-lg font-semibold text-dark dark:text-white">
+                  Indicadores
+                </h2>
+                <DashboardMetricStrip metrics={metrics} />
+              </div>
+              <ReporteTableSection
+                title="Cuotas vencidas"
+                description="Cuotas de acuerdos en estado vencida"
                 columns={columns}
                 data={reporte.cuotas}
                 emptyMessage="Sin cuotas vencidas."
                 itemLabel="cuotas"
-                initialPageSize={25}
+                initialPageSize={20}
+                resetKey={mandanteId}
               />
             </div>
           ) : null}
-        </AsyncPanel>
-        </>
+        </ReporteAsyncContent>
       )}
     </div>
   );

@@ -1,6 +1,10 @@
 'use client';
 
-import type { ColumnDef } from '@tanstack/react-table';
+import type {
+  ColumnDef,
+  OnChangeFn,
+  SortingState,
+} from '@tanstack/react-table';
 import { DataTable, TablePagination } from '@/components/cobranza/data-table';
 import type { PaginationMeta } from '@/lib/pagination/pagination';
 
@@ -15,6 +19,9 @@ interface PaginatedDataTableProps<T> {
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
   itemLabel?: string;
+  sorting?: SortingState;
+  onSortingChange?: OnChangeFn<SortingState>;
+  manualSorting?: boolean;
 }
 
 export function PaginatedDataTable<T>({
@@ -28,6 +35,9 @@ export function PaginatedDataTable<T>({
   onPageChange,
   onPageSizeChange,
   itemLabel,
+  sorting,
+  onSortingChange,
+  manualSorting = false,
 }: PaginatedDataTableProps<T>) {
   return (
     <>
@@ -38,6 +48,9 @@ export function PaginatedDataTable<T>({
         emptyMessage={emptyMessage}
         onRowClick={onRowClick}
         rowActions={rowActions}
+        sorting={sorting}
+        onSortingChange={onSortingChange}
+        manualSorting={manualSorting}
       />
       {pagination && pagination.total > 0 && (
         <TablePagination

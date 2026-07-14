@@ -2,16 +2,25 @@
 
 import { useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { ClientPaginatedDataTable } from '@/components/cobranza/client-paginated-data-table';
-import { MandanteSelect } from '@/components/cobranza/mandante-select';
+import {
+  FILTER_INPUT_CLASS,
+  ReporteFiltrosBar,
+} from '@/components/cobranza/reporte-filtros-bar';
+import { ReporteTableSection } from '@/components/cobranza/reporte-table-section';
+import {
+  cellEstadoBadge,
+  cellMoneda,
+  cellNumero,
+  cellTexto,
+} from '@/components/cobranza/reporte-table-cells';
 import {
   DashboardMetricStrip,
   type DashboardMetric,
 } from '@/components/dashboard/dashboard-metric-strip';
-import { AsyncPanel } from '@/components/ui/async-panel';
-import { Button } from '@/components/ui/button';
+import { ReporteAsyncContent } from '@/components/cobranza/reporte-async-content';
 import { PageHeader } from '@/components/ui/page-header';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
+import { useReporteExportFeedback } from '@/hooks/use-reporte-export-feedback';
 import { GET_REPORTE_COMISIONES_COBRADORES } from '@/lib/graphql/queries/cobranza.queries';
 import { exportReporteComisionesXlsx } from '@/lib/cobranza/export-reportes-control-xlsx';
 import { periodoActual } from '@/lib/cobranza/periodo-utils';
@@ -25,8 +34,8 @@ export default function ReporteComisionesCobradoresPage() {
   const [idmandante, setIdmandante] = useState<number | ''>('');
   const [periodo, setPeriodo] = useState(periodoActual());
   const [filtrarPeriodo, setFiltrarPeriodo] = useState(true);
-  const [exportOk, setExportOk] = useState<string | null>(null);
-  const [exportError, setExportError] = useState<string | null>(null);
+  const { exportOk, exportError, clearFeedback, runExport } =
+    useReporteExportFeedback();
 
   const mandanteId = idmandante === '' ? 0 : idmandante;
   const periodoValido = /^\d{4}-\d{2}$/.test(periodo);
@@ -40,8 +49,7 @@ export default function ReporteComisionesCobradoresPage() {
       periodo: filtrarPeriodo ? periodo : null,
     },
     {
-      enabled:
-        mandanteId > 0 && (!filtrarPeriodo || periodoValido),
+      enabled: mandanteId > 0 && (!filtrarPeriodo || periodoValido),
     },
   );
 
@@ -77,142 +85,135 @@ export default function ReporteComisionesCobradoresPage() {
   const columns = useMemo<ColumnDef<ReporteComisionCobradorItem>[]>(
     () => [
       { accessorKey: 'periodo', header: 'Periodo' },
-      { accessorKey: 'idliquidacion', header: 'Liquidación' },
-      { accessorKey: 'estado', header: 'Estado' },
-      { accessorKey: 'nombreGestor', header: 'Cobrador' },
-      { accessorKey: 'cantidadPagos', header: 'Pagos' },
+      {
+        accessorKey: 'idliquidacion',
+        header: 'Liquidación',
+        cell: ({ row }) => cellNumero(row.original.idliquidacion),
+      },
+      {
+        accessorKey: 'estado',
+        header: 'Estado',
+        cell: ({ row }) => cellEstadoBadge(row.original.estado),
+      },
+      {
+        accessorKey: 'nombreGestor',
+        header: 'Cobrador',
+        cell: ({ row }) => cellTexto(row.original.nombreGestor),
+      },
+      {
+        accessorKey: 'cantidadPagos',
+        header: 'Pagos',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellNumero(row.original.cantidadPagos),
+      },
       {
         accessorKey: 'totalRecuperado',
         header: 'Recuperado',
-        cell: ({ row }) => formatearMoneda(row.original.totalRecuperado),
+        meta: { align: 'right' },
+        cell: ({ row }) => cellMoneda(row.original.totalRecuperado),
       },
       {
         accessorKey: 'totalIngresoEmpresa',
         header: 'Ingreso empresa',
-        cell: ({ row }) => formatearMoneda(row.original.totalIngresoEmpresa),
+        meta: { align: 'right' },
+        cell: ({ row }) => cellMoneda(row.original.totalIngresoEmpresa),
       },
       {
         accessorKey: 'totalComision',
         header: 'Comisión',
-        cell: ({ row }) => formatearMoneda(row.original.totalComision),
+        meta: { align: 'right' },
+        cell: ({ row }) => cellMoneda(row.original.totalComision),
       },
     ],
     [],
   );
 
-  function clearFeedback(): void {
-    setExportOk(null);
-    setExportError(null);
-  }
-
-  function handleExport(): void {
-    if (!reporte) {
-      return;
-    }
-    clearFeedback();
-    try {
-      exportReporteComisionesXlsx(reporte);
-      setExportOk('Archivo Excel descargado.');
-    } catch {
-      setExportError('No se pudo exportar el reporte.');
-    }
-  }
-
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <PageHeader
         title="Comisiones a cobradores"
         description="Pagos de comisión por liquidación: borrador, emitida (por pagar) y pagada."
       />
 
-      <div className="space-y-3 rounded-lg border border-stroke bg-white p-4 dark:border-dark-3 dark:bg-gray-dark">
-        <div className="flex flex-wrap items-end gap-3">
-          <MandanteSelect
-            value={idmandante}
-            onChange={(v) => {
-              clearFeedback();
-              setIdmandante(v);
-            }}
-            required
-          />
-          <div>
-            <label
-              htmlFor="periodo-comisiones"
-              className="mb-1 block text-sm font-medium"
-            >
-              Periodo
-            </label>
-            <input
-              id="periodo-comisiones"
-              type="month"
-              value={periodo}
-              disabled={!filtrarPeriodo}
-              onChange={(e) => {
-                clearFeedback();
-                setPeriodo(e.target.value);
-              }}
-              className="rounded-md border border-stroke bg-transparent px-3 py-2 text-sm disabled:opacity-50 dark:border-dark-3"
-            />
-          </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={filtrarPeriodo}
-              onChange={(e) => {
-                clearFeedback();
-                setFiltrarPeriodo(e.target.checked);
-              }}
-            />
-            Filtrar por periodo
-          </label>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={!reporte || isFetching}
-            onClick={() => void refetch()}
+      <ReporteFiltrosBar
+        idmandante={idmandante}
+        onMandanteChange={(v) => {
+          clearFeedback();
+          setIdmandante(v);
+        }}
+        canExport={Boolean(reporte)}
+        isFetching={isFetching}
+        exportOk={exportOk}
+        exportError={exportError}
+        onRefresh={() => void refetch()}
+        onExport={() => {
+          if (!reporte) return;
+          runExport(() => exportReporteComisionesXlsx(reporte));
+        }}
+      >
+        <div>
+          <label
+            htmlFor="periodo-comisiones"
+            className="mb-1 block text-sm font-medium text-dark dark:text-white"
           >
-            {isFetching ? 'Actualizando…' : 'Actualizar'}
-          </Button>
-          <Button type="button" disabled={!reporte} onClick={handleExport}>
-            Exportar Excel
-          </Button>
+            Periodo
+          </label>
+          <input
+            id="periodo-comisiones"
+            type="month"
+            value={periodo}
+            disabled={!filtrarPeriodo}
+            onChange={(e) => {
+              clearFeedback();
+              setPeriodo(e.target.value);
+            }}
+            className={`${FILTER_INPUT_CLASS} disabled:opacity-50`}
+          />
         </div>
-        {exportOk ? (
-          <p className="text-sm text-green-700 dark:text-green-400" role="status">
-            {exportOk}
-          </p>
-        ) : null}
-        {exportError ? (
-          <p className="text-sm text-red-600" role="alert">
-            {exportError}
-          </p>
-        ) : null}
-      </div>
+        <label className="flex items-center gap-2 pb-2 text-sm text-dark dark:text-white">
+          <input
+            type="checkbox"
+            checked={filtrarPeriodo}
+            onChange={(e) => {
+              clearFeedback();
+              setFiltrarPeriodo(e.target.checked);
+            }}
+          />
+          Filtrar por periodo
+        </label>
+      </ReporteFiltrosBar>
 
       {mandanteId === 0 ? (
-        <p className="text-sm text-dark-5 dark:text-dark-6">
+        <p className="text-sm text-gray-5">
           Seleccione un mandante para ver las comisiones.
         </p>
       ) : (
-        <AsyncPanel
+        <ReporteAsyncContent
           isLoading={isLoading}
           error={error}
-          isEmpty={!reporte}
-          emptyMessage="No se pudo cargar el reporte de comisiones."
+          hasData={Boolean(reporte)}
         >
           {reporte ? (
-            <div className="space-y-4">
-              <DashboardMetricStrip metrics={metrics} />
-              <ClientPaginatedDataTable
+            <div className="space-y-6">
+              <div>
+                <h2 className="mb-3 text-lg font-semibold text-dark dark:text-white">
+                  Resumen de comisiones
+                </h2>
+                <DashboardMetricStrip metrics={metrics} />
+              </div>
+              <ReporteTableSection
+                title="Por cobrador / liquidación"
+                description="Detalle de comisiones por liquidación y gestor"
                 columns={columns}
                 data={reporte.porCobrador}
                 emptyMessage="Sin liquidaciones para el filtro seleccionado."
                 itemLabel="filas"
-                initialPageSize={25}
+                initialPageSize={20}
+                resetKey={`${mandanteId}-${filtrarPeriodo ? periodo : 'all'}`}
               />
             </div>
           ) : null}
-        </AsyncPanel>
+        </ReporteAsyncContent>
       )}
     </div>
   );

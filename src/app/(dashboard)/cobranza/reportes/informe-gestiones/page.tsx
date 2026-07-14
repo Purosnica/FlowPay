@@ -2,26 +2,33 @@
 
 import { useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { ClientPaginatedDataTable } from '@/components/cobranza/client-paginated-data-table';
-import { MandanteSelect } from '@/components/cobranza/mandante-select';
-import { AsyncPanel } from '@/components/ui/async-panel';
-import { Button } from '@/components/ui/button';
+import { ReporteFiltrosBar } from '@/components/cobranza/reporte-filtros-bar';
+import { ReporteTableSection } from '@/components/cobranza/reporte-table-section';
+import {
+  cellMoneda,
+  cellTexto,
+} from '@/components/cobranza/reporte-table-cells';
+import {
+  DashboardMetricStrip,
+  type DashboardMetric,
+} from '@/components/dashboard/dashboard-metric-strip';
+import { ReporteAsyncContent } from '@/components/cobranza/reporte-async-content';
 import { PageHeader } from '@/components/ui/page-header';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
+import { useReporteExportFeedback } from '@/hooks/use-reporte-export-feedback';
 import { GET_INFORME_GESTIONES } from '@/lib/graphql/queries/cobranza.queries';
 import { exportInformeGestionesXlsx } from '@/lib/cobranza/export-informe-gestiones-xlsx';
 import { periodoActual } from '@/lib/cobranza/periodo-utils';
-import {
-  formatearMoneda,
-  type InformeGestionItem,
-  type InformeGestiones,
+import type {
+  InformeGestionItem,
+  InformeGestiones,
 } from '@/types/cobranza';
 
 export default function InformeGestionesPage() {
   const [idmandante, setIdmandante] = useState<number | ''>('');
   const [periodo, setPeriodo] = useState(periodoActual());
-  const [exportError, setExportError] = useState<string | null>(null);
-  const [exportOk, setExportOk] = useState<string | null>(null);
+  const { exportOk, exportError, clearFeedback, runExport } =
+    useReporteExportFeedback();
 
   const mandanteId = idmandante === '' ? 0 : idmandante;
   const periodoValido = /^\d{4}-\d{2}$/.test(periodo);
@@ -36,148 +43,149 @@ export default function InformeGestionesPage() {
 
   const informe = data?.informeGestiones;
 
+  const metrics = useMemo<DashboardMetric[]>(() => {
+    if (!informe) {
+      return [];
+    }
+    return [
+      {
+        label: 'Total gestiones',
+        value: String(informe.totalGestiones),
+        sub: `${informe.mandanteNombre} · ${informe.periodo}`,
+        tone: 'primary',
+      },
+    ];
+  }, [informe]);
+
   const columns = useMemo<ColumnDef<InformeGestionItem>[]>(
     () => [
-      { accessorKey: 'noPrestamo', header: 'N° Préstamo' },
-      { accessorKey: 'codigoUnico', header: 'Código único' },
-      { accessorKey: 'nombreCliente', header: 'Cliente' },
-      { accessorKey: 'gestor', header: 'Gestor' },
-      { accessorKey: 'fechaGestion', header: 'Fecha gestión' },
-      { accessorKey: 'codigoAccion', header: 'COD_ACC' },
-      { accessorKey: 'codigoResultado', header: 'COD_RES' },
+      {
+        accessorKey: 'noPrestamo',
+        header: 'N° Préstamo',
+        cell: ({ row }) => cellTexto(row.original.noPrestamo),
+      },
+      {
+        accessorKey: 'codigoUnico',
+        header: 'Código único',
+        cell: ({ row }) => cellTexto(row.original.codigoUnico),
+      },
+      {
+        accessorKey: 'nombreCliente',
+        header: 'Cliente',
+        cell: ({ row }) => cellTexto(row.original.nombreCliente),
+      },
+      {
+        accessorKey: 'gestor',
+        header: 'Gestor',
+        cell: ({ row }) => cellTexto(row.original.gestor),
+      },
+      {
+        accessorKey: 'fechaGestion',
+        header: 'Fecha gestión',
+        cell: ({ row }) => cellTexto(row.original.fechaGestion),
+      },
+      {
+        accessorKey: 'codigoAccion',
+        header: 'COD_ACC',
+        cell: ({ row }) => cellTexto(row.original.codigoAccion),
+      },
+      {
+        accessorKey: 'codigoResultado',
+        header: 'COD_RES',
+        cell: ({ row }) => cellTexto(row.original.codigoResultado),
+      },
       {
         accessorKey: 'nota',
         header: 'Nota',
         cell: ({ row }) => (
-          <span className="line-clamp-2 max-w-xs">{row.original.nota}</span>
+          <span className="line-clamp-2 max-w-xs">
+            {cellTexto(row.original.nota)}
+          </span>
         ),
       },
-      { accessorKey: 'tipificacion', header: 'Tipificación' },
+      {
+        accessorKey: 'tipificacion',
+        header: 'Tipificación',
+        cell: ({ row }) => cellTexto(row.original.tipificacion),
+      },
       {
         accessorKey: 'pagos',
         header: 'Pagos',
-        cell: ({ row }) => formatearMoneda(row.original.pagos),
+        meta: { align: 'right' },
+        cell: ({ row }) => cellMoneda(row.original.pagos),
       },
     ],
     [],
   );
 
-  function clearFeedback(): void {
-    setExportError(null);
-    setExportOk(null);
-  }
-
-  function handleExportExcel(): void {
-    if (!informe) {
-      return;
-    }
-    clearFeedback();
-    try {
-      exportInformeGestionesXlsx(informe.gestiones, {
-        mandanteNombre: informe.mandanteNombre,
-        periodo: informe.periodo,
-      });
-      setExportOk('Informe de gestiones exportado a Excel.');
-    } catch {
-      setExportError('No se pudo generar el Excel de gestiones.');
-    }
-  }
-
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <PageHeader
         title="Informe de gestiones"
         description="Gestiones de cobradores y supervisores en el formato de plantilla REGISTROS."
       />
 
-      <div className="space-y-3 rounded-lg border border-stroke bg-white p-4 dark:border-dark-3 dark:bg-gray-dark">
-        <div className="flex flex-wrap items-end gap-3">
-          <MandanteSelect
-            value={idmandante}
-            onChange={(v) => {
-              clearFeedback();
-              setIdmandante(v);
-            }}
-            required
-          />
-          <div>
-            <label
-              htmlFor="periodo-informe-gestiones"
-              className="mb-1 block text-sm font-medium"
-            >
-              Periodo
-            </label>
-            <input
-              id="periodo-informe-gestiones"
-              type="month"
-              value={periodo}
-              onChange={(e) => {
-                clearFeedback();
-                setPeriodo(e.target.value);
-              }}
-              className="rounded-md border border-stroke bg-transparent px-3 py-2 text-sm dark:border-dark-3"
-            />
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={!informe || isFetching}
-            onClick={() => void refetch()}
-          >
-            {isFetching ? 'Actualizando…' : 'Actualizar'}
-          </Button>
-          <Button
-            type="button"
-            disabled={!informe || informe.gestiones.length === 0}
-            onClick={handleExportExcel}
-          >
-            Exportar Excel
-          </Button>
-        </div>
-
-        {exportOk ? (
-          <p className="text-sm text-green-700 dark:text-green-400" role="status">
-            {exportOk}
-          </p>
-        ) : null}
-        {exportError ? (
-          <p className="text-sm text-red-600" role="alert">
-            {exportError}
-          </p>
-        ) : null}
-      </div>
+      <ReporteFiltrosBar
+        idmandante={idmandante}
+        onMandanteChange={(v) => {
+          clearFeedback();
+          setIdmandante(v);
+        }}
+        periodo={periodo}
+        onPeriodoChange={(v) => {
+          clearFeedback();
+          setPeriodo(v);
+        }}
+        periodoId="periodo-informe-gestiones"
+        canExport={Boolean(informe && informe.gestiones.length > 0)}
+        isFetching={isFetching}
+        exportOk={exportOk}
+        exportError={exportError}
+        onRefresh={() => void refetch()}
+        onExport={() => {
+          if (!informe) return;
+          runExport(
+            () =>
+              exportInformeGestionesXlsx(informe.gestiones, {
+                mandanteNombre: informe.mandanteNombre,
+                periodo: informe.periodo,
+              }),
+            'Informe de gestiones exportado a Excel.',
+          );
+        }}
+      />
 
       {mandanteId === 0 ? (
-        <p className="text-sm text-dark-5 dark:text-dark-6">
+        <p className="text-sm text-gray-5">
           Seleccione un mandante y el periodo para generar el informe.
         </p>
       ) : (
-        <AsyncPanel
+        <ReporteAsyncContent
           isLoading={isLoading}
           error={error}
-          isEmpty={!informe}
-          emptyMessage="No se pudo cargar el informe de gestiones."
+          hasData={Boolean(informe)}
         >
           {informe ? (
-            <div className="space-y-3">
-              <div className="rounded-lg border border-stroke bg-white p-3 dark:border-dark-3 dark:bg-gray-dark">
-                <p className="text-sm text-dark-5 dark:text-dark-6">
-                  {informe.mandanteNombre} · Periodo {informe.periodo}
-                </p>
-                <p className="text-lg font-semibold text-dark dark:text-white">
-                  {informe.totalGestiones} gestiones
-                </p>
+            <div className="space-y-6">
+              <div>
+                <h2 className="mb-3 text-lg font-semibold text-dark dark:text-white">
+                  Resumen
+                </h2>
+                <DashboardMetricStrip metrics={metrics} />
               </div>
-              <ClientPaginatedDataTable
+              <ReporteTableSection
+                title="Gestiones del periodo"
+                description={`${informe.mandanteNombre} · Periodo ${informe.periodo}`}
                 columns={columns}
                 data={informe.gestiones}
                 emptyMessage="Sin gestiones en el periodo seleccionado."
                 itemLabel="gestiones"
-                initialPageSize={25}
+                initialPageSize={20}
+                resetKey={`${mandanteId}-${periodo}`}
               />
             </div>
           ) : null}
-        </AsyncPanel>
+        </ReporteAsyncContent>
       )}
     </div>
   );

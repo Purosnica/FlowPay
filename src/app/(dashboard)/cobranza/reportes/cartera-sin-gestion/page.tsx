@@ -2,16 +2,26 @@
 
 import { useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { ClientPaginatedDataTable } from '@/components/cobranza/client-paginated-data-table';
-import { MandanteSelect } from '@/components/cobranza/mandante-select';
+import {
+  FILTER_INPUT_CLASS,
+  ReporteFiltrosBar,
+} from '@/components/cobranza/reporte-filtros-bar';
+import { ReporteTableSection } from '@/components/cobranza/reporte-table-section';
+import {
+  cellMoraDias,
+  cellMoneda,
+  cellNumero,
+  cellPrestamoLink,
+  cellTexto,
+} from '@/components/cobranza/reporte-table-cells';
 import {
   DashboardMetricStrip,
   type DashboardMetric,
 } from '@/components/dashboard/dashboard-metric-strip';
-import { AsyncPanel } from '@/components/ui/async-panel';
-import { Button } from '@/components/ui/button';
+import { ReporteAsyncContent } from '@/components/cobranza/reporte-async-content';
 import { PageHeader } from '@/components/ui/page-header';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
+import { useReporteExportFeedback } from '@/hooks/use-reporte-export-feedback';
 import { GET_REPORTE_CARTERA_SIN_GESTION } from '@/lib/graphql/queries/cobranza.queries';
 import { exportReporteCarteraSinGestionXlsx } from '@/lib/cobranza/export-reportes-control-xlsx';
 import {
@@ -25,8 +35,8 @@ const DIAS_OPTIONS = [7, 15, 30] as const;
 export default function ReporteCarteraSinGestionPage() {
   const [idmandante, setIdmandante] = useState<number | ''>('');
   const [diasSinGestion, setDiasSinGestion] = useState<number>(7);
-  const [exportOk, setExportOk] = useState<string | null>(null);
-  const [exportError, setExportError] = useState<string | null>(null);
+  const { exportOk, exportError, clearFeedback, runExport } =
+    useReporteExportFeedback();
 
   const mandanteId = idmandante === '' ? 0 : idmandante;
 
@@ -64,142 +74,127 @@ export default function ReporteCarteraSinGestionPage() {
 
   const columns = useMemo<ColumnDef<ReporteCarteraSinGestionItem>[]>(
     () => [
-      { accessorKey: 'noPrestamo', header: 'N° Préstamo' },
+      {
+        accessorKey: 'noPrestamo',
+        header: 'N° Préstamo',
+        cell: ({ row }) =>
+          cellPrestamoLink(row.original.idprestamo, row.original.noPrestamo),
+      },
       { accessorKey: 'nombreCliente', header: 'Cliente' },
       {
         accessorKey: 'nombreGestor',
         header: 'Gestor',
-        cell: ({ row }) => row.original.nombreGestor ?? '—',
+        cell: ({ row }) => cellTexto(row.original.nombreGestor),
       },
-      { accessorKey: 'diasMora', header: 'Días mora' },
+      {
+        accessorKey: 'diasMora',
+        header: 'Días mora',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellMoraDias(row.original.diasMora),
+      },
       {
         accessorKey: 'saldoTotal',
         header: 'Saldo',
-        cell: ({ row }) => formatearMoneda(row.original.saldoTotal),
+        meta: { align: 'right' },
+        cell: ({ row }) => cellMoneda(row.original.saldoTotal),
       },
       {
         accessorKey: 'diasSinGestion',
         header: 'Días sin gestión',
+        meta: { align: 'right' },
         cell: ({ row }) =>
           row.original.diasSinGestion != null
-            ? String(row.original.diasSinGestion)
-            : 'Nunca',
+            ? cellNumero(row.original.diasSinGestion)
+            : cellTexto('Nunca'),
       },
       {
         accessorKey: 'ultimaGestion',
         header: 'Última gestión',
-        cell: ({ row }) => row.original.ultimaGestion ?? '—',
+        cell: ({ row }) => cellTexto(row.original.ultimaGestion),
       },
     ],
     [],
   );
 
-  function clearFeedback(): void {
-    setExportOk(null);
-    setExportError(null);
-  }
-
-  function handleExport(): void {
-    if (!reporte) {
-      return;
-    }
-    clearFeedback();
-    try {
-      exportReporteCarteraSinGestionXlsx(reporte);
-      setExportOk('Archivo Excel descargado.');
-    } catch {
-      setExportError('No se pudo exportar el reporte.');
-    }
-  }
-
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <PageHeader
         title="Cartera sin gestión"
         description="Casos activos sin contacto reciente: riesgo operativo y puntos de mejora."
       />
 
-      <div className="space-y-3 rounded-lg border border-stroke bg-white p-4 dark:border-dark-3 dark:bg-gray-dark">
-        <div className="flex flex-wrap items-end gap-3">
-          <MandanteSelect
-            value={idmandante}
-            onChange={(v) => {
-              clearFeedback();
-              setIdmandante(v);
-            }}
-            required
-          />
-          <div>
-            <label
-              htmlFor="dias-sin-gestion"
-              className="mb-1 block text-sm font-medium"
-            >
-              Días sin gestión
-            </label>
-            <select
-              id="dias-sin-gestion"
-              value={diasSinGestion}
-              onChange={(e) => {
-                clearFeedback();
-                setDiasSinGestion(Number(e.target.value));
-              }}
-              className="rounded-md border border-stroke bg-transparent px-3 py-2 text-sm dark:border-dark-3"
-            >
-              {DIAS_OPTIONS.map((d) => (
-                <option key={d} value={d}>
-                  {d} días
-                </option>
-              ))}
-            </select>
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={!reporte || isFetching}
-            onClick={() => void refetch()}
+      <ReporteFiltrosBar
+        idmandante={idmandante}
+        onMandanteChange={(v) => {
+          clearFeedback();
+          setIdmandante(v);
+        }}
+        canExport={Boolean(reporte)}
+        isFetching={isFetching}
+        exportOk={exportOk}
+        exportError={exportError}
+        onRefresh={() => void refetch()}
+        onExport={() => {
+          if (!reporte) return;
+          runExport(() => exportReporteCarteraSinGestionXlsx(reporte));
+        }}
+      >
+        <div>
+          <label
+            htmlFor="dias-sin-gestion"
+            className="mb-1 block text-sm font-medium text-dark dark:text-white"
           >
-            {isFetching ? 'Actualizando…' : 'Actualizar'}
-          </Button>
-          <Button type="button" disabled={!reporte} onClick={handleExport}>
-            Exportar Excel
-          </Button>
+            Días sin gestión
+          </label>
+          <select
+            id="dias-sin-gestion"
+            value={diasSinGestion}
+            onChange={(e) => {
+              clearFeedback();
+              setDiasSinGestion(Number(e.target.value));
+            }}
+            className={FILTER_INPUT_CLASS}
+          >
+            {DIAS_OPTIONS.map((d) => (
+              <option key={d} value={d}>
+                {d} días
+              </option>
+            ))}
+          </select>
         </div>
-        {exportOk ? (
-          <p className="text-sm text-green-700 dark:text-green-400" role="status">
-            {exportOk}
-          </p>
-        ) : null}
-        {exportError ? (
-          <p className="text-sm text-red-600" role="alert">
-            {exportError}
-          </p>
-        ) : null}
-      </div>
+      </ReporteFiltrosBar>
 
       {mandanteId === 0 ? (
-        <p className="text-sm text-dark-5 dark:text-dark-6">
+        <p className="text-sm text-gray-5">
           Seleccione un mandante para ver la cartera sin gestión.
         </p>
       ) : (
-        <AsyncPanel
+        <ReporteAsyncContent
           isLoading={isLoading}
           error={error}
-          isEmpty={!reporte}
-          emptyMessage="No se pudo cargar el reporte."
+          hasData={Boolean(reporte)}
         >
           {reporte ? (
-            <div className="space-y-4">
-              <DashboardMetricStrip metrics={metrics} />
-              <ClientPaginatedDataTable
+            <div className="space-y-6">
+              <div>
+                <h2 className="mb-3 text-lg font-semibold text-dark dark:text-white">
+                  Indicadores de cartera
+                </h2>
+                <DashboardMetricStrip metrics={metrics} />
+              </div>
+              <ReporteTableSection
+                title="Préstamos sin gestión"
+                description="Casos activos sin contacto reciente en el umbral seleccionado"
                 columns={columns}
                 data={reporte.prestamos}
                 emptyMessage="Sin préstamos sin gestión en el umbral seleccionado."
                 itemLabel="préstamos"
-                initialPageSize={25}
+                initialPageSize={20}
+                resetKey={`${mandanteId}-${diasSinGestion}`}
               />
             </div>
           ) : null}
-        </AsyncPanel>
+        </ReporteAsyncContent>
       )}
     </div>
   );

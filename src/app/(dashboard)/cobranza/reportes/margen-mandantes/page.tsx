@@ -2,15 +2,21 @@
 
 import { useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { ClientPaginatedDataTable } from '@/components/cobranza/client-paginated-data-table';
+import { ReporteFiltrosBar } from '@/components/cobranza/reporte-filtros-bar';
+import { ReporteTableSection } from '@/components/cobranza/reporte-table-section';
+import {
+  cellMoneda,
+  cellNumero,
+  cellPorcentaje,
+} from '@/components/cobranza/reporte-table-cells';
 import {
   DashboardMetricStrip,
   type DashboardMetric,
 } from '@/components/dashboard/dashboard-metric-strip';
-import { AsyncPanel } from '@/components/ui/async-panel';
-import { Button } from '@/components/ui/button';
+import { ReporteAsyncContent } from '@/components/cobranza/reporte-async-content';
 import { PageHeader } from '@/components/ui/page-header';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
+import { useReporteExportFeedback } from '@/hooks/use-reporte-export-feedback';
 import { GET_REPORTE_MARGEN_MANDANTES } from '@/lib/graphql/queries/cobranza.queries';
 import { periodoActual } from '@/lib/cobranza/periodo-utils';
 import {
@@ -21,10 +27,10 @@ import {
 import { exportReporteMargenMandantesXlsx } from '@/lib/cobranza/export-reportes-avanzados-xlsx';
 
 export default function Page() {
-  
   const [periodo, setPeriodo] = useState(periodoActual());
-  
-  
+  const { exportOk, exportError, clearFeedback, runExport } =
+    useReporteExportFeedback();
+
   const periodoValido = /^\d{4}-\d{2}$/.test(periodo);
 
   const { data, isLoading, error, refetch, isFetching } = useGraphQLQuery<{
@@ -35,37 +41,51 @@ export default function Page() {
     { enabled: periodoValido },
   );
 
-  const [exportOk, setExportOk] = useState<string | null>(null);
-  const [exportError, setExportError] = useState<string | null>(null);
-
   const reporte = data?.reporteMargenMandantes;
 
   const columns = useMemo<ColumnDef<ReporteMargenMandanteItem>[]>(
     () => [
       { accessorKey: 'mandanteNombre', header: 'Mandante' },
-      { accessorKey: 'cantidadPagos', header: 'Pagos' },
-      { accessorKey: 'totalRecuperado', header: 'Recuperado', cell: ({ row }) => formatearMoneda(row.original.totalRecuperado) },
-      { accessorKey: 'totalIngresoEmpresa', header: 'Ingreso', cell: ({ row }) => formatearMoneda(row.original.totalIngresoEmpresa) },
-      { accessorKey: 'totalComision', header: 'Comisión', cell: ({ row }) => formatearMoneda(row.original.totalComision) },
-      { accessorKey: 'gananciaNeta', header: 'Ganancia neta', cell: ({ row }) => formatearMoneda(row.original.gananciaNeta) },
-      { accessorKey: 'margenPct', header: 'Margen %', cell: ({ row }) => `${row.original.margenPct}%` },
+      {
+        accessorKey: 'cantidadPagos',
+        header: 'Pagos',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellNumero(row.original.cantidadPagos),
+      },
+      {
+        accessorKey: 'totalRecuperado',
+        header: 'Recuperado',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellMoneda(row.original.totalRecuperado),
+      },
+      {
+        accessorKey: 'totalIngresoEmpresa',
+        header: 'Ingreso',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellMoneda(row.original.totalIngresoEmpresa),
+      },
+      {
+        accessorKey: 'totalComision',
+        header: 'Comisión',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellMoneda(row.original.totalComision),
+      },
+      {
+        accessorKey: 'gananciaNeta',
+        header: 'Ganancia neta',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellMoneda(row.original.gananciaNeta),
+      },
+      {
+        accessorKey: 'margenPct',
+        header: 'Margen %',
+        meta: { align: 'right' },
+        cell: ({ row }) =>
+          cellPorcentaje(row.original.margenPct, { tone: true }),
+      },
     ],
     [],
   );
-
-  function handleExport(): void {
-    if (!reporte) {
-      return;
-    }
-    setExportOk(null);
-    setExportError(null);
-    try {
-      exportReporteMargenMandantesXlsx(reporte);
-      setExportOk('Archivo Excel descargado.');
-    } catch {
-      setExportError('No se pudo exportar el reporte.');
-    }
-  }
 
   const metrics = useMemo<DashboardMetric[]>(() => {
     if (!reporte) {
@@ -74,72 +94,74 @@ export default function Page() {
     const r = reporte;
     return [
       { label: 'Recuperado', value: formatearMoneda(r.totalRecuperado) },
-      { label: 'Ingreso', value: formatearMoneda(r.totalIngresoEmpresa), tone: 'primary' },
-      { label: 'Ganancia neta', value: formatearMoneda(r.gananciaNeta), tone: 'success' },
+      {
+        label: 'Ingreso',
+        value: formatearMoneda(r.totalIngresoEmpresa),
+        tone: 'primary',
+      },
+      {
+        label: 'Ganancia neta',
+        value: formatearMoneda(r.gananciaNeta),
+        tone: 'success',
+      },
       { label: 'Margen', value: `${r.margenPct}%` },
     ];
   }, [reporte]);
 
   return (
-    <div className="space-y-4">
-      <PageHeader title="Margen por mandante" description="Comparativo de ingreso, comisión y ganancia neta entre mandantes." />
-      <div className="space-y-3 rounded-lg border border-stroke bg-white p-4 dark:border-dark-3 dark:bg-gray-dark">
-        <div className="flex flex-wrap items-end gap-3">
-          <div>
-            <label htmlFor="periodo-margen-mandantes" className="mb-1 block text-sm font-medium">Periodo</label>
-            <input
-              id="periodo-margen-mandantes"
-              type="month"
-              value={periodo}
-              onChange={(e) => setPeriodo(e.target.value)}
-              className="rounded-md border border-stroke bg-transparent px-3 py-2 text-sm dark:border-dark-3"
+    <div className="space-y-6">
+      <PageHeader
+        title="Margen por mandante"
+        description="Comparativo de ingreso, comisión y ganancia neta entre mandantes."
+      />
+
+      <ReporteFiltrosBar
+        idmandante=""
+        onMandanteChange={() => undefined}
+        showMandante={false}
+        periodo={periodo}
+        onPeriodoChange={(v) => {
+          clearFeedback();
+          setPeriodo(v);
+        }}
+        periodoId="periodo-margen-mandantes"
+        canExport={Boolean(reporte)}
+        isFetching={isFetching}
+        exportOk={exportOk}
+        exportError={exportError}
+        onRefresh={() => void refetch()}
+        onExport={() => {
+          if (!reporte) return;
+          runExport(() => exportReporteMargenMandantesXlsx(reporte));
+        }}
+      />
+
+      <ReporteAsyncContent
+        isLoading={isLoading}
+        error={error}
+        hasData={Boolean(reporte)}
+      >
+        {reporte ? (
+          <div className="space-y-6">
+            <div>
+              <h2 className="mb-3 text-lg font-semibold text-dark dark:text-white">
+                Resumen del periodo
+              </h2>
+              <DashboardMetricStrip metrics={metrics} />
+            </div>
+            <ReporteTableSection
+              title="Por mandante"
+              description="Ingreso, comisión y margen por mandante en el periodo"
+              columns={columns}
+              data={reporte.porMandante}
+              emptyMessage="Sin datos de mandantes."
+              itemLabel="mandantes"
+              initialPageSize={20}
+              resetKey={periodo}
             />
           </div>
-          <Button
-            type="button"
-            disabled={!reporte}
-            onClick={handleExport}
-          >
-            Exportar Excel
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={!reporte || isFetching}
-            onClick={() => void refetch()}
-          >
-            {isFetching ? 'Actualizando…' : 'Actualizar'}
-          </Button>
-        </div>
-      </div>
-      {exportError ? (
-        <p className="text-sm text-red-600" role="alert">{exportError}</p>
-      ) : null}
-      {exportOk ? (
-        <p className="text-sm text-green-600" role="status">{exportOk}</p>
-      ) : null}
-      {(
-        <AsyncPanel
-          isLoading={isLoading}
-          error={error}
-          isEmpty={!reporte}
-          emptyMessage="No se pudo cargar el reporte."
-        >
-          {reporte ? (
-            <div className="space-y-4">
-              <DashboardMetricStrip metrics={metrics} />
-
-              <ClientPaginatedDataTable
-                columns={columns}
-                data={reporte.porMandante}
-                emptyMessage="Sin datos de mandantes."
-                itemLabel="mandantes"
-                initialPageSize={25}
-              />
-            </div>
-          ) : null}
-        </AsyncPanel>
-      )}
+        ) : null}
+      </ReporteAsyncContent>
     </div>
   );
 }
