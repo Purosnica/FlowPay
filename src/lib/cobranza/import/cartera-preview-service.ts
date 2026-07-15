@@ -5,7 +5,6 @@ import { decimalToNumber } from '@/lib/cobranza/decimal-utils';
 import { calcularDesgloseSaldo } from '@/lib/cobranza/prestamo-saldo-desglose';
 import {
   obtenerDescuentosAcuerdoPorPrestamos,
-  obtenerTotalesPagosPorPrestamos,
 } from '@/lib/cobranza/prestamo-saldo-desglose-service';
 import { extraerDatosFinancierosCartera } from './cartera-financiero-helpers';
 import {
@@ -116,10 +115,10 @@ export async function previsualizarImportacionCartera(
   const idsPrestamoExistentes = [...cachePrestamos.values()].map(
     (p) => p.idprestamo,
   );
-  const [pagosPorPrestamo, descuentosPorPrestamo] = await Promise.all([
-    obtenerTotalesPagosPorPrestamos(prisma, idsPrestamoExistentes),
-    obtenerDescuentosAcuerdoPorPrestamos(prisma, idsPrestamoExistentes),
-  ]);
+  const descuentosPorPrestamo = await obtenerDescuentosAcuerdoPorPrestamos(
+    prisma,
+    idsPrestamoExistentes,
+  );
 
   let prestamosNuevos = 0;
   let prestamosExistentes = 0;
@@ -165,13 +164,7 @@ export async function previsualizarImportacionCartera(
     const montoDescuento = existente
       ? (descuentosPorPrestamo.get(existente.idprestamo) ?? 0)
       : 0;
-    const totalPagosDb = existente
-      ? (pagosPorPrestamo.get(existente.idprestamo) ?? 0)
-      : 0;
-    const totalPagos =
-      datosFinancieros.totalPagosArchivo > 0
-        ? datosFinancieros.totalPagosArchivo
-        : totalPagosDb;
+    const totalPagos = datosFinancieros.totalPagosArchivo;
 
     const desglose = calcularDesgloseSaldo({
       montoPrestamo: datosFinancieros.montoPrestamo,
