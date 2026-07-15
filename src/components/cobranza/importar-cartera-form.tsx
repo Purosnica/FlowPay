@@ -70,7 +70,7 @@ export function ImportarCarteraForm({ onSuccess }: ImportarCarteraFormProps) {
   const [idplantillaImp, setIdplantillaImp] = useState<number | ''>('');
   const [nuevaCampana, setNuevaCampana] = useState('');
   const [mostrarNuevaCampana, setMostrarNuevaCampana] = useState(false);
-  const [importacionAsync, setImportacionAsync] = useState(true);
+  const [importacionAsync, setImportacionAsync] = useState(false);
   const [idjobAsync, setIdjobAsync] = useState<number | null>(null);
   const [mandanteNombre, setMandanteNombre] = useState('');
   const tipoImportId = useId();
