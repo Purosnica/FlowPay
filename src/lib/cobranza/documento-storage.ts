@@ -2,13 +2,14 @@
  * Almacenamiento y validación de archivos de documentos de cobranza.
  */
 
+import os from 'os';
 import path from 'path';
 import { mkdir, writeFile, readFile, access } from 'fs/promises';
 import { constants } from 'fs';
 
 export const DOCUMENTOS_STORAGE_DIR = path.join(
-  process.cwd(),
-  'storage',
+  os.tmpdir(),
+  'flowpay-storage',
   'documentos',
   'cobranza',
 );

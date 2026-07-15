@@ -1,4 +1,5 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import { prisma } from '@/lib/prisma';
 import { requerirAccesoMandante } from '@/lib/cobranza/mandante-scope';
@@ -12,7 +13,7 @@ import {
   obtenerImportStuckMinutes,
 } from '@/lib/scalability/scalability-config';
 
-const STORAGE_DIR = path.join(process.cwd(), 'storage', 'imports');
+const STORAGE_DIR = path.join(os.tmpdir(), 'flowpay-imports');
 const FINALIZAR_JOB_REINTENTOS = 3;
 const FINALIZAR_JOB_ESPERA_MS = 2_000;
 const RECONCILIAR_GRACIA_MS = 5 * 60_000;
