@@ -118,7 +118,7 @@ Servicio: `gamificacion-service.ts`
 
 ## 8. Aging de cartera
 
-Tramos de mora definidos en `tramos-mora.ts`. Export CSV vía `export-aging-csv.ts`.
+Tramos de mora según parametrización del Mandante (`tbl_comision_cobro`). Export CSV vía `export-aging-csv.ts`.
 
 ---
 

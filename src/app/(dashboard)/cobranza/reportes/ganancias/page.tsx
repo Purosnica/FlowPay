@@ -159,7 +159,7 @@ export default function ReporteGananciasPage() {
     <div className="space-y-6">
       <PageHeader
         title="Reporte de ganancias"
-        description="Ingreso empresa, comisiones y ganancia neta por gestor y tramo de mora."
+        description="Ingreso empresa, comisiones y ganancia neta por gestor y tramos de % recuperación del mandante."
       />
 
       <ReporteFiltrosBar
@@ -215,10 +215,10 @@ export default function ReporteGananciasPage() {
               />
               <ReporteTableSection
                 title="Por tramo de mora"
-                description="Rentabilidad según tramo de mora del pago"
+                description="Desglose según tramos de % de recuperación configurados en el mandante"
                 columns={tramoColumns}
                 data={reporte.porTramoMora}
-                emptyMessage="Sin desglose por tramo."
+                emptyMessage="Sin tramos de recuperación configurados para el mandante."
                 itemLabel="tramos"
                 initialPageSize={10}
                 resetKey={`${mandanteId}-${periodo}`}

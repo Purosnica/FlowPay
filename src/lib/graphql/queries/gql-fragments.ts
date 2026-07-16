@@ -40,6 +40,10 @@ export const PRESTAMO_LIST_FIELDS = `
     idmandante
     nombre
   }
+  gestor {
+    idusuario
+    nombre
+  }
 `;
 
 export const RANKING_COBRADOR_FIELDS = `

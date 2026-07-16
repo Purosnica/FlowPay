@@ -4,7 +4,7 @@ import { decimalToNumber, roundMoney } from './decimal-utils';
 import { parsePeriodo } from './periodo-utils';
 import {
   calcularComisionPago,
-  mapComisiones,
+  cargarTramosRecuperacionMandante,
 } from './comision-cobro-service';
 import {
   cargarMapaComisionCobradorMandante,
@@ -163,14 +163,10 @@ export async function simularLiquidacion(
   await requerirAccesoMandante(idusuario, idmandante);
   const { inicio, fin, periodo: p } = parsePeriodo(periodo);
 
-  const [comisionRows, mapaComision] = await Promise.all([
-    prisma.tbl_comision_cobro.findMany({
-      where: { idmandante, deletedAt: null, estado: true },
-    }),
+  const [tramosRecuperacion, mapaComision] = await Promise.all([
+    cargarTramosRecuperacionMandante(idmandante),
     cargarMapaComisionCobradorMandante(idmandante),
   ]);
-
-  const tramosRecuperacion = mapComisiones(comisionRows);
   const pagos = await cargarPagosPeriodo(
     idmandante,
     inicio,

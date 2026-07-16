@@ -39,12 +39,6 @@ export const PRESETS_BANDEJA_SISTEMA: BandejaPreset[] = [
     filters: { soloSinGestion: true },
   },
   {
-    id: 'mora_critica',
-    nombre: 'Mora 90+ días',
-    esSistema: true,
-    filters: { tramoMoraMin: 91, tramoMoraMax: null },
-  },
-  {
     id: 'saldo_alto',
     nombre: 'Mayor saldo',
     esSistema: true,

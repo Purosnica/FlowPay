@@ -85,7 +85,8 @@ export function cellEstadoBadge(
   } else if (
     normalized.includes('vencid') ||
     normalized.includes('mora') ||
-    normalized.includes('fuera')
+    normalized.includes('fuera') ||
+    normalized.includes('castig')
   ) {
     variant = 'danger';
   } else if (

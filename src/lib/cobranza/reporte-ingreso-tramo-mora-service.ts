@@ -2,14 +2,19 @@ import { prisma } from '@/lib/prisma';
 import { requerirAccesoMandante } from './mandante-scope';
 import { roundMoney } from './decimal-utils';
 import { simularLiquidacion } from './liquidacion-service';
-import { TRAMOS_MORA, diasMoraEnTramo } from './tramos-mora';
+import {
+  cargarTramosRecuperacionMandante,
+  comisionTramosADefs,
+} from './comision-cobro-service';
+import { diasMoraEnTramo } from './tramos-mora';
 import type {
   ReporteIngresoTramoItem,
   ReporteIngresoTramoMora,
 } from '@/types/cobranza';
 
 /**
- * Rentabilidad detallada por tramo de mora (share e ingreso).
+ * Rentabilidad detallada por tramo de mora de recuperación del Mandante
+ * (share e ingreso).
  */
 export async function obtenerReporteIngresoTramoMora(
   idmandante: number,
@@ -26,12 +31,16 @@ export async function obtenerReporteIngresoTramoMora(
     throw new Error('Mandante no encontrado.');
   }
 
-  const sim = await simularLiquidacion(idmandante, periodo, idusuario);
+  const [sim, tramosRecuperacion] = await Promise.all([
+    simularLiquidacion(idmandante, periodo, idusuario),
+    cargarTramosRecuperacionMandante(idmandante),
+  ]);
   const totalIngresoEmpresa = sim.totalIngresoEmpresa;
   const totalComision = sim.totalComision;
   const gananciaNeta = roundMoney(totalIngresoEmpresa - totalComision);
 
-  const porTramo: ReporteIngresoTramoItem[] = TRAMOS_MORA.map((def) => {
+  const defs = comisionTramosADefs(tramosRecuperacion);
+  const porTramo: ReporteIngresoTramoItem[] = defs.map((def) => {
     const enTramo = sim.detalle.filter((d) =>
       diasMoraEnTramo(d.diasMora, def.tramoMoraMin, def.tramoMoraMax),
     );
@@ -60,7 +69,7 @@ export async function obtenerReporteIngresoTramoMora(
           ? roundMoney((ingreso / totalIngresoEmpresa) * 100)
           : 0,
     };
-  }).filter((t) => t.cantidadPagos > 0);
+  });
 
   return {
     idmandante,

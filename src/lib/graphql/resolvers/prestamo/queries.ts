@@ -84,7 +84,11 @@ builder.queryField("prestamos", (t) =>
 
       if (filters.idcampana) where.idcampana = filters.idcampana;
       if (filters.idcliente) where.idcliente = filters.idcliente;
-      if (filters.idgestorAsignado) where.idgestorAsignado = filters.idgestorAsignado;
+      if (filters.sinAsignar) {
+        where.idgestorAsignado = null;
+      } else if (filters.idgestorAsignado) {
+        where.idgestorAsignado = filters.idgestorAsignado;
+      }
       if (filters.estado) where.estado = filters.estado;
       if (filters.search) {
         where.OR = [

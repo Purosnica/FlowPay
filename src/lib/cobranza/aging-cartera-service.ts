@@ -1,10 +1,15 @@
 /**
- * Reporte aging de cartera por tramos de días de mora.
+ * Reporte aging de cartera por tramos de mora del Mandante.
  */
 
 import { prisma } from '@/lib/prisma';
 import { requerirAccesoMandante } from './mandante-scope';
 import { decimalToNumber, roundMoney } from './decimal-utils';
+import {
+  cargarTramosRecuperacionMandante,
+  comisionTramosADefs,
+} from './comision-cobro-service';
+import { diasMoraEnTramo } from './tramos-mora';
 import type {
   AgingTramoReporte,
   ReporteAgingCartera,
@@ -13,29 +18,31 @@ import type {
 export type AgingTramo = AgingTramoReporte;
 export type { ReporteAgingCartera };
 
-import { TRAMOS_MORA, diasMoraEnTramo } from './tramos-mora';
-
 export async function obtenerReporteAgingCartera(
   idmandante: number,
   idusuario: number,
 ): Promise<ReporteAgingCartera> {
   await requerirAccesoMandante(idusuario, idmandante);
 
-  const prestamos = await prisma.tbl_prestamo.findMany({
-    where: {
-      idmandante,
-      deletedAt: null,
-      saldoTotal: { gt: 0 },
-      estado: { not: 'Cancelado' },
-    },
-    select: { diasMora: true, saldoTotal: true },
-  });
+  const [prestamos, tramosRecuperacion] = await Promise.all([
+    prisma.tbl_prestamo.findMany({
+      where: {
+        idmandante,
+        deletedAt: null,
+        saldoTotal: { gt: 0 },
+        estado: { not: 'Cancelado' },
+      },
+      select: { diasMora: true, saldoTotal: true },
+    }),
+    cargarTramosRecuperacionMandante(idmandante),
+  ]);
 
   const saldoCarteraTotal = roundMoney(
     prestamos.reduce((s, p) => s + decimalToNumber(p.saldoTotal), 0),
   );
 
-  const tramos: AgingTramo[] = TRAMOS_MORA.map((def) => {
+  const defs = comisionTramosADefs(tramosRecuperacion);
+  const tramos: AgingTramo[] = defs.map((def) => {
     const enTramoPrestamos = prestamos.filter((p) =>
       diasMoraEnTramo(p.diasMora, def.tramoMoraMin, def.tramoMoraMax),
     );

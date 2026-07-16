@@ -41,7 +41,7 @@ Estados protegidos (no sobrescritos por mora automática): En negociación, Con 
 | Cálculo | `diasMora` recalculado por cron `mora_recalculo` |
 | Feriados | Considera calendario Nicaragua (`seed-feriados-nicaragua`) |
 | Acuerdos | Cuotas vencidas evaluadas antes del recálculo |
-| Tramos | Definidos en `tramos-mora.ts` para aging e insights |
+| Tramos | Parametrizados por Mandante en `tbl_comision_cobro` (helpers en `tramos-mora.ts`) |
 
 Ver: [MORA-AUTOMATICA.md](../MORA-AUTOMATICA.md)
 

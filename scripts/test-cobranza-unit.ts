@@ -6,6 +6,8 @@ import {
 } from '@/lib/cobranza/bandeja-presets';
 import { calcularAbonoCuotasPorTotal } from '@/lib/cobranza/acuerdo-cuota-service';
 import { construirNarrativaInforme } from '@/lib/cobranza/informe-gerencial-narrativa';
+import { parseReferenciasPrestamo } from '@/lib/cobranza/parse-referencias-prestamo';
+import { parsePeriodo } from '@/lib/cobranza/periodo-utils';
 
 function testTransicionesEstado(): void {
   assert.equal(puedeTransicionar('Vigente', 'Vencido'), true);
@@ -100,4 +102,29 @@ testTransicionesEstado();
 testBandejaPresets();
 testAbonoCuotasAcumulado();
 testNarrativaInformeGerencial();
+
+function testParseReferenciasPrestamo(): void {
+  assert.deepEqual(
+    parseReferenciasPrestamo('A\nB\nA, C; D\tE'),
+    ['A', 'B', 'C', 'D', 'E'],
+  );
+  assert.deepEqual(parseReferenciasPrestamo('  \n , ; '), []);
+}
+
+testParseReferenciasPrestamo();
+
+function testParsePeriodoUtcIncluyeDiaUno(): void {
+  const { inicio, fin } = parsePeriodo('2026-06');
+  const pagoDiaUno = new Date('2026-06-01T00:00:00.000Z');
+  const pagoUltimo = new Date('2026-06-30T23:59:59.000Z');
+  const pagoFuera = new Date('2026-07-01T00:00:00.000Z');
+
+  assert.equal(inicio.toISOString(), '2026-06-01T00:00:00.000Z');
+  assert.equal(fin.toISOString(), '2026-07-01T00:00:00.000Z');
+  assert.ok(pagoDiaUno >= inicio && pagoDiaUno < fin);
+  assert.ok(pagoUltimo >= inicio && pagoUltimo < fin);
+  assert.ok(!(pagoFuera >= inicio && pagoFuera < fin));
+}
+
+testParsePeriodoUtcIncluyeDiaUno();
 console.log('tests unitarios cobranza: OK');

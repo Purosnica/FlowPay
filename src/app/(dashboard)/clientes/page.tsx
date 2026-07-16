@@ -152,11 +152,10 @@ export default function ClientesPage() {
         id: "vista360",
         header: "360°",
         cell: ({ row }) => (
-          <Link
-            href={`/clientes/${row.original.idcliente}`}
-            className="text-sm text-primary hover:underline"
-          >
-            Ver
+          <Link href={`/clientes/${row.original.idcliente}`}>
+            <Button size="sm" variant="outline">
+              Ver
+            </Button>
           </Link>
         ),
       },

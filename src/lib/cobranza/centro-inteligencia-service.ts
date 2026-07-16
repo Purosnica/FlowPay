@@ -3,7 +3,14 @@ import type { Prisma } from '@prisma/client';
 import { filtroMandante, requerirAccesoMandante } from './mandante-scope';
 import { decimalToNumber, roundMoney } from './decimal-utils';
 import { obtenerReporteAgingCartera } from './aging-cartera-service';
-import { diasMoraEnTramo } from './tramos-mora';
+import {
+  cargarTramosRecuperacionPorMandantes,
+  comisionTramosADefs,
+} from './comision-cobro-service';
+import {
+  diasMoraEnTramo,
+  tramoMoraMasSevero,
+} from './tramos-mora';
 import type {
   CentroInteligenciaResumen,
   InsightAutomatico,
@@ -136,22 +143,46 @@ export async function obtenerCentroInteligencia(
   ]);
 
   let pctTramoAlto = 0;
+  let etiquetaTramoAlto = 'tramo más severo';
   if (idmandante) {
     const aging = await obtenerReporteAgingCartera(idmandante, idusuario);
-    const tramoAlto = aging.tramos.find((t) => t.tramoMoraMin >= 121);
+    const tramoAlto =
+      aging.tramos.length > 0
+        ? aging.tramos.reduce((a, b) =>
+            a.tramoMoraMin >= b.tramoMoraMin ? a : b,
+          )
+        : undefined;
     pctTramoAlto = tramoAlto?.porcentajeSaldo ?? 0;
+    if (tramoAlto) {
+      etiquetaTramoAlto = tramoAlto.tramo;
+    }
   } else {
     const prestamos = await prisma.tbl_prestamo.findMany({
       where: { ...prestamoWhere, saldoTotal: { gt: 0 } },
-      select: { diasMora: true, saldoTotal: true },
+      select: { diasMora: true, saldoTotal: true, idmandante: true },
     });
+    const idsMandante = [
+      ...new Set(prestamos.map((p) => p.idmandante)),
+    ];
+    const tramosPorMandante =
+      await cargarTramosRecuperacionPorMandantes(idsMandante);
     const saldoTotal = prestamos.reduce(
       (s, p) => s + decimalToNumber(p.saldoTotal),
       0,
     );
-    const saldoAlto = prestamos
-      .filter((p) => diasMoraEnTramo(p.diasMora, 121, null))
-      .reduce((s, p) => s + decimalToNumber(p.saldoTotal), 0);
+    let saldoAlto = 0;
+    for (const p of prestamos) {
+      const defs = comisionTramosADefs(
+        tramosPorMandante.get(p.idmandante) ?? [],
+      );
+      const severo = tramoMoraMasSevero(defs);
+      if (
+        severo &&
+        diasMoraEnTramo(p.diasMora, severo.tramoMoraMin, severo.tramoMoraMax)
+      ) {
+        saldoAlto += decimalToNumber(p.saldoTotal);
+      }
+    }
     pctTramoAlto =
       saldoTotal > 0 ? roundMoney((saldoAlto / saldoTotal) * 100) : 0;
   }
@@ -205,7 +236,7 @@ export async function obtenerCentroInteligencia(
       id: 'aging-alto',
       severidad: 'warning',
       titulo: 'Concentración en mora severa',
-      descripcion: `${pctTramoAlto}% del saldo está en tramo 121+ días.`,
+      descripcion: `${pctTramoAlto}% del saldo está en ${etiquetaTramoAlto}.`,
       accionSugerida: 'Evaluar estrategia de negociación o reasignación especializada.',
     });
   }

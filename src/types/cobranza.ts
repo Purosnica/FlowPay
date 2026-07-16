@@ -108,6 +108,7 @@ export interface PrestamoFilters {
   idgestorAsignado?: number;
   estado?: string;
   search?: string;
+  sinAsignar?: boolean;
 }
 
 export type BandejaOrdenarPor = 'prioridad' | 'saldo_desc' | 'saldo_asc';

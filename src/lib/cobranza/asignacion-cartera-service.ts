@@ -341,76 +341,105 @@ async function aplicarDistribucionEnLotes(
   distribucion: Map<number, PrestamoAsignable[]>,
   motivo?: string | null,
 ): Promise<number> {
-  const todosIds = [...distribucion.values()].flatMap((lista) =>
-    lista.map((p) => p.idprestamo),
-  );
-
-  if (todosIds.length === 0) {
-    return 0;
-  }
-
-  const actuales = await prisma.tbl_prestamo.findMany({
-    where: { idprestamo: { in: todosIds }, deletedAt: null },
-    select: { idprestamo: true, idgestorAsignado: true },
-  });
-  const gestorAnteriorPorPrestamo = new Map(
-    actuales.map((p) => [p.idprestamo, p.idgestorAsignado]),
-  );
-  const idsValidos = new Set(actuales.map((p) => p.idprestamo));
-
   let asignados = 0;
 
   for (const [idgestor, lista] of distribucion) {
-    const idprestamos = lista
-      .map((p) => p.idprestamo)
-      .filter((id) => idsValidos.has(id));
+    const idprestamos = lista.map((p) => p.idprestamo);
+    asignados += await asignarPrestamosAGestorEnLotes(
+      idusuario,
+      idprestamos,
+      idgestor,
+      motivo,
+    );
+  }
 
-    for (let i = 0; i < idprestamos.length; i += ASIGNACION_BATCH_SIZE) {
-      const batch = idprestamos.slice(i, i + ASIGNACION_BATCH_SIZE);
+  return asignados;
+}
 
-      await prisma.$transaction(async (tx) => {
-        await tx.tbl_prestamo.updateMany({
-          where: { idprestamo: { in: batch } },
-          data: { idgestorAsignado: idgestor },
-        });
+/**
+ * Asigna una lista de préstamos a un cobrador en lotes
+ * (updateMany + historial + auditoría).
+ */
+export async function asignarPrestamosAGestorEnLotes(
+  idusuario: number,
+  idprestamos: number[],
+  idgestor: number,
+  motivo?: string | null,
+): Promise<number> {
+  if (idprestamos.length === 0) {
+    return 0;
+  }
 
-        await tx.tbl_prestamo_asignacion_historial.createMany({
-          data: batch.map((idprestamo) => ({
-            idprestamo,
-            idgestorAnterior:
+  const idsUnicos = [...new Set(idprestamos)];
+  const actuales: Array<{
+    idprestamo: number;
+    idgestorAsignado: number | null;
+  }> = [];
+
+  for (let i = 0; i < idsUnicos.length; i += ASIGNACION_BATCH_SIZE) {
+    const batchIds = idsUnicos.slice(i, i + ASIGNACION_BATCH_SIZE);
+    const filas = await prisma.tbl_prestamo.findMany({
+      where: { idprestamo: { in: batchIds }, deletedAt: null },
+      select: { idprestamo: true, idgestorAsignado: true },
+    });
+    actuales.push(...filas);
+  }
+
+  const gestorAnteriorPorPrestamo = new Map(
+    actuales.map((p) => [p.idprestamo, p.idgestorAsignado]),
+  );
+  // Evita reasignar (y duplicar historial) si ya están con ese cobrador.
+  const idsParaAsignar = actuales
+    .filter((p) => p.idgestorAsignado !== idgestor)
+    .map((p) => p.idprestamo);
+
+  if (idsParaAsignar.length === 0) {
+    return 0;
+  }
+
+  let asignados = 0;
+
+  for (let i = 0; i < idsParaAsignar.length; i += ASIGNACION_BATCH_SIZE) {
+    const batch = idsParaAsignar.slice(i, i + ASIGNACION_BATCH_SIZE);
+
+    await prisma.$transaction(async (tx) => {
+      await tx.tbl_prestamo.updateMany({
+        where: { idprestamo: { in: batch } },
+        data: { idgestorAsignado: idgestor },
+      });
+
+      await tx.tbl_prestamo_asignacion_historial.createMany({
+        data: batch.map((idprestamo) => ({
+          idprestamo,
+          idgestorAnterior:
+            gestorAnteriorPorPrestamo.get(idprestamo) ?? null,
+          idgestorNuevo: idgestor,
+          idusuario,
+          motivo: motivo ?? null,
+        })),
+      });
+
+      await tx.tbl_auditoria.createMany({
+        data: batch.map((idprestamo) => ({
+          idusuario,
+          entidad: 'prestamo',
+          entidadId: idprestamo,
+          accion: 'asignacion_gestor',
+          detalle: JSON.stringify({
+            gestorAnterior:
               gestorAnteriorPorPrestamo.get(idprestamo) ?? null,
-            idgestorNuevo: idgestor,
-            idusuario,
-            motivo: motivo ?? null,
-          })),
-        });
+            gestorNuevo: idgestor,
+            motivo,
+          }),
+        })),
+      });
+    }, ASIGNACION_TRANSACTION_OPTIONS);
 
-        await tx.tbl_auditoria.createMany({
-          data: batch.map((idprestamo) => ({
-            idusuario,
-            entidad: 'prestamo',
-            entidadId: idprestamo,
-            accion: 'asignacion_gestor',
-            detalle: JSON.stringify({
-              gestorAnterior:
-                gestorAnteriorPorPrestamo.get(idprestamo) ?? null,
-              gestorNuevo: idgestor,
-              motivo,
-            }),
-          })),
-        });
-      }, ASIGNACION_TRANSACTION_OPTIONS);
+    asignados += batch.length;
+  }
 
-      asignados += batch.length;
-    }
-
-    if (idgestor !== idusuario && idprestamos.length > 0) {
-      await emitirNotificacionAsignacion(
-        idgestor,
-        idusuario,
-        idprestamos,
-      );
-    }
+  if (idgestor !== idusuario && idsParaAsignar.length > 0) {
+    await emitirNotificacionAsignacion(idgestor, idusuario, idsParaAsignar);
   }
 
   return asignados;
@@ -578,4 +607,97 @@ export async function listarHistorialAsignacion(
     motivo: h.motivo,
     createdAt: h.createdAt,
   }));
+}
+
+const RESOLVER_REFERENCIAS_BATCH = 200;
+const MAX_REFERENCIAS_ASIGNACION = 5_000;
+
+export interface ResultadoAsignacionPorReferencias {
+  asignados: number;
+  encontrados: number;
+  omitidosYaAsignados: number;
+  noEncontrados: string[];
+}
+
+/**
+ * Resuelve No. préstamo o código único del mandante y asigna al cobrador.
+ */
+export async function asignarGestorPorReferencias(
+  idusuario: number,
+  idmandante: number,
+  referencias: string[],
+  idgestor: number,
+  motivo?: string | null,
+): Promise<ResultadoAsignacionPorReferencias> {
+  await requerirAccesoMandante(idusuario, idmandante);
+
+  if (referencias.length === 0) {
+    throw new Error('Debe indicar al menos una referencia de préstamo.');
+  }
+  if (referencias.length > MAX_REFERENCIAS_ASIGNACION) {
+    throw new Error(
+      `Máximo ${MAX_REFERENCIAS_ASIGNACION} referencias por asignación.`,
+    );
+  }
+
+  const refSet = new Set(referencias);
+  const idPorRef = new Map<string, number>();
+  const gestorPorId = new Map<number, number | null>();
+
+  for (let i = 0; i < referencias.length; i += RESOLVER_REFERENCIAS_BATCH) {
+    const lote = referencias.slice(i, i + RESOLVER_REFERENCIAS_BATCH);
+    const filas = await prisma.tbl_prestamo.findMany({
+      where: {
+        idmandante,
+        deletedAt: null,
+        OR: [{ noPrestamo: { in: lote } }, { codigoUnico: { in: lote } }],
+      },
+      select: {
+        idprestamo: true,
+        noPrestamo: true,
+        codigoUnico: true,
+        idgestorAsignado: true,
+      },
+    });
+
+    for (const fila of filas) {
+      if (refSet.has(fila.noPrestamo) && !idPorRef.has(fila.noPrestamo)) {
+        idPorRef.set(fila.noPrestamo, fila.idprestamo);
+      }
+      if (refSet.has(fila.codigoUnico) && !idPorRef.has(fila.codigoUnico)) {
+        idPorRef.set(fila.codigoUnico, fila.idprestamo);
+      }
+      gestorPorId.set(fila.idprestamo, fila.idgestorAsignado);
+    }
+  }
+
+  const noEncontrados = referencias.filter((ref) => !idPorRef.has(ref));
+  const idprestamos = [...new Set(idPorRef.values())];
+  const idsParaAsignar = idprestamos.filter(
+    (id) => gestorPorId.get(id) !== idgestor,
+  );
+  const omitidosYaAsignados = idprestamos.length - idsParaAsignar.length;
+
+  if (idsParaAsignar.length === 0) {
+    return {
+      asignados: 0,
+      encontrados: idprestamos.length,
+      omitidosYaAsignados,
+      noEncontrados,
+    };
+  }
+
+  const asignados = await asignarPrestamosAGestorEnLotes(
+    idusuario,
+    idsParaAsignar,
+    idgestor,
+    motivo,
+  );
+
+  return {
+    asignados,
+    encontrados: idprestamos.length,
+    omitidosYaAsignados,
+    noEncontrados,
+  };
 }

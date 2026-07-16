@@ -1193,6 +1193,27 @@ export const ASIGNAR_GESTOR_MASIVO = `
   }
 `;
 
+export const ASIGNAR_GESTOR_POR_REFERENCIAS = `
+  mutation AsignarGestorPorReferencias(
+    $idmandante: Int!
+    $referenciasTexto: String!
+    $idgestor: Int!
+    $motivo: String
+  ) {
+    asignarGestorPorReferencias(
+      idmandante: $idmandante
+      referenciasTexto: $referenciasTexto
+      idgestor: $idgestor
+      motivo: $motivo
+    ) {
+      asignados
+      encontrados
+      omitidosYaAsignados
+      noEncontrados
+    }
+  }
+`;
+
 export const VERIFICAR_HORARIO_COBRANZA = `
   query VerificarHorarioCobranza($idmandante: Int) {
     verificarHorarioCobranza(idmandante: $idmandante) {

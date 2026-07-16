@@ -50,11 +50,11 @@ async function main(): Promise<void> {
   );
 
   const tramoWhere = buildBandejaWhere(cobrador.idusuario, mandanteFilter, {
-    tramoMoraMin: 121,
+    tramoMoraMin: 91,
   });
   check(
-    'Tramo 121+ usa gte sin límite superior',
-    JSON.stringify(tramoWhere.diasMora) === JSON.stringify({ gte: 121 }),
+    'Tramo abierto usa gte sin límite superior',
+    JSON.stringify(tramoWhere.diasMora) === JSON.stringify({ gte: 91 }),
   );
 
   const tramoAcotado = buildBandejaWhere(cobrador.idusuario, mandanteFilter, {

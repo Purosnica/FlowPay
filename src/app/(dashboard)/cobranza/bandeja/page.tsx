@@ -66,7 +66,7 @@ function buildBandejaQueryFilters(
   }
   if (filters.tramoMoraMin !== undefined) {
     cleaned.tramoMoraMin = filters.tramoMoraMin;
-    // GraphQL Int no acepta null; omitir max abierto (121+) — el resolver usa gte.
+    // GraphQL Int no acepta null; omitir max abierto — el resolver usa gte.
     if (filters.tramoMoraMax != null) {
       cleaned.tramoMoraMax = filters.tramoMoraMax;
     }

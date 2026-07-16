@@ -1,5 +1,10 @@
 import type { tbl_comision_cobro } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { decimalToNumber, roundMoney } from './decimal-utils';
+import {
+  formatTramoMoraLabel,
+  type TramoMoraDef,
+} from './tramos-mora';
 
 export interface ComisionTramo {
   tramoMoraMin: number;
@@ -25,6 +30,51 @@ export function mapComisiones(
       porcentaje: decimalToNumber(r.porcentaje),
     }))
     .sort((a, b) => a.tramoMoraMin - b.tramoMoraMin);
+}
+
+/** Tramos de % recuperación activos del Mandante. */
+export async function cargarTramosRecuperacionMandante(
+  idmandante: number,
+): Promise<ComisionTramo[]> {
+  const rows = await prisma.tbl_comision_cobro.findMany({
+    where: { idmandante, deletedAt: null, estado: true },
+  });
+  return mapComisiones(rows);
+}
+
+/** Tramos de % recuperación por varios Mandantes. */
+export async function cargarTramosRecuperacionPorMandantes(
+  idsMandante: number[],
+): Promise<Map<number, ComisionTramo[]>> {
+  const map = new Map<number, ComisionTramo[]>();
+  if (idsMandante.length === 0) {
+    return map;
+  }
+  const rows = await prisma.tbl_comision_cobro.findMany({
+    where: {
+      idmandante: { in: idsMandante },
+      deletedAt: null,
+      estado: true,
+    },
+  });
+  for (const id of idsMandante) {
+    map.set(
+      id,
+      mapComisiones(rows.filter((r) => r.idmandante === id)),
+    );
+  }
+  return map;
+}
+
+/** Convierte tramos de comisión a defs de reporte (misma banda y etiqueta). */
+export function comisionTramosADefs(
+  tramos: ComisionTramo[],
+): TramoMoraDef[] {
+  return tramos.map((t) => ({
+    tramo: formatTramoMoraLabel(t.tramoMoraMin, t.tramoMoraMax),
+    tramoMoraMin: t.tramoMoraMin,
+    tramoMoraMax: t.tramoMoraMax,
+  }));
 }
 
 /**

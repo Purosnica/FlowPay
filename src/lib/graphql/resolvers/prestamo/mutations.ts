@@ -5,12 +5,16 @@ import { requerirPermiso } from "@/lib/permissions/permission-service";
 import { PERMISO } from "@/lib/permissions/permiso-codes";
 import { requerirAccesoMandante } from "@/lib/cobranza/mandante-scope";
 import { GraphQLValidationError } from "@/lib/errors/graphql-errors";
-import { asignarGestorConHistorial } from "@/lib/cobranza/asignacion-cartera-service";
-import { emitirNotificacionAsignacion } from "@/lib/cobranza/notificacion-emision-service";
+import {
+  asignarGestorConHistorial,
+  asignarGestorPorReferencias,
+  asignarPrestamosAGestorEnLotes,
+} from "@/lib/cobranza/asignacion-cartera-service";
 import {
   ESTADOS_PRESTAMO,
   transicionarEstadoPrestamo,
 } from "@/lib/cobranza/estado-prestamo-service";
+import { parseReferenciasPrestamo } from "@/lib/cobranza/parse-referencias-prestamo";
 import { z } from "zod";
 
 
@@ -84,32 +88,82 @@ builder.mutationField('asignarGestorMasivo', (t) =>
         throw new GraphQLValidationError('Debes estar autenticado.');
       }
       const idusuario = ctx.usuario.idusuario;
-      const asignados: number[] = [];
-      for (const idprestamo of args.idprestamos) {
-        const prestamo = await ctx.prisma.tbl_prestamo.findUnique({
-          where: { idprestamo },
+      const idprestamosValidos: number[] = [];
+
+      for (let i = 0; i < args.idprestamos.length; i += 100) {
+        const batch = args.idprestamos.slice(i, i + 100);
+        const prestamos = await ctx.prisma.tbl_prestamo.findMany({
+          where: {
+            idprestamo: { in: batch },
+            deletedAt: null,
+          },
+          select: { idprestamo: true, idmandante: true },
         });
-        if (!prestamo || prestamo.deletedAt) {
-          continue;
+        for (const prestamo of prestamos) {
+          await requerirAccesoMandante(idusuario, prestamo.idmandante);
+          idprestamosValidos.push(prestamo.idprestamo);
         }
-        await requerirAccesoMandante(idusuario, prestamo.idmandante);
-        await asignarGestorConHistorial(
-          idprestamo,
+      }
+
+      return asignarPrestamosAGestorEnLotes(
+        idusuario,
+        idprestamosValidos,
+        args.idgestor,
+        args.motivo,
+      );
+    },
+  }),
+);
+
+const AsignacionPorReferenciasResult = builder
+  .objectRef<{
+    asignados: number;
+    encontrados: number;
+    omitidosYaAsignados: number;
+    noEncontrados: string[];
+  }>('AsignacionPorReferenciasResult')
+  .implement({
+    fields: (t) => ({
+      asignados: t.exposeInt('asignados'),
+      encontrados: t.exposeInt('encontrados'),
+      omitidosYaAsignados: t.exposeInt('omitidosYaAsignados'),
+      noEncontrados: t.exposeStringList('noEncontrados'),
+    }),
+  });
+
+builder.mutationField('asignarGestorPorReferencias', (t) =>
+  t.field({
+    type: AsignacionPorReferenciasResult,
+    args: {
+      idmandante: t.arg.int({ required: true }),
+      referenciasTexto: t.arg.string({ required: true }),
+      idgestor: t.arg.int({ required: true }),
+      motivo: t.arg.string({ required: false }),
+    },
+    resolve: async (_parent, args, ctx: GraphQLContext) => {
+      await requerirPermiso(ctx.usuario?.idusuario, PERMISO.CARTERA_WRITE);
+      if (!ctx.usuario) {
+        throw new GraphQLValidationError('Debes estar autenticado.');
+      }
+      const referencias = parseReferenciasPrestamo(args.referenciasTexto);
+      if (referencias.length === 0) {
+        throw new GraphQLValidationError(
+          'Pegue al menos un No. préstamo o código único.',
+        );
+      }
+      try {
+        return await asignarGestorPorReferencias(
+          ctx.usuario.idusuario,
+          args.idmandante,
+          referencias,
           args.idgestor,
-          idusuario,
           args.motivo,
-          { omitirNotificacion: true },
         );
-        asignados.push(idprestamo);
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : 'Error al asignar préstamos.';
+        throw new GraphQLValidationError(message);
       }
-      if (asignados.length > 0) {
-        await emitirNotificacionAsignacion(
-          args.idgestor,
-          idusuario,
-          asignados,
-        );
-      }
-      return asignados.length;
     },
   }),
 );

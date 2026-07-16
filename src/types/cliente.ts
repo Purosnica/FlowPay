@@ -126,12 +126,56 @@ export interface UpdateClienteInput extends Partial<CreateClienteInput> {
   idcliente: number;
 }
 
-
-
-
-
-
-
-
-
+/** Respuesta GraphQL de `clienteVista360` (fechas serializadas como string). */
+export interface ClienteVista360 {
+  cliente: {
+    idcliente: number;
+    nombreCompleto: string;
+    numerodocumento: string;
+    celular: string | null;
+    telefono: string | null;
+    email: string | null;
+    direccion: string | null;
+  };
+  totales: {
+    saldoTotal: number;
+    prestamosActivos: number;
+    gestionesTotal: number;
+    pagosMes: number;
+  };
+  prestamos: Array<{
+    idprestamo: number;
+    noPrestamo: string;
+    estado: string;
+    saldoTotal: number;
+    diasMora: number;
+    mandante: string;
+  }>;
+  gestionesRecientes: Array<{
+    idgestion: number;
+    fechaGestion: string;
+    tipo: string;
+    resultado: string | null;
+    gestor: string | null;
+  }>;
+  pagosRecientes: Array<{
+    idpago: number;
+    fechaPago: string;
+    monto: number;
+    medio: string | null;
+  }>;
+  reclamos: Array<{
+    idreclamo: number;
+    estado: string;
+    descripcion: string;
+    fechaLimite: string;
+  }>;
+  contactos: Array<{
+    idcontacto: number;
+    tipo: string;
+    valor: string;
+    autorizado: boolean;
+    noContactar: boolean;
+  }>;
+}
 

@@ -118,6 +118,7 @@ export const PrestamoFiltersSchema = z.object({
   idgestorAsignado: z.number().int().positive().optional(),
   estado: z.string().optional(),
   search: z.string().optional(),
+  sinAsignar: z.boolean().optional(),
 });
 
 export const CreatePrestamoInput = builder.inputRef("CreatePrestamoInput").implement({
@@ -161,6 +162,7 @@ export const PrestamoFiltersInput = builder.inputRef("PrestamoFiltersInput").imp
     idgestorAsignado: t.int({ required: false }),
     estado: t.string({ required: false }),
     search: t.string({ required: false }),
+    sinAsignar: t.boolean({ required: false }),
   }),
 });
 

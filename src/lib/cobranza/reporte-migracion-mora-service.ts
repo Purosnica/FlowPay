@@ -2,21 +2,26 @@ import { prisma } from '@/lib/prisma';
 import { requerirAccesoMandante } from './mandante-scope';
 import { decimalToNumber, roundMoney } from './decimal-utils';
 import { parsePeriodo } from './periodo-utils';
-import { TRAMOS_MORA, diasMoraEnTramo } from './tramos-mora';
+import {
+  cargarTramosRecuperacionMandante,
+  comisionTramosADefs,
+} from './comision-cobro-service';
+import {
+  resolverTramoMoraDef,
+  type TramoMoraDef,
+} from './tramos-mora';
 import type {
   ReporteMigracionMora,
   ReporteMigracionMoraItem,
 } from '@/types/cobranza';
 
-function tramoLabel(diasMora: number): string {
-  const def = TRAMOS_MORA.find((t) =>
-    diasMoraEnTramo(diasMora, t.tramoMoraMin, t.tramoMoraMax),
-  );
-  return def?.tramo ?? 'Sin tramo';
+function tramoLabel(defs: TramoMoraDef[], diasMora: number): string {
+  return resolverTramoMoraDef(defs, diasMora)?.tramo ?? 'Sin tramo';
 }
 
 /**
- * Migración de préstamos entre tramos de mora (corte inicio vs fin periodo).
+ * Migración de préstamos entre tramos de mora del Mandante
+ * (corte inicio vs fin periodo).
  */
 export async function obtenerReporteMigracionMora(
   idmandante: number,
@@ -37,23 +42,27 @@ export async function obtenerReporteMigracionMora(
   const fechaDestino = new Date(fin);
   fechaDestino.setDate(fechaDestino.getDate() - 1);
 
-  const prestamos = await prisma.tbl_prestamo.findMany({
-    where: {
-      idmandante,
-      deletedAt: null,
-      estado: { notIn: ['Cancelado', 'Finalizado'] },
-    },
-    select: {
-      idprestamo: true,
-      diasMora: true,
-      saldoTotal: true,
-      cortes: {
-        select: { fechaCorte: true, diasMora: true },
-        orderBy: { fechaCorte: 'desc' },
+  const [prestamos, tramosRecuperacion] = await Promise.all([
+    prisma.tbl_prestamo.findMany({
+      where: {
+        idmandante,
+        deletedAt: null,
+        estado: { notIn: ['Cancelado', 'Finalizado'] },
       },
-    },
-  });
+      select: {
+        idprestamo: true,
+        diasMora: true,
+        saldoTotal: true,
+        cortes: {
+          select: { fechaCorte: true, diasMora: true },
+          orderBy: { fechaCorte: 'desc' },
+        },
+      },
+    }),
+    cargarTramosRecuperacionMandante(idmandante),
+  ]);
 
+  const defs = comisionTramosADefs(tramosRecuperacion);
   const conteo = new Map<string, { cantidad: number; saldo: number }>();
   let totalPrestamos = 0;
 
@@ -65,12 +74,8 @@ export async function obtenerReporteMigracionMora(
 
     const diasOrigen = corteOrigen?.diasMora ?? p.diasMora;
     const diasDestino = corteDestino?.diasMora ?? p.diasMora;
-    const tramoOrigen = tramoLabel(diasOrigen);
-    const tramoDestino = tramoLabel(diasDestino);
-
-    if (!corteOrigen && !corteDestino && diasOrigen === diasDestino) {
-      // sin historial útil: aún se cuenta en la diagonal
-    }
+    const tramoOrigen = tramoLabel(defs, diasOrigen);
+    const tramoDestino = tramoLabel(defs, diasDestino);
 
     totalPrestamos += 1;
     const key = `${tramoOrigen}|${tramoDestino}`;

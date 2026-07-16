@@ -4,11 +4,11 @@ import { useId, useState } from 'react';
 import type { BandejaFilters } from '@/types/cobranza';
 import { MandanteSelect } from '@/components/cobranza/mandante-select';
 import {
-  TRAMOS_MORA_ACTIVA,
   decodeTramoMoraKey,
   encodeTramoMoraKey,
 } from '@/lib/cobranza/tramos-mora';
 import { useBandejaPresets } from '@/hooks/use-bandeja-presets';
+import { useTramosMoraMandante } from '@/hooks/use-tramos-mora-mandante';
 import { presetCoincideConFiltros } from '@/lib/cobranza/bandeja-presets';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -42,6 +42,10 @@ export function BandejaFiltersPanel({
   const [nombreNuevoPreset, setNombreNuevoPreset] = useState('');
   const [mostrarGuardar, setMostrarGuardar] = useState(false);
 
+  const { tramos, isLoading: tramosLoading } = useTramosMoraMandante(
+    filters.idmandante,
+  );
+
   const tramoKey =
     filters.tramoMoraMin !== undefined
       ? encodeTramoMoraKey(
@@ -59,7 +63,9 @@ export function BandejaFiltersPanel({
         <div className="flex flex-wrap gap-2">
           {todos.map((preset) => {
             const activo = presetCoincideConFiltros(preset, filters);
-            const esPersonalizado = personalizados.some((p) => p.id === preset.id);
+            const esPersonalizado = personalizados.some(
+              (p) => p.id === preset.id,
+            );
             return (
               <div key={preset.id} className="flex items-center gap-1">
                 <button
@@ -127,6 +133,8 @@ export function BandejaFiltersPanel({
             onChange({
               ...filters,
               idmandante: value === '' ? undefined : value,
+              tramoMoraMin: undefined,
+              tramoMoraMax: undefined,
             })
           }
           allowAll
@@ -143,11 +151,13 @@ export function BandejaFiltersPanel({
           <select
             id={tramoId}
             value={tramoKey}
+            disabled={!filters.idmandante || tramosLoading}
             onChange={(e) => {
               if (!e.target.value) {
                 onChange({
-                  idmandante: filters.idmandante,
-                  ordenarPor: filters.ordenarPor,
+                  ...filters,
+                  tramoMoraMin: undefined,
+                  tramoMoraMax: undefined,
                 });
                 return;
               }
@@ -163,8 +173,16 @@ export function BandejaFiltersPanel({
             }}
             className={selectClassName}
           >
-            <option value="">Todos los tramos</option>
-            {TRAMOS_MORA_ACTIVA.map((t) => (
+            <option value="">
+              {!filters.idmandante
+                ? 'Seleccione mandante'
+                : tramosLoading
+                  ? 'Cargando tramos...'
+                  : tramos.length === 0
+                    ? 'Sin tramos configurados'
+                    : 'Todos los tramos'}
+            </option>
+            {tramos.map((t) => (
               <option
                 key={encodeTramoMoraKey(t.tramoMoraMin, t.tramoMoraMax)}
                 value={encodeTramoMoraKey(t.tramoMoraMin, t.tramoMoraMax)}
@@ -196,7 +214,9 @@ export function BandejaFiltersPanel({
             }
             className={selectClassName}
           >
-            <option value="prioridad">Prioridad inteligente (recomendado)</option>
+            <option value="prioridad">
+              Prioridad inteligente (recomendado)
+            </option>
             <option value="saldo_desc">Saldo: mayor a menor</option>
             <option value="saldo_asc">Saldo: menor a mayor</option>
           </select>

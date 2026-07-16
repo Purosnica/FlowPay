@@ -1,5 +1,10 @@
 /**
  * Utilidades para periodos de liquidación (formato YYYY-MM).
+ *
+ * Los rangos usan UTC a propósito: Prisma/MySQL tratan `DateTime` sin TZ
+ * como UTC. Si el inicio del mes se arma en hora local (p. ej. Managua
+ * UTC-6), un pago del día 1 a `00:00:00` queda fuera del periodo y en el
+ * mes anterior (desfase típico de C$ en liquidaciones).
  */
 
 export interface RangoPeriodo {
@@ -18,8 +23,8 @@ export function parsePeriodo(periodo: string): RangoPeriodo {
   if (month < 1 || month > 12) {
     throw new Error('Mes inválido en el periodo.');
   }
-  const inicio = new Date(year, month - 1, 1, 0, 0, 0, 0);
-  const fin = new Date(year, month, 1, 0, 0, 0, 0);
+  const inicio = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0));
+  const fin = new Date(Date.UTC(year, month, 1, 0, 0, 0, 0));
   return { periodo: `${year}-${String(month).padStart(2, '0')}`, inicio, fin };
 }
 

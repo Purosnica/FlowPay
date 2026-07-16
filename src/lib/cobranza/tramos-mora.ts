@@ -1,5 +1,7 @@
 /**
- * Tramos estándar de días de mora para reportes y filtros de cartera.
+ * Utilidades de tramos de mora.
+ * Las bandas vienen de la parametrización del Mandante
+ * (`tbl_comision_cobro`), no de constantes fijas.
  */
 
 export interface TramoMoraDef {
@@ -7,20 +9,6 @@ export interface TramoMoraDef {
   tramoMoraMin: number;
   tramoMoraMax: number | null;
 }
-
-export const TRAMOS_MORA: TramoMoraDef[] = [
-  { tramo: 'Al día (0)', tramoMoraMin: 0, tramoMoraMax: 0 },
-  { tramo: '1-30 días', tramoMoraMin: 1, tramoMoraMax: 30 },
-  { tramo: '31-60 días', tramoMoraMin: 31, tramoMoraMax: 60 },
-  { tramo: '61-90 días', tramoMoraMin: 61, tramoMoraMax: 90 },
-  { tramo: '91-120 días', tramoMoraMin: 91, tramoMoraMax: 120 },
-  { tramo: '121+ días', tramoMoraMin: 121, tramoMoraMax: null },
-];
-
-/** Tramos con mora activa (excluye al día). */
-export const TRAMOS_MORA_ACTIVA = TRAMOS_MORA.filter(
-  (t) => t.tramoMoraMin > 0,
-);
 
 export function encodeTramoMoraKey(
   tramoMoraMin: number,
@@ -56,4 +44,39 @@ export function diasMoraEnTramo(
     return diasMora >= tramoMoraMin;
   }
   return diasMora >= tramoMoraMin && diasMora <= tramoMoraMax;
+}
+
+/** Etiqueta legible para un tramo de mora parametrizado. */
+export function formatTramoMoraLabel(
+  tramoMoraMin: number,
+  tramoMoraMax: number | null,
+): string {
+  if (tramoMoraMin === 0 && tramoMoraMax === 0) {
+    return 'Al día (0)';
+  }
+  if (tramoMoraMax === null) {
+    return `${tramoMoraMin}+ días`;
+  }
+  return `${tramoMoraMin}-${tramoMoraMax} días`;
+}
+
+export function resolverTramoMoraDef(
+  defs: TramoMoraDef[],
+  diasMora: number,
+): TramoMoraDef | undefined {
+  return defs.find((t) =>
+    diasMoraEnTramo(diasMora, t.tramoMoraMin, t.tramoMoraMax),
+  );
+}
+
+/** Tramo con mayor mora mínima (el más severo / último). */
+export function tramoMoraMasSevero(
+  defs: TramoMoraDef[],
+): TramoMoraDef | undefined {
+  if (defs.length === 0) {
+    return undefined;
+  }
+  return defs.reduce((a, b) =>
+    a.tramoMoraMin >= b.tramoMoraMin ? a : b,
+  );
 }

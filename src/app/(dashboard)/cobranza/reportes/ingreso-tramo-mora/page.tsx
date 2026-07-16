@@ -107,7 +107,7 @@ export default function Page() {
     <div className="space-y-6">
       <PageHeader
         title="Ingreso por tramo de mora"
-        description="Rentabilidad y share de ingreso por tramo de mora."
+        description="Rentabilidad y share de ingreso según tramos de % recuperación del mandante."
       />
 
       <ReporteFiltrosBar
@@ -153,10 +153,10 @@ export default function Page() {
               </div>
               <ReporteTableSection
                 title="Ingreso por tramo"
-                description="Pagos, ingreso, margen y share por tramo de mora"
+                description="Pagos, ingreso, margen y share según tramos de % recuperación del mandante"
                 columns={columns}
                 data={reporte.porTramo}
-                emptyMessage="Sin pagos en el periodo."
+                emptyMessage="Sin tramos de recuperación configurados para el mandante."
                 itemLabel="tramos"
                 initialPageSize={20}
                 resetKey={`${mandanteId}-${periodo}`}
