@@ -825,6 +825,20 @@ export interface ReporteGananciasTramoItem {
   gananciaNeta: number;
 }
 
+/** Recuperado e ingreso por gestor cruzado con tramo de mora. */
+export interface ReporteGananciasGestorTramoItem {
+  idgestor: number | null;
+  nombre: string;
+  tramo: string;
+  tramoMoraMin: number;
+  tramoMoraMax: number | null;
+  cantidadPagos: number;
+  totalRecuperado: number;
+  totalIngresoEmpresa: number;
+  totalComision: number;
+  gananciaNeta: number;
+}
+
 export interface ReporteGanancias {
   idmandante: number;
   mandanteCodigo: string;
@@ -838,6 +852,7 @@ export interface ReporteGanancias {
   margenPct: number;
   porGestor: ReporteGananciasGestorItem[];
   porTramoMora: ReporteGananciasTramoItem[];
+  porGestorTramo: ReporteGananciasGestorTramoItem[];
 }
 
 /** Comisiones a cobradores desde liquidaciones. */

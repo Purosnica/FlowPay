@@ -24,6 +24,7 @@ import {
   formatearMoneda,
   type ReporteGanancias,
   type ReporteGananciasGestorItem,
+  type ReporteGananciasGestorTramoItem,
   type ReporteGananciasTramoItem,
 } from '@/types/cobranza';
 
@@ -155,6 +156,46 @@ export default function ReporteGananciasPage() {
     [],
   );
 
+  const gestorTramoColumns = useMemo<
+    ColumnDef<ReporteGananciasGestorTramoItem>[]
+  >(
+    () => [
+      { accessorKey: 'nombre', header: 'Gestor' },
+      { accessorKey: 'tramo', header: 'Tramo mora' },
+      {
+        accessorKey: 'cantidadPagos',
+        header: 'Pagos',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellNumero(row.original.cantidadPagos),
+      },
+      {
+        accessorKey: 'totalRecuperado',
+        header: 'Recuperado',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellMoneda(row.original.totalRecuperado),
+      },
+      {
+        accessorKey: 'totalIngresoEmpresa',
+        header: 'Ingreso',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellMoneda(row.original.totalIngresoEmpresa),
+      },
+      {
+        accessorKey: 'totalComision',
+        header: 'Comisión',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellMoneda(row.original.totalComision),
+      },
+      {
+        accessorKey: 'gananciaNeta',
+        header: 'Ganancia neta',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellMoneda(row.original.gananciaNeta),
+      },
+    ],
+    [],
+  );
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -221,6 +262,16 @@ export default function ReporteGananciasPage() {
                 emptyMessage="Sin tramos de recuperación configurados para el mandante."
                 itemLabel="tramos"
                 initialPageSize={10}
+                resetKey={`${mandanteId}-${periodo}`}
+              />
+              <ReporteTableSection
+                title="Tramo recuperado por gestor"
+                description="Recuperado e ingreso por cobrador según el tramo de mora de cada pago"
+                columns={gestorTramoColumns}
+                data={reporte.porGestorTramo}
+                emptyMessage="Sin pagos aplicados en el periodo."
+                itemLabel="filas"
+                initialPageSize={20}
                 resetKey={`${mandanteId}-${periodo}`}
               />
             </div>

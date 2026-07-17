@@ -84,8 +84,13 @@ async function cargarPagosPeriodo(
           gestor: { select: { nombre: true, porcentajeComision: true } },
         },
       },
-      gestor: {
-        select: { nombre: true, porcentajeComision: true },
+      // Misma atribución que reporte de cobranza: gestión → asignado al préstamo.
+      // No usar pago.idgestor (quien registró/importó), que distorsiona por gestor.
+      gestion: {
+        select: {
+          idgestor: true,
+          gestor: { select: { nombre: true, porcentajeComision: true } },
+        },
       },
     },
     orderBy: { fechaPago: 'asc' },
@@ -121,10 +126,9 @@ async function cargarPagosPeriodo(
   }
 
   return pagos.map((p) => {
-    const gestorRegistro = p.gestor;
-    const gestorPrestamo = p.prestamo.gestor;
-    const idgestor = p.idgestor ?? p.prestamo.idgestorAsignado;
-    const gestor = gestorRegistro ?? gestorPrestamo;
+    const idgestor =
+      p.gestion?.idgestor ?? p.prestamo.idgestorAsignado ?? null;
+    const gestor = p.gestion?.gestor ?? p.prestamo.gestor ?? null;
     const porcentajeUsuario = gestor
       ? decimalToNumber(gestor.porcentajeComision)
       : 0;

@@ -76,6 +76,28 @@ export function exportReporteGananciasXlsx(reporte: ReporteGanancias): void {
           t.gananciaNeta,
         ]),
       },
+      {
+        name: 'Por gestor y tramo',
+        title: 'Tramo recuperado por gestor',
+        columns: [
+          { header: 'Gestor', width: 28 },
+          { header: 'Tramo', width: 18 },
+          { header: 'Pagos', width: 10, numFmt: XLSX_FMT.integer },
+          { header: 'Recuperado', width: 14, numFmt: XLSX_FMT.money },
+          { header: 'Ingreso', width: 14, numFmt: XLSX_FMT.money },
+          { header: 'Comisión', width: 14, numFmt: XLSX_FMT.money },
+          { header: 'Ganancia neta', width: 14, numFmt: XLSX_FMT.money },
+        ],
+        rows: reporte.porGestorTramo.map((r) => [
+          r.nombre,
+          r.tramo,
+          r.cantidadPagos,
+          r.totalRecuperado,
+          r.totalIngresoEmpresa,
+          r.totalComision,
+          r.gananciaNeta,
+        ]),
+      },
     ],
     `reporte-ganancias-${reporte.periodo}`,
   );

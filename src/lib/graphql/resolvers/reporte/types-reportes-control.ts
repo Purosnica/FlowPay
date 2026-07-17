@@ -41,6 +41,25 @@ const ReporteGananciasTramoItemType = builder
     }),
   });
 
+const ReporteGananciasGestorTramoItemType = builder
+  .objectRef<ReporteGanancias['porGestorTramo'][number]>(
+    'ReporteGananciasGestorTramoItem',
+  )
+  .implement({
+    fields: (t) => ({
+      idgestor: t.exposeInt('idgestor', { nullable: true }),
+      nombre: t.exposeString('nombre'),
+      tramo: t.exposeString('tramo'),
+      tramoMoraMin: t.exposeInt('tramoMoraMin'),
+      tramoMoraMax: t.exposeInt('tramoMoraMax', { nullable: true }),
+      cantidadPagos: t.exposeInt('cantidadPagos'),
+      totalRecuperado: t.exposeFloat('totalRecuperado'),
+      totalIngresoEmpresa: t.exposeFloat('totalIngresoEmpresa'),
+      totalComision: t.exposeFloat('totalComision'),
+      gananciaNeta: t.exposeFloat('gananciaNeta'),
+    }),
+  });
+
 export const ReporteGananciasType = builder
   .objectRef<ReporteGanancias>('ReporteGanancias')
   .implement({
@@ -62,6 +81,10 @@ export const ReporteGananciasType = builder
       porTramoMora: t.field({
         type: [ReporteGananciasTramoItemType],
         resolve: (p) => p.porTramoMora,
+      }),
+      porGestorTramo: t.field({
+        type: [ReporteGananciasGestorTramoItemType],
+        resolve: (p) => p.porGestorTramo,
       }),
     }),
   });

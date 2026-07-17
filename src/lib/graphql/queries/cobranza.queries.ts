@@ -2314,6 +2314,18 @@ export const GET_REPORTE_GANANCIAS = `
         totalComision
         gananciaNeta
       }
+      porGestorTramo {
+        idgestor
+        nombre
+        tramo
+        tramoMoraMin
+        tramoMoraMax
+        cantidadPagos
+        totalRecuperado
+        totalIngresoEmpresa
+        totalComision
+        gananciaNeta
+      }
     }
   }
 `;

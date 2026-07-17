@@ -10,6 +10,7 @@ import { diasMoraEnTramo } from './tramos-mora';
 import type {
   ReporteGanancias,
   ReporteGananciasGestorItem,
+  ReporteGananciasGestorTramoItem,
   ReporteGananciasTramoItem,
 } from '@/types/cobranza';
 
@@ -122,6 +123,76 @@ export async function obtenerReporteGanancias(
     };
   });
 
+  const porGestorTramoMap = new Map<
+    string,
+    {
+      idgestor: number | null;
+      nombre: string;
+      tramo: string;
+      tramoMoraMin: number;
+      tramoMoraMax: number | null;
+      cantidadPagos: number;
+      totalRecuperado: number;
+      totalIngresoEmpresa: number;
+      totalComision: number;
+    }
+  >();
+
+  for (const d of sim.detalle) {
+    const def = defs.find((t) =>
+      diasMoraEnTramo(d.diasMora, t.tramoMoraMin, t.tramoMoraMax),
+    );
+    if (!def) {
+      continue;
+    }
+    const gestorKey = d.idgestor != null ? String(d.idgestor) : 'null';
+    const key = `${gestorKey}|${def.tramoMoraMin}|${def.tramoMoraMax ?? ''}`;
+    const prev = porGestorTramoMap.get(key) ?? {
+      idgestor: d.idgestor,
+      nombre: d.nombreGestor ?? 'Sin gestor',
+      tramo: def.tramo,
+      tramoMoraMin: def.tramoMoraMin,
+      tramoMoraMax: def.tramoMoraMax,
+      cantidadPagos: 0,
+      totalRecuperado: 0,
+      totalIngresoEmpresa: 0,
+      totalComision: 0,
+    };
+    prev.cantidadPagos += 1;
+    prev.totalRecuperado += d.monto;
+    prev.totalIngresoEmpresa += d.ingresoEmpresa;
+    prev.totalComision += d.montoComision;
+    porGestorTramoMap.set(key, prev);
+  }
+
+  const porGestorTramo: ReporteGananciasGestorTramoItem[] = [
+    ...porGestorTramoMap.values(),
+  ]
+    .map((row) => {
+      const totalRecuperado = roundMoney(row.totalRecuperado);
+      const totalIngresoEmpresa = roundMoney(row.totalIngresoEmpresa);
+      const totalComision = roundMoney(row.totalComision);
+      return {
+        idgestor: row.idgestor,
+        nombre: row.nombre,
+        tramo: row.tramo,
+        tramoMoraMin: row.tramoMoraMin,
+        tramoMoraMax: row.tramoMoraMax,
+        cantidadPagos: row.cantidadPagos,
+        totalRecuperado,
+        totalIngresoEmpresa,
+        totalComision,
+        gananciaNeta: roundMoney(totalIngresoEmpresa - totalComision),
+      };
+    })
+    .sort((a, b) => {
+      const byNombre = a.nombre.localeCompare(b.nombre, 'es');
+      if (byNombre !== 0) {
+        return byNombre;
+      }
+      return a.tramoMoraMin - b.tramoMoraMin;
+    });
+
   return {
     idmandante,
     mandanteCodigo: mandante.codigo,
@@ -135,5 +206,6 @@ export async function obtenerReporteGanancias(
     margenPct: margenPct(gananciaNeta, sim.totalIngresoEmpresa),
     porGestor,
     porTramoMora,
+    porGestorTramo,
   };
 }
