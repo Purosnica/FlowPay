@@ -5,6 +5,7 @@ const isDevelopment = nodeEnv === 'development';
 const isProduction = nodeEnv === 'production';
 
 const envSchema = z.object({
+  
   DATABASE_URL: isDevelopment
     ? z.string().url().optional()
     : z.string().url('DATABASE_URL debe ser una URL válida'),
