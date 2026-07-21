@@ -12,7 +12,9 @@ const TabsContext = createContext<TabsContextValue | undefined>(undefined);
 
 interface TabsProps {
   children: ReactNode;
-  defaultValue: string;
+  defaultValue?: string;
+  /** Modo controlado: si se pasa, el padre decide el tab activo. */
+  value?: string;
   className?: string;
   onValueChange?: (value: string) => void;
 }
@@ -20,19 +22,25 @@ interface TabsProps {
 export function Tabs({
   children,
   defaultValue,
+  value,
   className,
   onValueChange,
 }: TabsProps) {
-  const [activeTab, setActiveTab] = useState(defaultValue);
+  const [uncontrolled, setUncontrolled] = useState(
+    value ?? defaultValue ?? '',
+  );
+  const activeTab = value ?? uncontrolled;
 
   const handleTabChange = (tab: string) => {
-    setActiveTab(tab);
+    if (value === undefined) {
+      setUncontrolled(tab);
+    }
     onValueChange?.(tab);
   };
 
   return (
     <TabsContext.Provider value={{ activeTab, setActiveTab: handleTabChange }}>
-      <div className={cn("w-full", className)}>{children}</div>
+      <div className={cn('w-full', className)}>{children}</div>
     </TabsContext.Provider>
   );
 }

@@ -5,9 +5,19 @@ import { ImportarCarteraForm } from '@/components/cobranza/importar-cartera-form
 import { ImportacionJobsPanel } from '@/components/cobranza/importacion-jobs-panel';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
+import { PermissionGate } from '@/components/auth/permission-gate';
+import { PERMISO } from '@/lib/permissions/permiso-codes';
 
 export default function ImportarCarteraPage() {
   return (
+    <PermissionGate
+      permiso={PERMISO.CARTERA_WRITE}
+      fallback={
+        <p className="text-sm text-gray-500">
+          No tienes permiso para importar cartera.
+        </p>
+      }
+    >
     <div className="space-y-6">
       <PageHeader
         title="Importar Cartera"
@@ -30,5 +40,6 @@ export default function ImportarCarteraPage() {
         <ImportarCarteraForm />
       </div>
     </div>
+    </PermissionGate>
   );
 }

@@ -9,6 +9,8 @@ import { PaginatedDataTable } from '@/components/cobranza/paginated-data-table';
 import { MandanteSelect } from '@/components/cobranza/mandante-select';
 import { PageHeader } from '@/components/ui/page-header';
 import { AsyncPanel } from '@/components/ui/async-panel';
+import { PermissionGate } from '@/components/auth/permission-gate';
+import { PERMISO } from '@/lib/permissions/permiso-codes';
 import { usePagination } from '@/hooks/use-pagination';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { useGraphQLMutation } from '@/hooks/use-graphql-mutation';
@@ -178,6 +180,7 @@ export default function LiquidacionesPage() {
               >
                 Detalle
               </Button>
+              <PermissionGate permiso={PERMISO.LIQUIDACION_WRITE}>
               {liq.estado === 'BORRADOR' && (
                 <Button
                   size="sm"
@@ -236,6 +239,7 @@ export default function LiquidacionesPage() {
                   Anular
                 </Button>
               )}
+              </PermissionGate>
             </div>
           );
         },
@@ -297,19 +301,21 @@ export default function LiquidacionesPage() {
             />
           </div>
           <div className="flex items-end gap-2">
-            <Button
-              variant="outline"
-              disabled={!mandanteId || simularMutation.isPending}
-              onClick={handleSimular}
-            >
-              Simular
-            </Button>
-            <Button
-              disabled={!mandanteId || generarMutation.isPending}
-              onClick={handleGenerar}
-            >
-              Generar borrador
-            </Button>
+            <PermissionGate permiso={PERMISO.LIQUIDACION_WRITE}>
+              <Button
+                variant="outline"
+                disabled={!mandanteId || simularMutation.isPending}
+                onClick={handleSimular}
+              >
+                Simular
+              </Button>
+              <Button
+                disabled={!mandanteId || generarMutation.isPending}
+                onClick={handleGenerar}
+              >
+                Generar borrador
+              </Button>
+            </PermissionGate>
           </div>
         </div>
 

@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { PermissionGate } from '@/components/auth/permission-gate';
+import { PERMISO } from '@/lib/permissions/permiso-codes';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { GET_PLANTILLAS_MENSAJE } from '@/lib/graphql/queries/cobranza.queries';
 import {
@@ -308,14 +310,16 @@ export function EnviarCobroPanel({
           </>
         )}
         {emailDeudor && mensajePreview && (
-          <Button
-            type="button"
-            size="sm"
-            disabled={enviandoEmail || !asuntoPreview.trim()}
-            onClick={() => void enviarPorEmail()}
-          >
-            {enviandoEmail ? 'Enviando...' : 'Enviar email'}
-          </Button>
+          <PermissionGate permiso={PERMISO.GESTION_WRITE}>
+            <Button
+              type="button"
+              size="sm"
+              disabled={enviandoEmail || !asuntoPreview.trim()}
+              onClick={() => void enviarPorEmail()}
+            >
+              {enviandoEmail ? 'Enviando...' : 'Enviar email'}
+            </Button>
+          </PermissionGate>
         )}
         {onUseAsNota && mensajePreview && (
           <Button

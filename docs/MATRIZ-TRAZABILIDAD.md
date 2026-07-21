@@ -48,7 +48,7 @@ Requisito → implementación → validación (Fases 8–13).
 | SCL-01 | Prisma singleton prod | `prisma.ts` | `audit:scalability` |
 | SCL-02 | Rate limit distribuido | `tbl_rate_limit`, `rate-limit-service.ts` | `audit:scalability`, `smoke:test` |
 | SCL-03 | Cron advisory lock | `mysql-advisory-lock.ts`, `cron-orchestrator.ts` | `audit:scalability` |
-| SCL-04 | Import async + cron 5min | `importar/async/route.ts`, `procesar-importaciones` | `audit:scalability`, UAT S1 |
+| SCL-04 | Import async + cron diario 07:00 | `importar/async/route.ts`, `procesar-importaciones` | `audit:scalability`, UAT S1 |
 | SCL-05 | Retención auditoría | `auditoria-retention-service.ts` | `audit:scalability` |
 | SCL-06 | Límites upload | `upload-limits.ts` | `audit:scalability` |
 
@@ -99,7 +99,7 @@ Requisito → implementación → validación (Fases 8–13).
 
 | ID | Requisito | Implementación | Validación |
 |----|-----------|----------------|------------|
-| RBAC-01 | 18 permisos canónicos | `permiso-codes.ts` | `test:uat`, `PERMISOS-RBAC.md` |
+| RBAC-01 | 46 permisos canónicos | `permiso-codes.ts` | `test:uat`, `PERMISOS-RBAC.md` |
 | RBAC-02 | Presets por rol | `seed-permisos.ts` | `test:uat` |
 | RBAC-03 | Rutas protegidas | `route-permissions.ts` | `test:uat` (12 rutas) |
 | RBAC-04 | Menú por permiso | `sidebar/data/index.ts` | `audit:frontend` |

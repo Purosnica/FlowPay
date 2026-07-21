@@ -6,6 +6,7 @@ import {
   type GraphQLRequestOptions,
 } from "@/lib/graphql/client";
 import { useAuth } from "@/contexts/auth-context";
+import { ErrorCode } from "@/lib/errors/types";
 
 export function useGraphQLQuery<T = unknown>(
   query: string,
@@ -27,14 +28,29 @@ export function useGraphQLQuery<T = unknown>(
     queryKey: [query, variables],
     queryFn: () => graphqlRequest<T>(query, variables, requestOptions),
     retry: (failureCount, error) => {
-      // No reintentar en errores 4xx (client errors)
       if (error instanceof GraphQLRequestError) {
-        if (error.statusCode && error.statusCode >= 400 && error.statusCode < 500) {
+        if (
+          error.statusCode &&
+          error.statusCode >= 400 &&
+          error.statusCode < 500
+        ) {
+          return false;
+        }
+        if (
+          error.structuredError?.code === ErrorCode.TIMEOUT_ERROR ||
+          error.statusCode === 408
+        ) {
           return false;
         }
       }
-      // Reintentar hasta 3 veces para otros errores
-      return failureCount < 3;
+      if (
+        error instanceof Error &&
+        (error.message.includes('timeout') ||
+          error.message.includes('ECONNABORTED'))
+      ) {
+        return false;
+      }
+      return failureCount < 2;
     },
     staleTime: 60 * 1000, // 1 minuto por defecto
     gcTime: 5 * 60 * 1000, // 5 minutos (antes cacheTime)

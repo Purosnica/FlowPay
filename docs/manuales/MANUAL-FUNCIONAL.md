@@ -247,7 +247,7 @@ Job maestro diario (~06:00):
 6. Importaciones pendientes  
 7. Retención de auditoría  
 
-Importaciones: worker cada ~5 min.
+Importaciones: worker diario 07:00 + procesamiento on-demand al subir.
 
 Detalle: [CATALOGO-PROCESOS.md](../catalogos/CATALOGO-PROCESOS.md)
 

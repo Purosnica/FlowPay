@@ -12,7 +12,9 @@ import { handleApiError } from '@/lib/api/error-handler';
 import { obtenerPermisosUsuario } from '@/lib/permissions/permission-service';
 import {
   generateToken,
+  remainingIdleSeconds,
   remainingSessionSeconds,
+  resolverLastActivityAt,
   resolverSessionStartedAt,
   verifyToken,
 } from '@/lib/auth/jwt';
@@ -22,6 +24,7 @@ import {
   csrfCookieOptions,
   generarTokenCsrf,
 } from '@/lib/security/csrf';
+import { SESSION_IDLE_SECONDS } from '@/lib/auth/session-ttl';
 
 function obtenerToken(req: NextRequest): string | null {
   const authHeader = req.headers.get('authorization');
@@ -82,6 +85,26 @@ export async function GET(req: NextRequest) {
       return expired;
     }
 
+    const lastActivityAt = resolverLastActivityAt(payloadActual);
+    if (remainingIdleSeconds(lastActivityAt) <= 0) {
+      const idle = NextResponse.json(
+        {
+          success: false,
+          error: 'Sesión inactiva. Por favor, inicia sesión.',
+        },
+        { status: 401 },
+      );
+      idle.cookies.set('auth-token', '', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 0,
+        path: '/',
+      });
+      return idle;
+    }
+
+    const ahora = Math.floor(Date.now() / 1000);
     const permisos = await obtenerPermisosUsuario(usuario.idusuario);
     const usuarioCompleto = await getUserById(usuario.idusuario);
 
@@ -93,7 +116,8 @@ export async function GET(req: NextRequest) {
         idrol: usuario.idrol,
         permisos,
         sessionStartedAt,
-        permisosAt: Math.floor(Date.now() / 1000),
+        lastActivityAt: ahora,
+        permisosAt: ahora,
       },
       remaining,
     );
@@ -105,6 +129,10 @@ export async function GET(req: NextRequest) {
         rolCodigo: usuarioCompleto?.rol?.codigo ?? '',
       },
       permisos,
+      session: {
+        remainingSeconds: remaining,
+        idleSeconds: SESSION_IDLE_SECONDS,
+      },
     });
 
     response.cookies.set('auth-token', tokenNuevo, {

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { PermissionGate } from '@/components/auth/permission-gate';
+import { PERMISO } from '@/lib/permissions/permiso-codes';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { SIMULAR_ACUERDO } from '@/lib/graphql/queries/cobranza.queries';
 import { type SimulacionAcuerdo, formatearMoneda } from '@/types/cobranza';
@@ -215,20 +217,22 @@ export function AcuerdoSimulator({
         </div>
       )}
 
-      <Button
-        onClick={() =>
-          onConfirm({
-            porcentajeDesc,
-            numeroCuotas,
-            fechaInicio: new Date(fechaInicio).toISOString(),
-            dispensarInteresMoratorio,
-            dispensarGestionCobranza,
-          })
-        }
-        disabled={isLoading || !sim}
-      >
-        {isLoading ? 'Creando acuerdo...' : 'Confirmar acuerdo'}
-      </Button>
+      <PermissionGate permiso={PERMISO.ACUERDO_WRITE}>
+        <Button
+          onClick={() =>
+            onConfirm({
+              porcentajeDesc,
+              numeroCuotas,
+              fechaInicio: new Date(fechaInicio).toISOString(),
+              dispensarInteresMoratorio,
+              dispensarGestionCobranza,
+            })
+          }
+          disabled={isLoading || !sim}
+        >
+          {isLoading ? 'Creando acuerdo...' : 'Confirmar acuerdo'}
+        </Button>
+      </PermissionGate>
     </div>
   );
 }

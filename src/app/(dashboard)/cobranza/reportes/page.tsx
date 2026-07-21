@@ -18,8 +18,8 @@ import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { usePermisos } from '@/hooks/use-permisos';
 import { GET_REPORTES_DASHBOARD } from '@/lib/graphql/queries/cobranza.queries';
 import {
+  CATALOGO_REPORTES_HUB,
   REPORTE_KEY,
-  REPORTE_PATH_KEY,
   usuarioPuedeVerReporte,
 } from '@/lib/permissions/reporte-permisos';
 import {
@@ -116,6 +116,7 @@ export default function ReportesPage() {
   const [idmandante, setIdmandante] = useState<number | ''>('');
   const [periodo, setPeriodo] = useState(periodoActual());
   const [usarPeriodo, setUsarPeriodo] = useState(true);
+  const [filtroCatalogo, setFiltroCatalogo] = useState('');
   const permisos = usePermisos();
   const puedeHubCobranza = usuarioPuedeVerReporte(
     permisos,
@@ -124,72 +125,31 @@ export default function ReportesPage() {
 
   const mandanteId = idmandante === '' ? 0 : idmandante;
 
-  const hubLinks = useMemo(() => {
-    const links: Array<{
-      href: string;
-      label: string;
-      key: (typeof REPORTE_KEY)[keyof typeof REPORTE_KEY];
-    }> = [
-      {
-        href: '/cobranza/reportes/informe-gerencial',
-        label: 'Informe gerencial',
-        key: REPORTE_KEY.informeGerencial,
-      },
-      {
-        href: '/cobranza/reportes/informe-gestiones',
-        label: 'Informe de gestiones',
-        key: REPORTE_KEY.informeGestiones,
-      },
-      {
-        href: '/cobranza/reportes/efectividad',
-        label: 'Efectividad',
-        key: REPORTE_KEY.efectividad,
-      },
-      {
-        href: '/cobranza/reportes/productividad-diaria',
-        label: 'Productividad',
-        key: REPORTE_KEY.productividadDiaria,
-      },
-      {
-        href: '/cobranza/reportes/promesas-pago',
-        label: 'Promesas',
-        key: REPORTE_KEY.promesasPago,
-      },
-      {
-        href: '/cobranza/reportes/cartera-sin-gestion',
-        label: 'Sin gestión',
-        key: REPORTE_KEY.carteraSinGestion,
-      },
-      {
-        href: '/cobranza/reportes/ganancias',
-        label: 'Ganancias',
-        key: REPORTE_KEY.ganancias,
-      },
-    ];
-    return links.filter((l) => usuarioPuedeVerReporte(permisos, l.key));
-  }, [permisos]);
-
-  const quickLinks = useMemo(() => {
-    return (
-      [
-        ['cumplimiento-metas', 'Metas'],
-        ['supervisor-equipo', 'Supervisor/equipo'],
-        ['cumplimiento-acuerdos', 'Acuerdos'],
-        ['cuotas-vencidas', 'Cuotas vencidas'],
-        ['recontactos', 'Recontactos'],
-        ['reclamos-sla', 'SLA reclamos'],
-        ['migracion-mora', 'Migración mora'],
-        ['concentracion-riesgo', 'Concentración'],
-        ['ingreso-tramo-mora', 'Ingreso por tramo'],
-        ['margen-mandantes', 'Margen mandantes'],
-        ['comisiones-cobradores', 'Comisiones'],
-        ['comisiones-vs-proyeccion', 'Comisiones vs proy.'],
-      ] as const
-    ).filter(([slug]) => {
-      const key = REPORTE_PATH_KEY[slug];
-      return key ? usuarioPuedeVerReporte(permisos, key) : false;
+  const catalogoFiltrado = useMemo(() => {
+    const q = filtroCatalogo.trim().toLowerCase();
+    return CATALOGO_REPORTES_HUB.filter((item) => {
+      if (!usuarioPuedeVerReporte(permisos, item.key)) {
+        return false;
+      }
+      if (!q) {
+        return true;
+      }
+      return (
+        item.label.toLowerCase().includes(q) ||
+        item.categoria.toLowerCase().includes(q)
+      );
     });
-  }, [permisos]);
+  }, [permisos, filtroCatalogo]);
+
+  const catalogoPorCategoria = useMemo(() => {
+    const map = new Map<string, typeof catalogoFiltrado>();
+    for (const item of catalogoFiltrado) {
+      const list = map.get(item.categoria) ?? [];
+      list.push(item);
+      map.set(item.categoria, list);
+    }
+    return Array.from(map.entries());
+  }, [catalogoFiltrado]);
 
   const { data, isLoading, error } = useGraphQLQuery<{
     reporteCobranza: ReporteCobranza;
@@ -269,53 +229,72 @@ export default function ReportesPage() {
     <div className="space-y-8">
       <PageHeader
         title="Reportes de cobranza"
-        description="Indicadores de cartera, aging, recuperación y desempeño por gestor."
+        description="Centro de reportes: busque por nombre o categoría. El menú lateral solo apunta aquí."
         actions={
-          <div className="flex flex-wrap gap-2">
-            {hubLinks.map((l) => (
-              <Link
-                key={l.href}
-                href={l.href}
-                className="inline-flex h-10 items-center justify-center rounded-lg border-2 border-primary px-4 text-base font-semibold text-primary transition-all hover:bg-primary hover:text-white dark:border-primary dark:text-primary dark:hover:bg-primary dark:hover:text-white"
+          puedeHubCobranza ? (
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                disabled={!reporte}
+                onClick={handleExportKpis}
               >
-                {l.label}
-              </Link>
-            ))}
-            {puedeHubCobranza ? (
-              <>
-                <Button
-                  variant="outline"
-                  disabled={!reporte}
-                  onClick={handleExportKpis}
-                >
-                  Exportar KPIs (Excel)
-                </Button>
-                <Button
-                  variant="outline"
-                  disabled={!aging}
-                  onClick={handleExportAging}
-                >
-                  Exportar aging (Excel)
-                </Button>
-              </>
-            ) : null}
-          </div>
+                Exportar KPIs (Excel)
+              </Button>
+              <Button
+                variant="outline"
+                disabled={!aging}
+                onClick={handleExportAging}
+              >
+                Exportar aging (Excel)
+              </Button>
+            </div>
+          ) : null
         }
       />
 
-      {quickLinks.length > 0 ? (
-        <div className="flex flex-wrap gap-2 text-sm">
-          {quickLinks.map(([slug, label]) => (
-            <Link
-              key={slug}
-              href={`/cobranza/reportes/${slug}`}
-              className="rounded-md border border-stroke px-3 py-1.5 text-dark transition hover:border-primary hover:text-primary dark:border-dark-3 dark:text-white"
-            >
-              {label}
-            </Link>
-          ))}
+      <div className="space-y-3 rounded-xl border border-stroke bg-white p-4 shadow-sm dark:border-dark-3 dark:bg-gray-dark">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div className="flex-1">
+            <label className="mb-1 block text-sm font-medium text-dark dark:text-white">
+              Buscar reporte
+            </label>
+            <input
+              type="search"
+              value={filtroCatalogo}
+              onChange={(e) => setFiltroCatalogo(e.target.value)}
+              placeholder="Ej. comisiones, mora, gerencial..."
+              className="w-full rounded border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2"
+            />
+          </div>
+          <p className="text-xs text-gray-500">
+            {catalogoFiltrado.length} disponibles con su permiso
+          </p>
         </div>
-      ) : null}
+        {catalogoPorCategoria.length === 0 ? (
+          <p className="text-sm text-gray-500">
+            No hay reportes que coincidan con el filtro o sus permisos.
+          </p>
+        ) : (
+          catalogoPorCategoria.map(([categoria, items]) => (
+            <div key={categoria} className="space-y-2">
+              <h3 className="text-sm font-semibold text-dark dark:text-white">
+                {categoria}
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {items.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className="rounded-md border border-stroke px-3 py-1.5 text-sm text-dark transition hover:border-primary hover:text-primary dark:border-dark-3 dark:text-white"
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
       <div className="rounded-xl border border-stroke bg-white p-4 shadow-sm dark:border-dark-3 dark:bg-gray-dark">
         <div className="grid gap-4 sm:grid-cols-3">
           <MandanteSelect

@@ -29,6 +29,11 @@ const envSchema = z.object({
   IMPORT_MAX_CONCURRENT: z.coerce.number().int().positive().default(1),
   AUDIT_RETENTION_DAYS: z.coerce.number().int().positive().default(90),
   CRON_RETENTION_DAYS: z.coerce.number().int().positive().default(90),
+  TRUST_PROXY: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((v) => v === 'true'),
+  SESSION_IDLE_SECONDS: z.coerce.number().int().positive().optional(),
 
   SMTP_HOST: z.string().min(1).optional(),
   SMTP_PORT: z.coerce.number().int().positive().default(587),
@@ -61,6 +66,8 @@ function getEnv() {
       IMPORT_MAX_CONCURRENT: process.env.IMPORT_MAX_CONCURRENT,
       AUDIT_RETENTION_DAYS: process.env.AUDIT_RETENTION_DAYS,
       CRON_RETENTION_DAYS: process.env.CRON_RETENTION_DAYS,
+      TRUST_PROXY: process.env.TRUST_PROXY,
+      SESSION_IDLE_SECONDS: process.env.SESSION_IDLE_SECONDS,
       SMTP_HOST: process.env.SMTP_HOST,
       SMTP_PORT: process.env.SMTP_PORT,
       SMTP_SECURE: process.env.SMTP_SECURE,

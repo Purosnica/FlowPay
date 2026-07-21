@@ -98,15 +98,19 @@ export function getRequestInfo(req: NextRequest): {
   };
 }
 
-function resolverIpCliente(req: NextRequest): string | null {
-  const realIp = req.headers.get('x-real-ip')?.trim();
-  if (realIp) {
-    return realIp;
-  }
-
+/**
+ * Resuelve IP solo cuando TRUST_PROXY=true (proxy de confianza reescribe headers).
+ * Sin eso, no se usan X-Forwarded-For ni X-Real-IP (spoofables por el cliente).
+ */
+export function resolverIpCliente(req: NextRequest): string | null {
   const trustProxy = process.env.TRUST_PROXY === 'true';
   if (!trustProxy) {
     return null;
+  }
+
+  const realIp = req.headers.get('x-real-ip')?.trim();
+  if (realIp) {
+    return realIp;
   }
 
   const xff = req.headers.get('x-forwarded-for');

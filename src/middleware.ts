@@ -20,10 +20,14 @@ import {
   validarCsrfHeader,
 } from '@/lib/security/csrf';
 import {
+  debeRefrescarActividad,
   permisosJwtEstanFrescos,
+  remainingIdleSeconds,
   remainingSessionSeconds,
+  resolverLastActivityAt,
   resolverSessionStartedAt,
 } from '@/lib/auth/session-ttl';
+import { reemitirTokenConActividad } from '@/lib/auth/session-activity-edge';
 
 // Rutas públicas que no requieren autenticación
 const publicRoutes = ['/login'];
@@ -34,6 +38,9 @@ const publicApiRoutes = [
   '/api/auth/logout',
   '/api/auth/me',
   '/api/auth/refresh-session',
+  '/api/auth/mfa/verify',
+  '/api/health',
+  '/api/ready',
 ];
 
 // Cron: autenticación propia vía CRON_SECRET en el handler
@@ -152,7 +159,8 @@ export async function middleware(request: NextRequest) {
   }
 
   const sessionStartedAt = resolverSessionStartedAt(payload);
-  if (remainingSessionSeconds(sessionStartedAt) <= 0) {
+  const remainingAbs = remainingSessionSeconds(sessionStartedAt);
+  if (remainingAbs <= 0) {
     if (pathname.startsWith('/api')) {
       return responderConSeguridad(
         request,
@@ -165,6 +173,39 @@ export async function middleware(request: NextRequest) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirect', pathname);
     return responderConSeguridad(request, NextResponse.redirect(loginUrl));
+  }
+
+  const lastActivityAt = resolverLastActivityAt(payload);
+  if (remainingIdleSeconds(lastActivityAt) <= 0) {
+    if (pathname.startsWith('/api')) {
+      return responderConSeguridad(
+        request,
+        NextResponse.json(
+          { success: false, error: 'Sesión inactiva. Inicia sesión de nuevo.' },
+          { status: 401 },
+        ),
+      );
+    }
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('redirect', pathname);
+    return responderConSeguridad(request, NextResponse.redirect(loginUrl));
+  }
+
+  const response = NextResponse.next();
+  if (debeRefrescarActividad(lastActivityAt)) {
+    const ahora = Math.floor(Date.now() / 1000);
+    const tokenNuevo = await reemitirTokenConActividad(
+      payload,
+      ahora,
+      remainingAbs,
+    );
+    response.cookies.set('auth-token', tokenNuevo, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: remainingAbs,
+      path: '/',
+    });
   }
 
   const regla = obtenerReglaPermisoRuta(pathname);
@@ -205,7 +246,7 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  return responderConSeguridad(request, NextResponse.next());
+  return responderConSeguridad(request, response);
 }
 
 export const config = {

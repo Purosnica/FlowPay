@@ -49,14 +49,9 @@ npm run db:migrate
 tsx prisma/seed-auth.ts
 ```
 
-Esto creará:
-- **Administrador:**
-  - Email: `admin@flowpay.com`
-  - Contraseña: `admin123`
-
-- **Cobrador:**
-  - Email: `cobrador@flowpay.com`
-  - Contraseña: `cobrador123`
+Esto creará usuarios locales (admin, cobrador, etc.). Las contraseñas
+**solo aparecen en la salida de la consola del seed** — no las documentes
+en producción ni las reutilices en staging.
 
 ### 5. Iniciar Servidor
 
@@ -67,9 +62,7 @@ npm run dev
 ### 6. Acceder al Sistema
 
 1. Abrir navegador en: `http://localhost:3000/login`
-2. Ingresar credenciales:
-   - Email: `admin@flowpay.com`
-   - Contraseña: `admin123`
+2. Ingresar las credenciales impresas por el seed (rotarlas si no es solo local)
 3. Serás redirigido al dashboard
 
 ## ✅ Verificación de Instalación
@@ -77,7 +70,7 @@ npm run dev
 ### Verificar que todo funciona:
 
 1. **Login funciona:**
-   - ✅ Puedes iniciar sesión con `admin@flowpay.com` / `admin123`
+   - ✅ Puedes iniciar sesión con un usuario del seed
    - ✅ Eres redirigido al dashboard
 
 2. **Rutas protegidas:**

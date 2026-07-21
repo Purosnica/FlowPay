@@ -19,6 +19,11 @@ import {
   validarCsrfHeader,
 } from '@/lib/security/csrf';
 import { logger } from '@/lib/utils/logger';
+import {
+  MFA_PENDING_COOKIE,
+  MFA_PENDING_TTL_SECONDS,
+  mfaPendingCookieOptions,
+} from '@/lib/auth/mfa-pending';
 
 /**
  * POST /api/auth/login
@@ -85,7 +90,35 @@ export async function POST(req: NextRequest) {
 
     const result = await authenticateUser(credentials);
 
-    if (!result.success || !result.token || !result.usuario) {
+    if (!result.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: result.error || 'Credenciales inválidas',
+        },
+        { status: 401 },
+      );
+    }
+
+    if (result.mfaRequired && result.mfaPendingToken) {
+      const mfaResponse = NextResponse.json({
+        success: true,
+        mfaRequired: true,
+      });
+      mfaResponse.cookies.set(
+        MFA_PENDING_COOKIE,
+        result.mfaPendingToken,
+        mfaPendingCookieOptions(MFA_PENDING_TTL_SECONDS),
+      );
+      mfaResponse.cookies.set(
+        CSRF_COOKIE,
+        generarTokenCsrf(),
+        csrfCookieOptions(),
+      );
+      return mfaResponse;
+    }
+
+    if (!result.token || !result.usuario) {
       return NextResponse.json(
         {
           success: false,

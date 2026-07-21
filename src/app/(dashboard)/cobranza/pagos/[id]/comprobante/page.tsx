@@ -5,8 +5,10 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import { ComprobantePagoDocument } from '@/components/cobranza/comprobante-pago-document';
+import { PermissionGate } from '@/components/auth/permission-gate';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { GET_COMPROBANTE_PAGO } from '@/lib/graphql/queries/cobranza.queries';
+import { PERMISO } from '@/lib/permissions/permiso-codes';
 import type { ComprobantePago } from '@/types/cobranza';
 
 export default function ComprobantePagoPage({
@@ -28,70 +30,80 @@ export default function ComprobantePagoPage({
   const comprobante = data?.comprobantePago;
 
   return (
-    <div className="space-y-6">
-      <div className="print:hidden">
-        <PageHeader
-          title="Comprobante de pago"
-          description={
-            comprobante
-              ? `Folio ${comprobante.folio} · Préstamo ${comprobante.noPrestamo} · Formato térmica 80 mm`
-              : 'Vista para impresora térmica'
-          }
-          actions={
-            <div className="flex flex-wrap gap-2">
-              {comprobante ? (
-                <>
-                  <Link href={`/cobranza/prestamos/${comprobante.idprestamo}`}>
-                    <Button type="button" variant="outline">
-                      Ver préstamo
+    <PermissionGate
+      permiso={PERMISO.PAGO_READ}
+      fallback={
+        <p className="text-sm text-gray-500">
+          No tiene permiso para ver comprobantes de pago.
+        </p>
+      }
+    >
+      <div className="space-y-6">
+        <div className="print:hidden">
+          <PageHeader
+            title="Comprobante de pago"
+            description={
+              comprobante
+                ? `Folio ${comprobante.folio} · Préstamo ${comprobante.noPrestamo} · Formato térmica 80 mm`
+                : 'Vista para impresora térmica'
+            }
+            actions={
+              <div className="flex flex-wrap gap-2">
+                {comprobante ? (
+                  <>
+                    <Link
+                      href={`/cobranza/prestamos/${comprobante.idprestamo}`}
+                    >
+                      <Button type="button" variant="outline">
+                        Ver préstamo
+                      </Button>
+                    </Link>
+                    <Button type="button" onClick={() => window.print()}>
+                      Imprimir
                     </Button>
-                  </Link>
-                  <Button type="button" onClick={() => window.print()}>
-                    Imprimir
+                  </>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => window.history.back()}
+                  >
+                    Volver
                   </Button>
-                </>
-              ) : (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => window.history.back()}
-                >
-                  Volver
-                </Button>
-              )}
-            </div>
-          }
-        />
-      </div>
-
-      {isLoading ? (
-        <p className="print:hidden text-sm text-gray-500">
-          Cargando comprobante…
-        </p>
-      ) : null}
-
-      {error ? (
-        <div
-          className="print:hidden rounded-lg bg-red-50 p-4 text-red-800 dark:bg-red-900/20"
-          role="alert"
-        >
-          {error.message}
+                )}
+              </div>
+            }
+          />
         </div>
-      ) : null}
 
-      {!isLoading && !error && !comprobante ? (
-        <p className="print:hidden text-sm text-gray-500">
-          No se encontró el pago solicitado.
-        </p>
-      ) : null}
+        {isLoading ? (
+          <p className="print:hidden text-sm text-gray-500">
+            Cargando comprobante…
+          </p>
+        ) : null}
 
-      {comprobante ? (
-        <div className="mx-auto w-[80mm] overflow-hidden rounded-lg border border-stroke bg-white shadow-md dark:border-dark-3 print:w-[80mm] print:overflow-visible print:rounded-none print:border-0 print:shadow-none">
-          <ComprobantePagoDocument comprobante={comprobante} />
-        </div>
-      ) : null}
+        {error ? (
+          <div
+            className="print:hidden rounded-lg bg-red-50 p-4 text-red-800 dark:bg-red-900/20"
+            role="alert"
+          >
+            {error.message}
+          </div>
+        ) : null}
 
-      <style>{`
+        {!isLoading && !error && !comprobante ? (
+          <p className="print:hidden text-sm text-gray-500">
+            No se encontró el pago solicitado.
+          </p>
+        ) : null}
+
+        {comprobante ? (
+          <div className="mx-auto w-[80mm] overflow-hidden rounded-lg border border-stroke bg-white shadow-md dark:border-dark-3 print:w-[80mm] print:overflow-visible print:rounded-none print:border-0 print:shadow-none">
+            <ComprobantePagoDocument comprobante={comprobante} />
+          </div>
+        ) : null}
+
+        <style>{`
         .comprobante-termico {
           width: 80mm;
           max-width: 80mm;
@@ -130,6 +142,7 @@ export default function ComprobantePagoPage({
           }
         }
       `}</style>
-    </div>
+      </div>
+    </PermissionGate>
   );
 }

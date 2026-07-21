@@ -27,6 +27,15 @@ import {
 } from '@/lib/pagination/pagination';
 import { validarCronAuth } from '@/lib/cron/cron-auth';
 import { rateLimiter } from '@/lib/security/rate-limit';
+import {
+  createMaxDepthRule,
+  createMaxFieldsRule,
+  GRAPHQL_MAX_DEPTH_DEFAULT,
+  GRAPHQL_MAX_FIELDS_DEFAULT,
+} from '@/lib/graphql/plugins/query-limits';
+import { resolverIpCliente } from '@/lib/middleware/auth';
+import { CreatePagoInputSchema } from '@/lib/graphql/resolvers/pago/types';
+import { NextRequest } from 'next/server';
 
 function testCsrf(): void {
   const headers = csrfHeaders();
@@ -161,6 +170,57 @@ function testCronAuth(): void {
   assert.equal(validarCronAuth(queryOnly), false);
 }
 
+function testIpProxyGate(): void {
+  const prev = process.env.TRUST_PROXY;
+  delete process.env.TRUST_PROXY;
+  const spoof = new NextRequest('http://localhost/api/auth/login', {
+    headers: {
+      'x-real-ip': '1.2.3.4',
+      'x-forwarded-for': '9.9.9.9',
+    },
+  });
+  assert.equal(resolverIpCliente(spoof), null);
+
+  process.env.TRUST_PROXY = 'true';
+  assert.equal(resolverIpCliente(spoof), '1.2.3.4');
+
+  if (prev === undefined) {
+    delete process.env.TRUST_PROXY;
+  } else {
+    process.env.TRUST_PROXY = prev;
+  }
+}
+
+function testGraphQlLimits(): void {
+  assert.equal(GRAPHQL_MAX_DEPTH_DEFAULT, 12);
+  assert.equal(GRAPHQL_MAX_FIELDS_DEFAULT, 250);
+  assert.equal(typeof createMaxDepthRule(), 'function');
+  assert.equal(typeof createMaxFieldsRule(), 'function');
+}
+
+function testPagoIdempotencySchema(): void {
+  const base = {
+    idprestamo: 1,
+    fechaPago: new Date().toISOString(),
+    monto: 100,
+    moneda: 'NIO' as const,
+  };
+  const ok = CreatePagoInputSchema.parse({
+    ...base,
+    medio: 'efectivo',
+    idempotencyKey: 'abc12345_retry',
+  });
+  assert.equal(ok.medio, 'EFECTIVO');
+  assert.equal(ok.idempotencyKey, 'abc12345_retry');
+
+  assert.throws(() =>
+    CreatePagoInputSchema.parse({ ...base, medio: 'BITCOIN' }),
+  );
+  assert.throws(() =>
+    CreatePagoInputSchema.parse({ ...base, idempotencyKey: 'short' }),
+  );
+}
+
 async function run(): Promise<void> {
   testCsrf();
   testScalabilityConfig();
@@ -168,6 +228,9 @@ async function run(): Promise<void> {
   testPerformanceLimits();
   testPaginationCap();
   testCronAuth();
+  testIpProxyGate();
+  testGraphQlLimits();
+  testPagoIdempotencySchema();
   await testRateLimitMemory();
   console.log('tests QA unitarios: OK');
 }

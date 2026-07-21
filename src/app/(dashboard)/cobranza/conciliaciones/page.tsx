@@ -11,6 +11,8 @@ import { KpiCard } from '@/components/cobranza/kpi-card';
 import { PaginatedDataTable } from '@/components/cobranza/paginated-data-table';
 import { MandanteSelect } from '@/components/cobranza/mandante-select';
 import { PageHeader } from '@/components/ui/page-header';
+import { PermissionGate } from '@/components/auth/permission-gate';
+import { PERMISO } from '@/lib/permissions/permiso-codes';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { useGraphQLMutation } from '@/hooks/use-graphql-mutation';
 import { usePagination } from '@/hooks/use-pagination';
@@ -185,29 +187,37 @@ export default function ConciliacionesPage() {
           itemLabel="pagos"
           rowActions={(p) => (
             <div className="flex justify-end gap-2">
-              {!p.aplicado && (
-                <Button
-                  size="sm"
-                  disabled={conciliarMutation.isPending}
-                  onClick={() =>
-                    conciliarMutation.mutate({ idpago: p.idpago, aplicado: true })
-                  }
-                >
-                  Conciliar
-                </Button>
-              )}
-              {p.aplicado && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={conciliarMutation.isPending}
-                  onClick={() =>
-                    conciliarMutation.mutate({ idpago: p.idpago, aplicado: false })
-                  }
-                >
-                  Desmarcar
-                </Button>
-              )}
+              <PermissionGate permiso={PERMISO.PAGO_WRITE}>
+                {!p.aplicado && (
+                  <Button
+                    size="sm"
+                    disabled={conciliarMutation.isPending}
+                    onClick={() =>
+                      conciliarMutation.mutate({
+                        idpago: p.idpago,
+                        aplicado: true,
+                      })
+                    }
+                  >
+                    Conciliar
+                  </Button>
+                )}
+                {p.aplicado && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={conciliarMutation.isPending}
+                    onClick={() =>
+                      conciliarMutation.mutate({
+                        idpago: p.idpago,
+                        aplicado: false,
+                      })
+                    }
+                  >
+                    Desmarcar
+                  </Button>
+                )}
+              </PermissionGate>
               <ViewRowButton
                 label="Comprobante"
                 onClick={() =>

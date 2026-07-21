@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { verifyPassword, simpleHash, hashPassword, isBcryptHash } from "./password";
 import { type JWTPayload , generateToken } from "./jwt";
 import { obtenerPermisosUsuario } from "@/lib/permissions/permission-service";
+import { emitirTokenMfaPending } from "@/lib/auth/mfa-pending";
 
 import { logger } from "@/lib/utils/logger";
 
@@ -19,6 +20,8 @@ export interface LoginCredentials {
 export interface AuthResult {
   success: boolean;
   token?: string;
+  mfaRequired?: boolean;
+  mfaPendingToken?: string;
   permisos?: string[];
   usuario?: {
     idusuario: number;
@@ -106,6 +109,15 @@ export async function authenticateUser(
       });
     }
 
+    if (usuario.mfaEnabled && usuario.mfaSecret) {
+      const mfaPendingToken = await emitirTokenMfaPending(usuario.idusuario);
+      return {
+        success: true,
+        mfaRequired: true,
+        mfaPendingToken,
+      };
+    }
+
     // Generar token JWT
     const permisos = await obtenerPermisosUsuario(usuario.idusuario);
 
@@ -117,6 +129,7 @@ export async function authenticateUser(
       idrol: usuario.idrol || 0,
       permisos,
       sessionStartedAt: ahora,
+      lastActivityAt: ahora,
       permisosAt: ahora,
     };
 

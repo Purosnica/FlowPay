@@ -37,12 +37,16 @@ SMOKE_BASE_URL=http://localhost:3000 npm run smoke:test  # + HTTP live
 
 ## 2. Usuarios demo (seed)
 
-| Rol | Email | Contraseña | Uso principal |
-|-----|-------|------------|---------------|
-| **Cobrador** | cobrador@flowpay.com | cobrador123 | Operación diaria de campo |
-| **Supervisor** | supervisor@flowpay.com | supervisor123 | Supervisión de equipo |
-| **Gerente** | gerente@flowpay.com | gerente123 | Gestión operativa y usuarios |
-| **Admin** | admin@flowpay.com | admin123 | Configuración total |
+> **Solo entorno local vía seed.** Las contraseñas se imprimen en la consola
+> al ejecutar `npm run db:seed`. No uses estas cuentas en staging/producción;
+> rótalas de inmediato si el seed corrió ahí.
+
+| Rol | Email (seed) | Uso principal |
+|-----|--------------|---------------|
+| **Cobrador** | cobrador@flowpay.com | Operación diaria de campo |
+| **Supervisor** | supervisor@flowpay.com | Supervisión de equipo |
+| **Gerente** | gerente@flowpay.com | Gestión operativa y usuarios |
+| **Admin** | admin@flowpay.com | Configuración total |
 
 Mandante de prueba: **CREDICOMPRAS** (si existe tras seed).
 

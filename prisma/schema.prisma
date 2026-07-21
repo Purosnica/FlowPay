@@ -205,6 +205,9 @@ model tbl_usuario {
   passwordHash      String? // Hash de contraseña con salt
   salt         String? // Salt para hash de contraseña
   password     String? // Hash simple (para migración de datos existentes)
+  mfaEnabled   Boolean  @default(false)
+  mfaSecret    String?  // Secreto TOTP cifrado (AES-GCM)
+  mfaEnabledAt DateTime?
   ultimoAcceso DateTime? // Último acceso al sistema
   activo       Boolean   @default(true)
   deletedAt    DateTime?
@@ -822,6 +825,8 @@ model tbl_pago {
   moneda     String    @default("NIO")
   tipoCambio Decimal?  @db.Decimal(10, 4)
   medio      String? // EFECTIVO / TRANSFERENCIA / etc.
+  /// Clave de idempotencia del cliente (reintentos no duplican pago).
+  idempotencyKey String? @db.VarChar(64)
   aplicado   Boolean   @default(false) // conciliación con siguiente corte
   /// Snapshot de mora al aplicar el pago (comisiones / liquidación).
   diasMoraAplicacion Int?
@@ -842,6 +847,7 @@ model tbl_pago {
   @@index([fechaPago, aplicado])
   @@index([idmandante, deletedAt, aplicado, fechaPago])
   @@index([idprestamo, fechaPago, monto, medio])
+  @@unique([idgestor, idempotencyKey])
   @@map("tbl_pago")
 }
 

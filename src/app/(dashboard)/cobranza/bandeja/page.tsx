@@ -14,6 +14,8 @@ import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { PageHeader } from '@/components/ui/page-header';
 import { SearchParamsBoundary } from '@/components/ui/search-params-boundary';
+import { PermissionGate } from '@/components/auth/permission-gate';
+import { PERMISO } from '@/lib/permissions/permiso-codes';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { usePagination } from '@/hooks/use-pagination';
@@ -260,19 +262,21 @@ function BandejaPageContent() {
         header: '',
         cell: ({ row }) => (
           <div className="flex flex-wrap gap-2">
-            <Button
-              size="sm"
-              onClick={() => setGestionRapida(row.original)}
-            >
-              Gestión rápida
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setEnviarPrestamo(row.original)}
-            >
-              Enviar cobro
-            </Button>
+            <PermissionGate permiso={PERMISO.GESTION_WRITE}>
+              <Button
+                size="sm"
+                onClick={() => setGestionRapida(row.original)}
+              >
+                Gestión rápida
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setEnviarPrestamo(row.original)}
+              >
+                Enviar cobro
+              </Button>
+            </PermissionGate>
             <Link href={`/cobranza/prestamos/${row.original.idprestamo}`}>
               <Button size="sm" variant="outline">
                 Detalle

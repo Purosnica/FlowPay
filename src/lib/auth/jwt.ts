@@ -10,7 +10,9 @@ const jwt = require('jsonwebtoken');
 import { getJwtSecret } from '@/lib/middleware/jwt-secret';
 import {
   SESSION_ABSOLUTE_SECONDS,
+  remainingIdleSeconds,
   remainingSessionSeconds,
+  resolverLastActivityAt,
   resolverSessionStartedAt,
 } from '@/lib/auth/session-ttl';
 
@@ -19,7 +21,9 @@ const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '8h';
 
 export {
   SESSION_ABSOLUTE_SECONDS,
+  remainingIdleSeconds,
   remainingSessionSeconds,
+  resolverLastActivityAt,
   resolverSessionStartedAt,
 };
 
@@ -31,6 +35,8 @@ export interface JWTPayload {
   permisos?: string[];
   /** Epoch seconds del inicio de sesión (login). */
   sessionStartedAt?: number;
+  /** Epoch seconds de la última actividad (idle). */
+  lastActivityAt?: number;
   /** Epoch seconds de la última carga de permisos desde BD. */
   permisosAt?: number;
   iat?: number;
@@ -45,12 +51,13 @@ export function generateToken(
 ): string {
   const now = Math.floor(Date.now() / 1000);
   const sessionStartedAt = payload.sessionStartedAt ?? now;
+  const lastActivityAt = payload.lastActivityAt ?? now;
   const permisosAt = payload.permisosAt ?? now;
   const { iat: _iat, ...rest } = payload;
   void _iat;
 
   return jwt.sign(
-    { ...rest, sessionStartedAt, permisosAt },
+    { ...rest, sessionStartedAt, lastActivityAt, permisosAt },
     JWT_SECRET_FINAL as string,
     {
       expiresIn:

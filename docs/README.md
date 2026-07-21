@@ -55,6 +55,7 @@ Instalación técnica: [INSTRUCCIONES-INSTALACION.md](../INSTRUCCIONES-INSTALACI
 | [MORA-AUTOMATICA.md](./MORA-AUTOMATICA.md) | Cálculo y sincronización de mora |
 | [CASTIGO-CARTERA.md](./CASTIGO-CARTERA.md) | Castigo automático |
 | [CONFIGURACION-SISTEMA.md](./CONFIGURACION-SISTEMA.md) | Env + parámetros operativos |
+| [BACKUP-DR.md](./BACKUP-DR.md) | Backup MySQL, restore drill, RTO/RPO |
 | [CONTROL-CONCURRENCIA.md](./CONTROL-CONCURRENCIA.md) | Locks MySQL y cron |
 | [TRANSACCIONES-PRISMA.md](./TRANSACCIONES-PRISMA.md) | Patrones de BD |
 | [GLOSARIO.md](./GLOSARIO.md) | Vocabulario del dominio |

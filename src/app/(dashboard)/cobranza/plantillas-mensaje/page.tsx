@@ -13,6 +13,8 @@ import { Modal } from '@/components/ui/modal';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/ui/page-header';
 import { SearchParamsBoundary } from '@/components/ui/search-params-boundary';
+import { PermissionGate } from '@/components/auth/permission-gate';
+import { PERMISO } from '@/lib/permissions/permiso-codes';
 import { useScopedPagination } from '@/hooks/use-scoped-pagination';
 import { PaginatedDataTable } from '@/components/cobranza/paginated-data-table';
 import { MandanteSelect } from '@/components/cobranza/mandante-select';
@@ -218,9 +220,11 @@ function PlantillasMensajePageContent() {
         title="Plantillas de mensaje"
         description="Mensajes reutilizables por canal y etapa de cobranza."
         actions={
-          <Button disabled={!idmandante} onClick={openCreate}>
-            + Nueva plantilla
-          </Button>
+          <PermissionGate permiso={PERMISO.MANDANTE_WRITE}>
+            <Button disabled={!idmandante} onClick={openCreate}>
+              + Nueva plantilla
+            </Button>
+          </PermissionGate>
         }
       />
 
@@ -255,15 +259,17 @@ function PlantillasMensajePageContent() {
             itemLabel="plantillas"
             emptyMessage="No hay plantillas para este mandante."
             rowActions={(p) => (
-              <div className="flex justify-end gap-2">
-                <EditRowButton onClick={() => openEdit(p)} />
-                <DeleteRowButton
-                  disabled={deleteMutation.isPending}
-                  onClick={() =>
-                    deleteMutation.mutate({ idplantilla: p.idplantilla })
-                  }
-                />
-              </div>
+              <PermissionGate permiso={PERMISO.MANDANTE_WRITE}>
+                <div className="flex justify-end gap-2">
+                  <EditRowButton onClick={() => openEdit(p)} />
+                  <DeleteRowButton
+                    disabled={deleteMutation.isPending}
+                    onClick={() =>
+                      deleteMutation.mutate({ idplantilla: p.idplantilla })
+                    }
+                  />
+                </div>
+              </PermissionGate>
             )}
           />
         </Card>

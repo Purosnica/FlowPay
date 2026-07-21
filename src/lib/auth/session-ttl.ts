@@ -1,12 +1,37 @@
+/**
+ * TTL de sesión: absoluto + inactividad (idle).
+ */
+
 /** TTL absoluto de sesión (segundos). No se extiende indefinidamente con /me. */
 export const SESSION_ABSOLUTE_SECONDS = 60 * 60 * 8;
+
+/**
+ * Idle máximo sin actividad (segundos).
+ * Override: SESSION_IDLE_SECONDS en entorno.
+ */
+export const SESSION_IDLE_SECONDS = (() => {
+  const raw = process.env.SESSION_IDLE_SECONDS;
+  if (raw == null || raw === '') {
+    return 30 * 60;
+  }
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 30 * 60;
+})();
 
 /** Segundos máximos de validez de permisos embebidos en el JWT (UI/middleware). */
 export const PERMISOS_MAX_AGE_SECONDS = 15 * 60;
 
+/** No reemitir JWT por idle si la última actividad tiene menos de esto. */
+export const SESSION_ACTIVITY_REFRESH_SECONDS = 60;
+
 export function remainingSessionSeconds(sessionStartedAt: number): number {
   const elapsed = Math.floor(Date.now() / 1000) - sessionStartedAt;
   return Math.max(0, SESSION_ABSOLUTE_SECONDS - elapsed);
+}
+
+export function remainingIdleSeconds(lastActivityAt: number): number {
+  const elapsed = Math.floor(Date.now() / 1000) - lastActivityAt;
+  return Math.max(0, SESSION_IDLE_SECONDS - elapsed);
 }
 
 export function resolverSessionStartedAt(params: {
@@ -18,6 +43,25 @@ export function resolverSessionStartedAt(params: {
     params.iat ??
     Math.floor(Date.now() / 1000)
   );
+}
+
+export function resolverLastActivityAt(params: {
+  lastActivityAt?: number;
+  sessionStartedAt?: number;
+  iat?: number;
+}): number {
+  if (
+    params.lastActivityAt != null &&
+    Number.isFinite(params.lastActivityAt)
+  ) {
+    return params.lastActivityAt;
+  }
+  return resolverSessionStartedAt(params);
+}
+
+export function debeRefrescarActividad(lastActivityAt: number): boolean {
+  const edad = Math.floor(Date.now() / 1000) - lastActivityAt;
+  return edad >= SESSION_ACTIVITY_REFRESH_SECONDS;
 }
 
 export function permisosJwtEstanFrescos(

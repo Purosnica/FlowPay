@@ -15,6 +15,10 @@ import {
   GraphQLValidationError,
 } from '@/lib/errors/graphql-errors';
 import { useRequireAuthPlugin } from '@/lib/graphql/plugins/require-auth-plugin';
+import {
+  createMaxDepthRule,
+  createMaxFieldsRule,
+} from '@/lib/graphql/plugins/query-limits';
 
 interface FormattableGraphQLError {
   message: string;
@@ -32,6 +36,13 @@ const introspectionPlugins =
     ? // eslint-disable-next-line react-hooks/rules-of-hooks -- plugin GraphQL Yoga, no React hook
       [useValidationRule(NoSchemaIntrospectionCustomRule)]
     : [];
+
+const queryLimitPlugins = [
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- plugin GraphQL Yoga, no React hook
+  useValidationRule(createMaxDepthRule()),
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- plugin GraphQL Yoga, no React hook
+  useValidationRule(createMaxFieldsRule()),
+];
 
 const { handleRequest } = createYoga<NextRouteContext>({
   schema,
@@ -67,6 +78,7 @@ const { handleRequest } = createYoga<NextRouteContext>({
   graphiql: process.env.NODE_ENV === 'development',
   plugins: [
     ...introspectionPlugins,
+    ...queryLimitPlugins,
     // eslint-disable-next-line react-hooks/rules-of-hooks -- plugin GraphQL Yoga, no React hook
     useRequireAuthPlugin(),
     {
@@ -196,6 +208,38 @@ async function handleGraphQLRequest(
         },
       },
     );
+  }
+
+  const usuarioRl = await getCurrentUser(request);
+  if (usuarioRl) {
+    const userAllowed = await checkRateLimit(
+      `graphql:user:${usuarioRl.idusuario}`,
+      RATE_LIMIT_CONFIG.GRAPHQL.maxRequests,
+      RATE_LIMIT_CONFIG.GRAPHQL.windowMs,
+    );
+    if (!userAllowed) {
+      logger.warn('Rate limit excedido en GraphQL por usuario', {
+        idusuario: usuarioRl.idusuario,
+      });
+      return new Response(
+        JSON.stringify({
+          errors: [
+            {
+              message: 'Demasiadas solicitudes. Por favor, intente más tarde.',
+            },
+          ],
+        }),
+        {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+            'Retry-After': String(
+              Math.ceil(RATE_LIMIT_CONFIG.GRAPHQL.windowMs / 1000),
+            ),
+          },
+        },
+      );
+    }
   }
 
   return handleRequest(request, routeContext);

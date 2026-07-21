@@ -15,6 +15,8 @@ import {
 } from '@/lib/graphql/queries/cobranza.queries';
 import type { DeudorContacto } from '@/types/cobranza';
 import type { ColumnDef } from '@tanstack/react-table';
+import { PermissionGate } from '@/components/auth/permission-gate';
+import { PERMISO } from '@/lib/permissions/permiso-codes';
 
 interface DeudorContactoPanelProps {
   idcliente: number;
@@ -104,6 +106,7 @@ export function DeudorContactoPanel({ idcliente }: DeudorContactoPanelProps) {
         Contactos del deudor (Ley 787). Solo marque autorizado si el deudor
         consintió el contacto.
       </p>
+      <PermissionGate permiso={PERMISO.CARTERA_WRITE}>
       <form
         className="grid gap-2 sm:grid-cols-3"
         onSubmit={(e) => {
@@ -137,6 +140,7 @@ export function DeudorContactoPanel({ idcliente }: DeudorContactoPanelProps) {
           Agregar
         </Button>
       </form>
+      </PermissionGate>
       <PaginatedDataTable
         data={pageData?.contactos ?? []}
         columns={columns}

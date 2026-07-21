@@ -11,6 +11,8 @@ export const CLAVE_ACUERDO_DESCUENTO_MAX_SIN_APROBACION =
 export const CLAVE_META_GESTIONES_SEMANA = 'cobranza.meta_gestiones_semana';
 export const CLAVE_META_RECUPERACION_SEMANA = 'cobranza.meta_recuperacion_semana';
 export const CLAVE_META_RECUPERACION_MES = 'cobranza.meta_recuperacion_mes';
+export const CLAVE_CRON_ALERTA_EMAIL_ACTIVA =
+  'cobranza.cron_alerta_email_activa';
 
 const DEFAULTS: Record<string, string> = {
   [CLAVE_PAGO_AUTO_APLICAR]: 'true',
@@ -23,6 +25,7 @@ const DEFAULTS: Record<string, string> = {
   [CLAVE_META_GESTIONES_SEMANA]: '25',
   [CLAVE_META_RECUPERACION_SEMANA]: '50000',
   [CLAVE_META_RECUPERACION_MES]: '200000',
+  [CLAVE_CRON_ALERTA_EMAIL_ACTIVA]: 'true',
 };
 
 export async function obtenerConfigCobranza(clave: string): Promise<string> {

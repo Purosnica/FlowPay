@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { validarCronAuth } from '@/lib/cron/cron-auth';
 import { calcularProximaEjecucion } from '@/lib/cron/cron-schedule';
+import { cronEstadoRequiereAlerta } from '@/lib/cobranza/cron-alerta-email-service';
 
 function testCronAuthBearer(): void {
   const secret = 'test-secret-123';
@@ -33,7 +34,16 @@ function testProximaEjecucion(): void {
   assert.ok(proxima > desde);
 }
 
+function testCronAlertaEstados(): void {
+  assert.equal(cronEstadoRequiereAlerta('OK'), false);
+  assert.equal(cronEstadoRequiereAlerta('OMITIDO'), false);
+  assert.equal(cronEstadoRequiereAlerta('ERROR'), true);
+  assert.equal(cronEstadoRequiereAlerta('PARCIAL'), true);
+  assert.equal(cronEstadoRequiereAlerta('TIMEOUT'), true);
+}
+
 testCronAuthBearer();
 testCronAuthQueryTokenRejected();
 testProximaEjecucion();
-console.log('cron operativo: OK');
+testCronAlertaEstados();
+console.warn('cron operativo: OK');

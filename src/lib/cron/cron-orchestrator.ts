@@ -24,6 +24,8 @@ import type {
   CronOrchestratorResult,
   CronTrigger,
 } from './cron-types';
+import { notificarFalloCronOperaciones } from '@/lib/cobranza/cron-alerta-email-service';
+import { logger } from '@/lib/utils/logger';
 
 function resolverEstadoOrquestador(
   jobs: CronJobRunSummary[],
@@ -214,13 +216,39 @@ async function ejecutarCronOperacionesCobranzaInterno(
     (j) => j.estado === 'ERROR' || j.estado === 'TIMEOUT',
   ).length;
   const omitidos = resultados.filter((j) => j.estado === 'OMITIDO').length;
+  const duracionMs = finalizadoEn.getTime() - iniciadoEn.getTime();
+
+  try {
+    const alerta = await notificarFalloCronOperaciones({
+      estado: estadoFinal,
+      trigger,
+      idejecucion,
+      duracionMs,
+      jobs: resultados,
+    });
+    if (alerta.enviada || (alerta.errores > 0 && !alerta.omitida)) {
+      logger.warn('Alerta cron operaciones', {
+        idejecucion,
+        estado: estadoFinal,
+        enviados: alerta.enviados,
+        errores: alerta.errores,
+        omitida: alerta.omitida,
+        motivo: alerta.motivoOmitida,
+      });
+    }
+  } catch (err) {
+    logger.error(
+      'Fallo al enviar alerta de cron',
+      err instanceof Error ? err : undefined,
+    );
+  }
 
   return {
     idejecucion,
     estado: estadoFinal,
     iniciadoEn: iniciadoEn.toISOString(),
     finalizadoEn: finalizadoEn.toISOString(),
-    duracionMs: finalizadoEn.getTime() - iniciadoEn.getTime(),
+    duracionMs,
     jobs: resultados,
     errores,
     omitidos,

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { PermissionGate } from '@/components/auth/permission-gate';
+import { PERMISO } from '@/lib/permissions/permiso-codes';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import {
   GET_PLANTILLAS_MENSAJE,
@@ -367,9 +369,11 @@ export function GestionForm({
             Cancelar
           </Button>
         )}
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? 'Guardando...' : 'Registrar gestión'}
-        </Button>
+        <PermissionGate permiso={PERMISO.GESTION_WRITE}>
+          <Button type="submit" disabled={isLoading}>
+            {isLoading ? 'Guardando...' : 'Registrar gestión'}
+          </Button>
+        </PermissionGate>
       </div>
     </form>
   );

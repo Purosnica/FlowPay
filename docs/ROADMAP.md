@@ -2,7 +2,7 @@
 
 Evolución planificada post-preparación Enterprise (Fases 1–13).
 
-**Estado actual:** v1.2.2 — producto listo para UAT y despliegue controlado.
+**Estado actual:** v1.2.5 — MFA TOTP + health/idle/ops.
 
 ---
 
@@ -30,9 +30,10 @@ Evolución planificada post-preparación Enterprise (Fases 1–13).
 |----|------------|-------|
 | PP-1 | `prisma migrate` formal (baseline `20260711120000_baseline`) | Hecho — usar `migrate deploy` / `db:migrate:resolve-baseline` |
 | PP-2 | Object storage para uploads/import (S3/Azure) | Escalabilidad horizontal |
-| PP-3 | Observabilidad (logs estructurados, métricas APM) | Operaciones — **Sentry opcional (`SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN`)** |
-| PP-4 | Backup y DR documentado | Continuidad |
+| PP-3 | Observabilidad (logs estructurados, métricas APM) | Parcial — Sentry + `/api/health` + `/api/ready` |
+| PP-4 | Backup y DR documentado | Hecho — `docs/BACKUP-DR.md` (falta drill real trimestral) |
 | PP-5 | Pentest externo | Seguridad |
+| PP-6 | MFA TOTP (ADMIN/GERENTE) | Hecho — activar en Mi perfil |
 
 ---
 

@@ -8,6 +8,8 @@ import { PaginatedDataTable } from '@/components/cobranza/paginated-data-table';
 import { MandanteSelect } from '@/components/cobranza/mandante-select';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
+import { PermissionGate } from '@/components/auth/permission-gate';
+import { PERMISO } from '@/lib/permissions/permiso-codes';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { useGraphQLMutation } from '@/hooks/use-graphql-mutation';
 import { usePagination } from '@/hooks/use-pagination';
@@ -64,16 +66,18 @@ export default function CampanasPage() {
         header: 'Acciones',
         cell: ({ row }) =>
           row.original.estado === 'ACTIVA' ? (
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={cerrarMutation.isPending}
-              onClick={() =>
-                cerrarMutation.mutate({ idcampana: row.original.idcampana })
-              }
-            >
-              Cerrar
-            </Button>
+            <PermissionGate permiso={PERMISO.CARTERA_WRITE}>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={cerrarMutation.isPending}
+                onClick={() =>
+                  cerrarMutation.mutate({ idcampana: row.original.idcampana })
+                }
+              >
+                Cerrar
+              </Button>
+            </PermissionGate>
           ) : null,
       },
     ],
@@ -85,9 +89,11 @@ export default function CampanasPage() {
       <PageHeader
         title="Campañas"
         actions={
-          <Link href="/cobranza/campanas/wizard">
-            <Button>Nueva campaña (wizard)</Button>
-          </Link>
+          <PermissionGate permiso={PERMISO.CARTERA_WRITE}>
+            <Link href="/cobranza/campanas/wizard">
+              <Button>Nueva campaña (wizard)</Button>
+            </Link>
+          </PermissionGate>
         }
       />
       <MandanteSelect

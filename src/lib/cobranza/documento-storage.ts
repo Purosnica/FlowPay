@@ -45,7 +45,16 @@ export function esNombreArchivoDocumentoSeguro(nombre: string): boolean {
 }
 
 export function rutaDocumentoStorage(nombre: string): string {
-  return path.join(DOCUMENTOS_STORAGE_DIR, nombre);
+  if (!esNombreArchivoDocumentoSeguro(nombre)) {
+    throw new Error('Nombre de archivo de documento inválido.');
+  }
+  const base = path.resolve(DOCUMENTOS_STORAGE_DIR);
+  const full = path.resolve(base, nombre);
+  const prefix = base.endsWith(path.sep) ? base : base + path.sep;
+  if (full !== base && !full.startsWith(prefix)) {
+    throw new Error('Ruta de documento fuera del directorio permitido.');
+  }
+  return full;
 }
 
 /** Ruta legacy en public (solo lectura de archivos antiguos). */

@@ -7,6 +7,8 @@ import { Modal } from '@/components/ui/modal';
 import { PaginatedDataTable } from '@/components/cobranza/paginated-data-table';
 import { MandanteSelect } from '@/components/cobranza/mandante-select';
 import { PageHeader } from '@/components/ui/page-header';
+import { PermissionGate } from '@/components/auth/permission-gate';
+import { PERMISO } from '@/lib/permissions/permiso-codes';
 import { usePagination } from '@/hooks/use-pagination';
 import {
   ClienteBuscarInput,
@@ -110,9 +112,11 @@ export default function ReclamosPage() {
       <PageHeader
         title="Reclamos (CONAMI)"
         actions={
-          <Button disabled={!idmandante} onClick={() => setModalOpen(true)}>
-            Nuevo reclamo
-          </Button>
+          <PermissionGate permiso={PERMISO.GESTION_WRITE}>
+            <Button disabled={!idmandante} onClick={() => setModalOpen(true)}>
+              Nuevo reclamo
+            </Button>
+          </PermissionGate>
         }
       />
       <MandanteSelect
@@ -135,25 +139,27 @@ export default function ReclamosPage() {
         onPageSizeChange={handlePageSizeChange}
         itemLabel="reclamos"
         rowActions={(r) => (
-          <div className="flex gap-2">
-            {r.estado !== 'RESUELTO' && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() =>
-                  updateMutation.mutate({
-                    input: {
-                      idreclamo: r.idreclamo,
-                      estado:
-                        r.estado === 'ABIERTO' ? 'EN_PROCESO' : 'RESUELTO',
-                    },
-                  })
-                }
-              >
-                {r.estado === 'ABIERTO' ? 'En proceso' : 'Resolver'}
-              </Button>
-            )}
-          </div>
+          <PermissionGate permiso={PERMISO.GESTION_WRITE}>
+            <div className="flex gap-2">
+              {r.estado !== 'RESUELTO' && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    updateMutation.mutate({
+                      input: {
+                        idreclamo: r.idreclamo,
+                        estado:
+                          r.estado === 'ABIERTO' ? 'EN_PROCESO' : 'RESUELTO',
+                      },
+                    })
+                  }
+                >
+                  {r.estado === 'ABIERTO' ? 'En proceso' : 'Resolver'}
+                </Button>
+              )}
+            </div>
+          </PermissionGate>
         )}
       />
       <Modal

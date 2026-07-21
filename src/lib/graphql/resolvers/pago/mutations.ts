@@ -45,6 +45,22 @@ builder.mutationField('createPago', (t) =>
         data.idprestamo,
       );
 
+      if (data.idempotencyKey && ctx.usuario?.idusuario) {
+        const existente = await ctx.prisma.tbl_pago.findFirst({
+          where: {
+            idgestor: ctx.usuario.idusuario,
+            idempotencyKey: data.idempotencyKey,
+            deletedAt: null,
+          },
+        });
+        if (existente) {
+          return ctx.prisma.tbl_pago.findUniqueOrThrow({
+            ...(query as Record<string, unknown>),
+            where: { idpago: existente.idpago },
+          }) as never;
+        }
+      }
+
       if (data.idacuerdo != null) {
         const acuerdo = await ctx.prisma.tbl_acuerdo.findFirst({
           where: {
@@ -68,20 +84,46 @@ builder.mutationField('createPago', (t) =>
           fechaPago: data.fechaPago,
         });
 
-        const createdRaw = await tx.tbl_pago.create({
-          data: {
-            idmandante: prestamo.idmandante,
-            idprestamo: data.idprestamo,
-            idacuerdo: data.idacuerdo,
-            idgestion: data.idgestion,
-            idgestor: ctx.usuario?.idusuario,
-            fechaPago: data.fechaPago,
-            monto: data.monto,
-            moneda: data.moneda,
-            tipoCambio: data.tipoCambio,
-            medio: data.medio,
-          },
-        });
+        let createdRaw;
+        try {
+          createdRaw = await tx.tbl_pago.create({
+            data: {
+              idmandante: prestamo.idmandante,
+              idprestamo: data.idprestamo,
+              idacuerdo: data.idacuerdo,
+              idgestion: data.idgestion,
+              idgestor: ctx.usuario?.idusuario,
+              fechaPago: data.fechaPago,
+              monto: data.monto,
+              moneda: data.moneda,
+              tipoCambio: data.tipoCambio,
+              medio: data.medio,
+              idempotencyKey: data.idempotencyKey,
+            },
+          });
+        } catch (err) {
+          const code =
+            err && typeof err === 'object' && 'code' in err
+              ? (err as { code?: string }).code
+              : undefined;
+          if (
+            code === 'P2002' &&
+            data.idempotencyKey &&
+            ctx.usuario?.idusuario
+          ) {
+            const dup = await tx.tbl_pago.findFirst({
+              where: {
+                idgestor: ctx.usuario.idusuario,
+                idempotencyKey: data.idempotencyKey,
+                deletedAt: null,
+              },
+            });
+            if (dup) {
+              return dup;
+            }
+          }
+          throw err;
+        }
 
         const created = await tx.tbl_pago.update({
           where: { idpago: createdRaw.idpago },

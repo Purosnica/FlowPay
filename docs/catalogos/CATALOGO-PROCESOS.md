@@ -103,12 +103,16 @@ Procesos operativos manuales y automáticos.
 | `reclamos_sla` | Reclamos fuera SLA | 50 | — |
 | `importaciones_pendientes` | Importaciones pendientes | 60 | — |
 | `auditoria_retencion` | Retención auditoría | 70 | — |
+| `digest_email_supervisores` | Digest email supervisores | 80 | SMTP configurado |
 
-**Importaciones (alta frecuencia):** `/api/cron/procesar-importaciones` — cada 5 min
+**Alerta de fallo:** si el master termina en `ERROR` / `PARCIAL` / `TIMEOUT`, se envía email a ADMIN/GERENTE (config `cobranza.cron_alerta_email_activa`, default `true`, requiere SMTP).
+
+**Importaciones (cola):** `/api/cron/procesar-importaciones` —
+schedule Vercel `0 7 * * *` (diario 07:00). Además, el job diario
+`importaciones_pendientes` (dentro de `operaciones_cobranza`) y el procesamiento
+on-demand tras subir archivo cubren la cola. No depende de un cron cada 5 min.
 
 Fuente: `cron-registry.ts`
-
----
 
 ## 3. Procesos de auditoría
 

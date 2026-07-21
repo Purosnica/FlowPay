@@ -33,7 +33,7 @@ staging/producción y cámbialas de inmediato si el seed corrió ahí.
 - **Gestiones, acuerdos, pagos** — ciclo de cobranza
 - **Centro de Inteligencia** — analytics y alertas
 - **Reportes y liquidaciones** — entregables a mandantes
-- **RBAC** — 18 permisos, 4 roles organizacionales
+- **RBAC** — 46 permisos, 4 roles organizacionales
 - **Auditoría y cron** — operaciones automáticas y trazabilidad
 
 ---
@@ -48,6 +48,7 @@ staging/producción y cámbialas de inmediato si el seed corrió ahí.
 | `npm run qa:gate` | Puerta de calidad (audits + tests) |
 | `npm run audit:docs` | Validar documentación oficial |
 | `npm run test:uat` | Matriz RBAC automatizada |
+| `npm run test:e2e` | Playwright (login smoke; requiere Chromium) |
 | `npm run smoke:test` | Smoke test con BD |
 
 ---
@@ -61,6 +62,14 @@ staging/producción y cámbialas de inmediato si el seed corrió ahí.
 | `CRON_SECRET` | Auth de endpoints cron (Bearer) |
 | `IMPORT_MAX_CONCURRENT` | Jobs de importación simultáneos |
 | `AUDIT_RETENTION_DAYS` | Retención de auditoría (default 90) |
+| `TRUST_PROXY` | `true` solo detrás de proxy que reescribe IP (p. ej. Vercel) |
+| `SESSION_IDLE_SECONDS` | Idle sin actividad (default 1800 = 30 min) |
+| `GRAPHQL_MAX_DEPTH` | Límite profundidad GraphQL (default 12) |
+| `GRAPHQL_MAX_FIELDS` | Límite campos GraphQL (default 250) |
+
+Tras pull de cambios de schema: `npx prisma migrate deploy` (si el host no responde, SQL en `scripts/sql/apply-pago-idempotency.sql`).
+
+Healthchecks: `GET /api/health` · `GET /api/ready` (DB). Backup/DR: [docs/BACKUP-DR.md](./docs/BACKUP-DR.md).
 
 Ver `src/lib/env.ts` para el esquema completo.
 

@@ -7,7 +7,9 @@ import { type NextRequest, NextResponse } from 'next/server';
 
 import {
   generateToken,
+  remainingIdleSeconds,
   remainingSessionSeconds,
+  resolverLastActivityAt,
   resolverSessionStartedAt,
   verifyToken,
 } from '@/lib/auth/jwt';
@@ -71,6 +73,19 @@ export async function GET(req: NextRequest) {
     return res;
   }
 
+  const lastActivityAt = resolverLastActivityAt(payload);
+  if (remainingIdleSeconds(lastActivityAt) <= 0) {
+    const res = NextResponse.redirect(loginUrl);
+    res.cookies.set('auth-token', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 0,
+      path: '/',
+    });
+    return res;
+  }
+
   const usuario = await getUserById(payload.idusuario);
   if (!usuario) {
     const res = NextResponse.redirect(loginUrl);
@@ -84,6 +99,7 @@ export async function GET(req: NextRequest) {
     return res;
   }
 
+  const ahora = Math.floor(Date.now() / 1000);
   const permisos = await obtenerPermisosUsuario(usuario.idusuario);
   const tokenNuevo = generateToken(
     {
@@ -93,7 +109,8 @@ export async function GET(req: NextRequest) {
       idrol: usuario.idrol || 0,
       permisos,
       sessionStartedAt,
-      permisosAt: Math.floor(Date.now() / 1000),
+      lastActivityAt: ahora,
+      permisosAt: ahora,
     },
     remaining,
   );

@@ -26,6 +26,10 @@ export async function verifyTokenEdge(
           : typeof payload.iat === 'number'
             ? payload.iat
             : undefined,
+      lastActivityAt:
+        typeof payload.lastActivityAt === 'number'
+          ? payload.lastActivityAt
+          : undefined,
       permisosAt:
         typeof payload.permisosAt === 'number'
           ? payload.permisosAt

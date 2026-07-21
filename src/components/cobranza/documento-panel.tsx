@@ -14,6 +14,8 @@ import {
 } from '@/lib/graphql/queries/cobranza.queries';
 import type { DocumentoPrestamo } from '@/types/cobranza';
 import { csrfHeaders } from '@/lib/security/csrf';
+import { PermissionGate } from '@/components/auth/permission-gate';
+import { PERMISO } from '@/lib/permissions/permiso-codes';
 
 function hrefDocumentoSeguro(url: string): string {
   if (url.startsWith('/uploads/cobranza/')) {
@@ -93,6 +95,7 @@ export function DocumentoPanel({ idprestamo }: DocumentoPanelProps) {
 
   return (
     <div className="space-y-4">
+      <PermissionGate permiso={PERMISO.CARTERA_WRITE}>
       <form
         className="grid gap-2 sm:grid-cols-3"
         onSubmit={(e) => {
@@ -151,6 +154,7 @@ export function DocumentoPanel({ idprestamo }: DocumentoPanelProps) {
           <p className="mt-1 text-xs text-red-600">{uploadError}</p>
         )}
       </div>
+      </PermissionGate>
       {isLoading && <p className="text-sm text-gray-500">Cargando...</p>}
       <ul className="divide-y text-sm dark:divide-dark-3">
         {documentos.map((d) => (
@@ -169,11 +173,13 @@ export function DocumentoPanel({ idprestamo }: DocumentoPanelProps) {
                 Ver
               </a>
             </div>
-            <DeleteRowButton
-              onClick={() =>
-                deleteMutation.mutate({ iddocumento: d.iddocumento })
-              }
-            />
+            <PermissionGate permiso={PERMISO.CARTERA_WRITE}>
+              <DeleteRowButton
+                onClick={() =>
+                  deleteMutation.mutate({ iddocumento: d.iddocumento })
+                }
+              />
+            </PermissionGate>
           </li>
         ))}
       </ul>

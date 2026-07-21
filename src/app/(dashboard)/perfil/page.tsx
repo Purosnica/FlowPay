@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { PerfilForm } from '@/components/perfil/perfil-form';
+import { MfaSetupPanel } from '@/components/perfil/mfa-setup-panel';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { useGraphQLMutation } from '@/hooks/use-graphql-mutation';
 import { useAuth } from '@/contexts/auth-context';
@@ -88,6 +89,7 @@ export default function PerfilPage() {
           error={errorMessage}
           success={successMessage}
         />
+        <MfaSetupPanel />
       </div>
     </div>
   );

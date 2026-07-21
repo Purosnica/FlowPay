@@ -137,3 +137,134 @@ export function usuarioPuedeVerReporte(
 ): boolean {
   return permisosDeReporte(key).some((p) => permisosUsuario.includes(p));
 }
+
+export type ReporteHubCategoria =
+  | 'Informes'
+  | 'Desempeño'
+  | 'Seguimiento'
+  | 'Riesgo'
+  | 'Financiero';
+
+/** Catálogo único del hub (sidebar reducido apunta aquí). */
+export const CATALOGO_REPORTES_HUB: ReadonlyArray<{
+  href: string;
+  label: string;
+  key: ReporteKey;
+  categoria: ReporteHubCategoria;
+}> = [
+  {
+    href: '/cobranza/reportes/informe-gerencial',
+    label: 'Informe gerencial',
+    key: REPORTE_KEY.informeGerencial,
+    categoria: 'Informes',
+  },
+  {
+    href: '/cobranza/reportes/informe-gestiones',
+    label: 'Informe de gestiones',
+    key: REPORTE_KEY.informeGestiones,
+    categoria: 'Informes',
+  },
+  {
+    href: '/cobranza/reportes/efectividad',
+    label: 'Efectividad',
+    key: REPORTE_KEY.efectividad,
+    categoria: 'Desempeño',
+  },
+  {
+    href: '/cobranza/reportes/productividad-diaria',
+    label: 'Productividad diaria',
+    key: REPORTE_KEY.productividadDiaria,
+    categoria: 'Desempeño',
+  },
+  {
+    href: '/cobranza/reportes/cumplimiento-metas',
+    label: 'Cumplimiento de metas',
+    key: REPORTE_KEY.cumplimientoMetas,
+    categoria: 'Desempeño',
+  },
+  {
+    href: '/cobranza/reportes/supervisor-equipo',
+    label: 'Supervisor vs equipo',
+    key: REPORTE_KEY.supervisorEquipo,
+    categoria: 'Desempeño',
+  },
+  {
+    href: '/cobranza/reportes/promesas-pago',
+    label: 'Promesas de pago',
+    key: REPORTE_KEY.promesasPago,
+    categoria: 'Seguimiento',
+  },
+  {
+    href: '/cobranza/reportes/cumplimiento-acuerdos',
+    label: 'Cumplimiento de acuerdos',
+    key: REPORTE_KEY.cumplimientoAcuerdos,
+    categoria: 'Seguimiento',
+  },
+  {
+    href: '/cobranza/reportes/cuotas-vencidas',
+    label: 'Cuotas vencidas',
+    key: REPORTE_KEY.cuotasVencidas,
+    categoria: 'Seguimiento',
+  },
+  {
+    href: '/cobranza/reportes/cartera-sin-gestion',
+    label: 'Cartera sin gestión',
+    key: REPORTE_KEY.carteraSinGestion,
+    categoria: 'Seguimiento',
+  },
+  {
+    href: '/cobranza/reportes/recontactos',
+    label: 'Recontactos',
+    key: REPORTE_KEY.recontactos,
+    categoria: 'Seguimiento',
+  },
+  {
+    href: '/cobranza/reportes/reclamos-sla',
+    label: 'SLA de reclamos',
+    key: REPORTE_KEY.reclamosSla,
+    categoria: 'Riesgo',
+  },
+  {
+    href: '/cobranza/reportes/migracion-mora',
+    label: 'Migración de mora',
+    key: REPORTE_KEY.migracionMora,
+    categoria: 'Riesgo',
+  },
+  {
+    href: '/cobranza/reportes/concentracion-riesgo',
+    label: 'Concentración de riesgo',
+    key: REPORTE_KEY.concentracionRiesgo,
+    categoria: 'Riesgo',
+  },
+  {
+    href: '/cobranza/reportes/ingreso-tramo-mora',
+    label: 'Ingreso por tramo de mora',
+    key: REPORTE_KEY.ingresoTramoMora,
+    categoria: 'Financiero',
+  },
+  {
+    href: '/cobranza/reportes/ganancias',
+    label: 'Ganancias',
+    key: REPORTE_KEY.ganancias,
+    categoria: 'Financiero',
+  },
+  {
+    href: '/cobranza/reportes/margen-mandantes',
+    label: 'Margen por mandante',
+    key: REPORTE_KEY.margenMandantes,
+    categoria: 'Financiero',
+  },
+  {
+    href: '/cobranza/reportes/comisiones-cobradores',
+    label: 'Comisiones a cobradores',
+    key: REPORTE_KEY.comisionesCobradores,
+    categoria: 'Financiero',
+  },
+  {
+    href: '/cobranza/reportes/comisiones-vs-proyeccion',
+    label: 'Comisiones vs proyección',
+    key: REPORTE_KEY.comisionesVsProyeccion,
+    categoria: 'Financiero',
+  },
+];
+

@@ -103,13 +103,26 @@ builder.queryField('rolesActivos', (t) =>
     resolve: async (_parent, _args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.USER_READ);
 
+      // Ligero: solo datos de catálogo para selects (sin permisos ni _count).
       const roles = await ctx.prisma.tbl_rol.findMany({
         where: { deletedAt: null, estado: true },
-        include: rolInclude,
+        select: {
+          idrol: true,
+          codigo: true,
+          descripcion: true,
+          estado: true,
+        },
         orderBy: { codigo: 'asc' },
       });
 
-      return roles.map(mapRolGestion);
+      return roles.map((rol) => ({
+        idrol: rol.idrol,
+        codigo: rol.codigo,
+        descripcion: rol.descripcion,
+        estado: rol.estado,
+        permisos: [] as string[],
+        cantidadUsuarios: 0,
+      }));
     },
   }),
 );

@@ -8,7 +8,10 @@ import {
   requerirAccesoCliente,
   requerirAccesoMandante,
 } from '@/lib/cobranza/mandante-scope';
-import { requerirAccesoPrestamoCobrador } from '@/lib/cobranza/cobrador-scope';
+import {
+  requerirAccesoClienteCobrador,
+  requerirAccesoPrestamoCobrador,
+} from '@/lib/cobranza/cobrador-scope';
 
 type RouteContext = {
   params: Promise<{ nombre: string }>;
@@ -61,6 +64,7 @@ export async function GET(
       );
     } else if (doc.idcliente) {
       await requerirAccesoCliente(usuario.idusuario, doc.idcliente);
+      await requerirAccesoClienteCobrador(usuario.idusuario, doc.idcliente);
     } else {
       return NextResponse.json(
         { success: false, error: 'Archivo no encontrado.' },

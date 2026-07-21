@@ -40,6 +40,10 @@ Parámetros operativos y de entorno que gobiernan la cobranza.
 | `CRON_RETENTION_DAYS` | 90 | Retención de ejecuciones cron |
 | `LOG_LEVEL` | info | error / warn / info / debug |
 | `NEXT_PUBLIC_API_URL` | vacío | Same-origin si vacío |
+| `TRUST_PROXY` | off | `true` solo si el proxy reescribe IP (Vercel) |
+| `SESSION_IDLE_SECONDS` | 1800 | Idle máximo sin actividad (JWT `lastActivityAt`) |
+| `GRAPHQL_MAX_DEPTH` | 12 | Límite profundidad GraphQL |
+| `GRAPHQL_MAX_FIELDS` | 250 | Límite campos GraphQL |
 
 ### SMTP (opcional)
 
@@ -63,6 +67,7 @@ Claves típicas expuestas vía servicio de configuración (nombres canónicos en
 | Acuerdos | Días de gracia de cuota | Antes de marcar acuerdo ROTO |
 | Pagos | Auto-aplicar | Marca `aplicado` al crear el pago |
 | Metas | Gestiones / recuperación semana-mes | Gamificación y reportes |
+| Cron | `cobranza.cron_alerta_email_activa` | Email a ADMIN/GERENTE si el cron maestro falla (default true; requiere SMTP) |
 
 Valores por mandante tienen prioridad operativa cuando el módulo lo soporta; si no, aplica el global.
 

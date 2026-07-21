@@ -112,7 +112,7 @@ Monitor de ejecuciones.
 | Job | Frecuencia típica | Función |
 |-----|-------------------|---------|
 | `operaciones_cobranza` | Diario 06:00 | Master: acuerdos, mora, castigo, promesas, SLA, importaciones, retención |
-| `procesar-importaciones` | Cada ~5 min | Worker de jobs Excel |
+| `procesar-importaciones` | Diario 07:00 (+ on-demand al subir) | Worker de jobs Excel |
 
 Auth del endpoint: `Authorization: Bearer CRON_SECRET`  
 Lock multi-instancia: advisory lock MySQL (ver [CONTROL-CONCURRENCIA.md](../CONTROL-CONCURRENCIA.md)).
@@ -198,7 +198,7 @@ SMTP_FROM_NAME=
 
 Auth: JWT propio (cookie `auth-token`). No se usa NextAuth.
 
-Detrás de reverse proxy: configurar `X-Real-IP` o `TRUST_PROXY=true` según despliegue.
+Detrás de reverse proxy (Vercel): `TRUST_PROXY=true`. Sin eso el rate-limit por IP no usa X-Forwarded-For.
 
 ---
 

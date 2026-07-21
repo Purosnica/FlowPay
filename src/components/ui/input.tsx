@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { forwardRef, type InputHTMLAttributes } from "react";
+import { forwardRef, useId, type InputHTMLAttributes } from "react";
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -7,15 +7,22 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, label, error, type = "text", ...props }, ref) => {
+  ({ className, label, error, type = "text", id, ...props }, ref) => {
+    const autoId = useId();
+    const inputId = id ?? autoId;
+
     return (
       <div className="w-full">
         {label && (
-          <label className="mb-1.5 block text-sm font-medium text-dark dark:text-white">
+          <label
+            htmlFor={inputId}
+            className="mb-1.5 block text-sm font-medium text-dark dark:text-white"
+          >
             {label}
           </label>
         )}
         <input
+          id={inputId}
           type={type}
           className={cn(
             "w-full rounded-lg border border-stroke bg-transparent px-3 py-1.5 text-sm text-dark outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 focus-visible:shadow-none dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:focus:border-primary",
@@ -48,7 +55,3 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
 );
 
 Input.displayName = "Input";
-
-
-
-

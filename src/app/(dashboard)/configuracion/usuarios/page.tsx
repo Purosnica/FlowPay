@@ -44,6 +44,7 @@ export default function UsuariosAdminPage() {
   const usuariosPagination = usePagination();
   const rolesPagination = usePagination();
 
+  const [tab, setTab] = useState('usuarios');
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedUsuario, setSelectedUsuario] = useState<
     UsuarioGestion | undefined
@@ -59,7 +60,9 @@ export default function UsuariosAdminPage() {
         pageSize: number;
         totalPages: number;
       };
-    }>(GET_USUARIOS, usuariosPagination.queryVars);
+    }>(GET_USUARIOS, usuariosPagination.queryVars, {
+      enabled: tab === 'usuarios',
+    });
 
   const { data: rolesData, isLoading: loadingRoles } = useGraphQLQuery<{
     roles: {
@@ -69,15 +72,21 @@ export default function UsuariosAdminPage() {
       pageSize: number;
       totalPages: number;
     };
-  }>(GET_ROLES, rolesPagination.queryVars);
+  }>(GET_ROLES, rolesPagination.queryVars, {
+    enabled: tab === 'roles',
+  });
 
   const { data: rolesActivosData } = useGraphQLQuery<{
     rolesActivos: RolGestion[];
-  }>(GET_ROLES_ACTIVOS);
+  }>(GET_ROLES_ACTIVOS, undefined, {
+    enabled: tab === 'usuarios' && puedeEscribir,
+  });
 
   const { data: permisosData } = useGraphQLQuery<{
     permisosCatalogo: PermisoCatalogo[];
-  }>(GET_PERMISOS_CATALOGO);
+  }>(GET_PERMISOS_CATALOGO, undefined, {
+    enabled: tab === 'roles',
+  });
 
   const { data: supervisoresData } = useGraphQLQuery<{
     supervisoresActivos: {
@@ -85,7 +94,9 @@ export default function UsuariosAdminPage() {
       nombre: string;
       idrol: number;
     }[];
-  }>(GET_SUPERVISORES_ACTIVOS);
+  }>(GET_SUPERVISORES_ACTIVOS, undefined, {
+    enabled: tab === 'usuarios' && puedeEscribir,
+  });
 
   const invalidateUsuarios = () => {
     queryClient.invalidateQueries({ queryKey: [GET_USUARIOS] });
@@ -231,7 +242,7 @@ export default function UsuariosAdminPage() {
         </p>
       </div>
 
-      <Tabs defaultValue="usuarios">
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="usuarios">Usuarios</TabsTrigger>
           <TabsTrigger value="roles">Roles y permisos</TabsTrigger>

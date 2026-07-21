@@ -65,6 +65,7 @@ export default function PrestamoDetailPage({ params }: PageProps) {
   const [gestionModal, setGestionModal] = useState(false);
   const [notaPrefill, setNotaPrefill] = useState('');
   const [ultimoPagoId, setUltimoPagoId] = useState<number | null>(null);
+  const [pagoFormKey, setPagoFormKey] = useState(0);
   const gestionesPagination = usePagination({ initialPageSize: 10 });
   const pagosPagination = useScopedPagination(idprestamo, {
     initialPageSize: 10,
@@ -145,6 +146,7 @@ export default function PrestamoDetailPage({ params }: PageProps) {
     onSuccess: (result) => {
       invalidate();
       setUltimoPagoId(result.createPago.idpago);
+      setPagoFormKey((k) => k + 1);
       setActiveTab('pagos');
     },
   });
@@ -529,6 +531,7 @@ export default function PrestamoDetailPage({ params }: PageProps) {
 
         <TabsContent value="pagos">
         <div className="grid gap-6 lg:grid-cols-2">
+          <PermissionGate permiso={PERMISO.PAGO_WRITE}>
           <div className="rounded-lg bg-white p-6 shadow-1 dark:bg-gray-dark">
             <h2 className="mb-4 font-semibold">Registrar pago</h2>
             <p className="mb-3 text-xs text-gray-500">
@@ -550,6 +553,7 @@ export default function PrestamoDetailPage({ params }: PageProps) {
               </div>
             ) : null}
             <PagoForm
+              key={pagoFormKey}
               monedaDefault={prestamo.moneda as 'NIO' | 'USD'}
               isLoading={pagoMutation.isPending}
               onSubmit={(data) =>
@@ -559,6 +563,7 @@ export default function PrestamoDetailPage({ params }: PageProps) {
               }
             />
           </div>
+          </PermissionGate>
           <div className="rounded-lg bg-white p-6 shadow-1 dark:bg-gray-dark">
             <h2 className="mb-4 font-semibold">Historial</h2>
             <PaginatedDataTable

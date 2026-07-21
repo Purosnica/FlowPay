@@ -10,6 +10,9 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { csrfHeaders } from '@/lib/security/csrf';
+import { useSessionIdle } from '@/hooks/use-session-idle';
+import { SESSION_IDLE_SECONDS } from '@/lib/auth/session-ttl';
+import { notificationToast } from '@/lib/notifications/notification-toast';
 
 interface Usuario {
   idusuario: number;
@@ -19,14 +22,17 @@ interface Usuario {
   rolCodigo?: string;
 }
 
+type LoginResult =
+  | { success: true; mfaRequired?: false }
+  | { success: true; mfaRequired: true }
+  | { success: false; error?: string };
+
 interface AuthContextType {
   usuario: Usuario | null;
   permisos: string[];
   loading: boolean;
-  login: (
-    email: string,
-    password: string,
-  ) => Promise<{ success: boolean; error?: string }>;
+  login: (email: string, password: string) => Promise<LoginResult>;
+  verifyMfa: (codigo: string) => Promise<LoginResult>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -44,10 +50,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const checkAuth = async () => {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 12_000);
     try {
       const response = await fetch('/api/auth/me', {
         method: 'GET',
         credentials: 'include',
+        signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
           ...csrfHeaders(),
@@ -77,6 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUsuario(null);
       setPermisos([]);
     } finally {
+      window.clearTimeout(timeoutId);
       setLoading(false);
     }
   };
@@ -84,7 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (
     email: string,
     password: string,
-  ): Promise<{ success: boolean; error?: string }> => {
+  ): Promise<LoginResult> => {
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
@@ -107,10 +117,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const data = (await response.json()) as {
         success: boolean;
+        mfaRequired?: boolean;
         usuario?: Usuario;
         permisos?: string[];
         error?: string;
       };
+
+      if (data.success && data.mfaRequired) {
+        return { success: true, mfaRequired: true };
+      }
 
       if (data.success && data.usuario) {
         setPermisos(data.permisos ?? []);
@@ -126,6 +141,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Error al iniciar sesión';
+      return { success: false, error: errorMessage };
+    }
+  };
+
+  const verifyMfa = async (codigo: string): Promise<LoginResult> => {
+    try {
+      const response = await fetch('/api/auth/mfa/verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...csrfHeaders(),
+        },
+        credentials: 'include',
+        body: JSON.stringify({ codigo }),
+      });
+
+      const data = (await response.json()) as {
+        success: boolean;
+        usuario?: Usuario;
+        permisos?: string[];
+        error?: string;
+      };
+
+      if (data.success && data.usuario) {
+        setPermisos(data.permisos ?? []);
+        setUsuario(data.usuario);
+        await checkAuth();
+        return { success: true };
+      }
+
+      return {
+        success: false,
+        error: data.error || 'Código MFA inválido',
+      };
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Error al verificar MFA';
       return { success: false, error: errorMessage };
     }
   };
@@ -150,9 +202,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await checkAuth();
   };
 
+  useSessionIdle({
+    enabled: Boolean(usuario) && !loading,
+    idleSeconds: SESSION_IDLE_SECONDS,
+    onIdle: () => {
+      notificationToast.warning(
+        'Cerramos tu sesión por inactividad.',
+        'Sesión cerrada',
+      );
+      void logout();
+    },
+  });
+
   return (
     <AuthContext.Provider
-      value={{ usuario, permisos, loading, login, logout, refreshUser }}
+      value={{
+        usuario,
+        permisos,
+        loading,
+        login,
+        verifyMfa,
+        logout,
+        refreshUser,
+      }}
     >
       {children}
     </AuthContext.Provider>

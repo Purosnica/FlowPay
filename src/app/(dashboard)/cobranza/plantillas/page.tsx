@@ -16,6 +16,8 @@ import { PlantillaImportacionForm ,type  PlantillaFormData } from '@/components/
 import { MandanteSelect } from '@/components/cobranza/mandante-select';
 import { PageHeader } from '@/components/ui/page-header';
 import { SearchParamsBoundary } from '@/components/ui/search-params-boundary';
+import { PermissionGate } from '@/components/auth/permission-gate';
+import { PERMISO } from '@/lib/permissions/permiso-codes';
 
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { useGraphQLMutation } from '@/hooks/use-graphql-mutation';
@@ -127,15 +129,17 @@ function PlantillasPageContent() {
         title="Plantillas de importación"
         description="Mapeo de columnas Excel → campos del sistema por mandante"
         actions={
-          <Button
-            disabled={!idmandante}
-            onClick={() => {
-              setSelected(undefined);
-              setModalOpen(true);
-            }}
-          >
-            Nueva plantilla
-          </Button>
+          <PermissionGate permiso={PERMISO.CARTERA_WRITE}>
+            <Button
+              disabled={!idmandante}
+              onClick={() => {
+                setSelected(undefined);
+                setModalOpen(true);
+              }}
+            >
+              Nueva plantilla
+            </Button>
+          </PermissionGate>
         }
       />
 
@@ -169,20 +173,22 @@ function PlantillasPageContent() {
             onPageSizeChange={handlePageSizeChange}
             itemLabel="plantillas"
             rowActions={(p) => (
-              <div className="flex justify-end gap-2">
-                <EditRowButton
-                  onClick={() => {
-                    setSelected(p);
-                    setModalOpen(true);
-                  }}
-                />
-                <DeleteRowButton
-                  disabled={deleteMutation.isPending}
-                  onClick={() =>
-                    deleteMutation.mutate({ id: p.idplantillaImp })
-                  }
-                />
-              </div>
+              <PermissionGate permiso={PERMISO.CARTERA_WRITE}>
+                <div className="flex justify-end gap-2">
+                  <EditRowButton
+                    onClick={() => {
+                      setSelected(p);
+                      setModalOpen(true);
+                    }}
+                  />
+                  <DeleteRowButton
+                    disabled={deleteMutation.isPending}
+                    onClick={() =>
+                      deleteMutation.mutate({ id: p.idplantillaImp })
+                    }
+                  />
+                </div>
+              </PermissionGate>
             )}
           />
         )}

@@ -8,12 +8,20 @@ export interface PagoFormData {
   fechaPago: string;
   moneda: 'NIO' | 'USD';
   medio?: string;
+  idempotencyKey: string;
 }
 
 interface PagoFormProps {
   monedaDefault?: 'NIO' | 'USD';
   onSubmit: (data: PagoFormData) => void;
   isLoading?: boolean;
+}
+
+function nuevaIdempotencyKey(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID().replace(/-/g, '');
+  }
+  return `pago_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
 export function PagoForm({
@@ -27,6 +35,7 @@ export function PagoForm({
   );
   const [moneda, setMoneda] = useState<'NIO' | 'USD'>(monedaDefault);
   const [medio, setMedio] = useState('');
+  const [idempotencyKey] = useState(nuevaIdempotencyKey);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,6 +48,7 @@ export function PagoForm({
       fechaPago: new Date(fechaPago).toISOString(),
       moneda,
       medio: medio || undefined,
+      idempotencyKey,
     });
   };
 
@@ -89,6 +99,9 @@ export function PagoForm({
             <option value="EFECTIVO">Efectivo</option>
             <option value="TRANSFERENCIA">Transferencia</option>
             <option value="DEPOSITO">Depósito</option>
+            <option value="CHEQUE">Cheque</option>
+            <option value="TARJETA">Tarjeta</option>
+            <option value="OTRO">Otro</option>
           </select>
         </div>
       </div>

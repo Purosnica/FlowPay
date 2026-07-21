@@ -14,6 +14,8 @@ import {
 } from '@/lib/graphql/queries/cobranza.queries';
 import type { Fiador } from '@/types/cobranza';
 import type { ColumnDef } from '@tanstack/react-table';
+import { PermissionGate } from '@/components/auth/permission-gate';
+import { PERMISO } from '@/lib/permissions/permiso-codes';
 
 interface FiadorPanelProps {
   idprestamo: number;
@@ -59,6 +61,7 @@ export function FiadorPanel({ idprestamo }: FiadorPanelProps) {
 
   return (
     <div className="space-y-4">
+      <PermissionGate permiso={PERMISO.CARTERA_WRITE}>
       <form
         className="grid gap-2 sm:grid-cols-4"
         onSubmit={(e) => {
@@ -103,6 +106,7 @@ export function FiadorPanel({ idprestamo }: FiadorPanelProps) {
           Agregar
         </Button>
       </form>
+      </PermissionGate>
       <PaginatedDataTable
         data={pageData?.fiadores ?? []}
         columns={columns}
@@ -113,9 +117,11 @@ export function FiadorPanel({ idprestamo }: FiadorPanelProps) {
         onPageSizeChange={handlePageSizeChange}
         itemLabel="fiadores"
         rowActions={(f) => (
-          <DeleteRowButton
-            onClick={() => deleteMutation.mutate({ idfiador: f.idfiador })}
-          />
+          <PermissionGate permiso={PERMISO.CARTERA_WRITE}>
+            <DeleteRowButton
+              onClick={() => deleteMutation.mutate({ idfiador: f.idfiador })}
+            />
+          </PermissionGate>
         )}
       />
     </div>

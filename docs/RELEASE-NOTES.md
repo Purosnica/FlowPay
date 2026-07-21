@@ -1,5 +1,36 @@
 # Release Notes — FlowPay
 
+## v1.2.5 — MFA TOTP + hardening (2026-07-21)
+
+- MFA TOTP para ADMIN/GERENTE (setup en Perfil, paso en login, secreto cifrado AES-GCM)
+- Rate-limit GraphQL también por `userId` (además de IP)
+- `PermissionGate` en comprobante de pago
+- Dependabot semanal + `npm audit` en CI (informativo)
+
+## v1.2.4 — Ops, sesión idle, health (2026-07-21)
+
+- Migración `idempotencyKey` aplicada en BD (baseline resuelto + deploy)
+- `/api/health` (liveness) y `/api/ready` (MySQL)
+- Idle de sesión 30 min (`SESSION_IDLE_SECONDS`) + aviso UX; refresh `lastActivityAt` en middleware
+- Runbook backup/DR: `docs/BACKUP-DR.md`
+- Playwright E2E base (`e2e/login.spec.ts`)
+- `TRUST_PROXY` / `SESSION_IDLE_SECONDS` en `env.ts` y `.env.example`
+
+## v1.2.3 — Hardening sin costos externos (2026-07-21)
+
+- Scope cobrador en descarga de documentos por cliente
+- IP rate-limit solo con `TRUST_PROXY=true` (deja de confiar en X-Real-IP spoofable)
+- Límites GraphQL de profundidad/campos (sin deps de pago)
+- Idempotencia de pagos (`idempotencyKey`) + medios de pago normalizados
+- PermissionGate en pagos / importar / asignación
+- CI GitHub Actions (lint, tsc, unit/qa, audits)
+- Docs: cron import alineado, 46 permisos, digest email, credenciales seed fuera de guías
+- Eliminada dependencia `mssql` no usada
+- Alertas SMTP si cron maestro ERROR/PARCIAL/TIMEOUT
+- Hub de reportes + PermissionGate ampliado
+
+---
+
 ## v1.2.2 — Enterprise Readiness (2026-07-07)
 
 Release de consolidación: seguridad, performance, escalabilidad, QA, UAT y documentación oficial.
@@ -28,7 +59,7 @@ Release de consolidación: seguridad, performance, escalabilidad, QA, UAT y docu
 - Prisma singleton en producción
 - Rate limit distribuido en MySQL
 - Cron con advisory lock multi-instancia
-- Importación async por defecto + cron cada 5 min
+- Importación async por defecto + cron diario 07:00 (+ on-demand al subir)
 - Retención automática de auditoría y ejecuciones cron
 - Variables: `IMPORT_MAX_*`, `AUDIT_RETENTION_DAYS`
 
