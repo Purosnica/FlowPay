@@ -23,8 +23,16 @@ export function ReporteAsyncContent({
   children,
   emptyMessage = 'Sin datos para los filtros seleccionados.',
 }: ReporteAsyncContentProps) {
+  const errorMessage =
+    error?.message?.trim() ||
+    'No se pudo cargar la información.';
+
   return (
-    <AsyncPanel isLoading={isLoading} error={error ?? null}>
+    <AsyncPanel
+      isLoading={isLoading}
+      error={error ?? null}
+      errorMessage={errorMessage}
+    >
       {hasData ? (
         children
       ) : (

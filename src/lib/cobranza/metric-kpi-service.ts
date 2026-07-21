@@ -1,6 +1,10 @@
 import { prisma } from '@/lib/prisma';
 import { filtroMandante, requerirAccesoMandante } from './mandante-scope';
 import { decimalToNumber, roundMoney } from './decimal-utils';
+import {
+  filtroFechaEnPeriodo,
+  rangoPeriodoActual,
+} from './periodo-utils';
 import type { KpiCobranzaCore } from '@/types/cobranza';
 
 export type { KpiCobranzaCore };
@@ -14,9 +18,7 @@ export async function obtenerKpisCobranzaCore(
   }
 
   const mandanteFilter = idmandante ?? (await filtroMandante(idusuario));
-  const inicioMes = new Date();
-  inicioMes.setDate(1);
-  inicioMes.setHours(0, 0, 0, 0);
+  const rangoMes = filtroFechaEnPeriodo(rangoPeriodoActual());
 
   const [
     aggCartera,
@@ -49,7 +51,7 @@ export async function obtenerKpisCobranzaCore(
         deletedAt: null,
         aplicado: true,
         idmandante: mandanteFilter,
-        fechaPago: { gte: inicioMes },
+        fechaPago: rangoMes,
       },
       _sum: { monto: true },
     }),
@@ -57,7 +59,7 @@ export async function obtenerKpisCobranzaCore(
       where: {
         deletedAt: null,
         idmandante: mandanteFilter,
-        fechaGestion: { gte: inicioMes },
+        fechaGestion: rangoMes,
       },
     }),
     prisma.tbl_gestion.count({
@@ -78,7 +80,7 @@ export async function obtenerKpisCobranzaCore(
       where: {
         deletedAt: null,
         idmandante: mandanteFilter,
-        fechaGestion: { gte: inicioMes },
+        fechaGestion: rangoMes,
         codresult: {
           tipoGestion: { in: ['EFECTIVA', 'EFECTIVA CON TERCERO'] },
         },

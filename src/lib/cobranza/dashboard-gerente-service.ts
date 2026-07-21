@@ -6,6 +6,10 @@ import { obtenerIdsEquipo, esGerente } from './equipo-scope';
 import { decimalToNumber, roundMoney } from './decimal-utils';
 import { obtenerDashboardSupervisor } from './dashboard-supervisor-service';
 import { contarReclamosFueraSla } from './reclamo-sla-service';
+import {
+  filtroFechaEnPeriodo,
+  rangoPeriodoActual,
+} from './periodo-utils';
 
 export type { DashboardGerenteResumen };
 
@@ -20,7 +24,7 @@ export async function obtenerDashboardGerente(
   const mandanteFilter = await filtroMandante(idusuario);
   const inicioHoy = new Date();
   inicioHoy.setHours(0, 0, 0, 0);
-  const inicioMes = new Date(inicioHoy.getFullYear(), inicioHoy.getMonth(), 1);
+  const rangoMes = filtroFechaEnPeriodo(rangoPeriodoActual());
 
   const esAdminUsuario = await esAdmin(idusuario);
   const supervisores = await prisma.tbl_usuario.findMany({
@@ -50,7 +54,7 @@ export async function obtenerDashboardGerente(
           deletedAt: null,
           aplicado: true,
           idmandante: mandanteFilter,
-          fechaPago: { gte: inicioMes },
+          fechaPago: rangoMes,
         },
         _sum: { monto: true },
       }),
@@ -100,9 +104,9 @@ export async function obtenerDashboardGerente(
             deletedAt: null,
             aplicado: true,
             idmandante: mandanteFilter,
-            fechaPago: { gte: inicioMes },
+            fechaPago: rangoMes,
             OR: [
-              { idgestor: { in: idsEquipoSup } },
+              { gestion: { idgestor: { in: idsEquipoSup } } },
               { prestamo: { idgestorAsignado: { in: idsEquipoSup } } },
             ],
           },

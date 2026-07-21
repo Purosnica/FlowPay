@@ -5,6 +5,7 @@ import {
   wherePrestamoClienteEnScope,
 } from './mandante-scope';
 import { decimalToNumber, roundMoney } from './decimal-utils';
+import { inicioPeriodoActual } from './periodo-utils';
 
 export interface Cliente360Resumen {
   cliente: {
@@ -86,9 +87,7 @@ export async function obtenerVista360Cliente(
     orderBy: { saldoTotal: 'desc' },
   });
 
-  const inicioMes = new Date();
-  inicioMes.setDate(1);
-  inicioMes.setHours(0, 0, 0, 0);
+  const inicioMes = inicioPeriodoActual();
 
   const prestamoRelacionado = {
     idcliente,

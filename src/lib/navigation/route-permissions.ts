@@ -28,6 +28,7 @@ export const ROUTE_PERMISSION_RULES: RoutePermissionRule[] = [
   { prefix: '/cobranza/plantillas', permiso: PERMISO.MANDANTE_READ },
   { prefix: '/cobranza/plantillas-mensaje', permiso: PERMISO.MANDANTE_WRITE },
   { prefix: '/cobranza/conciliaciones', permiso: PERMISO.PAGO_READ },
+  { prefix: '/cobranza/pagos', permiso: PERMISO.PAGO_READ },
   { prefix: '/cobranza/liquidaciones', permiso: PERMISO.LIQUIDACION_READ },
   {
     prefix: '/cobranza/reportes/ganancias',

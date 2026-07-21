@@ -45,14 +45,14 @@ function formatearFechaIso(d: Date | null | undefined): string {
   if (!d) {
     return '';
   }
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
+  const yyyy = d.getUTCFullYear();
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(d.getUTCDate()).padStart(2, '0');
   return `${yyyy}-${mm}-${dd}`;
 }
 
 function mesUpperDesdeFecha(d: Date): string {
-  return MESES_ES_UPPER[d.getMonth()] ?? '';
+  return MESES_ES_UPPER[d.getUTCMonth()] ?? '';
 }
 
 export async function obtenerInformeGestiones(
@@ -139,6 +139,7 @@ export async function obtenerInformeGestiones(
         deletedAt: null,
         aplicado: true,
         idprestamo: { in: idprestamos },
+        fechaPago: { gte: inicio, lt: fin },
       },
       _sum: { monto: true },
     });

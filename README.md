@@ -70,7 +70,13 @@ Ver `src/lib/env.ts` para el esquema completo.
 
 Toda la documentación oficial está en **[docs/README.md](./docs/README.md)**.
 
-Incluye manuales por rol, catálogos de KPIs/permisos/reglas, UAT, roadmap y release notes.
+Incluye:
+
+- Manuales detallados por rol (cobrador, supervisor, gerente, admin, mandante)
+- Manual de reportes y glosario
+- Catálogos de KPIs, permisos, reglas y procesos
+- Guías técnicas (mora, castigo, config, concurrencia)
+- UAT, roadmap y release notes
 
 ---
 

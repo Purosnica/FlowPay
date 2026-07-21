@@ -88,6 +88,7 @@ Ver: [CASTIGO-CARTERA.md](../CASTIGO-CARTERA.md)
 | Auto-aplicar | `pagoAutoAplicar` en config mandante |
 | Conciliación | Módulo `/cobranza/conciliaciones` |
 | Atribución | Por `idgestor` o gestor asignado al préstamo |
+| Comprobante | Térmica 80 mm: saldo anterior, abono, saldo nuevo; folio `FP-########`; ruta `/cobranza/pagos/{id}/comprobante` |
 
 ---
 

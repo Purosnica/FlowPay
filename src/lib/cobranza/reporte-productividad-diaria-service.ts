@@ -2,6 +2,10 @@ import { prisma } from '@/lib/prisma';
 import { requerirAccesoMandante } from './mandante-scope';
 import { decimalToNumber, roundMoney } from './decimal-utils';
 import { parsePeriodo } from './periodo-utils';
+import {
+  fechaCalendarioUtc,
+  resolverIdGestorPago,
+} from './pago-atributacion';
 import type {
   ReporteProductividadDiaItem,
   ReporteProductividadDiaria,
@@ -54,7 +58,6 @@ export async function obtenerReporteProductividadDiaria(
       select: {
         monto: true,
         fechaPago: true,
-        idgestor: true,
         gestion: { select: { idgestor: true } },
         prestamo: { select: { idgestorAsignado: true } },
       },
@@ -70,7 +73,7 @@ export async function obtenerReporteProductividadDiaria(
   const porClave = new Map<string, Agg>();
 
   for (const g of gestiones) {
-    const fecha = g.fechaGestion.toISOString().slice(0, 10);
+    const fecha = fechaCalendarioUtc(g.fechaGestion);
     const key = `${fecha}|${g.idgestor}`;
     const prev = porClave.get(key) ?? {
       nombre: g.gestor.nombre,
@@ -89,15 +92,11 @@ export async function obtenerReporteProductividadDiaria(
   }
 
   for (const p of pagos) {
-    const idgestor =
-      p.idgestor ??
-      p.gestion?.idgestor ??
-      p.prestamo.idgestorAsignado ??
-      null;
+    const idgestor = resolverIdGestorPago(p);
     if (!idgestor) {
       continue;
     }
-    const fecha = p.fechaPago.toISOString().slice(0, 10);
+    const fecha = fechaCalendarioUtc(p.fechaPago);
     const key = `${fecha}|${idgestor}`;
     const prev = porClave.get(key) ?? {
       nombre: `Gestor #${idgestor}`,

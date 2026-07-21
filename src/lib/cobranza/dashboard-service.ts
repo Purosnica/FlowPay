@@ -2,6 +2,10 @@ import { prisma } from '@/lib/prisma';
 import { filtroMandante } from './mandante-scope';
 import { decimalToNumber } from './decimal-utils';
 import { contarPromesasVencidas } from './promesas-vencidas-service';
+import {
+  filtroFechaEnPeriodo,
+  rangoPeriodoActual,
+} from './periodo-utils';
 import type { DashboardResumenCobranza } from '@/types/cobranza';
 
 export type { DashboardResumenCobranza };
@@ -10,9 +14,7 @@ export async function obtenerResumenDashboard(
   idusuario: number,
 ): Promise<DashboardResumenCobranza> {
   const mandanteFilter = await filtroMandante(idusuario);
-  const inicioMes = new Date();
-  inicioMes.setDate(1);
-  inicioMes.setHours(0, 0, 0, 0);
+  const rangoMes = filtroFechaEnPeriodo(rangoPeriodoActual());
 
   const prestamoWhere = {
     deletedAt: null,
@@ -33,14 +35,14 @@ export async function obtenerResumenDashboard(
         where: {
           deletedAt: null,
           idmandante: mandanteFilter,
-          fechaGestion: { gte: inicioMes },
+          fechaGestion: rangoMes,
         },
       }),
       prisma.tbl_pago.count({
         where: {
           deletedAt: null,
           idmandante: mandanteFilter,
-          fechaPago: { gte: inicioMes },
+          fechaPago: rangoMes,
         },
       }),
       prisma.tbl_pago.count({
@@ -48,7 +50,7 @@ export async function obtenerResumenDashboard(
           deletedAt: null,
           aplicado: true,
           idmandante: mandanteFilter,
-          fechaPago: { gte: inicioMes },
+          fechaPago: rangoMes,
         },
       }),
       prisma.tbl_reclamo.count({

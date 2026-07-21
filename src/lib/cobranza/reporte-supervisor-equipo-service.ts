@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { requerirAccesoMandante } from './mandante-scope';
 import { decimalToNumber, roundMoney } from './decimal-utils';
 import { parsePeriodo } from './periodo-utils';
+import { resolverIdGestorPago } from './pago-atributacion';
 import { obtenerIdsEquipo } from './equipo-scope';
 import { ROL } from '@/lib/permissions/role-codes';
 import type {
@@ -82,7 +83,6 @@ export async function obtenerReporteSupervisorEquipo(
       },
       select: {
         monto: true,
-        idgestor: true,
         gestion: { select: { idgestor: true } },
         prestamo: { select: { idgestorAsignado: true } },
       },
@@ -112,11 +112,7 @@ export async function obtenerReporteSupervisorEquipo(
   }
 
   for (const p of pagos) {
-    const idgestor =
-      p.idgestor ??
-      p.gestion?.idgestor ??
-      p.prestamo.idgestorAsignado ??
-      null;
+    const idgestor = resolverIdGestorPago(p);
     if (!idgestor || !stats.has(idgestor)) {
       continue;
     }

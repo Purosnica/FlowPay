@@ -7,7 +7,14 @@ import {
 import { calcularAbonoCuotasPorTotal } from '@/lib/cobranza/acuerdo-cuota-service';
 import { construirNarrativaInforme } from '@/lib/cobranza/informe-gerencial-narrativa';
 import { parseReferenciasPrestamo } from '@/lib/cobranza/parse-referencias-prestamo';
-import { parsePeriodo } from '@/lib/cobranza/periodo-utils';
+import { parsePeriodo, filtroFechaEnPeriodo } from '@/lib/cobranza/periodo-utils';
+import { resolverIdGestorPago } from '@/lib/cobranza/pago-atributacion';
+import {
+  folioComprobantePago,
+  rutaComprobantePago,
+  calcularSaldosComprobante,
+  esPagoPosteriorAlComprobante,
+} from '@/lib/logic/comprobante-pago-logic';
 
 function testTransicionesEstado(): void {
   assert.equal(puedeTransicionar('Vigente', 'Vencido'), true);
@@ -127,4 +134,103 @@ function testParsePeriodoUtcIncluyeDiaUno(): void {
 }
 
 testParsePeriodoUtcIncluyeDiaUno();
-console.log('tests unitarios cobranza: OK');
+
+function testRangoMesRelativoYFiltros(): void {
+  const junio = parsePeriodo('2026-06');
+  // Congelar “actual” vía parsePeriodo + offset simulado
+  const { inicio, fin } = junio;
+  assert.equal(
+    filtroFechaEnPeriodo(junio).gte.toISOString(),
+    inicio.toISOString(),
+  );
+  assert.equal(
+    filtroFechaEnPeriodo(junio).lt.toISOString(),
+    fin.toISOString(),
+  );
+
+  // Mayo = junio - 1 mes (UTC)
+  const mayoAncla = new Date(
+    Date.UTC(inicio.getUTCFullYear(), inicio.getUTCMonth() - 1, 1),
+  );
+  const mayoPeriodo = `${mayoAncla.getUTCFullYear()}-${String(mayoAncla.getUTCMonth() + 1).padStart(2, '0')}`;
+  assert.equal(mayoPeriodo, '2026-05');
+  const mayo = parsePeriodo(mayoPeriodo);
+  assert.equal(mayo.inicio.toISOString(), '2026-05-01T00:00:00.000Z');
+  assert.equal(mayo.fin.toISOString(), '2026-06-01T00:00:00.000Z');
+}
+
+testRangoMesRelativoYFiltros();
+
+function testResolverIdGestorPago(): void {
+  assert.equal(
+    resolverIdGestorPago({
+      gestion: { idgestor: 7 },
+      prestamo: { idgestorAsignado: 3 },
+    }),
+    7,
+  );
+  assert.equal(
+    resolverIdGestorPago({
+      gestion: null,
+      prestamo: { idgestorAsignado: 3 },
+    }),
+    3,
+  );
+  assert.equal(
+    resolverIdGestorPago({
+      prestamo: { idgestorAsignado: null },
+    }),
+    null,
+  );
+}
+
+testResolverIdGestorPago();
+
+function testComprobantePagoLogic(): void {
+  assert.equal(folioComprobantePago(42), 'FP-00000042');
+  assert.equal(
+    rutaComprobantePago(42),
+    '/cobranza/pagos/42/comprobante',
+  );
+
+  const aplicado = calcularSaldosComprobante({
+    saldoActual: 700,
+    montoPago: 100,
+    pagoAplicado: true,
+    montosPagosAplicadosPosteriores: 200,
+  });
+  assert.equal(aplicado.saldoAnterior, 1000);
+  assert.equal(aplicado.saldoNuevo, 900);
+
+  const pendiente = calcularSaldosComprobante({
+    saldoActual: 1000,
+    montoPago: 150,
+    pagoAplicado: false,
+    montosPagosAplicadosPosteriores: 0,
+  });
+  assert.equal(pendiente.saldoAnterior, 1000);
+  assert.equal(pendiente.saldoNuevo, 850);
+
+  const fecha = new Date('2026-07-01T12:00:00.000Z');
+  assert.equal(
+    esPagoPosteriorAlComprobante({
+      fechaPagoReferencia: fecha,
+      idpagoReferencia: 10,
+      fechaPago: fecha,
+      idpago: 11,
+    }),
+    true,
+  );
+  assert.equal(
+    esPagoPosteriorAlComprobante({
+      fechaPagoReferencia: fecha,
+      idpagoReferencia: 10,
+      fechaPago: new Date('2026-06-01T12:00:00.000Z'),
+      idpago: 99,
+    }),
+    false,
+  );
+}
+
+testComprobantePagoLogic();
+process.stdout.write('tests unitarios cobranza: OK\n');

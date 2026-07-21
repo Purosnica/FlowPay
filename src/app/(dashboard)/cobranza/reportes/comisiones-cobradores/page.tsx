@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
+import Link from 'next/link';
 import {
   FILTER_INPUT_CLASS,
   ReporteFiltrosBar,
@@ -33,7 +34,9 @@ import {
 export default function ReporteComisionesCobradoresPage() {
   const [idmandante, setIdmandante] = useState<number | ''>('');
   const [periodo, setPeriodo] = useState(periodoActual());
-  const [filtrarPeriodo, setFiltrarPeriodo] = useState(true);
+  // Histórico por defecto: si se filtra el mes actual sin liquidación,
+  // el reporte parece vacío aunque existan periodos anteriores.
+  const [filtrarPeriodo, setFiltrarPeriodo] = useState(false);
   const { exportOk, exportError, clearFeedback, runExport } =
     useReporteExportFeedback();
 
@@ -54,6 +57,13 @@ export default function ReporteComisionesCobradoresPage() {
   );
 
   const reporte = data?.reporteComisionesCobradores;
+  const sinLiquidaciones = Boolean(
+    reporte && reporte.cantidadLiquidaciones === 0,
+  );
+
+  const emptyMessage = filtrarPeriodo
+    ? `Sin liquidaciones en ${periodo}. Desactive «Filtrar por periodo» para ver el histórico, o genere la liquidación del mes en Liquidaciones.`
+    : 'Sin liquidaciones para este mandante. Genere una en Liquidaciones para ver comisiones por cobrador.';
 
   const metrics = useMemo<DashboardMetric[]>(() => {
     if (!reporte) {
@@ -141,13 +151,13 @@ export default function ReporteComisionesCobradoresPage() {
           clearFeedback();
           setIdmandante(v);
         }}
-        canExport={Boolean(reporte)}
+        canExport={Boolean(reporte) && !sinLiquidaciones}
         isFetching={isFetching}
         exportOk={exportOk}
         exportError={exportError}
         onRefresh={() => void refetch()}
         onExport={() => {
-          if (!reporte) return;
+          if (!reporte || sinLiquidaciones) return;
           runExport(() => exportReporteComisionesXlsx(reporte));
         }}
       >
@@ -191,9 +201,10 @@ export default function ReporteComisionesCobradoresPage() {
         <ReporteAsyncContent
           isLoading={isLoading}
           error={error}
-          hasData={Boolean(reporte)}
+          hasData={Boolean(reporte) && !sinLiquidaciones}
+          emptyMessage={emptyMessage}
         >
-          {reporte ? (
+          {reporte && !sinLiquidaciones ? (
             <div className="space-y-6">
               <div>
                 <h2 className="mb-3 text-lg font-semibold text-dark dark:text-white">
@@ -203,14 +214,24 @@ export default function ReporteComisionesCobradoresPage() {
               </div>
               <ReporteTableSection
                 title="Por cobrador / liquidación"
-                description="Detalle de comisiones por liquidación y gestor"
+                description="Detalle de comisiones por liquidación y gestor. Fuente: liquidaciones generadas."
                 columns={columns}
                 data={reporte.porCobrador}
-                emptyMessage="Sin liquidaciones para el filtro seleccionado."
+                emptyMessage="La liquidación no tiene detalle de comisiones."
                 itemLabel="filas"
                 initialPageSize={20}
                 resetKey={`${mandanteId}-${filtrarPeriodo ? periodo : 'all'}`}
               />
+              <p className="text-xs text-gray-5">
+                ¿Falta un periodo?{' '}
+                <Link
+                  href="/cobranza/liquidaciones"
+                  className="font-medium text-primary hover:underline"
+                >
+                  Generar liquidación
+                </Link>
+                .
+              </p>
             </div>
           ) : null}
         </ReporteAsyncContent>

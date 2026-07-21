@@ -4,6 +4,10 @@ import { decimalToNumber, roundMoney } from './decimal-utils';
 import {
   obtenerMetaRecuperacionMes,
 } from './configuracion-cobranza-service';
+import {
+  filtroFechaMesActualHastaAhora,
+  rangoPeriodoActual,
+} from './periodo-utils';
 
 export interface ForecastRecuperacion {
   recuperadoMesActual: number;
@@ -25,17 +29,22 @@ export async function calcularForecastRecuperacion(
 
   const mandanteFilter = idmandante ?? (await filtroMandante(idusuario));
   const hoy = new Date();
-  const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-  const finMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
-  const diasTranscurridos = hoy.getDate();
-  const diasRestantesMes = finMes.getDate() - diasTranscurridos;
+  const { inicio, fin } = rangoPeriodoActual();
+  const msDia = 24 * 60 * 60 * 1000;
+  const diasMes = Math.round((fin.getTime() - inicio.getTime()) / msDia);
+  const corte = hoy < fin ? hoy : fin;
+  const diasTranscurridos = Math.max(
+    1,
+    Math.ceil((corte.getTime() - inicio.getTime()) / msDia),
+  );
+  const diasRestantesMes = Math.max(0, diasMes - diasTranscurridos);
 
   const agg = await prisma.tbl_pago.aggregate({
     where: {
       deletedAt: null,
       aplicado: true,
       idmandante: mandanteFilter,
-      fechaPago: { gte: inicioMes, lte: hoy },
+      fechaPago: filtroFechaMesActualHastaAhora(),
     },
     _sum: { monto: true },
   });

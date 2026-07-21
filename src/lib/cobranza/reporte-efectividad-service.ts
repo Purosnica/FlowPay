@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { requerirAccesoMandante } from './mandante-scope';
 import { decimalToNumber, roundMoney } from './decimal-utils';
 import { parsePeriodo } from './periodo-utils';
+import { resolverIdGestorPago } from './pago-atributacion';
 import type {
   ReporteEfectividad,
   ReporteEfectividadGestorItem,
@@ -54,7 +55,6 @@ export async function obtenerReporteEfectividad(
         },
         select: {
           monto: true,
-          idgestor: true,
           gestion: { select: { idgestor: true } },
           prestamo: { select: { idgestorAsignado: true } },
         },
@@ -111,12 +111,10 @@ export async function obtenerReporteEfectividad(
     stats.set(g.idgestor, prev);
   }
 
+  let totalRecuperadoPagos = 0;
   for (const pago of pagosPeriodo) {
-    const idgestor =
-      pago.idgestor ??
-      pago.gestion?.idgestor ??
-      pago.prestamo.idgestorAsignado ??
-      null;
+    totalRecuperadoPagos += decimalToNumber(pago.monto);
+    const idgestor = resolverIdGestorPago(pago);
     if (!idgestor) {
       continue;
     }
@@ -218,9 +216,7 @@ export async function obtenerReporteEfectividad(
       (g.codresult?.tipoGestion ?? '') as (typeof TIPOS_CONTACTO)[number],
     ),
   ).length;
-  const totalRecuperado = roundMoney(
-    porGestor.reduce((s, g) => s + g.montoRecuperado, 0),
-  );
+  const totalRecuperado = roundMoney(totalRecuperadoPagos);
 
   return {
     idmandante,

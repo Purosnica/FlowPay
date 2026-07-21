@@ -42,9 +42,10 @@ Procesos operativos manuales y automáticos.
 | 2 | Cobrador | Contacta deudor (respeta horario) |
 | 3 | Cobrador | Registra gestión o promesa |
 | 4 | Cobrador | Registra pago si aplica |
-| 5 | Sistema | Actualiza timeline y KPIs |
+| 5 | Cobrador | Imprime comprobante (`/cobranza/pagos/{id}/comprobante`) |
+| 6 | Sistema | Actualiza timeline y KPIs |
 
-**Servicios:** `bandeja-cobrador-service.ts`, `mi-dia-service.ts`, `gestion-*`
+**Servicios:** `bandeja-cobrador-service.ts`, `mi-dia-service.ts`, `gestion-*`, `comprobante-pago-service.ts`
 
 ---
 

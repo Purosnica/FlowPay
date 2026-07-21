@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { requerirAccesoMandante } from './mandante-scope';
 import { decimalToNumber, roundMoney } from './decimal-utils';
 import { parsePeriodo } from './periodo-utils';
+import { resolverIdGestorPago } from './pago-atributacion';
 import type { ReporteGestorItem } from '@/types/cobranza';
 
 export type { ReporteGestorItem };
@@ -106,8 +107,7 @@ export async function obtenerReporteCobranza(
 
   const recuperadoPorGestor = new Map<number, number>();
   for (const pago of pagosConContexto) {
-    const idgestor =
-      pago.gestion?.idgestor ?? pago.prestamo.idgestorAsignado ?? null;
+    const idgestor = resolverIdGestorPago(pago);
     if (!idgestor) {
       continue;
     }

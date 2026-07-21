@@ -20,6 +20,7 @@ import {
 import { decimalToNumber } from '@/lib/cobranza/decimal-utils';
 import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
 import { validarPagoAnticipado } from '@/lib/cobranza/pago-validacion-service';
+import { rutaComprobantePago } from '@/lib/logic/comprobante-pago-logic';
 
 builder.mutationField('createPago', (t) =>
   t.prismaField({
@@ -67,7 +68,7 @@ builder.mutationField('createPago', (t) =>
           fechaPago: data.fechaPago,
         });
 
-        const created = await tx.tbl_pago.create({
+        const createdRaw = await tx.tbl_pago.create({
           data: {
             idmandante: prestamo.idmandante,
             idprestamo: data.idprestamo,
@@ -80,6 +81,11 @@ builder.mutationField('createPago', (t) =>
             tipoCambio: data.tipoCambio,
             medio: data.medio,
           },
+        });
+
+        const created = await tx.tbl_pago.update({
+          where: { idpago: createdRaw.idpago },
+          data: { reciboUrl: rutaComprobantePago(createdRaw.idpago) },
         });
 
         const autoAplicar = await obtenerConfigBooleana(CLAVE_PAGO_AUTO_APLICAR);

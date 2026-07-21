@@ -48,6 +48,7 @@ import { type Acuerdo, type Gestion, type Pago, type Prestamo ,
   formatearMoneda,
   nombreCompletoCliente,
 } from '@/types/cobranza';
+import { rutaComprobantePago } from '@/lib/logic/comprobante-pago-logic';
 
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -63,6 +64,7 @@ export default function PrestamoDetailPage({ params }: PageProps) {
   const [activeTab, setActiveTab] = useState('resumen');
   const [gestionModal, setGestionModal] = useState(false);
   const [notaPrefill, setNotaPrefill] = useState('');
+  const [ultimoPagoId, setUltimoPagoId] = useState<number | null>(null);
   const gestionesPagination = usePagination({ initialPageSize: 10 });
   const pagosPagination = useScopedPagination(idprestamo, {
     initialPageSize: 10,
@@ -137,8 +139,14 @@ export default function PrestamoDetailPage({ params }: PageProps) {
     onSuccess: invalidate,
   });
 
-  const pagoMutation = useGraphQLMutation(CREATE_PAGO, {
-    onSuccess: invalidate,
+  const pagoMutation = useGraphQLMutation<{
+    createPago: { idpago: number; monto: number; fechaPago: string };
+  }>(CREATE_PAGO, {
+    onSuccess: (result) => {
+      invalidate();
+      setUltimoPagoId(result.createPago.idpago);
+      setActiveTab('pagos');
+    },
   });
 
   const aplicadoMutation = useGraphQLMutation(MARCAR_PAGO_APLICADO, {
@@ -172,19 +180,26 @@ export default function PrestamoDetailPage({ params }: PageProps) {
       id: 'acciones',
       header: '',
       cell: ({ row }) => (
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={aplicadoMutation.isPending}
-          onClick={() =>
-            aplicadoMutation.mutate({
-              idpago: row.original.idpago,
-              aplicado: !row.original.aplicado,
-            })
-          }
-        >
-          {row.original.aplicado ? 'Desmarcar' : 'Conciliar'}
-        </Button>
+        <div className="flex flex-wrap justify-end gap-2">
+          <Link href={rutaComprobantePago(row.original.idpago)}>
+            <Button size="sm" variant="outline">
+              Comprobante
+            </Button>
+          </Link>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={aplicadoMutation.isPending}
+            onClick={() =>
+              aplicadoMutation.mutate({
+                idpago: row.original.idpago,
+                aplicado: !row.original.aplicado,
+              })
+            }
+          >
+            {row.original.aplicado ? 'Desmarcar' : 'Conciliar'}
+          </Button>
+        </div>
       ),
     },
   ];
@@ -520,6 +535,20 @@ export default function PrestamoDetailPage({ params }: PageProps) {
               Al conciliar un pago se descuenta del saldo del préstamo. Si el
               total pagado cubre el acuerdo vigente, se marca como cumplido.
             </p>
+            {ultimoPagoId ? (
+              <div
+                className="mb-4 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800 dark:border-green-800 dark:bg-green-900/20 dark:text-green-300"
+                role="status"
+              >
+                Pago registrado.{' '}
+                <Link
+                  href={rutaComprobantePago(ultimoPagoId)}
+                  className="font-medium underline"
+                >
+                  Imprimir comprobante
+                </Link>
+              </div>
+            ) : null}
             <PagoForm
               monedaDefault={prestamo.moneda as 'NIO' | 'USD'}
               isLoading={pagoMutation.isPending}

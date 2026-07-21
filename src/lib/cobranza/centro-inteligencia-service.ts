@@ -11,6 +11,11 @@ import {
   diasMoraEnTramo,
   tramoMoraMasSevero,
 } from './tramos-mora';
+import {
+  filtroFechaEnPeriodo,
+  rangoMesRelativo,
+  rangoPeriodoActual,
+} from './periodo-utils';
 import type {
   CentroInteligenciaResumen,
   InsightAutomatico,
@@ -22,10 +27,8 @@ async function calcularRecuperacionMes(
   idmandante: number | undefined,
   mandanteFilter: Prisma.IntFilter | undefined,
 ): Promise<{ actual: number; anterior: number }> {
-  const ahora = new Date();
-  const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
-  const inicioMesAnterior = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
-  const finMesAnterior = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
+  const mesActual = filtroFechaEnPeriodo(rangoPeriodoActual());
+  const mesAnterior = filtroFechaEnPeriodo(rangoMesRelativo(-1));
 
   const whereBase = {
     deletedAt: null,
@@ -35,13 +38,13 @@ async function calcularRecuperacionMes(
 
   const [actual, anterior] = await Promise.all([
     prisma.tbl_pago.aggregate({
-      where: { ...whereBase, fechaPago: { gte: inicioMes } },
+      where: { ...whereBase, fechaPago: mesActual },
       _sum: { monto: true },
     }),
     prisma.tbl_pago.aggregate({
       where: {
         ...whereBase,
-        fechaPago: { gte: inicioMesAnterior, lt: finMesAnterior },
+        fechaPago: mesAnterior,
       },
       _sum: { monto: true },
     }),
@@ -305,25 +308,23 @@ export async function obtenerTendenciaRecuperacion(
     : await filtroMandante(idusuario);
 
   const resultado: Array<{ periodo: string; monto: number }> = [];
-  const ahora = new Date();
 
   for (let i = meses - 1; i >= 0; i--) {
-    const inicio = new Date(ahora.getFullYear(), ahora.getMonth() - i, 1);
-    const fin = new Date(ahora.getFullYear(), ahora.getMonth() - i + 1, 1);
-    const periodo = `${inicio.getFullYear()}-${String(inicio.getMonth() + 1).padStart(2, '0')}`;
+    const rango = rangoMesRelativo(-i);
+    const fechaPago = filtroFechaEnPeriodo(rango);
 
     const agg = await prisma.tbl_pago.aggregate({
       where: {
         deletedAt: null,
         aplicado: true,
         idmandante: idmandante ?? mandanteFilter,
-        fechaPago: { gte: inicio, lt: fin },
+        fechaPago,
       },
       _sum: { monto: true },
     });
 
     resultado.push({
-      periodo,
+      periodo: rango.periodo,
       monto: decimalToNumber(agg._sum.monto),
     });
   }

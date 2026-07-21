@@ -36,6 +36,7 @@ export const Pago = definePrismaObject("tbl_pago", {
     idprestamo: t.exposeInt("idprestamo"),
     idacuerdo: t.exposeInt("idacuerdo", { nullable: true }),
     idgestion: t.exposeInt("idgestion", { nullable: true }),
+    idgestor: t.exposeInt("idgestor", { nullable: true }),
     fechaPago: t.expose("fechaPago", { type: "DateTime" }),
     monto: exposeDecimal(t, "monto"),
     moneda: t.exposeString("moneda"),
@@ -44,5 +45,7 @@ export const Pago = definePrismaObject("tbl_pago", {
     reciboUrl: t.exposeString("reciboUrl", { nullable: true }),
     createdAt: t.expose("createdAt", { type: "DateTime" }),
     prestamo: t.relation("prestamo"),
+    mandante: t.relation("mandante"),
+    gestor: t.relation("gestor", { nullable: true }),
   }),
 });

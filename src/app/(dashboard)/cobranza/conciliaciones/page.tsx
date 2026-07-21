@@ -19,6 +19,7 @@ import {
   MARCAR_PAGO_APLICADO,
 } from '@/lib/graphql/queries/cobranza.queries';
 import { formatearMoneda } from '@/types/cobranza';
+import { rutaComprobantePago } from '@/lib/logic/comprobante-pago-logic';
 
 
 interface PagoConciliacionRow {
@@ -207,6 +208,12 @@ export default function ConciliacionesPage() {
                   Desmarcar
                 </Button>
               )}
+              <ViewRowButton
+                label="Comprobante"
+                onClick={() =>
+                  router.push(rutaComprobantePago(p.idpago))
+                }
+              />
               <ViewRowButton
                 label="Ver préstamo"
                 onClick={() =>

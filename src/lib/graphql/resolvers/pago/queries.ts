@@ -1,16 +1,60 @@
-import { builder ,type  GraphQLContext } from "../../builder";
+import { builder, type GraphQLContext } from '../../builder';
 
-import { Pago } from "./types";
-import { requerirPermiso } from "@/lib/permissions/permission-service";
-import { PERMISO } from "@/lib/permissions/permiso-codes";
-import { filtroMandante } from "@/lib/cobranza/mandante-scope";
-import { requerirAccesoPrestamoCobrador } from "@/lib/cobranza/cobrador-scope";
-import { createPageType } from "../../helpers/create-page-type";
-import { resolvePaginatedPrismaQuery } from "../../helpers/paginated-prisma-resolver";
-import { listarPagosConciliacion } from "@/lib/cobranza/pagos-conciliacion-service";
-import { GraphQLValidationError } from "@/lib/errors/graphql-errors";
+import { Pago } from './types';
+import { requerirPermiso } from '@/lib/permissions/permission-service';
+import { PERMISO } from '@/lib/permissions/permiso-codes';
+import { filtroMandante } from '@/lib/cobranza/mandante-scope';
+import { requerirAccesoPrestamoCobrador } from '@/lib/cobranza/cobrador-scope';
+import { createPageType } from '../../helpers/create-page-type';
+import { resolvePaginatedPrismaQuery } from '../../helpers/paginated-prisma-resolver';
+import { listarPagosConciliacion } from '@/lib/cobranza/pagos-conciliacion-service';
+import {
+  obtenerComprobantePago,
+  type ComprobantePagoData,
+} from '@/lib/cobranza/comprobante-pago-service';
+import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
 
-const PagoPage = createPageType("PagoPage", Pago, "pagos");
+const PagoPage = createPageType('PagoPage', Pago, 'pagos');
+
+const ComprobantePagoType = builder
+  .objectRef<ComprobantePagoData>('ComprobantePago')
+  .implement({
+    fields: (t) => ({
+      idpago: t.exposeInt('idpago'),
+      idprestamo: t.exposeInt('idprestamo'),
+      folio: t.exposeString('folio'),
+      fechaPago: t.expose('fechaPago', { type: 'DateTime' }),
+      fechaRegistro: t.expose('fechaRegistro', { type: 'DateTime' }),
+      monto: t.exposeFloat('monto'),
+      moneda: t.exposeString('moneda'),
+      saldoAnterior: t.exposeFloat('saldoAnterior'),
+      saldoNuevo: t.exposeFloat('saldoNuevo'),
+      reciboUrl: t.exposeString('reciboUrl'),
+      noPrestamo: t.exposeString('noPrestamo'),
+      codigoUnico: t.exposeString('codigoUnico'),
+      nombreCliente: t.exposeString('nombreCliente'),
+      numerodocumento: t.exposeString('numerodocumento'),
+      mandanteNombre: t.exposeString('mandanteNombre'),
+      mandanteCodigo: t.exposeString('mandanteCodigo'),
+      mandanteRuc: t.exposeString('mandanteRuc', { nullable: true }),
+      gestorNombre: t.exposeString('gestorNombre', { nullable: true }),
+    }),
+  });
+
+builder.queryField('comprobantePago', (t) =>
+  t.field({
+    type: ComprobantePagoType,
+    args: { idpago: t.arg.int({ required: true }) },
+    resolve: async (_parent, args, ctx: GraphQLContext) => {
+      await requerirPermiso(ctx.usuario?.idusuario, PERMISO.PAGO_READ);
+      const idusuario = ctx.usuario?.idusuario;
+      if (!idusuario) {
+        throw new GraphQLValidationError('Usuario no autenticado.');
+      }
+      return obtenerComprobantePago(idusuario, args.idpago);
+    },
+  }),
+);
 
 const PagoConciliacionType = builder
   .objectRef<{

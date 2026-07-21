@@ -211,6 +211,28 @@ export interface Pago {
   moneda: string;
   medio: string | null;
   aplicado: boolean;
+  reciboUrl?: string | null;
+}
+
+export interface ComprobantePago {
+  idpago: number;
+  idprestamo: number;
+  folio: string;
+  fechaPago: string;
+  fechaRegistro: string;
+  monto: number;
+  moneda: string;
+  saldoAnterior: number;
+  saldoNuevo: number;
+  reciboUrl: string;
+  noPrestamo: string;
+  codigoUnico: string;
+  nombreCliente: string;
+  numerodocumento: string;
+  mandanteNombre: string;
+  mandanteCodigo: string;
+  mandanteRuc: string | null;
+  gestorNombre: string | null;
 }
 
 export interface UsuarioBasico {

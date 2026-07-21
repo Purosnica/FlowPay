@@ -19,6 +19,7 @@ import {
   cellTexto,
 } from '@/components/cobranza/reporte-table-cells';
 import { getContactoEstadoUi } from '@/lib/logic/cliente-contacto-estado';
+import { rutaComprobantePago } from '@/lib/logic/comprobante-pago-logic';
 import { formatearMoneda } from '@/types/cobranza';
 import type { ClienteVista360 } from '@/types/cliente';
 
@@ -222,6 +223,7 @@ export function ClienteVista360View({ data }: ClienteVista360ViewProps) {
                       <th className="px-4 py-3 font-medium">Fecha</th>
                       <th className="px-4 py-3 font-medium">Medio</th>
                       <th className="px-4 py-3 font-medium">Monto</th>
+                      <th className="px-4 py-3 font-medium" />
                     </tr>
                   </thead>
                   <tbody>
@@ -236,6 +238,13 @@ export function ClienteVista360View({ data }: ClienteVista360ViewProps) {
                         <td className="px-4 py-3">{cellTexto(p.medio)}</td>
                         <td className="px-4 py-3 font-medium text-primary">
                           {cellMoneda(p.monto)}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <Link href={rutaComprobantePago(p.idpago)}>
+                            <Button size="sm" variant="outline">
+                              Comprobante
+                            </Button>
+                          </Link>
                         </td>
                       </tr>
                     ))}

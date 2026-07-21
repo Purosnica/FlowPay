@@ -2,6 +2,7 @@ import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { decimalToNumber } from './decimal-utils';
 import { registrarAuditoria } from './auditoria-service';
+import { inicioPeriodoActual } from './periodo-utils';
 
 type Tx = Prisma.TransactionClient;
 
@@ -110,7 +111,7 @@ export async function procesarPromesasVencidas(
     where: {
       deletedAt: null,
       nota: { contains: '[PROMESA_CUMPLIDA]' },
-      fechaGestion: { gte: new Date(hoy.getFullYear(), hoy.getMonth(), 1) },
+      fechaGestion: { gte: inicioPeriodoActual() },
     },
   });
 

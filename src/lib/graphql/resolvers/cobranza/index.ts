@@ -1,3 +1,4 @@
+import "../usuario";
 import "../mandante";
 import "../prestamo";
 import "../gestion";
@@ -5,7 +6,6 @@ import "../acuerdo";
 import "../pago";
 import "../tipificacion";
 import "../plantilla-importacion";
-import "../usuario";
 import "../liquidacion";
 import "../reporte";
 import "../comision-cobro";

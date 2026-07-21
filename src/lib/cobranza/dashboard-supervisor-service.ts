@@ -3,6 +3,11 @@ import { filtroMandante } from './mandante-scope';
 import { decimalToNumber, roundMoney } from './decimal-utils';
 import { obtenerIdsEquipo } from './equipo-scope';
 import { contarPromesasVencidas } from './promesas-vencidas-service';
+import { resolverIdGestorPago } from './pago-atributacion';
+import {
+  filtroFechaEnPeriodo,
+  rangoPeriodoActual,
+} from './periodo-utils';
 import type { DashboardSupervisorResumen } from '@/types/cobranza';
 
 export type { DashboardSupervisorResumen };
@@ -17,7 +22,7 @@ export async function obtenerDashboardSupervisor(
   inicioHoy.setHours(0, 0, 0, 0);
   const inicioAyer = new Date(inicioHoy);
   inicioAyer.setDate(inicioAyer.getDate() - 1);
-  const inicioMes = new Date(inicioHoy.getFullYear(), inicioHoy.getMonth(), 1);
+  const rangoMes = filtroFechaEnPeriodo(rangoPeriodoActual());
   const hace7d = new Date(inicioHoy);
   hace7d.setDate(hace7d.getDate() - 7);
 
@@ -51,9 +56,9 @@ export async function obtenerDashboardSupervisor(
         deletedAt: null,
         aplicado: true,
         idmandante: mandanteFilter,
-        fechaPago: { gte: inicioMes },
+        fechaPago: rangoMes,
         OR: [
-          { idgestor: { in: equipoIds } },
+          { gestion: { idgestor: { in: equipoIds } } },
           { prestamo: { idgestorAsignado: { in: equipoIds } } },
         ],
       },
@@ -81,7 +86,7 @@ export async function obtenerDashboardSupervisor(
         deletedAt: null,
         idgestor: { in: equipoIds },
         idmandante: mandanteFilter,
-        fechaGestion: { gte: inicioMes },
+        fechaGestion: rangoMes,
       },
       _count: { idgestion: true },
     }),
@@ -90,11 +95,10 @@ export async function obtenerDashboardSupervisor(
         deletedAt: null,
         aplicado: true,
         idmandante: mandanteFilter,
-        fechaPago: { gte: inicioMes },
+        fechaPago: rangoMes,
       },
       select: {
         monto: true,
-        idgestor: true,
         gestion: { select: { idgestor: true } },
         prestamo: { select: { idgestorAsignado: true } },
       },
@@ -104,11 +108,7 @@ export async function obtenerDashboardSupervisor(
   const recuperadoPorGestor = new Map<number, number>();
 
   for (const pago of pagosMes) {
-    const idgestor =
-      pago.idgestor ??
-      pago.gestion?.idgestor ??
-      pago.prestamo.idgestorAsignado ??
-      null;
+    const idgestor = resolverIdGestorPago(pago);
     if (!idgestor || !equipoIds.includes(idgestor)) {
       continue;
     }
@@ -124,7 +124,7 @@ export async function obtenerDashboardSupervisor(
       deletedAt: null,
       idgestor: { in: equipoIds },
       idmandante: mandanteFilter,
-      fechaGestion: { gte: inicioMes },
+      fechaGestion: rangoMes,
       codresult: {
         grupo: { in: ['LOCALIZADO', 'CANCELADA'] },
       },

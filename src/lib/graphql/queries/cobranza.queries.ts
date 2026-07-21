@@ -288,11 +288,37 @@ export const GET_PAGOS = `
         moneda
         medio
         aplicado
+        reciboUrl
       }
       total
       page
       pageSize
       totalPages
+    }
+  }
+`;
+
+export const GET_COMPROBANTE_PAGO = `
+  query GetComprobantePago($idpago: Int!) {
+    comprobantePago(idpago: $idpago) {
+      idpago
+      idprestamo
+      folio
+      fechaPago
+      fechaRegistro
+      monto
+      moneda
+      saldoAnterior
+      saldoNuevo
+      reciboUrl
+      noPrestamo
+      codigoUnico
+      nombreCliente
+      numerodocumento
+      mandanteNombre
+      mandanteCodigo
+      mandanteRuc
+      gestorNombre
     }
   }
 `;
@@ -582,6 +608,7 @@ export const CREATE_PAGO = `
       idpago
       monto
       fechaPago
+      reciboUrl
     }
   }
 `;
