@@ -5,6 +5,7 @@ import { procesarCastigoCartera } from '@/lib/cobranza/castigo-cartera-service';
 import { escalarReclamosFueraSla } from '@/lib/cobranza/reclamo-sla-service';
 import { purgarDatosHistoricos } from '@/lib/cobranza/auditoria-retention-service';
 import { procesarImportacionesPendientes } from '@/lib/cobranza/import/importacion-job-service';
+import { procesarDigestEmailSupervisores } from '@/lib/cobranza/digest-email-supervisor-service';
 import { obtenerImportMaxJobsPerRun } from '@/lib/scalability/scalability-config';
 import type { CronJobDefinition } from './cron-types';
 
@@ -128,6 +129,23 @@ export const CRON_SUB_JOBS: CronJobDefinition[] = [
           r.auditoriaEliminados +
           r.cronEjecucionesEliminadas +
           r.rateLimitEliminados,
+        detalle: { ...r },
+      };
+    },
+  },
+  {
+    codigo: 'digest_email_supervisores',
+    nombre: 'Digest email supervisores',
+    descripcion:
+      'Envía resumen operativo matutino por SMTP a supervisores y gerentes.',
+    timeoutMs: 180_000,
+    maxReintentos: 1,
+    orden: 80,
+    dependeDe: ['promesas_vencidas', 'reclamos_sla'],
+    ejecutar: async () => {
+      const r = await procesarDigestEmailSupervisores();
+      return {
+        registrosProcesados: r.enviados,
         detalle: { ...r },
       };
     },

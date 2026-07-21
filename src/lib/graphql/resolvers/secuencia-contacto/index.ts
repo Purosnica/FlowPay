@@ -139,6 +139,20 @@ const AgendaSecuenciaType = builder.objectRef<{
   accion: string | null;
   diasDesdeInicio: number;
   nombreCliente: string;
+  idpaso: number;
+  idsecuencia: number;
+  idplantilla: number | null;
+  idmandante: number;
+  plantillaNombre: string | null;
+  plantillaContenido: string | null;
+  telefono: string | null;
+  email: string | null;
+  saldoTotal: number;
+  diasMora: number;
+  interesMoratorio: number;
+  gestionCobranza: number;
+  moneda: string;
+  mandanteNombre: string | null;
 }>('AgendaSecuenciaItem').implement({
   fields: (t) => ({
     idprestamo: t.exposeInt('idprestamo'),
@@ -147,6 +161,22 @@ const AgendaSecuenciaType = builder.objectRef<{
     accion: t.exposeString('accion', { nullable: true }),
     diasDesdeInicio: t.exposeInt('diasDesdeInicio'),
     nombreCliente: t.exposeString('nombreCliente'),
+    idpaso: t.exposeInt('idpaso'),
+    idsecuencia: t.exposeInt('idsecuencia'),
+    idplantilla: t.exposeInt('idplantilla', { nullable: true }),
+    idmandante: t.exposeInt('idmandante'),
+    plantillaNombre: t.exposeString('plantillaNombre', { nullable: true }),
+    plantillaContenido: t.exposeString('plantillaContenido', {
+      nullable: true,
+    }),
+    telefono: t.exposeString('telefono', { nullable: true }),
+    email: t.exposeString('email', { nullable: true }),
+    saldoTotal: t.exposeFloat('saldoTotal'),
+    diasMora: t.exposeInt('diasMora'),
+    interesMoratorio: t.exposeFloat('interesMoratorio'),
+    gestionCobranza: t.exposeFloat('gestionCobranza'),
+    moneda: t.exposeString('moneda'),
+    mandanteNombre: t.exposeString('mandanteNombre', { nullable: true }),
   }),
 });
 

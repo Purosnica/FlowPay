@@ -80,11 +80,16 @@ export default function UsuariosAdminPage() {
   }>(GET_PERMISOS_CATALOGO);
 
   const { data: supervisoresData } = useGraphQLQuery<{
-    supervisoresActivos: { idusuario: number; nombre: string }[];
+    supervisoresActivos: {
+      idusuario: number;
+      nombre: string;
+      idrol: number;
+    }[];
   }>(GET_SUPERVISORES_ACTIVOS);
 
   const invalidateUsuarios = () => {
     queryClient.invalidateQueries({ queryKey: [GET_USUARIOS] });
+    queryClient.invalidateQueries({ queryKey: [GET_SUPERVISORES_ACTIVOS] });
   };
 
   const invalidateRoles = () => {

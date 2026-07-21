@@ -1,9 +1,90 @@
 import { prisma } from '@/lib/prisma';
 import { hashPassword } from '@/lib/auth/password';
+import { ROL } from '@/lib/permissions/role-codes';
 import type {
   CreateUsuarioInput,
   UpdateUsuarioInput,
 } from '@/lib/validators/usuario';
+
+async function obtenerCodigoRol(idrol: number): Promise<string | null> {
+  const rol = await prisma.tbl_rol.findFirst({
+    where: { idrol, estado: true, deletedAt: null },
+  });
+  return rol?.codigo ?? null;
+}
+
+async function validarJerarquiaSupervisor(params: {
+  idrol: number;
+  idsupervisor: number | null | undefined;
+  idusuarioExcluir?: number;
+  requerirParaSupervisor?: boolean;
+}): Promise<void> {
+  const {
+    idrol,
+    idsupervisor,
+    idusuarioExcluir,
+    requerirParaSupervisor = false,
+  } = params;
+
+  const codigoRol = await obtenerCodigoRol(idrol);
+  if (!codigoRol) {
+    throw new Error('El rol seleccionado no existe o está inactivo');
+  }
+
+  const esSupervisor = codigoRol === ROL.SUPERVISOR;
+  const esCobrador = codigoRol === ROL.COBRADOR;
+
+  if (!esSupervisor && !esCobrador) {
+    return;
+  }
+
+  if (idsupervisor == null) {
+    if (requerirParaSupervisor && esSupervisor) {
+      throw new Error(
+        'Un supervisor debe reportar a un gerente o administrador',
+      );
+    }
+    return;
+  }
+
+  if (idusuarioExcluir !== undefined && idsupervisor === idusuarioExcluir) {
+    throw new Error('Un usuario no puede reportar a sí mismo');
+  }
+
+  const superior = await prisma.tbl_usuario.findFirst({
+    where: {
+      idusuario: idsupervisor,
+      activo: true,
+      deletedAt: null,
+    },
+    include: { rol: { select: { codigo: true } } },
+  });
+
+  if (!superior) {
+    throw new Error('El superior asignado no existe o está inactivo');
+  }
+
+  const codigoSuperior = superior.rol.codigo;
+
+  if (esSupervisor) {
+    if (codigoSuperior !== ROL.GERENTE && codigoSuperior !== ROL.ADMIN) {
+      throw new Error(
+        'Un supervisor debe reportar a un gerente o administrador',
+      );
+    }
+    return;
+  }
+
+  if (
+    codigoSuperior !== ROL.SUPERVISOR &&
+    codigoSuperior !== ROL.GERENTE &&
+    codigoSuperior !== ROL.ADMIN
+  ) {
+    throw new Error(
+      'Un cobrador debe reportar a un supervisor, gerente o administrador',
+    );
+  }
+}
 
 export async function crearUsuario(data: CreateUsuarioInput) {
   const emailExiste = await prisma.tbl_usuario.findFirst({
@@ -21,6 +102,12 @@ export async function crearUsuario(data: CreateUsuarioInput) {
   if (!rol) {
     throw new Error('El rol seleccionado no existe o está inactivo');
   }
+
+  await validarJerarquiaSupervisor({
+    idrol: data.idrol,
+    idsupervisor: data.idsupervisor,
+    requerirParaSupervisor: true,
+  });
 
   const { hash, salt } = await hashPassword(data.password);
 
@@ -70,6 +157,8 @@ export async function actualizarUsuario(
     }
   }
 
+  const idrolFinal = data.idrol ?? usuario.idrol;
+
   if (data.idrol) {
     const rol = await prisma.tbl_rol.findFirst({
       where: { idrol: data.idrol, estado: true, deletedAt: null },
@@ -83,6 +172,18 @@ export async function actualizarUsuario(
   if (data.activo === false && data.idusuario === idusuarioActual) {
     throw new Error('No puede desactivar su propio usuario');
   }
+
+  const idsupervisorFinal =
+    data.idsupervisor !== undefined
+      ? data.idsupervisor
+      : usuario.idsupervisor;
+
+  await validarJerarquiaSupervisor({
+    idrol: idrolFinal,
+    idsupervisor: idsupervisorFinal,
+    idusuarioExcluir: data.idusuario,
+    requerirParaSupervisor: true,
+  });
 
   const updateData: {
     nombre?: string;

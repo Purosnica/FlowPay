@@ -495,6 +495,20 @@ export const GET_AGENDA_SECUENCIA_HOY = `
       accion
       diasDesdeInicio
       nombreCliente
+      idpaso
+      idsecuencia
+      idplantilla
+      idmandante
+      plantillaNombre
+      plantillaContenido
+      telefono
+      email
+      saldoTotal
+      diasMora
+      interesMoratorio
+      gestionCobranza
+      moneda
+      mandanteNombre
     }
   }
 `;
@@ -1374,8 +1388,8 @@ export const GET_CODIGOS_RESULTADO_MANDANTE = `
 `;
 
 export const GET_AGENCIAS = `
-  query GetAgencias($page: Int, $pageSize: Int) {
-    agencias(page: $page, pageSize: $pageSize) {
+  query GetAgencias($page: Int, $pageSize: Int, $incluirInactivas: Boolean) {
+    agencias(page: $page, pageSize: $pageSize, incluirInactivas: $incluirInactivas) {
       agencias {
         idagencia
         codigo
@@ -1391,8 +1405,8 @@ export const GET_AGENCIAS = `
 `;
 
 export const GET_RUTAS = `
-  query GetRutas($idagencia: Int, $page: Int, $pageSize: Int) {
-    rutas(idagencia: $idagencia, page: $page, pageSize: $pageSize) {
+  query GetRutas($idagencia: Int, $page: Int, $pageSize: Int, $incluirInactivas: Boolean) {
+    rutas(idagencia: $idagencia, page: $page, pageSize: $pageSize, incluirInactivas: $incluirInactivas) {
       rutas {
         idruta
         idagencia
@@ -1405,6 +1419,62 @@ export const GET_RUTAS = `
       pageSize
       totalPages
     }
+  }
+`;
+
+export const CREATE_AGENCIA = `
+  mutation CreateAgencia($input: CreateAgenciaInput!) {
+    createAgencia(input: $input) {
+      idagencia
+      codigo
+      nombre
+      estado
+    }
+  }
+`;
+
+export const UPDATE_AGENCIA = `
+  mutation UpdateAgencia($input: UpdateAgenciaInput!) {
+    updateAgencia(input: $input) {
+      idagencia
+      codigo
+      nombre
+      estado
+    }
+  }
+`;
+
+export const DELETE_AGENCIA = `
+  mutation DeleteAgencia($idagencia: Int!) {
+    deleteAgencia(idagencia: $idagencia)
+  }
+`;
+
+export const CREATE_RUTA = `
+  mutation CreateRuta($input: CreateRutaInput!) {
+    createRuta(input: $input) {
+      idruta
+      idagencia
+      nombre
+      estado
+    }
+  }
+`;
+
+export const UPDATE_RUTA = `
+  mutation UpdateRuta($input: UpdateRutaInput!) {
+    updateRuta(input: $input) {
+      idruta
+      idagencia
+      nombre
+      estado
+    }
+  }
+`;
+
+export const DELETE_RUTA = `
+  mutation DeleteRuta($idruta: Int!) {
+    deleteRuta(idruta: $idruta)
   }
 `;
 

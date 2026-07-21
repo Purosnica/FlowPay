@@ -251,15 +251,11 @@ class ClientErrorLogger {
   }
 
   /**
-   * Enviar error a servicio externo (ej: Sentry, LogRocket, etc.)
+   * Enviar error a Sentry (si NEXT_PUBLIC_SENTRY_DSN está definido).
    */
-  private async sendToExternalService(_errorLog: ErrorLog): Promise<void> {
-    // TODO: Implementar envío a servicio externo si es necesario
-    // Ejemplo:
-    // await fetch('/api/errors', {
-    //   method: 'POST',
-    //   body: JSON.stringify(errorLog),
-    // });
+  private async sendToExternalService(errorLog: ErrorLog): Promise<void> {
+    const { captureClientErrorLog } = await import('@/lib/errors/sentry');
+    await captureClientErrorLog(errorLog);
   }
 }
 

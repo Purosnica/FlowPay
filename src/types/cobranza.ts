@@ -659,6 +659,20 @@ export interface AgendaSecuenciaItem {
   accion: string | null;
   diasDesdeInicio: number;
   nombreCliente: string;
+  idpaso: number;
+  idsecuencia: number;
+  idplantilla: number | null;
+  idmandante: number;
+  plantillaNombre: string | null;
+  plantillaContenido: string | null;
+  telefono: string | null;
+  email: string | null;
+  saldoTotal: number;
+  diasMora: number;
+  interesMoratorio: number;
+  gestionCobranza: number;
+  moneda: string;
+  mandanteNombre: string | null;
 }
 
 export interface ImportacionJob {

@@ -74,6 +74,7 @@ export const GET_SUPERVISORES_ACTIVOS = `
       idusuario
       nombre
       email
+      idrol
     }
   }
 `;

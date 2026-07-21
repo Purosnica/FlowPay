@@ -126,6 +126,14 @@ class Logger {
         error: error ? { name: error.name, message: error.message } : undefined,
         context: context ? this.sanitize(context) : undefined,
       });
+      if (error) {
+        void import('@/lib/errors/sentry').then(({ captureServerException }) =>
+          captureServerException(error, {
+            message,
+            ...(context ? (this.sanitize(context) as Record<string, unknown>) : {}),
+          }),
+        );
+      }
     }
   }
 }

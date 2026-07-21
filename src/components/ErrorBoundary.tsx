@@ -24,11 +24,12 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // Log error to error reporting service (Sentry, etc.)
     console.error("ErrorBoundary caught an error:", error, errorInfo);
-    
-    // Aquí puedes agregar integración con servicios de logging
-    // Ejemplo: Sentry.captureException(error, { extra: errorInfo });
+    void import("@/lib/errors/sentry").then(({ captureClientException }) =>
+      captureClientException(error, {
+        componentStack: errorInfo.componentStack,
+      }),
+    );
   }
 
   handleReset = () => {

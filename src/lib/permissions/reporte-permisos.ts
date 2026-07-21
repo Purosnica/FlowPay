@@ -1,9 +1,8 @@
 /**
- * Registro central reporte → permiso de grupo.
+ * Registro central reporte → permiso fino + grupo legacy.
  *
- * Escalar a permiso por reporte: cambiar valores del mapa a códigos
- * `REPORTE_GANANCIAS_READ` (etc.) sin reescribir resolvers/nav.
- * Escala a usuario: asignar esos códigos al rol o al usuario vía RBAC existente.
+ * Acceso = permiso fino del reporte OR grupo OR comodín REPORTE_READ.
+ * Asignar códigos finos en RBAC para restringir reporte a reporte.
  */
 
 import { requerirAlgunPermiso } from './permission-service';
@@ -36,11 +35,36 @@ export const REPORTE_KEY = {
 
 export type ReporteKey = (typeof REPORTE_KEY)[keyof typeof REPORTE_KEY];
 
-/**
- * Mapa reporte → permiso de grupo.
- * TODO(futuro): valores por reporte fino o array de permisos.
- */
+/** Permiso fino por reporte (RBAC granular). */
 export const REPORTE_PERMISO_MAP: Record<ReporteKey, PermisoCodigo> = {
+  [REPORTE_KEY.hub]: PERMISO.REPORTE_HUB_READ,
+  [REPORTE_KEY.cobranza]: PERMISO.REPORTE_COBRANZA_KPI_READ,
+  [REPORTE_KEY.aging]: PERMISO.REPORTE_AGING_READ,
+  [REPORTE_KEY.informeGerencial]: PERMISO.REPORTE_INFORME_GERENCIAL_READ,
+  [REPORTE_KEY.informeGestiones]: PERMISO.REPORTE_INFORME_GESTIONES_READ,
+  [REPORTE_KEY.ganancias]: PERMISO.REPORTE_GANANCIAS_READ,
+  [REPORTE_KEY.comisionesCobradores]: PERMISO.REPORTE_COMISIONES_COBRADORES_READ,
+  [REPORTE_KEY.efectividad]: PERMISO.REPORTE_EFECTIVIDAD_READ,
+  [REPORTE_KEY.cumplimientoAcuerdos]:
+    PERMISO.REPORTE_CUMPLIMIENTO_ACUERDOS_READ,
+  [REPORTE_KEY.carteraSinGestion]: PERMISO.REPORTE_CARTERA_SIN_GESTION_READ,
+  [REPORTE_KEY.margenMandantes]: PERMISO.REPORTE_MARGEN_MANDANTES_READ,
+  [REPORTE_KEY.comisionesVsProyeccion]:
+    PERMISO.REPORTE_COMISIONES_VS_PROYECCION_READ,
+  [REPORTE_KEY.ingresoTramoMora]: PERMISO.REPORTE_INGRESO_TRAMO_MORA_READ,
+  [REPORTE_KEY.promesasPago]: PERMISO.REPORTE_PROMESAS_PAGO_READ,
+  [REPORTE_KEY.productividadDiaria]: PERMISO.REPORTE_PRODUCTIVIDAD_DIARIA_READ,
+  [REPORTE_KEY.recontactos]: PERMISO.REPORTE_RECONTACTOS_READ,
+  [REPORTE_KEY.reclamosSla]: PERMISO.REPORTE_RECLAMOS_SLA_READ,
+  [REPORTE_KEY.migracionMora]: PERMISO.REPORTE_MIGRACION_MORA_READ,
+  [REPORTE_KEY.concentracionRiesgo]: PERMISO.REPORTE_CONCENTRACION_RIESGO_READ,
+  [REPORTE_KEY.cuotasVencidas]: PERMISO.REPORTE_CUOTAS_VENCIDAS_READ,
+  [REPORTE_KEY.cumplimientoMetas]: PERMISO.REPORTE_CUMPLIMIENTO_METAS_READ,
+  [REPORTE_KEY.supervisorEquipo]: PERMISO.REPORTE_SUPERVISOR_EQUIPO_READ,
+};
+
+/** Grupo legacy: quien tiene el grupo sigue viendo todos los reportes del grupo. */
+export const REPORTE_GRUPO_MAP: Record<ReporteKey, PermisoCodigo> = {
   [REPORTE_KEY.hub]: PERMISO.REPORTE_COBRANZA_READ,
   [REPORTE_KEY.cobranza]: PERMISO.REPORTE_COBRANZA_READ,
   [REPORTE_KEY.aging]: PERMISO.REPORTE_COBRANZA_READ,
@@ -90,14 +114,22 @@ export const REPORTE_PATH_KEY: Record<string, ReporteKey> = {
 };
 
 export function permisoGrupoDeReporte(key: ReporteKey): PermisoCodigo {
+  return REPORTE_GRUPO_MAP[key];
+}
+
+export function permisoFinoDeReporte(key: ReporteKey): PermisoCodigo {
   return REPORTE_PERMISO_MAP[key];
 }
 
 /**
- * Grupo del reporte + comodín REPORTE_READ (legacy / acceso total).
+ * Fino + grupo + comodín REPORTE_READ (legacy / acceso total).
  */
 export function permisosDeReporte(key: ReporteKey): PermisoCodigo[] {
-  return [REPORTE_PERMISO_MAP[key], PERMISO.REPORTE_READ];
+  return [
+    REPORTE_PERMISO_MAP[key],
+    REPORTE_GRUPO_MAP[key],
+    PERMISO.REPORTE_READ,
+  ];
 }
 
 export async function requerirReporte(

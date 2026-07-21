@@ -30,7 +30,7 @@ Evolución planificada post-preparación Enterprise (Fases 1–13).
 |----|------------|-------|
 | PP-1 | `prisma migrate` formal (baseline `20260711120000_baseline`) | Hecho — usar `migrate deploy` / `db:migrate:resolve-baseline` |
 | PP-2 | Object storage para uploads/import (S3/Azure) | Escalabilidad horizontal |
-| PP-3 | Observabilidad (logs estructurados, métricas APM) | Operaciones |
+| PP-3 | Observabilidad (logs estructurados, métricas APM) | Operaciones — **Sentry opcional (`SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN`)** |
 | PP-4 | Backup y DR documentado | Continuidad |
 | PP-5 | Pentest externo | Seguridad |
 
@@ -41,7 +41,7 @@ Evolución planificada post-preparación Enterprise (Fases 1–13).
 | ID | Iniciativa | Valor |
 |----|------------|-------|
 | PR-1 | Portal mandante read-only (reportes + liquidaciones) | Experiencia mandante |
-| PR-2 | Notificaciones push / email operativas | Tiempo de respuesta |
+| PR-2 | Notificaciones push / email operativas | Tiempo de respuesta — **email digest matutino vía cron `digest_email_supervisores` (SMTP)** |
 | PR-3 | App móvil cobrador (PWA o nativa) | Campo |
 | PR-4 | Integración pasarela de pagos | Conciliación automática |
 | PR-5 | Motor de campañas omnicanal (SMS/WhatsApp) | Recuperación |

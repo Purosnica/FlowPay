@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { filtroMandante, requerirAccesoMandante } from '@/lib/cobranza/mandante-scope';
+import { decimalToNumber } from '@/lib/cobranza/decimal-utils';
 import type { AgendaSecuenciaItem } from '@/types/cobranza';
 
 export type { AgendaSecuenciaItem };
@@ -174,8 +175,14 @@ export async function obtenerAgendaSecuenciaHoy(
       campana: { estado: 'ACTIVA', deletedAt: null },
     },
     include: {
-      pasos: { orderBy: { orden: 'asc' } },
+      pasos: {
+        orderBy: { orden: 'asc' },
+        include: {
+          plantilla: { select: { nombre: true, contenido: true } },
+        },
+      },
       campana: { select: { fechaCarga: true } },
+      mandante: { select: { nombre: true } },
     },
   });
 
@@ -198,10 +205,31 @@ export async function obtenerAgendaSecuenciaHoy(
         select: {
           primer_nombres: true,
           primer_apellido: true,
+          celular: true,
+          telefono: true,
+          email: true,
         },
       },
     },
   });
+
+  const inicioHoy = new Date(hoy);
+  const idsPrestamos = todosPrestamos.map((p) => p.idprestamo);
+  const gestionesHoy =
+    idsPrestamos.length === 0
+      ? []
+      : await prisma.tbl_gestion.findMany({
+          where: {
+            deletedAt: null,
+            idgestor: idusuario,
+            fechaGestion: { gte: inicioHoy },
+            idprestamo: { in: idsPrestamos },
+          },
+          select: { idprestamo: true },
+        });
+  const prestamosGestionadosHoy = new Set(
+    gestionesHoy.map((g) => g.idprestamo),
+  );
 
   const prestamosPorCampana = new Map<number, typeof todosPrestamos>();
   for (const prestamo of todosPrestamos) {
@@ -233,6 +261,9 @@ export async function obtenerAgendaSecuenciaHoy(
     );
 
     for (const prestamo of prestamos) {
+      if (prestamosGestionadosHoy.has(prestamo.idprestamo)) {
+        continue;
+      }
       for (const paso of pasosHoy) {
         const nombreCliente = [
           prestamo.cliente.primer_nombres,
@@ -240,6 +271,10 @@ export async function obtenerAgendaSecuenciaHoy(
         ]
           .filter(Boolean)
           .join(' ');
+        const telefono =
+          prestamo.cliente.celular?.trim() ||
+          prestamo.cliente.telefono?.trim() ||
+          null;
         items.push({
           idprestamo: prestamo.idprestamo,
           noPrestamo: prestamo.noPrestamo,
@@ -247,6 +282,20 @@ export async function obtenerAgendaSecuenciaHoy(
           accion: paso.accion,
           diasDesdeInicio: paso.diasDesdeInicio,
           nombreCliente,
+          idpaso: paso.idpaso,
+          idsecuencia: sec.idsecuencia,
+          idplantilla: paso.idplantilla,
+          idmandante: sec.idmandante,
+          plantillaNombre: paso.plantilla?.nombre ?? null,
+          plantillaContenido: paso.plantilla?.contenido ?? null,
+          telefono,
+          email: prestamo.cliente.email?.trim() || null,
+          saldoTotal: decimalToNumber(prestamo.saldoTotal),
+          diasMora: prestamo.diasMora,
+          interesMoratorio: decimalToNumber(prestamo.interesMoratorio),
+          gestionCobranza: decimalToNumber(prestamo.gestionCobranza),
+          moneda: prestamo.moneda ?? 'NIO',
+          mandanteNombre: sec.mandante?.nombre ?? null,
         });
       }
     }

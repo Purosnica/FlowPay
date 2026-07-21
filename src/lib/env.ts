@@ -40,6 +40,12 @@ const envSchema = z.object({
   SMTP_PASS: z.string().min(1).optional(),
   SMTP_FROM: z.string().email().optional(),
   SMTP_FROM_NAME: z.string().min(1).optional().default('Cobranza TicTac'),
+
+  /** DSN servidor (opcional). Si falta, se usa NEXT_PUBLIC_SENTRY_DSN. */
+  SENTRY_DSN: z.union([z.string().url(), z.literal('')]).optional(),
+  NEXT_PUBLIC_SENTRY_DSN: z
+    .union([z.string().url(), z.literal('')])
+    .optional(),
 });
 
 function getEnv() {
@@ -62,6 +68,8 @@ function getEnv() {
       SMTP_PASS: process.env.SMTP_PASS,
       SMTP_FROM: process.env.SMTP_FROM,
       SMTP_FROM_NAME: process.env.SMTP_FROM_NAME,
+      SENTRY_DSN: process.env.SENTRY_DSN,
+      NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

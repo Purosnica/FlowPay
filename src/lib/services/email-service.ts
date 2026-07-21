@@ -22,10 +22,27 @@ export type EnviarEmailCobroResult = {
   accepted: string[];
 };
 
+export const EnviarEmailOperativoSchema = z.object({
+  to: z.string().email('Correo destinatario inválido'),
+  subject: z.string().min(1, 'Asunto requerido').max(200),
+  body: z.string().min(1, 'Mensaje requerido').max(50_000),
+});
+
+export type EnviarEmailOperativoInput = z.infer<
+  typeof EnviarEmailOperativoSchema
+>;
+
+export type EnviarEmailOperativoResult = EnviarEmailCobroResult;
+
 let transporter: Transporter | null = null;
 
 function smtpConfigurado(): boolean {
   return Boolean(env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS);
+}
+
+/** Indica si SMTP está listo (cron digests, etc.). */
+export function smtpDisponible(): boolean {
+  return smtpConfigurado();
 }
 
 function getTransporter(): Transporter {
@@ -105,4 +122,42 @@ export function construirAsuntoCobro(
     return `Gestión de cobro - Préstamo ${noPrestamo.trim()}`.slice(0, 200);
   }
   return 'Gestión de cobro';
+}
+
+/**
+ * Correo operativo interno (digests a supervisores/gerentes).
+ * No exige idprestamo ni validación de deudor.
+ */
+export async function enviarEmailOperativo(
+  input: EnviarEmailOperativoInput,
+): Promise<EnviarEmailOperativoResult> {
+  const data = EnviarEmailOperativoSchema.parse(input);
+  const fromAddress = env.SMTP_FROM ?? env.SMTP_USER;
+  if (!fromAddress) {
+    throw errorValidacion('SMTP_FROM o SMTP_USER requerido');
+  }
+
+  const fromName = env.SMTP_FROM_NAME ?? 'Cobranza TicTac';
+  const mailer = getTransporter();
+
+  try {
+    const info = await mailer.sendMail({
+      from: `"${fromName}" <${fromAddress}>`,
+      to: data.to,
+      subject: data.subject,
+      text: data.body,
+      html: textoAHtml(data.body),
+    });
+
+    return {
+      messageId: info.messageId ?? '',
+      accepted: (info.accepted ?? []).map(String),
+    };
+  } catch (error) {
+    const mensaje =
+      error instanceof Error
+        ? error.message
+        : 'No se pudo enviar el correo operativo';
+    throw new ServicioError(ErrorCode.DATABASE_ERROR, mensaje);
+  }
 }

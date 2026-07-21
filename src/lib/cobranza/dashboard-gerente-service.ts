@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { ROL } from '@/lib/permissions/role-codes';
 import type { DashboardGerenteResumen } from '@/types/cobranza';
-import { filtroMandante } from './mandante-scope';
+import { filtroMandante, esAdmin } from './mandante-scope';
 import { obtenerIdsEquipo, esGerente } from './equipo-scope';
 import { decimalToNumber, roundMoney } from './decimal-utils';
 import { obtenerDashboardSupervisor } from './dashboard-supervisor-service';
@@ -22,12 +22,13 @@ export async function obtenerDashboardGerente(
   inicioHoy.setHours(0, 0, 0, 0);
   const inicioMes = new Date(inicioHoy.getFullYear(), inicioHoy.getMonth(), 1);
 
+  const esAdminUsuario = await esAdmin(idusuario);
   const supervisores = await prisma.tbl_usuario.findMany({
     where: {
       activo: true,
       deletedAt: null,
-      idsupervisor: idusuario,
       rol: { codigo: ROL.SUPERVISOR },
+      ...(esAdminUsuario ? {} : { idsupervisor: idusuario }),
     },
     select: { idusuario: true, nombre: true },
   });

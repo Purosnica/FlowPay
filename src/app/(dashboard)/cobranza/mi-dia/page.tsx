@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { KpiCard } from '@/components/cobranza/kpi-card';
 import { GestionRapidaModal } from '@/components/cobranza/gestion-rapida-modal';
+import { SecuenciaLotePanel } from '@/components/cobranza/secuencia-lote-panel';
 import { AsyncPanel } from '@/components/ui/async-panel';
 import { PageHeader } from '@/components/ui/page-header';
 import { PermissionGate } from '@/components/auth/permission-gate';
@@ -22,8 +23,8 @@ import {
   type MiDiaCaso,
   type MiDiaResumen,
   type RankingCobrador,
- formatearMoneda } from '@/types/cobranza';
-
+  formatearMoneda,
+} from '@/types/cobranza';
 
 export default function MiDiaPage() {
   const puedeGestion = usePuede(PERMISO.GESTION_WRITE);
@@ -46,7 +47,11 @@ export default function MiDiaPage() {
     casosPrioritariosMiDia: MiDiaCaso[];
   }>(GET_CASOS_PRIORITARIOS_MI_DIA, { limite: 10 });
 
-  const { data: agendaData, isLoading: agendaLoading } = useGraphQLQuery<{
+  const {
+    data: agendaData,
+    isLoading: agendaLoading,
+    refetch: refetchAgenda,
+  } = useGraphQLQuery<{
     agendaSecuenciaHoy: AgendaSecuenciaItem[];
   }>(GET_AGENDA_SECUENCIA_HOY);
 
@@ -121,52 +126,48 @@ export default function MiDiaPage() {
             <h2 className="mb-4 text-lg font-semibold text-dark dark:text-white">
               Secuencia de contacto — hoy
             </h2>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left text-gray-500">
-                    <th className="pb-2 pr-4">Préstamo</th>
-                    <th className="pb-2 pr-4">Cliente</th>
-                    <th className="pb-2 pr-4">Canal</th>
-                    <th className="pb-2 pr-4">Acción</th>
-                    <th className="pb-2">Gestión</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {agendaSecuencia.map((item) => (
-                    <tr
-                      key={item.idprestamo}
-                      className="border-b border-stroke/50"
-                    >
-                      <td className="py-2 pr-4">
-                        <Link
-                          href={`/cobranza/prestamos/${item.idprestamo}`}
-                          className="text-primary hover:underline"
-                        >
-                          {item.noPrestamo}
-                        </Link>
-                      </td>
-                      <td className="py-2 pr-4">{item.nombreCliente}</td>
-                      <td className="py-2 pr-4">{item.canal}</td>
-                      <td className="py-2 pr-4">{item.accion ?? '—'}</td>
-                      <td className="py-2">
-                        <PermissionGate permiso={PERMISO.GESTION_WRITE}>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() =>
-                              setGestionPrestamoId(item.idprestamo)
-                            }
-                          >
-                            Gestionar
-                          </Button>
-                        </PermissionGate>
-                      </td>
+            {puedeGestion ? (
+              <SecuenciaLotePanel
+                items={agendaSecuencia}
+                onDone={() => {
+                  void refetchAgenda();
+                  void refetchResumen();
+                }}
+              />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left text-gray-500">
+                      <th className="pb-2 pr-4">Préstamo</th>
+                      <th className="pb-2 pr-4">Cliente</th>
+                      <th className="pb-2 pr-4">Canal</th>
+                      <th className="pb-2 pr-4">Acción</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {agendaSecuencia.map((item) => (
+                      <tr
+                        key={`${item.idprestamo}-${item.idpaso}`}
+                        className="border-b border-stroke/50"
+                      >
+                        <td className="py-2 pr-4">
+                          <Link
+                            href={`/cobranza/prestamos/${item.idprestamo}`}
+                            className="text-primary hover:underline"
+                          >
+                            {item.noPrestamo}
+                          </Link>
+                        </td>
+                        <td className="py-2 pr-4">{item.nombreCliente}</td>
+                        <td className="py-2 pr-4">{item.canal}</td>
+                        <td className="py-2 pr-4">{item.accion ?? '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
       </AsyncPanel>
@@ -299,6 +300,7 @@ export default function MiDiaPage() {
           onClose={() => setGestionPrestamoId(null)}
           onSuccess={() => {
             void refetchResumen();
+            void refetchAgenda();
           }}
         />
       )}
