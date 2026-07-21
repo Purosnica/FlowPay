@@ -254,7 +254,9 @@ class ClientErrorLogger {
    * Enviar error a Sentry (si NEXT_PUBLIC_SENTRY_DSN está definido).
    */
   private async sendToExternalService(errorLog: ErrorLog): Promise<void> {
-    const { captureClientErrorLog } = await import('@/lib/errors/sentry');
+    const { captureClientErrorLog } = await import(
+      '@/lib/errors/sentry-client'
+    );
     await captureClientErrorLog(errorLog);
   }
 }

@@ -1,6 +1,6 @@
 /**
- * Inicialización lazy de Sentry (cliente y servidor).
- * Sin DSN configurado no hace nada (cero costo / no rompe builds).
+ * Sentry solo para el navegador (@sentry/browser).
+ * No importar desde código de servidor que no deba ir al client bundle.
  */
 
 type ClientErrorPayload = {
@@ -19,17 +19,9 @@ type ClientErrorPayload = {
 };
 
 let clientInitialized = false;
-let serverInitialized = false;
 
 function clientDsn(): string | undefined {
   const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN?.trim();
-  return dsn || undefined;
-}
-
-function serverDsn(): string | undefined {
-  const dsn =
-    process.env.SENTRY_DSN?.trim() ||
-    process.env.NEXT_PUBLIC_SENTRY_DSN?.trim();
   return dsn || undefined;
 }
 
@@ -86,24 +78,4 @@ export async function captureClientException(
   }
   const Sentry = await import('@sentry/browser');
   Sentry.captureException(error, { extra });
-}
-
-export async function captureServerException(
-  error: Error,
-  context?: Record<string, unknown>,
-): Promise<void> {
-  const dsn = serverDsn();
-  if (!dsn) {
-    return;
-  }
-  const Sentry = await import('@sentry/node');
-  if (!serverInitialized) {
-    Sentry.init({
-      dsn,
-      environment: process.env.NODE_ENV,
-      tracesSampleRate: 0,
-    });
-    serverInitialized = true;
-  }
-  Sentry.captureException(error, { extra: context });
 }

@@ -25,10 +25,11 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("ErrorBoundary caught an error:", error, errorInfo);
-    void import("@/lib/errors/sentry").then(({ captureClientException }) =>
-      captureClientException(error, {
-        componentStack: errorInfo.componentStack,
-      }),
+    void import('@/lib/errors/sentry-client').then(
+      ({ captureClientException }) =>
+        captureClientException(error, {
+          componentStack: errorInfo.componentStack,
+        }),
     );
   }
 
