@@ -22,6 +22,10 @@
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/utils/logger";
 import type { PermisoCodigo } from "@/lib/permissions/permiso-codes";
+import {
+  permisosDeReporte,
+  type ReporteKey,
+} from "@/lib/permissions/reporte-permisos";
 
 export type { PermisoCodigo };
 
@@ -390,6 +394,13 @@ export async function requerirAlgunPermiso(
   }
 }
 
-
-
-
+/**
+ * Exige fino + grupo + REPORTE_READ para un reporte.
+ * Vive aquí (no en reporte-permisos) para no arrastrar Prisma al client/edge.
+ */
+export async function requerirReporte(
+  idusuario: number | null | undefined,
+  key: ReporteKey,
+): Promise<void> {
+  await requerirAlgunPermiso(idusuario, permisosDeReporte(key));
+}

@@ -1,5 +1,7 @@
 /** @type {import("next").NextConfig} */
 const nextConfig = {
+  // Evita que Turbopack intente empaquetar APIs de Node de Sentry.
+  serverExternalPackages: ['@sentry/node', '@sentry/node-core'],
   images: {
     remotePatterns: [
       {

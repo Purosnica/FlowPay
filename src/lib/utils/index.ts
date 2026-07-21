@@ -21,11 +21,11 @@ export * from "./date";
 export * from "./number";
 
 // Utilidades de formateo
-export * from "./format";
+export * from './format';
 
-// Logger estructurado
-export * from "./logger";
+// Logger: importar desde '@/lib/utils/logger' (no reexportar aquí —
+// arrastra @sentry/node al client bundle vía `import { cn } from '@/lib/utils'`).
 
 // Utilidades de sanitización
-export * from "./sanitize";
+export * from './sanitize';
 

@@ -5,7 +5,6 @@
  * Asignar códigos finos en RBAC para restringir reporte a reporte.
  */
 
-import { requerirAlgunPermiso } from './permission-service';
 import { PERMISO, type PermisoCodigo } from './permiso-codes';
 
 export const REPORTE_KEY = {
@@ -130,13 +129,6 @@ export function permisosDeReporte(key: ReporteKey): PermisoCodigo[] {
     REPORTE_GRUPO_MAP[key],
     PERMISO.REPORTE_READ,
   ];
-}
-
-export async function requerirReporte(
-  idusuario: number | null | undefined,
-  key: ReporteKey,
-): Promise<void> {
-  await requerirAlgunPermiso(idusuario, permisosDeReporte(key));
 }
 
 export function usuarioPuedeVerReporte(

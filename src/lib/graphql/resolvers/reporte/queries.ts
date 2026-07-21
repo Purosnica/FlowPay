@@ -24,12 +24,12 @@ import {
   ReporteRecontactosType,
   ReporteSupervisorEquipoType,
 } from './types-reportes-avanzados';
-import { requerirPermiso } from '@/lib/permissions/permission-service';
-import { PERMISO } from '@/lib/permissions/permiso-codes';
 import {
-  REPORTE_KEY,
+  requerirPermiso,
   requerirReporte,
-} from '@/lib/permissions/reporte-permisos';
+} from '@/lib/permissions/permission-service';
+import { PERMISO } from '@/lib/permissions/permiso-codes';
+import { REPORTE_KEY } from '@/lib/permissions/reporte-permisos';
 import { obtenerReporteCobranza } from '@/lib/cobranza/reporte-cobranza-service';
 import { obtenerReporteAgingCartera } from '@/lib/cobranza/aging-cartera-service';
 import { obtenerResumenDashboard } from '@/lib/cobranza/dashboard-service';

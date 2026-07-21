@@ -126,17 +126,8 @@ class Logger {
         error: error ? { name: error.name, message: error.message } : undefined,
         context: context ? this.sanitize(context) : undefined,
       });
-      if (error) {
-        void import('@/lib/errors/sentry-server').then(
-          ({ captureServerException }) =>
-            captureServerException(error, {
-              message,
-              ...(context
-                ? (this.sanitize(context) as Record<string, unknown>)
-                : {}),
-            }),
-        );
-      }
+      // Sentry server: NO aquí — logger se usa en client/edge/middleware.
+      // Usar captureServerException solo desde API routes / Node.
     }
   }
 }

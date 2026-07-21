@@ -22,7 +22,14 @@ export interface ApiErrorResponse {
  * Maneja errores y retorna respuesta apropiada
  */
 export function handleApiError(error: unknown): NextResponse<ApiErrorResponse> {
-  logger.error('API Error', error instanceof Error ? error : undefined);
+  const err = error instanceof Error ? error : undefined;
+  logger.error('API Error', err);
+  if (err) {
+    void import('@/lib/errors/sentry-server').then(
+      ({ captureServerException }) =>
+        captureServerException(err, { source: 'handleApiError' }),
+    );
+  }
 
   // Error de servicio personalizado
   if (error instanceof ServicioError) {
