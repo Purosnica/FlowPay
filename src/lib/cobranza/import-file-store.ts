@@ -29,7 +29,14 @@ export async function asegurarDirImports(): Promise<void> {
 export interface GuardarImportArchivoResult {
   rutaArchivo: string;
   /** Payload a persistir en BD (siempre en modo db; null en modo fs). */
-  contenidoArchivo: Buffer | null;
+  contenidoArchivo: Uint8Array<ArrayBuffer> | null;
+}
+
+/** Copia Buffer → Uint8Array con ArrayBuffer propio (Prisma Bytes). */
+export function bufferToPrismaBytes(buf: Buffer): Uint8Array<ArrayBuffer> {
+  const out = new Uint8Array(buf.length);
+  out.set(buf);
+  return out;
 }
 
 /**
@@ -47,7 +54,7 @@ export async function guardarArchivoImportacion(input: {
   if (mode === 'db') {
     return {
       rutaArchivo: construirRutaImportacionDb(input.idjob),
-      contenidoArchivo: input.buffer,
+      contenidoArchivo: bufferToPrismaBytes(input.buffer),
     };
   }
 

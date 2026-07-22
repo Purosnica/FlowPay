@@ -22,12 +22,16 @@ export type ImportFileStorageEnv = {
  * - fs: disco local (self-host con volumen o single-instance)
  */
 export function resolverImportFileStorageMode(
-  env: ImportFileStorageEnv = process.env,
+  env?: ImportFileStorageEnv,
 ): ImportFileStorageMode {
-  if (env.VERCEL === '1') {
+  const resolved: ImportFileStorageEnv = env ?? {
+    VERCEL: process.env.VERCEL,
+    FLOWPAY_IMPORT_STORAGE: process.env.FLOWPAY_IMPORT_STORAGE,
+  };
+  if (resolved.VERCEL === '1') {
     return 'db';
   }
-  if (env.FLOWPAY_IMPORT_STORAGE?.trim().toLowerCase() === 'db') {
+  if (resolved.FLOWPAY_IMPORT_STORAGE?.trim().toLowerCase() === 'db') {
     return 'db';
   }
   return 'fs';
