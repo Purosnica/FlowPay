@@ -8,7 +8,7 @@ import {
   obtenerTendenciaRecuperacion,
 } from '@/lib/cobranza/centro-inteligencia-service';
 import { obtenerDashboardSupervisor } from '@/lib/cobranza/dashboard-supervisor-service';
-import { obtenerResumenMiDia, obtenerCasosPrioritariosMiDia } from '@/lib/cobranza/mi-dia-service';
+import { obtenerResumenMiDia, obtenerCasosPrioritariosMiDia } from '@/lib/contexts/gestion';
 import { procesarPromesasVencidas } from '@/lib/cobranza/promesa-evaluacion-service';
 import {
   obtenerGamificacionUsuario,
@@ -27,20 +27,31 @@ import {
   CLAVE_META_GESTIONES_SEMANA,
   CLAVE_META_RECUPERACION_SEMANA,
   CLAVE_META_RECUPERACION_MES,
+  CLAVE_BANDEJA_CANDIDATE_LIMIT,
+  CLAVE_MI_DIA_CANDIDATE_LIMIT,
   guardarConfigCobranza,
   obtenerConfigCobranza,
 } from '@/lib/cobranza/configuracion-cobranza-service';
+import {
+  BANDEJA_PRIORIDAD_CANDIDATE_LIMIT,
+  MI_DIA_PRIORIDAD_CANDIDATE_LIMIT,
+} from '@/lib/cobranza/performance-limits';
 import { obtenerDashboardGerente } from '@/lib/cobranza/dashboard-gerente-service';
 import { calcularRollRate } from '@/lib/cobranza/roll-rate-service';
 import { calcularForecastRecuperacion } from '@/lib/cobranza/forecast-recuperacion-service';
 import { obtenerKpisCobranzaCore } from '@/lib/cobranza/metric-kpi-service';
-import { procesarRecalculoMoraCartera } from '@/lib/cobranza/dias-mora-service';
+import { procesarRecalculoMoraCartera } from '@/lib/contexts/cartera';
 import { obtenerNotificacionesOperativas } from '@/lib/cobranza/notificacion-operativa-service';
 import { marcarNotificacionesLeidas } from '@/lib/cobranza/notificacion-lectura-service';
 import { procesarCastigoCartera } from '@/lib/cobranza/castigo-cartera-service';
 import { escalarReclamosFueraSla } from '@/lib/cobranza/reclamo-sla-service';
 import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
 import { requerirScopeOperacionCartera } from '@/lib/cobranza/mandante-scope';
+import {
+  ActualizarConfigCobranzaSchema,
+  IdMandanteArgsSchema,
+  MarcarNotificacionesLeidasSchema,
+} from '@/lib/validators/graphql-args';
 
 const InsightType = builder.objectRef<{
   id: string;
@@ -240,6 +251,8 @@ const ConfigCobranzaType = builder.objectRef<{
   metaGestionesSemana: number;
   metaRecuperacionSemana: number;
   metaRecuperacionMes: number;
+  bandejaCandidateLimit: number;
+  miDiaCandidateLimit: number;
 }>('ConfigCobranzaOperativa').implement({
   fields: (t) => ({
     pagoAutoAplicar: t.exposeBoolean('pagoAutoAplicar'),
@@ -253,8 +266,67 @@ const ConfigCobranzaType = builder.objectRef<{
     metaGestionesSemana: t.exposeInt('metaGestionesSemana'),
     metaRecuperacionSemana: t.exposeInt('metaRecuperacionSemana'),
     metaRecuperacionMes: t.exposeInt('metaRecuperacionMes'),
+    bandejaCandidateLimit: t.exposeInt('bandejaCandidateLimit'),
+    miDiaCandidateLimit: t.exposeInt('miDiaCandidateLimit'),
   }),
 });
+
+async function leerConfigCobranzaOperativa(): Promise<{
+  pagoAutoAplicar: boolean;
+  maxContactosDia: number;
+  acuerdoDiasGracia: number;
+  diasSinGestionAlerta: number;
+  diasMoraCastigo: number;
+  acuerdoDescuentoMaxSinAprobacion: number;
+  metaGestionesSemana: number;
+  metaRecuperacionSemana: number;
+  metaRecuperacionMes: number;
+  bandejaCandidateLimit: number;
+  miDiaCandidateLimit: number;
+}> {
+  const [
+    pagoAutoAplicar,
+    maxContactosDia,
+    acuerdoDiasGracia,
+    diasSinGestionAlerta,
+    diasMoraCastigo,
+    acuerdoDescuentoMaxSinAprobacion,
+    metaGestionesSemana,
+    metaRecuperacionSemana,
+    metaRecuperacionMes,
+    bandejaCandidateLimit,
+    miDiaCandidateLimit,
+  ] = await Promise.all([
+    obtenerConfigCobranza(CLAVE_PAGO_AUTO_APLICAR),
+    obtenerConfigCobranza(CLAVE_MAX_CONTACTOS_DIA),
+    obtenerConfigCobranza(CLAVE_ACUERDO_DIAS_GRACIA),
+    obtenerConfigCobranza(CLAVE_DIAS_SIN_GESTION_ALERTA),
+    obtenerConfigCobranza(CLAVE_DIAS_MORA_CASTIGO),
+    obtenerConfigCobranza(CLAVE_ACUERDO_DESCUENTO_MAX_SIN_APROBACION),
+    obtenerConfigCobranza(CLAVE_META_GESTIONES_SEMANA),
+    obtenerConfigCobranza(CLAVE_META_RECUPERACION_SEMANA),
+    obtenerConfigCobranza(CLAVE_META_RECUPERACION_MES),
+    obtenerConfigCobranza(CLAVE_BANDEJA_CANDIDATE_LIMIT),
+    obtenerConfigCobranza(CLAVE_MI_DIA_CANDIDATE_LIMIT),
+  ]);
+  return {
+    pagoAutoAplicar: pagoAutoAplicar === 'true',
+    maxContactosDia: Number(maxContactosDia),
+    acuerdoDiasGracia: Number(acuerdoDiasGracia),
+    diasSinGestionAlerta: Number(diasSinGestionAlerta),
+    diasMoraCastigo: Number(diasMoraCastigo),
+    acuerdoDescuentoMaxSinAprobacion: Number(acuerdoDescuentoMaxSinAprobacion),
+    metaGestionesSemana: Number(metaGestionesSemana),
+    metaRecuperacionSemana: Number(metaRecuperacionSemana),
+    metaRecuperacionMes: Number(metaRecuperacionMes),
+    bandejaCandidateLimit: Number.isFinite(Number(bandejaCandidateLimit))
+      ? Number(bandejaCandidateLimit)
+      : BANDEJA_PRIORIDAD_CANDIDATE_LIMIT,
+    miDiaCandidateLimit: Number.isFinite(Number(miDiaCandidateLimit))
+      ? Number(miDiaCandidateLimit)
+      : MI_DIA_PRIORIDAD_CANDIDATE_LIMIT,
+  };
+}
 
 builder.queryField('centroInteligencia', (t) =>
   t.field({
@@ -404,38 +476,7 @@ builder.queryField('configCobranzaOperativa', (t) =>
     resolve: async (_p, _args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.CONFIG_SYSTEM);
       await asegurarConfigsCobranzaDefault();
-      const [
-        pagoAutoAplicar,
-        maxContactosDia,
-        acuerdoDiasGracia,
-        diasSinGestionAlerta,
-        diasMoraCastigo,
-        acuerdoDescuentoMaxSinAprobacion,
-        metaGestionesSemana,
-        metaRecuperacionSemana,
-        metaRecuperacionMes,
-      ] = await Promise.all([
-        obtenerConfigCobranza(CLAVE_PAGO_AUTO_APLICAR),
-        obtenerConfigCobranza(CLAVE_MAX_CONTACTOS_DIA),
-        obtenerConfigCobranza(CLAVE_ACUERDO_DIAS_GRACIA),
-        obtenerConfigCobranza(CLAVE_DIAS_SIN_GESTION_ALERTA),
-        obtenerConfigCobranza(CLAVE_DIAS_MORA_CASTIGO),
-        obtenerConfigCobranza(CLAVE_ACUERDO_DESCUENTO_MAX_SIN_APROBACION),
-        obtenerConfigCobranza(CLAVE_META_GESTIONES_SEMANA),
-        obtenerConfigCobranza(CLAVE_META_RECUPERACION_SEMANA),
-        obtenerConfigCobranza(CLAVE_META_RECUPERACION_MES),
-      ]);
-      return {
-        pagoAutoAplicar: pagoAutoAplicar === 'true',
-        maxContactosDia: Number(maxContactosDia),
-        acuerdoDiasGracia: Number(acuerdoDiasGracia),
-        diasSinGestionAlerta: Number(diasSinGestionAlerta),
-        diasMoraCastigo: Number(diasMoraCastigo),
-        acuerdoDescuentoMaxSinAprobacion: Number(acuerdoDescuentoMaxSinAprobacion),
-        metaGestionesSemana: Number(metaGestionesSemana),
-        metaRecuperacionSemana: Number(metaRecuperacionSemana),
-        metaRecuperacionMes: Number(metaRecuperacionMes),
-      };
+      return leerConfigCobranzaOperativa();
     },
   }),
 );
@@ -460,9 +501,10 @@ builder.mutationField('recalcularMoraCartera', (t) =>
     args: { idmandante: t.arg.int({ required: false }) },
     resolve: async (_p, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.CONFIG_SYSTEM);
+      const { idmandante: idmandanteArg } = IdMandanteArgsSchema.parse(args);
       const idmandante = await requerirScopeOperacionCartera(
         ctx.usuario?.idusuario,
-        args.idmandante ?? undefined,
+        idmandanteArg,
       );
       const resultado = await procesarRecalculoMoraCartera(idmandante);
       return {
@@ -501,105 +543,94 @@ builder.mutationField('actualizarConfigCobranzaOperativa', (t) =>
       metaGestionesSemana: t.arg.int({ required: false }),
       metaRecuperacionSemana: t.arg.int({ required: false }),
       metaRecuperacionMes: t.arg.int({ required: false }),
+      bandejaCandidateLimit: t.arg.int({ required: false }),
+      miDiaCandidateLimit: t.arg.int({ required: false }),
     },
     resolve: async (_p, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.CONFIG_SYSTEM);
+      const parsed = ActualizarConfigCobranzaSchema.parse(args);
       const idusuario = ctx.usuario?.idusuario;
-      if (args.pagoAutoAplicar !== undefined && args.pagoAutoAplicar !== null) {
+      if (
+        parsed.pagoAutoAplicar !== undefined &&
+        parsed.pagoAutoAplicar !== null
+      ) {
         await guardarConfigCobranza(
           CLAVE_PAGO_AUTO_APLICAR,
-          args.pagoAutoAplicar ? 'true' : 'false',
+          parsed.pagoAutoAplicar ? 'true' : 'false',
           idusuario,
         );
       }
-      if (args.maxContactosDia != null) {
+      if (parsed.maxContactosDia != null) {
         await guardarConfigCobranza(
           CLAVE_MAX_CONTACTOS_DIA,
-          String(args.maxContactosDia),
+          String(parsed.maxContactosDia),
           idusuario,
         );
       }
-      if (args.acuerdoDiasGracia != null) {
+      if (parsed.acuerdoDiasGracia != null) {
         await guardarConfigCobranza(
           CLAVE_ACUERDO_DIAS_GRACIA,
-          String(args.acuerdoDiasGracia),
+          String(parsed.acuerdoDiasGracia),
           idusuario,
         );
       }
-      if (args.diasSinGestionAlerta != null) {
+      if (parsed.diasSinGestionAlerta != null) {
         await guardarConfigCobranza(
           CLAVE_DIAS_SIN_GESTION_ALERTA,
-          String(args.diasSinGestionAlerta),
+          String(parsed.diasSinGestionAlerta),
           idusuario,
         );
       }
-      if (args.diasMoraCastigo != null) {
+      if (parsed.diasMoraCastigo != null) {
         await guardarConfigCobranza(
           CLAVE_DIAS_MORA_CASTIGO,
-          String(args.diasMoraCastigo),
+          String(parsed.diasMoraCastigo),
           idusuario,
         );
       }
-      if (args.acuerdoDescuentoMaxSinAprobacion != null) {
+      if (parsed.acuerdoDescuentoMaxSinAprobacion != null) {
         await guardarConfigCobranza(
           CLAVE_ACUERDO_DESCUENTO_MAX_SIN_APROBACION,
-          String(args.acuerdoDescuentoMaxSinAprobacion),
+          String(parsed.acuerdoDescuentoMaxSinAprobacion),
           idusuario,
         );
       }
-      if (args.metaGestionesSemana != null) {
+      if (parsed.metaGestionesSemana != null) {
         await guardarConfigCobranza(
           CLAVE_META_GESTIONES_SEMANA,
-          String(args.metaGestionesSemana),
+          String(parsed.metaGestionesSemana),
           idusuario,
         );
       }
-      if (args.metaRecuperacionSemana != null) {
+      if (parsed.metaRecuperacionSemana != null) {
         await guardarConfigCobranza(
           CLAVE_META_RECUPERACION_SEMANA,
-          String(args.metaRecuperacionSemana),
+          String(parsed.metaRecuperacionSemana),
           idusuario,
         );
       }
-      if (args.metaRecuperacionMes != null) {
+      if (parsed.metaRecuperacionMes != null) {
         await guardarConfigCobranza(
           CLAVE_META_RECUPERACION_MES,
-          String(args.metaRecuperacionMes),
+          String(parsed.metaRecuperacionMes),
           idusuario,
         );
       }
-      const [
-        pagoAutoAplicar,
-        maxContactosDia,
-        acuerdoDiasGracia,
-        diasSinGestionAlerta,
-        diasMoraCastigo,
-        acuerdoDescuentoMaxSinAprobacion,
-        metaGestionesSemana,
-        metaRecuperacionSemana,
-        metaRecuperacionMes,
-      ] = await Promise.all([
-        obtenerConfigCobranza(CLAVE_PAGO_AUTO_APLICAR),
-        obtenerConfigCobranza(CLAVE_MAX_CONTACTOS_DIA),
-        obtenerConfigCobranza(CLAVE_ACUERDO_DIAS_GRACIA),
-        obtenerConfigCobranza(CLAVE_DIAS_SIN_GESTION_ALERTA),
-        obtenerConfigCobranza(CLAVE_DIAS_MORA_CASTIGO),
-        obtenerConfigCobranza(CLAVE_ACUERDO_DESCUENTO_MAX_SIN_APROBACION),
-        obtenerConfigCobranza(CLAVE_META_GESTIONES_SEMANA),
-        obtenerConfigCobranza(CLAVE_META_RECUPERACION_SEMANA),
-        obtenerConfigCobranza(CLAVE_META_RECUPERACION_MES),
-      ]);
-      return {
-        pagoAutoAplicar: pagoAutoAplicar === 'true',
-        maxContactosDia: Number(maxContactosDia),
-        acuerdoDiasGracia: Number(acuerdoDiasGracia),
-        diasSinGestionAlerta: Number(diasSinGestionAlerta),
-        diasMoraCastigo: Number(diasMoraCastigo),
-        acuerdoDescuentoMaxSinAprobacion: Number(acuerdoDescuentoMaxSinAprobacion),
-        metaGestionesSemana: Number(metaGestionesSemana),
-        metaRecuperacionSemana: Number(metaRecuperacionSemana),
-        metaRecuperacionMes: Number(metaRecuperacionMes),
-      };
+      if (parsed.bandejaCandidateLimit != null) {
+        await guardarConfigCobranza(
+          CLAVE_BANDEJA_CANDIDATE_LIMIT,
+          String(parsed.bandejaCandidateLimit),
+          idusuario,
+        );
+      }
+      if (parsed.miDiaCandidateLimit != null) {
+        await guardarConfigCobranza(
+          CLAVE_MI_DIA_CANDIDATE_LIMIT,
+          String(parsed.miDiaCandidateLimit),
+          idusuario,
+        );
+      }
+      return leerConfigCobranzaOperativa();
     },
   }),
 );
@@ -648,7 +679,8 @@ builder.mutationField('marcarNotificacionesOperativasLeidas', (t) =>
     },
     resolve: async (_p, args, ctx: GraphQLContext) => {
       const idusuario = await authNotificacionesOperativas(ctx);
-      return marcarNotificacionesLeidas(idusuario, args.ids);
+      const { ids } = MarcarNotificacionesLeidasSchema.parse(args);
+      return marcarNotificacionesLeidas(idusuario, ids);
     },
   }),
 );
@@ -832,9 +864,10 @@ builder.mutationField('procesarCastigoCartera', (t) =>
     args: { idmandante: t.arg.int({ required: false }) },
     resolve: async (_p, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.CARTERA_WRITE);
+      const { idmandante: idmandanteArg } = IdMandanteArgsSchema.parse(args);
       const idmandante = await requerirScopeOperacionCartera(
         ctx.usuario?.idusuario,
-        args.idmandante ?? undefined,
+        idmandanteArg,
       );
       const resultado = await procesarCastigoCartera(idmandante);
       return {

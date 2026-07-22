@@ -22,6 +22,13 @@ export const CreateGestionInputSchema = z.object({
   comentario: z.string().optional(),
   latitud: z.number().optional(),
   longitud: z.number().optional(),
+  idempotencyKey: z
+    .string()
+    .trim()
+    .min(8)
+    .max(64)
+    .regex(/^[a-zA-Z0-9_-]+$/, "idempotencyKey inválida")
+    .optional(),
 });
 
 export const CreateGestionInput = builder.inputRef("CreateGestionInput").implement({
@@ -39,6 +46,7 @@ export const CreateGestionInput = builder.inputRef("CreateGestionInput").impleme
     comentario: t.string({ required: false }),
     latitud: t.float({ required: false }),
     longitud: t.float({ required: false }),
+    idempotencyKey: t.string({ required: false }),
   }),
 });
 
@@ -57,6 +65,7 @@ export const Gestion = definePrismaObject("tbl_gestion", {
     razonMora: t.exposeString("razonMora", { nullable: true }),
     montoPromesa: exposeDecimal(t, "montoPromesa"),
     fechaPromesa: t.expose("fechaPromesa", { type: "DateTime", nullable: true }),
+    estadoPromesa: t.exposeString("estadoPromesa", { nullable: true }),
     fechaProximaGestion: t.expose("fechaProximaGestion", { type: "DateTime", nullable: true }),
     comentario: t.exposeString("comentario", { nullable: true }),
     createdAt: t.expose("createdAt", { type: "DateTime" }),

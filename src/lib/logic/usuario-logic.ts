@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { hashPassword } from '@/lib/auth/password';
 import { ROL } from '@/lib/permissions/role-codes';
+import { assertPuedeAsignarRol } from '@/lib/logic/rol-privilege-logic';
 import type {
   CreateUsuarioInput,
   UpdateUsuarioInput,
@@ -11,6 +12,16 @@ async function obtenerCodigoRol(idrol: number): Promise<string | null> {
     where: { idrol, estado: true, deletedAt: null },
   });
   return rol?.codigo ?? null;
+}
+
+async function obtenerCodigoRolActor(
+  idusuarioActor: number,
+): Promise<string | null> {
+  const actor = await prisma.tbl_usuario.findFirst({
+    where: { idusuario: idusuarioActor, deletedAt: null },
+    include: { rol: { select: { codigo: true } } },
+  });
+  return actor?.rol.codigo ?? null;
 }
 
 async function validarJerarquiaSupervisor(params: {
@@ -86,7 +97,10 @@ async function validarJerarquiaSupervisor(params: {
   }
 }
 
-export async function crearUsuario(data: CreateUsuarioInput) {
+export async function crearUsuario(
+  data: CreateUsuarioInput,
+  idusuarioActor: number,
+) {
   const emailExiste = await prisma.tbl_usuario.findFirst({
     where: { email: data.email, deletedAt: null },
   });
@@ -102,6 +116,12 @@ export async function crearUsuario(data: CreateUsuarioInput) {
   if (!rol) {
     throw new Error('El rol seleccionado no existe o está inactivo');
   }
+
+  const codigoActor = await obtenerCodigoRolActor(idusuarioActor);
+  assertPuedeAsignarRol({
+    codigoActor,
+    codigoRolObjetivo: rol.codigo,
+  });
 
   await validarJerarquiaSupervisor({
     idrol: data.idrol,
@@ -137,6 +157,7 @@ export async function actualizarUsuario(
 ) {
   const usuario = await prisma.tbl_usuario.findFirst({
     where: { idusuario: data.idusuario, deletedAt: null },
+    include: { rol: { select: { codigo: true } } },
   });
 
   if (!usuario) {
@@ -158,6 +179,7 @@ export async function actualizarUsuario(
   }
 
   const idrolFinal = data.idrol ?? usuario.idrol;
+  const codigoActor = await obtenerCodigoRolActor(idusuarioActual);
 
   if (data.idrol) {
     const rol = await prisma.tbl_rol.findFirst({
@@ -167,6 +189,19 @@ export async function actualizarUsuario(
     if (!rol) {
       throw new Error('El rol seleccionado no existe o está inactivo');
     }
+
+    assertPuedeAsignarRol({
+      codigoActor,
+      codigoRolObjetivo: rol.codigo,
+    });
+  }
+
+  // No permitir que un no-ADMIN edite un ADMIN existente.
+  if (
+    usuario.rol.codigo === ROL.ADMIN &&
+    codigoActor !== ROL.ADMIN
+  ) {
+    throw new Error('Solo un administrador puede modificar usuarios ADMIN.');
   }
 
   if (data.activo === false && data.idusuario === idusuarioActual) {

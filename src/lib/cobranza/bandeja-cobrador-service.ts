@@ -205,23 +205,20 @@ export async function cargarContextosPrioridad(
     await Promise.all([
 
       prisma.tbl_gestion.findMany({
-
         where: {
-
           deletedAt: null,
-
           idprestamo: { in: idprestamos },
-
           fechaPromesa: { lt: hoy },
-
           montoPromesa: { not: null },
-
+          NOT: {
+            OR: [
+              { estadoPromesa: 'CUMPLIDA' },
+              { nota: { contains: '[PROMESA_CUMPLIDA]' } },
+            ],
+          },
         },
-
         select: { idprestamo: true },
-
         distinct: ['idprestamo'],
-
       }),
 
       prisma.tbl_acuerdo.findMany({

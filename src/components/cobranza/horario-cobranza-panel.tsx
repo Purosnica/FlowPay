@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
+import { PermissionGate } from '@/components/auth/permission-gate';
 import { PaginatedDataTable } from '@/components/cobranza/paginated-data-table';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { useGraphQLMutation } from '@/hooks/use-graphql-mutation';
@@ -11,6 +12,7 @@ import {
   GET_HORARIOS_COBRANZA,
   UPDATE_HORARIO_COBRANZA,
 } from '@/lib/graphql/queries/cobranza.queries';
+import { PERMISO } from '@/lib/permissions/permiso-codes';
 import type { HorarioCobranza, Mandante } from '@/types/cobranza';
 
 const DIAS = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
@@ -61,19 +63,21 @@ export function HorarioCobranzaPanel({ mandante }: HorarioCobranzaPanelProps) {
         id: 'toggle',
         header: '',
         cell: ({ row }) => (
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={updateMutation.isPending}
-            onClick={() =>
-              updateMutation.mutate({
-                idhorario: row.original.idhorario,
-                permitido: !row.original.permitido,
-              })
-            }
-          >
-            {row.original.permitido ? 'Bloquear' : 'Permitir'}
-          </Button>
+          <PermissionGate permiso={PERMISO.MANDANTE_WRITE}>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={updateMutation.isPending}
+              onClick={() =>
+                updateMutation.mutate({
+                  idhorario: row.original.idhorario,
+                  permitido: !row.original.permitido,
+                })
+              }
+            >
+              {row.original.permitido ? 'Bloquear' : 'Permitir'}
+            </Button>
+          </PermissionGate>
         ),
       },
     ],

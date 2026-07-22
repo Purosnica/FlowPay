@@ -187,7 +187,7 @@ export default function ConciliacionesPage() {
           itemLabel="pagos"
           rowActions={(p) => (
             <div className="flex justify-end gap-2">
-              <PermissionGate permiso={PERMISO.PAGO_WRITE}>
+              <PermissionGate permiso={PERMISO.PAGO_APPLY}>
                 {!p.aplicado && (
                   <Button
                     size="sm"

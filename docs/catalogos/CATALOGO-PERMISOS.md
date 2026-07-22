@@ -35,7 +35,8 @@ El catálogo incluye permisos de administración, configuración, cobranza opera
 | `ACUERDO_READ` | Ver Acuerdos | Consultar acuerdos y promesas |
 | `ACUERDO_WRITE` | Gestionar Acuerdos | Crear y modificar acuerdos |
 | `PAGO_READ` | Ver Pagos | Consultar pagos |
-| `PAGO_WRITE` | Registrar Pagos | Registrar pagos de deudores |
+| `PAGO_WRITE` | Registrar Pagos | Registrar pagos (alta); no implica aplicar |
+| `PAGO_APPLY` | Aplicar / conciliar pagos | SoD: aplicar, desaplicar, extracto auto (supervisor+) |
 | `LIQUIDACION_READ` | Ver Liquidaciones | Consultar liquidaciones |
 | `LIQUIDACION_WRITE` | Gestionar Liquidaciones | Crear y emitir liquidaciones |
 | `INTELIGENCIA_READ` | Centro de Inteligencia | Analytics operativos |
@@ -59,6 +60,9 @@ El catálogo incluye permisos de administración, configuración, cobranza opera
 
 ### Finos (por pantalla)
 
+Existen en catálogo y en `reporte-permisos.ts` (OR con grupo / `REPORTE_READ`).  
+**Presets de rol usan grupos**, no asignan finos uno a uno: un fino sin grupo solo tiene sentido para roles custom (least privilege por pantalla).
+
 Incluyen, entre otros:
 
 `REPORTE_HUB_READ`, `REPORTE_AGING_READ`, `REPORTE_INFORME_GERENCIAL_READ`, `REPORTE_INFORME_GESTIONES_READ`, `REPORTE_EFECTIVIDAD_READ`, `REPORTE_PRODUCTIVIDAD_DIARIA_READ`, `REPORTE_CUMPLIMIENTO_METAS_READ`, `REPORTE_SUPERVISOR_EQUIPO_READ`, `REPORTE_PROMESAS_PAGO_READ`, `REPORTE_CUMPLIMIENTO_ACUERDOS_READ`, `REPORTE_CUOTAS_VENCIDAS_READ`, `REPORTE_CARTERA_SIN_GESTION_READ`, `REPORTE_RECONTACTOS_READ`, `REPORTE_RECLAMOS_SLA_READ`, `REPORTE_MIGRACION_MORA_READ`, `REPORTE_CONCENTRACION_RIESGO_READ`, `REPORTE_INGRESO_TRAMO_MORA_READ`, `REPORTE_GANANCIAS_READ`, `REPORTE_MARGEN_MANDANTES_READ`, `REPORTE_COMISIONES_COBRADORES_READ`, `REPORTE_COMISIONES_VS_PROYECCION_READ`, …
@@ -73,8 +77,8 @@ Guía de pantallas: [MANUAL-REPORTES.md](../manuales/MANUAL-REPORTES.md)
 
 | Rol | Permisos base |
 |-----|---------------|
-| **COBRADOR** | Cartera/mandante read, gestiones/acuerdos/pagos R/W, reportes cobranza + operación |
-| **SUPERVISOR** | Cobrador + `CARTERA_WRITE`, `INTELIGENCIA_READ`, `EQUIPO_READ`, `LIQUIDACION_READ`, reportes riesgo + equipo |
+| **COBRADOR** | Cartera/mandante read, gestiones/acuerdos/pagos R/W (`PAGO_WRITE`, sin `PAGO_APPLY`), reportes cobranza + operación |
+| **SUPERVISOR** | Cobrador + `CARTERA_WRITE`, `PAGO_APPLY`, `INTELIGENCIA_READ`, `EQUIPO_READ`, `LIQUIDACION_READ`, reportes riesgo + equipo |
 | **GERENTE** | Supervisor + `LIQUIDACION_WRITE`, `USER_READ`, reportes finanzas + gerencial |
 | **ADMIN** | Todo el catálogo (`PERMISOS_CATALOGO`) |
 

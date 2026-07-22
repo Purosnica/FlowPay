@@ -1,5 +1,5 @@
 /* FlowPay PWA service worker — shell offline Mi día / bandeja (I036). */
-const CACHE_NAME = 'flowpay-shell-v1';
+const CACHE_NAME = 'flowpay-shell-v2';
 const SHELL_URLS = [
   '/offline.html',
   '/manifest.webmanifest',

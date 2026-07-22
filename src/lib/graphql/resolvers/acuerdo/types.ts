@@ -52,6 +52,7 @@ export const SimulacionAcuerdoResult = builder.objectRef<{
   pagoMinimo: number;
   interesMoratorioExcluido: number;
   gestionCobranzaExcluida: number;
+  montoPagableLedger: number;
 }>("SimulacionAcuerdoResult").implement({
   fields: (t) => ({
     baseNegociable: t.exposeFloat("baseNegociable"),
@@ -61,6 +62,7 @@ export const SimulacionAcuerdoResult = builder.objectRef<{
     pagoMinimo: t.exposeFloat("pagoMinimo"),
     interesMoratorioExcluido: t.exposeFloat("interesMoratorioExcluido"),
     gestionCobranzaExcluida: t.exposeFloat("gestionCobranzaExcluida"),
+    montoPagableLedger: t.exposeFloat("montoPagableLedger"),
   }),
 });
 

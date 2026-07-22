@@ -1,24 +1,27 @@
 openapi: 3.0.3
 info:
-  title: FlowPay REST API
-  version: 1.2.6
+  title: FlowPay Public API
+  version: 1.0.0
   description: |
-    Superficie REST pública/operativa de FlowPay (imports, health, auth MFA).
-    GraphQL autenticado en `/api/graphql` (ver portal developer).
+    API REST pública versionada bajo `/api/v1` (roadmap SC-5 / I006).
+    GraphQL en `/api/graphql` es interno de la UI autenticada; no es el
+    contrato de producto para integradores.
+    Alias legacy sin versión (`/api/health`, `/api/cobranza/...`) delegan
+    a la misma lógica; nuevos clientes deben usar `/api/v1`.
   contact:
     name: FlowPay
 servers:
   - url: /
     description: Same-origin
 paths:
-  /api/health:
+  /api/v1/health:
     get:
       summary: Liveness
       tags: [Ops]
       responses:
         '200':
           description: Proceso vivo
-  /api/ready:
+  /api/v1/ready:
     get:
       summary: Readiness (DB, storage, SMTP)
       tags: [Ops]
@@ -27,45 +30,43 @@ paths:
           description: Listo para tráfico
         '503':
           description: Dependencia no lista
-  /api/cobranza/importar/async:
+  /api/v1/cobranza/importar:
     post:
-      summary: Encolar importación de cobranza
+      summary: Importación síncrona de cobranza
       tags: [Importaciones]
+      security:
+        - cookieAuth: []
       parameters:
-        - name: Idempotency-Key
-          in: header
-          required: false
-          schema:
-            type: string
-            minLength: 8
-            maxLength: 64
-            pattern: '^[a-zA-Z0-9_-]+$'
-          description: Evita jobs duplicados en reintentos (único por usuario).
+        - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
         content:
           multipart/form-data:
             schema:
-              type: object
-              required: [archivo, idmandante]
-              properties:
-                archivo:
-                  type: string
-                  format: binary
-                tipo:
-                  type: string
-                  enum: [CARTERA, GESTIONES, PAGOS, PROMESAS, CONTACTOS, COMPLETO]
-                idmandante:
-                  type: integer
-                idcampana:
-                  type: integer
-                fechaCorte:
-                  type: string
-                  format: date-time
-                nombreHoja:
-                  type: string
-                idplantillaImp:
-                  type: integer
+              $ref: '#/components/schemas/ImportMultipart'
+      responses:
+        '200':
+          description: Resultado de importación
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '429':
+          description: Rate limit
+  /api/v1/cobranza/importar/async:
+    post:
+      summary: Encolar importación de cobranza
+      tags: [Importaciones]
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ImportMultipart'
       responses:
         '200':
           description: Job encolado
@@ -86,10 +87,12 @@ paths:
           $ref: '#/components/responses/Error'
         '429':
           description: Rate limit
-  /api/cobranza/importar/jobs/{id}:
+  /api/v1/cobranza/importar/jobs/{id}:
     get:
       summary: Estado de job de importación
       tags: [Importaciones]
+      security:
+        - cookieAuth: []
       parameters:
         - name: id
           in: path
@@ -101,14 +104,54 @@ paths:
           description: Resumen del job
         '404':
           $ref: '#/components/responses/Error'
-  /api/openapi:
+  /api/v1/openapi:
     get:
-      summary: Este documento OpenAPI (JSON)
+      summary: Spec OpenAPI 3 (YAML)
       tags: [Developer]
       responses:
         '200':
-          description: OpenAPI 3
+          description: OpenAPI 3 en application/yaml
+  /api/openapi:
+    get:
+      summary: Spec OpenAPI 3 (YAML) — alias legacy
+      tags: [Developer]
+      responses:
+        '200':
+          description: OpenAPI 3 en application/yaml
 components:
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 64
+        pattern: '^[a-zA-Z0-9_-]+$'
+      description: Evita jobs duplicados en reintentos (único por usuario).
+  schemas:
+    ImportMultipart:
+      type: object
+      required: [archivo, idmandante]
+      properties:
+        archivo:
+          type: string
+          format: binary
+        tipo:
+          type: string
+          enum: [CARTERA, GESTIONES, PAGOS, PROMESAS, CONTACTOS, COMPLETO]
+        idmandante:
+          type: integer
+        idcampana:
+          type: integer
+        fechaCorte:
+          type: string
+          format: date-time
+        nombreHoja:
+          type: string
+        idplantillaImp:
+          type: integer
   responses:
     Error:
       description: Error estable (success=false, error, code)
@@ -131,7 +174,7 @@ components:
     cookieAuth:
       type: apiKey
       in: cookie
-      name: flowpay_token
+      name: auth-token
 tags:
   - name: Ops
   - name: Importaciones

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { PermissionGate } from '@/components/auth/permission-gate';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { useGraphQLMutation } from '@/hooks/use-graphql-mutation';
 import {
@@ -11,6 +12,7 @@ import {
   ADD_TIPIFICACION_MANDANTE,
   REMOVE_TIPIFICACION_MANDANTE,
 } from '@/lib/graphql/queries/cobranza.queries';
+import { PERMISO } from '@/lib/permissions/permiso-codes';
 import type {
   CodigoAccion,
   CodigoResultado,
@@ -60,52 +62,54 @@ export function TipificacionMandantePanel({
         Códigos permitidos para gestiones de este mandante. Si no configura
         ninguno, se muestran todos los códigos globales.
       </p>
-      <form
-        className="grid gap-2 sm:grid-cols-3"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!idcodaccion && !idcodresultado) {
-            return;
-          }
-          addMutation.mutate({
-            idmandante: mandante.idmandante,
-            idcodaccion: idcodaccion || undefined,
-            idcodresultado: idcodresultado || undefined,
-          });
-        }}
-      >
-        <select
-          value={idcodaccion}
-          onChange={(e) =>
-            setIdcodaccion(e.target.value ? Number(e.target.value) : '')
-          }
-          className="rounded border px-3 py-2 text-sm"
+      <PermissionGate permiso={PERMISO.MANDANTE_WRITE}>
+        <form
+          className="grid gap-2 sm:grid-cols-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!idcodaccion && !idcodresultado) {
+              return;
+            }
+            addMutation.mutate({
+              idmandante: mandante.idmandante,
+              idcodaccion: idcodaccion || undefined,
+              idcodresultado: idcodresultado || undefined,
+            });
+          }}
         >
-          <option value="">Acción...</option>
-          {(accionesData?.codigosAccionPorMandante ?? []).map((a) => (
-            <option key={a.idcodaccion} value={a.idcodaccion}>
-              {a.codigo} — {a.descripcion}
-            </option>
-          ))}
-        </select>
-        <select
-          value={idcodresultado}
-          onChange={(e) =>
-            setIdcodresultado(e.target.value ? Number(e.target.value) : '')
-          }
-          className="rounded border px-3 py-2 text-sm"
-        >
-          <option value="">Resultado...</option>
-          {(resultadosData?.codigosResultadoPorMandante ?? []).map((r) => (
-            <option key={r.idcodresultado} value={r.idcodresultado}>
-              {r.codigo} — {r.descripcion}
-            </option>
-          ))}
-        </select>
-        <Button type="submit" disabled={addMutation.isPending}>
-          Agregar
-        </Button>
-      </form>
+          <select
+            value={idcodaccion}
+            onChange={(e) =>
+              setIdcodaccion(e.target.value ? Number(e.target.value) : '')
+            }
+            className="rounded border px-3 py-2 text-sm"
+          >
+            <option value="">Acción...</option>
+            {(accionesData?.codigosAccionPorMandante ?? []).map((a) => (
+              <option key={a.idcodaccion} value={a.idcodaccion}>
+                {a.codigo} — {a.descripcion}
+              </option>
+            ))}
+          </select>
+          <select
+            value={idcodresultado}
+            onChange={(e) =>
+              setIdcodresultado(e.target.value ? Number(e.target.value) : '')
+            }
+            className="rounded border px-3 py-2 text-sm"
+          >
+            <option value="">Resultado...</option>
+            {(resultadosData?.codigosResultadoPorMandante ?? []).map((r) => (
+              <option key={r.idcodresultado} value={r.idcodresultado}>
+                {r.codigo} — {r.descripcion}
+              </option>
+            ))}
+          </select>
+          <Button type="submit" disabled={addMutation.isPending}>
+            Agregar
+          </Button>
+        </form>
+      </PermissionGate>
       {isLoading && <p className="text-sm text-gray-500">Cargando...</p>}
       <ul className="divide-y text-sm">
         {tips.map((t) => (
@@ -120,13 +124,15 @@ export function TipificacionMandantePanel({
                   ? `Resultado: ${t.codresult.codigo}`
                   : '-'}
             </span>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => removeMutation.mutate({ idmt: t.idmt })}
-            >
-              Quitar
-            </Button>
+            <PermissionGate permiso={PERMISO.MANDANTE_WRITE}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => removeMutation.mutate({ idmt: t.idmt })}
+              >
+                Quitar
+              </Button>
+            </PermissionGate>
           </li>
         ))}
       </ul>

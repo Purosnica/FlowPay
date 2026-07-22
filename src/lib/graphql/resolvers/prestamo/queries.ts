@@ -17,6 +17,7 @@ import { requerirPermiso } from "@/lib/permissions/permission-service";
 import { PERMISO } from "@/lib/permissions/permiso-codes";
 import { filtroMandante, requerirAccesoMandante } from "@/lib/cobranza/mandante-scope";
 import {
+  aplicarFiltrosPrestamoConScopeCobrador,
   requerirAccesoPrestamoCobrador,
   wherePrestamoPorRol,
 } from "@/lib/cobranza/cobrador-scope";
@@ -87,11 +88,7 @@ builder.queryField("prestamos", (t) =>
 
       if (filters.idcampana) where.idcampana = filters.idcampana;
       if (filters.idcliente) where.idcliente = filters.idcliente;
-      if (filters.sinAsignar) {
-        where.idgestorAsignado = null;
-      } else if (filters.idgestorAsignado) {
-        where.idgestorAsignado = filters.idgestorAsignado;
-      }
+      await aplicarFiltrosPrestamoConScopeCobrador(idusuario, where, filters);
       if (filters.estado) where.estado = filters.estado;
       if (filters.search) {
         where.OR = [

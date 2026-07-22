@@ -15,6 +15,8 @@ import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
 import { createPageType } from '../../helpers/create-page-type';
 import { resolvePaginatedPrismaQuery } from '../../helpers/paginated-prisma-resolver';
 import { registrarAuditoria } from '@/lib/cobranza/auditoria-service';
+import { IdPositiveSchema } from '@/lib/validators/graphql-args';
+import { z } from 'zod';
 
 const PoliticaDescuentoPage = createPageType(
   'PoliticaDescuentoPage',
@@ -156,8 +158,11 @@ builder.mutationField('deletePoliticaDescuento', (t) =>
     args: { idpolitica: t.arg.int({ required: true }) },
     resolve: async (_parent, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.MANDANTE_WRITE);
+      const { idpolitica } = z
+        .object({ idpolitica: IdPositiveSchema })
+        .parse(args);
       const existente = await ctx.prisma.tbl_politica_descuento.findUnique({
-        where: { idpolitica: args.idpolitica },
+        where: { idpolitica },
       });
       if (!existente || existente.deletedAt) {
         throw new GraphQLValidationError('Política no encontrada.');
@@ -167,7 +172,7 @@ builder.mutationField('deletePoliticaDescuento', (t) =>
         existente.idmandante,
       );
       await ctx.prisma.tbl_politica_descuento.update({
-        where: { idpolitica: args.idpolitica },
+        where: { idpolitica },
         data: { deletedAt: new Date(), estado: false },
       });
       return true;

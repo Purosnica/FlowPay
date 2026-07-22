@@ -3,6 +3,7 @@ import ZodPlugin from "@pothos/plugin-zod";
 import SchemaBuilder from "@pothos/core";
 import { getDatamodel, type default as PrismaTypes } from "@pothos/plugin-prisma/generated";
 import { prisma } from "@/lib/prisma";
+import type { GraphqlLoaders } from "./loaders";
 
 // Tipos para el contexto
 export interface GraphQLContext {
@@ -13,6 +14,8 @@ export interface GraphQLContext {
     email: string;
     idrol: number;
   } | null;
+  /** I111: batch loaders por request. */
+  loaders: GraphqlLoaders;
 }
 
 export const builder = new SchemaBuilder<{

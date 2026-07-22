@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { PermissionGate } from '@/components/auth/permission-gate';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { useGraphQLMutation } from '@/hooks/use-graphql-mutation';
 import {
@@ -9,6 +10,7 @@ import {
   ACTUALIZAR_METAS_MANDANTE,
   RESTABLECER_METAS_MANDANTE,
 } from '@/lib/graphql/queries/cobranza.queries';
+import { PERMISO } from '@/lib/permissions/permiso-codes';
 import type { Mandante } from '@/types/cobranza';
 
 interface MetasMandanteData {
@@ -90,33 +92,35 @@ export function MandanteMetasPanel({ mandante }: MandanteMetasPanelProps) {
         />
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <Button
-          disabled={guardarMutation.isPending}
-          onClick={() =>
-            guardarMutation.mutate({
-              idmandante: mandante.idmandante,
-              metaGestionesSemana: form.metaGestionesSemana,
-              metaRecuperacionSemana: form.metaRecuperacionSemana,
-              metaRecuperacionMes: form.metaRecuperacionMes,
-            })
-          }
-        >
-          Guardar metas
-        </Button>
-        <Button
-          variant="outline"
-          disabled={restablecerMutation.isPending}
-          onClick={() =>
-            restablecerMutation.mutate({ idmandante: mandante.idmandante })
-          }
-        >
-          Usar metas globales
-        </Button>
-        {guardado && (
-          <span className="self-center text-sm text-green-600">Guardado</span>
-        )}
-      </div>
+      <PermissionGate permiso={PERMISO.MANDANTE_WRITE}>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            disabled={guardarMutation.isPending}
+            onClick={() =>
+              guardarMutation.mutate({
+                idmandante: mandante.idmandante,
+                metaGestionesSemana: form.metaGestionesSemana,
+                metaRecuperacionSemana: form.metaRecuperacionSemana,
+                metaRecuperacionMes: form.metaRecuperacionMes,
+              })
+            }
+          >
+            Guardar metas
+          </Button>
+          <Button
+            variant="outline"
+            disabled={restablecerMutation.isPending}
+            onClick={() =>
+              restablecerMutation.mutate({ idmandante: mandante.idmandante })
+            }
+          >
+            Usar metas globales
+          </Button>
+          {guardado && (
+            <span className="self-center text-sm text-green-600">Guardado</span>
+          )}
+        </div>
+      </PermissionGate>
     </div>
   );
 }

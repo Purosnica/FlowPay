@@ -24,6 +24,7 @@ import { createPersistedOperationsRule } from '@/lib/graphql/plugins/persisted-q
 import { useOperationMetricsPlugin } from '@/lib/graphql/plugins/operation-metrics';
 import { quizásComprimirGraphqlResponse } from '@/lib/graphql/compress-response';
 import { peekGraphqlOperationName } from '@/lib/graphql/peek-operation-name';
+import { createGraphqlLoaders } from '@/lib/graphql/loaders';
 
 interface FormattableGraphQLError {
   message: string;
@@ -63,6 +64,7 @@ const { handleRequest } = createYoga<NextRouteContext>({
       const usuario = await getCurrentUser(request as NextRequest);
       return {
         prisma,
+        loaders: createGraphqlLoaders(prisma),
         usuario: usuario
           ? {
               idusuario: usuario.idusuario,
@@ -79,6 +81,7 @@ const { handleRequest } = createYoga<NextRouteContext>({
       );
       return {
         prisma,
+        loaders: createGraphqlLoaders(prisma),
         usuario: null,
       };
     }

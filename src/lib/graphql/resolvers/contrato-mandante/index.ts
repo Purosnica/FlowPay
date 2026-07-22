@@ -14,6 +14,8 @@ import { requerirAccesoMandante } from '@/lib/cobranza/mandante-scope';
 import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
 import { createPageType } from '../../helpers/create-page-type';
 import { resolvePaginatedPrismaQuery } from '../../helpers/paginated-prisma-resolver';
+import { IdPositiveSchema } from '@/lib/validators/graphql-args';
+import { z } from 'zod';
 
 const ContratoMandantePage = createPageType(
   'ContratoMandantePage',
@@ -111,8 +113,11 @@ builder.mutationField('deleteContratoMandante', (t) =>
     args: { idcontrato: t.arg.int({ required: true }) },
     resolve: async (_parent, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.MANDANTE_WRITE);
+      const { idcontrato } = z
+        .object({ idcontrato: IdPositiveSchema })
+        .parse(args);
       const existente = await ctx.prisma.tbl_contrato_mandante.findUnique({
-        where: { idcontrato: args.idcontrato },
+        where: { idcontrato },
       });
       if (!existente || existente.deletedAt) {
         throw new GraphQLValidationError('Contrato no encontrado.');
@@ -122,7 +127,7 @@ builder.mutationField('deleteContratoMandante', (t) =>
         existente.idmandante,
       );
       await ctx.prisma.tbl_contrato_mandante.update({
-        where: { idcontrato: args.idcontrato },
+        where: { idcontrato },
         data: { deletedAt: new Date() },
       });
       return true;

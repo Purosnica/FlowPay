@@ -33,8 +33,7 @@ export const CreatePagoInputSchema = z.object({
     .trim()
     .min(8)
     .max(64)
-    .regex(/^[a-zA-Z0-9_-]+$/, 'idempotencyKey inválida')
-    .optional(),
+    .regex(/^[a-zA-Z0-9_-]+$/, 'idempotencyKey inválida'),
 });
 
 export const CreatePagoInput = builder.inputRef('CreatePagoInput').implement({
@@ -47,7 +46,7 @@ export const CreatePagoInput = builder.inputRef('CreatePagoInput').implement({
     moneda: t.string({ required: false, defaultValue: 'NIO' }),
     tipoCambio: t.float({ required: false }),
     medio: t.string({ required: false }),
-    idempotencyKey: t.string({ required: false }),
+    idempotencyKey: t.string({ required: true }),
   }),
 });
 
@@ -64,10 +63,22 @@ export const Pago = definePrismaObject('tbl_pago', {
     moneda: t.exposeString('moneda'),
     medio: t.exposeString('medio', { nullable: true }),
     aplicado: t.exposeBoolean('aplicado'),
+    folio: t.exposeString('folio', { nullable: true }),
     reciboUrl: t.exposeString('reciboUrl', { nullable: true }),
     createdAt: t.expose('createdAt', { type: 'DateTime' }),
     prestamo: t.relation('prestamo'),
     mandante: t.relation('mandante'),
     gestor: t.relation('gestor', { nullable: true }),
+    /** I111: nombre del gestor vía batch-loader (evita N+1 en listas). */
+    gestorNombre: t.string({
+      nullable: true,
+      resolve: async (pago, _args, ctx) => {
+        if (pago.idgestor == null) {
+          return null;
+        }
+        const u = await ctx.loaders.usuario(pago.idgestor);
+        return u?.nombre ?? null;
+      },
+    }),
   }),
 });

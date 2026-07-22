@@ -101,15 +101,46 @@ async function entregarHttp(params: {
 }
 
 /**
- * Encola entrega best-effort (fire-and-forget) al webhook del mandante.
- * No lanza: fallos solo se registran en log.
+ * Publica evento de dominio (outbox I007) y drena en background.
+ * Si `event_bus_webhooks` está off → despacho directo (compat).
  */
 export function encolarWebhookMandante(params: {
   idmandante: number;
   event: WebhookEvento;
   data: Record<string, unknown>;
 }): void {
-  void despacharWebhookMandante(params).catch((err: unknown) => {
+  void (async () => {
+    try {
+      const { isFeatureEnabled, FEATURE_FLAG } = await import(
+        '@/lib/feature-flags/feature-flag-service'
+      );
+      const usarBus = await isFeatureEnabled(
+        FEATURE_FLAG.EVENT_BUS_WEBHOOKS,
+        params.idmandante,
+        true,
+      );
+      if (!usarBus) {
+        await despacharWebhookMandante(params);
+        return;
+      }
+      const { publishDomainEvent, drainDomainEvents } = await import(
+        '@/lib/events/domain-event-bus'
+      );
+      await publishDomainEvent({
+        tipo: params.event,
+        idmandante: params.idmandante,
+        data: params.data,
+      });
+      await drainDomainEvents(5);
+    } catch (err) {
+      logger.error(
+        'Webhook/outbox mandante falló; intento directo',
+        err instanceof Error ? err : undefined,
+        { idmandante: params.idmandante, event: params.event },
+      );
+      await despacharWebhookMandante(params);
+    }
+  })().catch((err: unknown) => {
     logger.error(
       'Webhook mandante falló',
       err instanceof Error ? err : undefined,

@@ -20,6 +20,11 @@ import {
 } from '@/lib/graphql/queries/cobranza.queries';
 import { buildPlantillaContextFromPrestamo } from '@/lib/cobranza/plantilla-mensaje-utils';
 import { trackGestionCreated } from '@/lib/analytics/product-analytics';
+import { crearIdempotencyKey } from '@/lib/api/idempotency-key';
+import {
+  encolarGestionOutbox,
+  estaOffline,
+} from '@/lib/offline/gestion-outbox';
 import {
   type BandejaGraphQLItem,
   type Prestamo,
@@ -97,24 +102,32 @@ export function GestionRapidaModal({
     if (!prestamo || horarioBloqueado) {
       return;
     }
-    mutation.mutate({
-      input: {
-        idprestamo: prestamo.idprestamo,
-        idcodaccion: form.idcodaccion,
-        idcodresultado: form.idcodresultado,
-        telefonoContacto: form.telefonoContacto,
-        contactoTercero: form.contactoTercero,
-        nota: form.nota,
-        montoPromesa: form.montoPromesa,
-        fechaPromesa: form.fechaPromesa
-          ? new Date(form.fechaPromesa).toISOString()
-          : undefined,
-        fechaProximaGestion: form.fechaProximaGestion
-          ? new Date(form.fechaProximaGestion).toISOString()
-          : undefined,
-        comentario: form.comentario,
-      },
-    });
+    const input = {
+      idprestamo: prestamo.idprestamo,
+      idcodaccion: form.idcodaccion,
+      idcodresultado: form.idcodresultado,
+      telefonoContacto: form.telefonoContacto,
+      contactoTercero: form.contactoTercero,
+      nota: form.nota,
+      montoPromesa: form.montoPromesa,
+      fechaPromesa: form.fechaPromesa
+        ? new Date(form.fechaPromesa).toISOString()
+        : undefined,
+      fechaProximaGestion: form.fechaProximaGestion
+        ? new Date(form.fechaProximaGestion).toISOString()
+        : undefined,
+      comentario: form.comentario,
+      idempotencyKey: crearIdempotencyKey('ges'),
+    };
+
+    if (estaOffline()) {
+      encolarGestionOutbox(input);
+      onSuccess?.();
+      onClose();
+      return;
+    }
+
+    mutation.mutate({ input });
   };
 
   if (!resolvedId) {

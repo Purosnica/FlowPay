@@ -9,6 +9,7 @@ import {
   UpdateTipoDocumentoInputSchema,
   TipoDocumento,
 } from "../types/tipo-documento.types";
+import { IdArgsSchema } from "@/lib/validators/graphql-args";
 
 export const createTipoDocumentoMutation = builder.mutationField("createTipoDocumento", (t) =>
   t.prismaField({
@@ -53,9 +54,10 @@ export const deleteTipoDocumentoMutation = builder.mutationField("deleteTipoDocu
     },
     resolve: async (query, _parent, args, ctx: GraphQLContext) => {
       await authCatalogoEscritura(ctx);
+      const { id } = IdArgsSchema.parse(args);
       return ctx.prisma.tbl_tipodocumento.delete({
         ...spreadPrismaQuery(query),
-        where: { idtipodocumento: args.id },
+        where: { idtipodocumento: id },
       }) as never;
     },
   })

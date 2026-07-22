@@ -11,6 +11,7 @@ import { HorarioCobranzaPanel } from '@/components/cobranza/horario-cobranza-pan
 import { ContratoMandantePanel } from '@/components/cobranza/contrato-mandante-panel';
 import { TipificacionMandantePanel } from '@/components/cobranza/tipificacion-mandante-panel';
 import { MandanteMetasPanel } from '@/components/cobranza/mandante-metas-panel';
+import { MandanteConfigOperativaPanel } from '@/components/cobranza/mandante-config-operativa-panel';
 import { SecuenciasMandantePanel } from '@/components/cobranza/secuencias-mandante-panel';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { GET_MANDANTE_BY_ID } from '@/lib/graphql/queries/cobranza.queries';
@@ -19,6 +20,7 @@ import type { Mandante } from '@/types/cobranza';
 type TabId =
   | 'resumen'
   | 'metas'
+  | 'operativa'
   | 'secuencias'
   | 'contratos'
   | 'politicas'
@@ -29,6 +31,7 @@ type TabId =
 const TABS: Array<{ id: TabId; label: string }> = [
   { id: 'resumen', label: 'Resumen' },
   { id: 'metas', label: 'Metas' },
+  { id: 'operativa', label: 'Operativa' },
   { id: 'secuencias', label: 'Secuencias' },
   { id: 'contratos', label: 'Contratos' },
   { id: 'politicas', label: 'Políticas' },
@@ -142,6 +145,9 @@ export default function MandanteDetallePage() {
           )}
 
           {tab === 'metas' && <MandanteMetasPanel mandante={mandante} />}
+          {tab === 'operativa' && (
+            <MandanteConfigOperativaPanel mandante={mandante} />
+          )}
           {tab === 'secuencias' && (
             <SecuenciasMandantePanel mandante={mandante} />
           )}

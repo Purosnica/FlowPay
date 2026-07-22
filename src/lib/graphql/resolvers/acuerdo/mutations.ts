@@ -23,6 +23,8 @@ import {
 } from "@/lib/cobranza/configuracion-cobranza-service";
 import { esSupervisor } from "@/lib/cobranza/equipo-scope";
 import { GraphQLValidationError } from "@/lib/errors/graphql-errors";
+import { IdPositiveSchema } from "@/lib/validators/graphql-args";
+import { z } from "zod";
 
 builder.mutationField("createAcuerdo", (t) =>
   t.prismaField({
@@ -192,6 +194,14 @@ builder.mutationField("createAcuerdo", (t) =>
 
 const ESTADOS_ACUERDO_MANUAL = ['VIGENTE', 'ROTO'] as const;
 
+const ActualizarEstadoAcuerdoSchema = z.object({
+  idacuerdo: IdPositiveSchema,
+  estado: z
+    .string()
+    .trim()
+    .min(1, 'El estado es obligatorio'),
+});
+
 builder.mutationField("actualizarEstadoAcuerdo", (t) =>
   t.prismaField({
     type: Acuerdo,
@@ -201,7 +211,8 @@ builder.mutationField("actualizarEstadoAcuerdo", (t) =>
     },
     resolve: async (query, _parent, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.ACUERDO_WRITE);
-      const estado = args.estado.toUpperCase();
+      const parsed = ActualizarEstadoAcuerdoSchema.parse(args);
+      const estado = parsed.estado.toUpperCase();
       if (estado === 'CUMPLIDO') {
         throw new GraphQLValidationError(
           'El estado CUMPLIDO solo se asigna automáticamente al aplicar pagos.',
@@ -217,7 +228,7 @@ builder.mutationField("actualizarEstadoAcuerdo", (t) =>
         );
       }
       const acuerdo = await ctx.prisma.tbl_acuerdo.findUnique({
-        where: { idacuerdo: args.idacuerdo },
+        where: { idacuerdo: parsed.idacuerdo },
       });
       if (!acuerdo || acuerdo.deletedAt) {
         throw new GraphQLValidationError("Acuerdo no encontrado.");
@@ -230,7 +241,7 @@ builder.mutationField("actualizarEstadoAcuerdo", (t) =>
 
       const updated = await ctx.prisma.$transaction(async (tx) => {
         const result = await tx.tbl_acuerdo.update({
-          where: { idacuerdo: args.idacuerdo },
+          where: { idacuerdo: parsed.idacuerdo },
           data: { estado },
         });
 
@@ -240,7 +251,7 @@ builder.mutationField("actualizarEstadoAcuerdo", (t) =>
               idprestamo: acuerdo.idprestamo,
               estado: 'VIGENTE',
               deletedAt: null,
-              idacuerdo: { not: args.idacuerdo },
+              idacuerdo: { not: parsed.idacuerdo },
             },
           });
           if (!otroVigente) {
@@ -266,13 +277,17 @@ builder.mutationField("actualizarEstadoAcuerdo", (t) =>
         await registrarAuditoria(tx, {
           idusuario: ctx.usuario?.idusuario,
           entidad: 'tbl_acuerdo',
-          entidadId: args.idacuerdo,
+          entidadId: parsed.idacuerdo,
           accion: 'UPDATE_ESTADO',
           detalle: JSON.stringify({ estado }),
         });
 
         if (estado === 'VIGENTE') {
-          await evaluarCuotasAcuerdo(tx, args.idacuerdo, ctx.usuario?.idusuario);
+          await evaluarCuotasAcuerdo(
+            tx,
+            parsed.idacuerdo,
+            ctx.usuario?.idusuario,
+          );
         }
 
         return result;

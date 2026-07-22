@@ -28,6 +28,11 @@ import { PrestamoTimelinePanel } from '@/components/cobranza/prestamo-timeline-p
 import { PrestamoSaldoDesglosePanel } from '@/components/cobranza/prestamo-saldo-desglose-panel';
 import { buildPlantillaContextFromPrestamo } from '@/lib/cobranza/plantilla-mensaje-utils';
 import { trackGestionCreated } from '@/lib/analytics/product-analytics';
+import { crearIdempotencyKey } from '@/lib/api/idempotency-key';
+import {
+  encolarGestionOutbox,
+  estaOffline,
+} from '@/lib/offline/gestion-outbox';
 import { PaginatedDataTable } from '@/components/cobranza/paginated-data-table';
 import { usePagination } from '@/hooks/use-pagination';
 import { useScopedPagination } from '@/hooks/use-scoped-pagination';
@@ -193,19 +198,21 @@ export default function PrestamoDetailPage({ params }: PageProps) {
               Comprobante
             </Button>
           </Link>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={aplicadoMutation.isPending}
-            onClick={() =>
-              aplicadoMutation.mutate({
-                idpago: row.original.idpago,
-                aplicado: !row.original.aplicado,
-              })
-            }
-          >
-            {row.original.aplicado ? 'Desmarcar' : 'Conciliar'}
-          </Button>
+          <PermissionGate permiso={PERMISO.PAGO_APPLY}>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={aplicadoMutation.isPending}
+              onClick={() =>
+                aplicadoMutation.mutate({
+                  idpago: row.original.idpago,
+                  aplicado: !row.original.aplicado,
+                })
+              }
+            >
+              {row.original.aplicado ? 'Desmarcar' : 'Conciliar'}
+            </Button>
+          </PermissionGate>
         </div>
       ),
     },
@@ -671,18 +678,23 @@ export default function PrestamoDetailPage({ params }: PageProps) {
             setNotaPrefill('');
           }}
           onSubmit={(form) =>
-            gestionMutation.mutate({
-              input: {
-                idprestamo,
-                ...form,
-                fechaPromesa: form.fechaPromesa
-                  ? new Date(form.fechaPromesa).toISOString()
-                  : undefined,
-                fechaProximaGestion: form.fechaProximaGestion
-                  ? new Date(form.fechaProximaGestion).toISOString()
-                  : undefined,
-              },
-            })
+            const input = {
+              idprestamo,
+              ...form,
+              fechaPromesa: form.fechaPromesa
+                ? new Date(form.fechaPromesa).toISOString()
+                : undefined,
+              fechaProximaGestion: form.fechaProximaGestion
+                ? new Date(form.fechaProximaGestion).toISOString()
+                : undefined,
+              idempotencyKey: crearIdempotencyKey('ges'),
+            };
+            if (estaOffline()) {
+              encolarGestionOutbox(input);
+              setGestionModal(false);
+              return;
+            }
+            gestionMutation.mutate({ input });
           }
         />
       </Modal>

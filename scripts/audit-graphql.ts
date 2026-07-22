@@ -146,6 +146,14 @@ const acuerdoQ = fs.readFileSync(
   'utf8',
 );
 const batchLoader = fs.existsSync('src/lib/graphql/batch-loader.ts');
+const loadersTs = fs.existsSync('src/lib/graphql/loaders.ts')
+  ? fs.readFileSync('src/lib/graphql/loaders.ts', 'utf8')
+  : '';
+const pagoTypes = fs.readFileSync(
+  'src/lib/graphql/resolvers/pago/types.ts',
+  'utf8',
+);
+const gqlRouteCtx = fs.readFileSync('src/app/api/graphql/route.ts', 'utf8');
 const n1Checks = [
   {
     id: 'I111-1',
@@ -159,8 +167,12 @@ const n1Checks = [
   },
   {
     id: 'I111-3',
-    ok: batchLoader,
-    label: 'batch-loader util disponible',
+    ok:
+      batchLoader &&
+      loadersTs.includes("from './batch-loader'") &&
+      pagoTypes.includes('ctx.loaders.usuario') &&
+      gqlRouteCtx.includes('createGraphqlLoaders'),
+    label: 'batch-loader cableado (loaders + Pago.gestorNombre)',
   },
 ];
 for (const c of n1Checks) {

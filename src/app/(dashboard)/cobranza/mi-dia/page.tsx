@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { KpiCard } from '@/components/cobranza/kpi-card';
 import { GestionRapidaModal } from '@/components/cobranza/gestion-rapida-modal';
+import { PagoRapidaModal } from '@/components/cobranza/pago-rapida-modal';
 import { SecuenciaLotePanel } from '@/components/cobranza/secuencia-lote-panel';
 import { HorarioAlerta } from '@/components/cobranza/horario-alerta';
 import { OperacionHotkeysHelp } from '@/components/cobranza/operacion-hotkeys-help';
@@ -39,7 +40,8 @@ import {
 
 const ATAJOS_MI_DIA = [
   { keys: 'B', descripcion: 'Ir a bandeja' },
-  { keys: 'G', descripcion: 'Gestión rápida del 1.er caso prioritario' },
+  { keys: 'P', descripcion: 'Pago rápido del 1.er caso prioritario' },
+  { keys: 'G', descripcion: 'Tipificar el 1.er caso prioritario' },
   { keys: 'N', descripcion: 'Abrir detalle del 1.er caso' },
   { keys: '?', descripcion: 'Mostrar esta ayuda' },
 ];
@@ -47,14 +49,17 @@ const ATAJOS_MI_DIA = [
 export default function MiDiaPage() {
   const router = useRouter();
   const puedeGestion = usePuede(PERMISO.GESTION_WRITE);
+  const puedePago = usePuede(PERMISO.PAGO_WRITE);
   const { focusMode, toggleFocusMode } = useFocusMode();
   const [gestionPrestamoId, setGestionPrestamoId] = useState<number | null>(
     null,
   );
-  const [gamifQuiet, setGamifQuiet] = useState(false);
+  const [pagoPrestamoId, setPagoPrestamoId] = useState<number | null>(null);
+  /** I187: quiet por defecto — sin vanity metrics en el flujo operativo. */
+  const [gamifQuiet, setGamifQuiet] = useState(true);
 
   useEffect(() => {
-    setGamifQuiet(leerBoolPref(UX_PREF_KEYS.gamificacionQuiet, false));
+    setGamifQuiet(leerBoolPref(UX_PREF_KEYS.gamificacionQuiet, true));
   }, []);
 
   const {
@@ -97,6 +102,15 @@ export default function MiDiaPage() {
         handler: () => router.push('/cobranza/bandeja'),
       },
       {
+        key: 'p',
+        enabled: puedePago && Boolean(primerCaso),
+        handler: () => {
+          if (primerCaso) {
+            setPagoPrestamoId(primerCaso.idprestamo);
+          }
+        },
+      },
+      {
         key: 'g',
         enabled: puedeGestion && Boolean(primerCaso),
         handler: () => {
@@ -115,7 +129,7 @@ export default function MiDiaPage() {
         },
       },
     ],
-    [router, puedeGestion, primerCaso],
+    [router, puedeGestion, puedePago, primerCaso],
   );
 
   useHotkeys(hotkeys);
@@ -135,8 +149,8 @@ export default function MiDiaPage() {
         title="Mi día"
         description={
           focusMode
-            ? 'Modo foco: solo prioridades de recuperación. Atajos: B · G · N · ?'
-            : 'Agenda operativa y prioridades. Atajos: B bandeja · G gestión · N detalle · ? ayuda.'
+            ? 'Modo foco: solo prioridades de recuperación. Atajos: B · P · G · N · ?'
+            : 'Agenda operativa y prioridades. Atajos: B bandeja · P pago · G tipificar · N detalle · ? ayuda.'
         }
         actions={
           <div className="field-sticky-actions flex flex-wrap gap-2">
@@ -327,18 +341,28 @@ export default function MiDiaPage() {
                       <td className="py-2 pr-4">{c.diasMora}d</td>
                       <td className="py-2">
                         <div className="flex flex-wrap gap-2">
+                          <PermissionGate permiso={PERMISO.PAGO_WRITE}>
+                            <Button
+                              size="sm"
+                              data-ux-id="mi-dia-pago-rapido"
+                              onClick={() => setPagoPrestamoId(c.idprestamo)}
+                            >
+                              Registrar pago
+                            </Button>
+                          </PermissionGate>
                           <PermissionGate permiso={PERMISO.GESTION_WRITE}>
                             <Button
                               size="sm"
+                              variant="outline"
                               data-ux-id="mi-dia-gestionar"
                               onClick={() => setGestionPrestamoId(c.idprestamo)}
                             >
-                              Gestionar
+                              Tipificar
                             </Button>
                           </PermissionGate>
                           <Link href={`/cobranza/prestamos/${c.idprestamo}`}>
-                            <Button size="sm" variant="outline">
-                              Recuperar
+                            <Button size="sm" variant="ghost">
+                              Detalle
                             </Button>
                           </Link>
                         </div>
@@ -356,7 +380,7 @@ export default function MiDiaPage() {
         <div className="rounded-lg border border-dashed border-stroke p-4 dark:border-dark-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm text-gray-500">
-              Gamificación (opcional — no interrumpe el trabajo)
+              Progreso de recuperación (opcional)
             </p>
             <Button
               type="button"
@@ -365,32 +389,28 @@ export default function MiDiaPage() {
               data-ux-id="mi-dia-gamif-quiet"
               onClick={toggleGamifQuiet}
             >
-              {gamifQuiet ? 'Mostrar progreso' : 'Ocultar progreso'}
+              {gamifQuiet ? 'Mostrar' : 'Ocultar'}
             </Button>
           </div>
           {!gamifQuiet && (
             <AsyncPanel
               isLoading={gamifLoading}
               isEmpty={!g}
-              emptyMessage="Sin datos de gamificación para su usuario."
+              emptyMessage="Sin datos de recuperación para su usuario."
             >
               {g && (
                 <div className="mt-3">
                   <div className="flex flex-wrap gap-6">
                     <div>
-                      <p className="text-sm text-gray-500">Nivel</p>
+                      <p className="text-sm text-gray-500">Recuperado (30d)</p>
                       <p className="text-lg font-semibold text-primary">
-                        {g.nivel}
+                        {formatearMoneda(g.montoRecuperado)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">XP</p>
-                      <p className="text-lg font-semibold">{g.xp}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Recuperado (30d)</p>
+                      <p className="text-sm text-gray-500">Promesas cumplidas</p>
                       <p className="text-lg font-semibold">
-                        {formatearMoneda(g.montoRecuperado)}
+                        {g.promesasCumplidas}
                       </p>
                     </div>
                   </div>
@@ -398,7 +418,7 @@ export default function MiDiaPage() {
                     href="/cobranza/gamificacion"
                     className="mt-3 inline-block text-sm text-primary hover:underline"
                   >
-                    Ver ranking completo
+                    Ver detalle de desempeño
                   </Link>
                 </div>
               )}
@@ -414,6 +434,15 @@ export default function MiDiaPage() {
           onSuccess={() => {
             void refetchResumen();
             void refetchAgenda();
+          }}
+        />
+      )}
+      {puedePago && pagoPrestamoId != null && (
+        <PagoRapidaModal
+          idprestamo={pagoPrestamoId}
+          onClose={() => setPagoPrestamoId(null)}
+          onSuccess={() => {
+            void refetchResumen();
           }}
         />
       )}

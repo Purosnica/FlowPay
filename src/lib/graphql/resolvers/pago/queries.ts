@@ -22,7 +22,7 @@ const ComprobantePagoType = builder
     fields: (t) => ({
       idpago: t.exposeInt('idpago'),
       idprestamo: t.exposeInt('idprestamo'),
-      folio: t.exposeString('folio'),
+      folio: t.exposeString('folio', { nullable: true }),
       fechaPago: t.expose('fechaPago', { type: 'DateTime' }),
       fechaRegistro: t.expose('fechaRegistro', { type: 'DateTime' }),
       monto: t.exposeFloat('monto'),

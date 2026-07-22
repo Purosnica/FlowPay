@@ -229,7 +229,7 @@ export default function ReportesPage() {
     <div className="space-y-8">
       <PageHeader
         title="Reportes de cobranza"
-        description="Centro de reportes (hub): busque por nombre o categoría. Las 18 rutas especializadas se abren desde aquí; el menú lateral solo apunta al hub."
+        description={`Centro de reportes (hub): busque por nombre o categoría. ${CATALOGO_REPORTES_HUB.length} reportes especializados se abren desde aquí; el menú lateral solo apunta al hub.`}
         actions={
           puedeHubCobranza ? (
             <div className="flex flex-wrap gap-2">

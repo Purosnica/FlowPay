@@ -7,6 +7,13 @@ import { z } from 'zod';
 import { env } from '@/lib/env';
 import { errorValidacion, ServicioError, ErrorCode } from '@/lib/services/error-types';
 import { withRetry } from '@/lib/utils/with-retry';
+import { getCircuitBreaker } from '@/lib/resilience/circuit-breaker';
+
+const smtpBreaker = getCircuitBreaker('smtp', {
+  failureThreshold: 5,
+  cooldownMs: 60_000,
+  successThreshold: 2,
+});
 
 export const EnviarEmailCobroSchema = z.object({
   to: z.string().email('Correo del deudor inválido'),
@@ -82,6 +89,12 @@ export async function enviarEmailCobro(
   input: EnviarEmailCobroInput,
 ): Promise<EnviarEmailCobroResult> {
   const data = EnviarEmailCobroSchema.parse(input);
+  if (!smtpBreaker.allowRequest()) {
+    throw new ServicioError(
+      ErrorCode.DATABASE_ERROR,
+      'SMTP temporalmente no disponible (circuit open).',
+    );
+  }
   const fromAddress = env.SMTP_FROM ?? env.SMTP_USER;
   if (!fromAddress) {
     throw errorValidacion('SMTP_FROM o SMTP_USER requerido');
@@ -102,12 +115,14 @@ export async function enviarEmailCobro(
         }),
       { maxAttempts: 3, baseDelayMs: 500 },
     );
+    smtpBreaker.recordSuccess();
 
     return {
       messageId: info.messageId ?? '',
       accepted: (info.accepted ?? []).map(String),
     };
   } catch (error) {
+    smtpBreaker.recordFailure();
     const mensaje =
       error instanceof Error
         ? error.message
@@ -137,6 +152,12 @@ export async function enviarEmailOperativo(
   input: EnviarEmailOperativoInput,
 ): Promise<EnviarEmailOperativoResult> {
   const data = EnviarEmailOperativoSchema.parse(input);
+  if (!smtpBreaker.allowRequest()) {
+    throw new ServicioError(
+      ErrorCode.DATABASE_ERROR,
+      'SMTP temporalmente no disponible (circuit open).',
+    );
+  }
   const fromAddress = env.SMTP_FROM ?? env.SMTP_USER;
   if (!fromAddress) {
     throw errorValidacion('SMTP_FROM o SMTP_USER requerido');
@@ -157,12 +178,14 @@ export async function enviarEmailOperativo(
         }),
       { maxAttempts: 3, baseDelayMs: 500 },
     );
+    smtpBreaker.recordSuccess();
 
     return {
       messageId: info.messageId ?? '',
       accepted: (info.accepted ?? []).map(String),
     };
   } catch (error) {
+    smtpBreaker.recordFailure();
     const mensaje =
       error instanceof Error
         ? error.message

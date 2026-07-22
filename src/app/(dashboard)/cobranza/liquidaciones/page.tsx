@@ -28,6 +28,7 @@ import {
 import { type Liquidacion, type SimulacionLiquidacion , formatearMoneda } from '@/types/cobranza';
 
 import { periodoActual } from '@/lib/cobranza/periodo-utils';
+import { crearIdempotencyKey } from '@/lib/api/idempotency-key';
 
 type ConfirmLiq =
   | { tipo: 'anular'; id: number }
@@ -51,6 +52,7 @@ export default function LiquidacionesPage() {
   const queryClient = useQueryClient();
   const [idmandante, setIdmandante] = useState<number | ''>('');
   const [periodo, setPeriodo] = useState(periodoActual());
+  const [idempotencyKey, setIdempotencyKey] = useState(crearIdempotencyKey);
   const [simulacion, setSimulacion] = useState<SimulacionLiquidacion | null>(
     null,
   );
@@ -110,6 +112,7 @@ export default function LiquidacionesPage() {
       invalidate();
       refetch();
       setSimulacion(null);
+      setIdempotencyKey(crearIdempotencyKey());
     },
   });
 
@@ -273,7 +276,11 @@ export default function LiquidacionesPage() {
     if (!mandanteId || !periodo) {
       return;
     }
-    generarMutation.mutate({ idmandante: mandanteId, periodo });
+    generarMutation.mutate({
+      idmandante: mandanteId,
+      periodo,
+      idempotencyKey,
+    });
   };
 
   return (
@@ -291,6 +298,7 @@ export default function LiquidacionesPage() {
               setIdmandante(value);
               resetPage();
               setSimulacion(null);
+              setIdempotencyKey(crearIdempotencyKey());
             }}
             label="Mandante"
             selectClassName="w-full rounded border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
@@ -306,6 +314,7 @@ export default function LiquidacionesPage() {
               onChange={(e) => {
                 setPeriodo(e.target.value);
                 setSimulacion(null);
+                setIdempotencyKey(crearIdempotencyKey());
               }}
             />
           </div>

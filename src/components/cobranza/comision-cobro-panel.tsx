@@ -8,6 +8,7 @@ import {
   DeleteRowButton,
   EditRowButton,
 } from '@/components/ui/row-action-buttons';
+import { PermissionGate } from '@/components/auth/permission-gate';
 import { PaginatedDataTable } from '@/components/cobranza/paginated-data-table';
 import { usePaginatedPanel } from '@/hooks/use-paginated-panel';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
@@ -18,6 +19,7 @@ import {
   UPDATE_COMISION_COBRO,
   DELETE_COMISION_COBRO,
 } from '@/lib/graphql/queries/cobranza.queries';
+import { PERMISO } from '@/lib/permissions/permiso-codes';
 import type { ComisionCobro, Mandante } from '@/types/cobranza';
 
 export interface ComisionFormData {
@@ -157,105 +159,107 @@ export function ComisionCobroPanel({
         </p>
       )}
 
-      <form
-        onSubmit={handleSubmit}
-        className="grid gap-3 rounded-lg border border-stroke p-4 dark:border-dark-3"
-      >
-        <div className="grid gap-3 sm:grid-cols-4">
-          <div>
-            <label className="mb-1 block text-xs font-medium">
-              Mora mínima
-            </label>
-            <input
-              type="number"
-              min={0}
-              required
-              value={form.tramoMoraMin}
-              onChange={(e) =>
-                setForm((f) => ({
-                  ...f,
-                  tramoMoraMin: Number(e.target.value),
-                }))
-              }
-              className="w-full rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium">
-              Mora máxima
-            </label>
-            <input
-              type="number"
-              min={0}
-              value={form.tramoMoraMax ?? ''}
-              placeholder="Sin tope"
-              onChange={(e) =>
-                setForm((f) => ({
-                  ...f,
-                  tramoMoraMax: e.target.value
-                    ? Number(e.target.value)
-                    : null,
-                }))
-              }
-              className="w-full rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium">
-              % recuperación empresa
-            </label>
-            <input
-              type="number"
-              min={0}
-              max={100}
-              step={0.01}
-              required
-              value={form.porcentaje}
-              onChange={(e) =>
-                setForm((f) => ({
-                  ...f,
-                  porcentaje: Number(e.target.value),
-                }))
-              }
-              className="w-full rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2"
-            />
-          </div>
-          <div className="flex items-end gap-2">
-            <label className="flex items-center gap-2 text-sm">
+      <PermissionGate permiso={PERMISO.MANDANTE_WRITE}>
+        <form
+          onSubmit={handleSubmit}
+          className="grid gap-3 rounded-lg border border-stroke p-4 dark:border-dark-3"
+        >
+          <div className="grid gap-3 sm:grid-cols-4">
+            <div>
+              <label className="mb-1 block text-xs font-medium">
+                Mora mínima
+              </label>
               <input
-                type="checkbox"
-                checked={form.estado}
+                type="number"
+                min={0}
+                required
+                value={form.tramoMoraMin}
                 onChange={(e) =>
-                  setForm((f) => ({ ...f, estado: e.target.checked }))
+                  setForm((f) => ({
+                    ...f,
+                    tramoMoraMin: Number(e.target.value),
+                  }))
                 }
+                className="w-full rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2"
               />
-              Activo
-            </label>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium">
+                Mora máxima
+              </label>
+              <input
+                type="number"
+                min={0}
+                value={form.tramoMoraMax ?? ''}
+                placeholder="Sin tope"
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    tramoMoraMax: e.target.value
+                      ? Number(e.target.value)
+                      : null,
+                  }))
+                }
+                className="w-full rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium">
+                % recuperación empresa
+              </label>
+              <input
+                type="number"
+                min={0}
+                max={100}
+                step={0.01}
+                required
+                value={form.porcentaje}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    porcentaje: Number(e.target.value),
+                  }))
+                }
+                className="w-full rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2"
+              />
+            </div>
+            <div className="flex items-end gap-2">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={form.estado}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, estado: e.target.checked }))
+                  }
+                />
+                Activo
+              </label>
+            </div>
           </div>
-        </div>
-        <div className="flex gap-2">
-          <Button type="submit" disabled={isSaving}>
-            {editing ? 'Guardar cambios' : 'Agregar tramo'}
-          </Button>
-          {editing && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setEditing(null);
-                setForm(emptyForm);
-              }}
-            >
-              Cancelar edición
+          <div className="flex gap-2">
+            <Button type="submit" disabled={isSaving}>
+              {editing ? 'Guardar cambios' : 'Agregar tramo'}
             </Button>
-          )}
-          {onClose && (
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cerrar
-            </Button>
-          )}
-        </div>
-      </form>
+            {editing && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setEditing(null);
+                  setForm(emptyForm);
+                }}
+              >
+                Cancelar edición
+              </Button>
+            )}
+            {onClose && (
+              <Button type="button" variant="outline" onClick={onClose}>
+                Cerrar
+              </Button>
+            )}
+          </div>
+        </form>
+      </PermissionGate>
 
       <PaginatedDataTable
         data={pageData?.comisiones ?? []}
@@ -267,25 +271,27 @@ export function ComisionCobroPanel({
         onPageSizeChange={handlePageSizeChange}
         itemLabel="comisiones"
         rowActions={(c) => (
-          <div className="flex justify-end gap-2">
-            <EditRowButton
-              onClick={() => {
-                setEditing(c);
-                setForm({
-                  tramoMoraMin: c.tramoMoraMin,
-                  tramoMoraMax: c.tramoMoraMax,
-                  porcentaje: c.porcentaje,
-                  estado: c.estado,
-                });
-              }}
-            />
-            <DeleteRowButton
-              disabled={deleteMutation.isPending}
-              onClick={() =>
-                deleteMutation.mutate({ idcomision: c.idcomision })
-              }
-            />
-          </div>
+          <PermissionGate permiso={PERMISO.MANDANTE_WRITE}>
+            <div className="flex justify-end gap-2">
+              <EditRowButton
+                onClick={() => {
+                  setEditing(c);
+                  setForm({
+                    tramoMoraMin: c.tramoMoraMin,
+                    tramoMoraMax: c.tramoMoraMax,
+                    porcentaje: c.porcentaje,
+                    estado: c.estado,
+                  });
+                }}
+              />
+              <DeleteRowButton
+                disabled={deleteMutation.isPending}
+                onClick={() =>
+                  deleteMutation.mutate({ idcomision: c.idcomision })
+                }
+              />
+            </div>
+          </PermissionGate>
         )}
       />
     </div>

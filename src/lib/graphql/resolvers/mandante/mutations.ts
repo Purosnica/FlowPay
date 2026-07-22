@@ -14,6 +14,11 @@ import { requerirPermiso } from "@/lib/permissions/permission-service";
 import { PERMISO } from "@/lib/permissions/permiso-codes";
 import { requerirAccesoMandante } from "@/lib/cobranza/mandante-scope";
 import { GraphQLValidationError } from "@/lib/errors/graphql-errors";
+import {
+  AsignarUsuarioMandanteArgsSchema,
+  IdPositiveSchema,
+} from "@/lib/validators/graphql-args";
+import { z } from "zod";
 
 builder.mutationField("createMandante", (t) =>
   t.prismaField({
@@ -73,8 +78,11 @@ builder.mutationField('cerrarCampana', (t) =>
     args: { idcampana: t.arg.int({ required: true }) },
     resolve: async (query, _parent, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.CARTERA_WRITE);
+      const { idcampana } = z
+        .object({ idcampana: IdPositiveSchema })
+        .parse(args);
       const campana = await ctx.prisma.tbl_campana.findUnique({
-        where: { idcampana: args.idcampana },
+        where: { idcampana },
       });
       if (!campana || campana.deletedAt) {
         throw new GraphQLValidationError('Campaña no encontrada.');
@@ -82,7 +90,7 @@ builder.mutationField('cerrarCampana', (t) =>
       await requerirAccesoMandante(ctx.usuario?.idusuario, campana.idmandante);
       return ctx.prisma.tbl_campana.update({
         ...(query as Record<string, unknown>),
-        where: { idcampana: args.idcampana },
+        where: { idcampana },
         data: { estado: 'CERRADA' },
       }) as never;
     },
@@ -98,17 +106,19 @@ builder.mutationField("asignarUsuarioMandante", (t) =>
     },
     resolve: async (_parent, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.MANDANTE_WRITE);
-      await requerirAccesoMandante(ctx.usuario?.idusuario, args.idmandante);
+      const { idusuario, idmandante } =
+        AsignarUsuarioMandanteArgsSchema.parse(args);
+      await requerirAccesoMandante(ctx.usuario?.idusuario, idmandante);
       await ctx.prisma.tbl_usuario_mandante.upsert({
         where: {
           idusuario_idmandante: {
-            idusuario: args.idusuario,
-            idmandante: args.idmandante,
+            idusuario,
+            idmandante,
           },
         },
         create: {
-          idusuario: args.idusuario,
-          idmandante: args.idmandante,
+          idusuario,
+          idmandante,
         },
         update: {},
       });

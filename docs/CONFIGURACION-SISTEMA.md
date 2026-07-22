@@ -36,6 +36,8 @@ Parámetros operativos y de entorno que gobiernan la cobranza.
 |----------|---------|-----|
 | `IMPORT_MAX_CONCURRENT` | 1 | Jobs de importación en paralelo |
 | `IMPORT_MAX_JOBS_PER_RUN` | 1 | Jobs tomados por tick del worker |
+| `WORKER_CRON_INTERVAL_MS` | 300000 | Intervalo `npm run worker:cron` (I001) |
+| `WORKER_QUEUE_INTERVAL_MS` | 15000 | Intervalo `npm run worker:queue` (I001/I002) |
 | `AUDIT_RETENTION_DAYS` | 90 | Purga de auditoría |
 | `CRON_RETENTION_DAYS` | 90 | Retención de ejecuciones cron |
 | `LOG_LEVEL` | info | error / warn / info / debug |
@@ -73,6 +75,10 @@ Claves típicas expuestas vía servicio de configuración (nombres canónicos en
 | Cron | `cobranza.cron_alerta_email_activa` | Email a ADMIN/GERENTE si el cron maestro falla (default true; requiere SMTP) |
 
 Valores por mandante tienen prioridad operativa cuando el módulo lo soporta; si no, aplica el global.
+
+Overrides por mandante (clave `*.mandante.{id}`): castigo, auto-aplicar pagos, gracia de mora y gracia de cuotas de acuerdo — UI en mandante → pestaña **Operativa**.
+
+Asignación automática post-import: `cobranza.asignacion_auto_post_import` (default `false`) y `cobranza.asignacion_auto_metodo` (`POR_CANTIDAD` / `POR_MORA` / …). Al completar un job `CARTERA`, reparte préstamos sin gestor entre cobradores del mandante.
 
 ---
 

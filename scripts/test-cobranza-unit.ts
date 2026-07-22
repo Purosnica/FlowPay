@@ -15,6 +15,54 @@ import {
   calcularSaldosComprobante,
   esPagoPosteriorAlComprobante,
 } from '@/lib/logic/comprobante-pago-logic';
+import {
+  puedeAnularLiquidacion,
+  puedeEmitirLiquidacion,
+  puedeMarcarLiquidacionPagada,
+  puedeRegenerarLiquidacion,
+  puedeRevertirLiquidacionPagada,
+} from '@/lib/logic/liquidacion-estado-logic';
+import {
+  aplicarWaterfallReverso,
+  calcularWaterfallAplicacion,
+  componentesDesdePrestamo,
+  parseAsignacionWaterfall,
+  serializarAsignacionWaterfall,
+} from '@/lib/logic/pago-waterfall-logic';
+import {
+  debeCondonarResidualTrasAcuerdo,
+  montosCondonacionResidual,
+} from '@/lib/logic/acuerdo-condonacion-logic';
+import {
+  puedeAsignarRol,
+  puedeEditarPermisosDelRol,
+} from '@/lib/logic/rol-privilege-logic';
+import {
+  puedeEmitirComoChecker,
+  puedeMarcarPagadaComoChecker,
+} from '@/lib/logic/liquidacion-sod-logic';
+import {
+  debePreservarSaldoVivo,
+  normalizarEstadoImportacion,
+} from '@/lib/logic/import-saldo-policy-logic';
+import { calcularAbonoPlanCuotas } from '@/lib/logic/prestamo-cuota-pago-logic';
+import {
+  acuerdoCumplidoPorPagos,
+  calcularMetaPagableAcuerdo,
+} from '@/lib/logic/acuerdo-meta-pagable-logic';
+import { simularAcuerdo } from '@/lib/cobranza/acuerdo-simulator';
+import {
+  ESTADO_PROMESA,
+  esPromesaAbierta,
+  promesaCumplidaPorMonto,
+  resolverEstadoPromesa,
+} from '@/lib/logic/promesa-estado-logic';
+import { claveMetaMandante } from '@/lib/cobranza/configuracion-cobranza-service';
+import {
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_MIN_MESSAGE,
+} from '@/lib/logic/password-policy-logic';
+import { convertirMontoAMonedaBase } from '@/lib/logic/liquidacion-fx-logic';
 
 function testTransicionesEstado(): void {
   assert.equal(puedeTransicionar('Vigente', 'Vencido'), true);
@@ -188,6 +236,8 @@ testResolverIdGestorPago();
 
 function testComprobantePagoLogic(): void {
   assert.equal(folioComprobantePago(42), 'FP-00000042');
+  assert.equal(folioComprobantePago(1), 'FP-00000001');
+  assert.equal(folioComprobantePago(100000000), 'FP-100000000');
   assert.equal(
     rutaComprobantePago(42),
     '/cobranza/pagos/42/comprobante',
@@ -233,4 +283,241 @@ function testComprobantePagoLogic(): void {
 }
 
 testComprobantePagoLogic();
+
+function testLiquidacionEstadoLogic(): void {
+  assert.equal(puedeRegenerarLiquidacion('BORRADOR'), true);
+  assert.equal(puedeRegenerarLiquidacion('EMITIDA'), false);
+  assert.equal(puedeRegenerarLiquidacion('PAGADA'), false);
+  assert.equal(puedeAnularLiquidacion('BORRADOR'), true);
+  assert.equal(puedeAnularLiquidacion('PAGADA'), false);
+  assert.equal(puedeEmitirLiquidacion('BORRADOR'), true);
+  assert.equal(puedeMarcarLiquidacionPagada('EMITIDA'), true);
+  assert.equal(puedeRevertirLiquidacionPagada('PAGADA'), true);
+}
+
+function testPagoWaterfallLogic(): void {
+  const base = componentesDesdePrestamo({
+    gestionCobranza: 50,
+    cargosAdmin: 20,
+    comisionCav: 0,
+    comisionInsitu: 0,
+    seguroSvsd: 0,
+    mantenimientoValor: 0,
+    interes: 100,
+    montoPrestamo: 830,
+  });
+  const { asignacion, componentesNuevos } = calcularWaterfallAplicacion(
+    base,
+    80,
+  );
+  assert.equal(asignacion.gestionCobranza, 50);
+  assert.equal(asignacion.cargosAdmin, 20);
+  assert.equal(asignacion.interes, 10);
+  assert.equal(componentesNuevos.gestionCobranza, 0);
+  assert.equal(componentesNuevos.cargosAdmin, 0);
+  assert.equal(componentesNuevos.interes, 90);
+  assert.equal(componentesNuevos.montoPrestamo, 830);
+
+  const restaurado = aplicarWaterfallReverso(componentesNuevos, asignacion);
+  assert.equal(restaurado.gestionCobranza, 50);
+  assert.equal(restaurado.cargosAdmin, 20);
+  assert.equal(restaurado.interes, 100);
+
+  const raw = serializarAsignacionWaterfall(asignacion);
+  const parsed = parseAsignacionWaterfall(raw);
+  assert.ok(parsed);
+  assert.equal(parsed?.gestionCobranza, 50);
+}
+
+function testAcuerdoCondonacionLogic(): void {
+  assert.equal(debeCondonarResidualTrasAcuerdo(100), true);
+  assert.equal(debeCondonarResidualTrasAcuerdo(0), false);
+  assert.equal(debeCondonarResidualTrasAcuerdo(0.004), false);
+  const m = montosCondonacionResidual({
+    saldoTotal: 150,
+    interesMoratorio: 40,
+  });
+  assert.equal(m.saldoCondonado, 150);
+  assert.equal(m.moratorioCondonado, 40);
+}
+
+testLiquidacionEstadoLogic();
+testPagoWaterfallLogic();
+testAcuerdoCondonacionLogic();
+
+function testRolPrivilegeYSod(): void {
+  assert.equal(
+    puedeAsignarRol({ codigoActor: 'ADMIN', codigoRolObjetivo: 'ADMIN' }),
+    true,
+  );
+  assert.equal(
+    puedeAsignarRol({
+      codigoActor: 'GERENTE',
+      codigoRolObjetivo: 'ADMIN',
+    }),
+    false,
+  );
+  assert.equal(
+    puedeAsignarRol({
+      codigoActor: 'GERENTE',
+      codigoRolObjetivo: 'COBRADOR',
+    }),
+    true,
+  );
+  assert.equal(
+    puedeEditarPermisosDelRol({
+      codigoActor: 'GERENTE',
+      codigoRolObjetivo: 'ADMIN',
+    }),
+    false,
+  );
+  assert.equal(
+    puedeEmitirComoChecker({
+      idusuarioActor: 2,
+      idusuarioCreacion: 1,
+    }),
+    true,
+  );
+  assert.equal(
+    puedeEmitirComoChecker({
+      idusuarioActor: 1,
+      idusuarioCreacion: 1,
+    }),
+    false,
+  );
+  assert.equal(
+    puedeMarcarPagadaComoChecker({
+      idusuarioActor: 1,
+      idusuarioEmision: 1,
+    }),
+    false,
+  );
+  assert.equal(debePreservarSaldoVivo({ cantidadPagosAplicados: 1 }), true);
+  assert.equal(debePreservarSaldoVivo({ cantidadPagosAplicados: 0 }), false);
+  assert.equal(normalizarEstadoImportacion('vencido'), 'Vencido');
+  assert.equal(normalizarEstadoImportacion('xyz'), null);
+}
+
+testRolPrivilegeYSod();
+
+function testPrestamoCuotaYMetaAcuerdo(): void {
+  const abonos = calcularAbonoPlanCuotas(
+    [
+      { idcuota: 1, numero: 1, saldo: 100, estado: 'PENDIENTE' },
+      { idcuota: 2, numero: 2, saldo: 100, estado: 'PENDIENTE' },
+    ],
+    150,
+  );
+  assert.equal(abonos.length, 2);
+  assert.equal(abonos[0].montoAplicado, 100);
+  assert.equal(abonos[0].estadoNuevo, 'PAGADA');
+  assert.equal(abonos[1].montoAplicado, 50);
+  assert.equal(abonos[1].estadoNuevo, 'PENDIENTE');
+
+  assert.equal(
+    calcularMetaPagableAcuerdo({
+      montoAcordado: 1080,
+      saldoActual: 0,
+      totalPagado: 1000,
+      dispensarInteresMoratorio: false,
+    }),
+    1000,
+  );
+  assert.equal(
+    acuerdoCumplidoPorPagos({
+      montoAcordado: 1080,
+      saldoActual: 0,
+      totalPagado: 1000,
+      dispensarInteresMoratorio: false,
+    }),
+    true,
+  );
+
+  const sim = simularAcuerdo({
+    saldoTotal: 1000,
+    interesMoratorio: 200,
+    porcentajeDesc: 10,
+    numeroCuotas: 1,
+    dispensarInteresMoratorio: false,
+  });
+  assert.equal(sim.montoAcordado, 1080);
+  assert.equal(sim.montoPagableLedger, 1000);
+}
+
+function testPromesaEstadoYConfigMandante(): void {
+  assert.equal(
+    resolverEstadoPromesa({
+      estadoPromesa: ESTADO_PROMESA.CUMPLIDA,
+      nota: '',
+      tienePromesa: true,
+    }),
+    ESTADO_PROMESA.CUMPLIDA,
+  );
+  assert.equal(
+    resolverEstadoPromesa({
+      estadoPromesa: null,
+      nota: 'ok [PROMESA_VENCIDA] x',
+      tienePromesa: true,
+    }),
+    ESTADO_PROMESA.VENCIDA,
+  );
+  assert.equal(
+    esPromesaAbierta({
+      estadoPromesa: ESTADO_PROMESA.PENDIENTE,
+      tienePromesa: true,
+    }),
+    true,
+  );
+  assert.equal(
+    promesaCumplidaPorMonto({
+      montoPromesa: 100,
+      montoAcumuladoPagos: 99,
+    }),
+    true,
+  );
+  assert.equal(
+    promesaCumplidaPorMonto({
+      montoPromesa: 100,
+      montoAcumuladoPagos: 98,
+    }),
+    false,
+  );
+  assert.equal(
+    claveMetaMandante('cobranza.dias_mora_castigo', 7),
+    'cobranza.dias_mora_castigo.mandante.7',
+  );
+}
+
+function testLiquidacionFxEInformeAcuerdos(): void {
+  const nio = convertirMontoAMonedaBase({
+    monto: 100,
+    moneda: 'NIO',
+    tipoCambio: null,
+  });
+  assert.equal(nio.montoBase, 100);
+  assert.equal(nio.tipoCambioAplicado, 1);
+
+  const usd = convertirMontoAMonedaBase({
+    monto: 10,
+    moneda: 'USD',
+    tipoCambio: 36.5,
+  });
+  assert.equal(usd.montoBase, 365);
+  assert.equal(usd.monedaOriginal, 'USD');
+
+  assert.throws(() =>
+    convertirMontoAMonedaBase({
+      monto: 10,
+      moneda: 'USD',
+      tipoCambio: null,
+    }),
+  );
+
+  assert.equal(PASSWORD_MIN_LENGTH, 8);
+  assert.ok(PASSWORD_MIN_MESSAGE.includes('8'));
+}
+
+testPrestamoCuotaYMetaAcuerdo();
+testPromesaEstadoYConfigMandante();
+testLiquidacionFxEInformeAcuerdos();
 process.stdout.write('tests unitarios cobranza: OK\n');

@@ -9,6 +9,7 @@ import {
   UpdateDepartamentoInputSchema,
   Departamento,
 } from "../types/departamento.types";
+import { IdArgsSchema } from "@/lib/validators/graphql-args";
 
 export const createDepartamentoMutation = builder.mutationField("createDepartamento", (t) =>
   t.prismaField({
@@ -53,9 +54,10 @@ export const deleteDepartamentoMutation = builder.mutationField("deleteDepartame
     },
     resolve: async (query, _parent, args, ctx: GraphQLContext) => {
       await authCatalogoEscritura(ctx);
+      const { id } = IdArgsSchema.parse(args);
       return ctx.prisma.tbl_departamento.delete({
         ...spreadPrismaQuery(query),
-        where: { iddepartamento: args.id },
+        where: { iddepartamento: id },
       }) as never;
     },
   })

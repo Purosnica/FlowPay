@@ -22,6 +22,7 @@ import {
   UPDATE_RUTA,
 } from '@/lib/graphql/queries/cobranza.queries';
 import type { Agencia, Ruta } from '@/types/cobranza';
+import { MandanteSelect } from '@/components/cobranza/mandante-select';
 
 type AgenciaFormState = {
   idagencia?: number;
@@ -51,6 +52,7 @@ const emptyRuta = (): RutaFormState => ({
 
 export default function AgenciasPage() {
   const puedeEscribir = usePuede(PERMISO.CARTERA_WRITE);
+  const [idmandante, setIdmandante] = useState<number | ''>('');
   const [idagencia, setIdagencia] = useState<number | ''>('');
   const [agenciaForm, setAgenciaForm] = useState<AgenciaFormState>(emptyAgencia);
   const [rutaForm, setRutaForm] = useState<RutaFormState>(emptyRuta);
@@ -70,10 +72,15 @@ export default function AgenciasPage() {
       pageSize: number;
       totalPages: number;
     };
-  }>(GET_AGENCIAS, {
-    ...agenciasPagination.queryVars,
-    incluirInactivas: puedeEscribir,
-  });
+  }>(
+    GET_AGENCIAS,
+    {
+      idmandante: idmandante || 0,
+      ...agenciasPagination.queryVars,
+      incluirInactivas: puedeEscribir,
+    },
+    { enabled: !!idmandante },
+  );
 
   const {
     data: rutasData,
@@ -235,6 +242,10 @@ export default function AgenciasPage() {
   async function guardarAgencia(): Promise<void> {
     setFormError(null);
     try {
+      if (!idmandante) {
+        setFormError('Seleccione un mandante.');
+        return;
+      }
       if (agenciaForm.idagencia) {
         await updateAgencia.mutateAsync({
           input: {
@@ -247,6 +258,7 @@ export default function AgenciasPage() {
       } else {
         await createAgencia.mutateAsync({
           input: {
+            idmandante,
             codigo: agenciaForm.codigo,
             nombre: agenciaForm.nombre,
             estado: agenciaForm.estado,
@@ -300,7 +312,16 @@ export default function AgenciasPage() {
     <div className="space-y-8">
       <PageHeader
         title="Agencias y rutas"
-        description="Catálogo operativo (importación y administración manual)."
+        description="Catálogo operativo por mandante (importación y administración manual)."
+      />
+      <MandanteSelect
+        value={idmandante}
+        onChange={(v) => {
+          setIdmandante(v);
+          setIdagencia('');
+          setAgenciaForm(emptyAgencia());
+        }}
+        required
       />
       {formError && <p className="text-sm text-red">{formError}</p>}
 

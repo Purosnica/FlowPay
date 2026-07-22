@@ -1,5 +1,43 @@
 # Release Notes — FlowPay
 
+## v1.2.9 — Performance PERF I106–I119 (2026-07-22)
+
+- **I106:** KPIs de reportes leen `tbl_resumen_diario_cobranza` (híbrido: cartera/recuperación materializada + operativos live)
+- **I107:** `NEXT_PUBLIC_ASSET_PREFIX` opcional + Cache-Control immutable en `/_next/static`
+- **I109:** Lazy ApexCharts enforced (audit sin imports directos)
+- **I110:** `ClienteTable` reutiliza `DataTable` virtualizado
+- **I111:** `createBatchLoader` cableado (`Pago.gestorNombre` + loaders por request)
+- **I112:** límites candidatos bandeja/Mi día en config operativa (UI + GraphQL)
+- **I114/I117/I119:** profiling mora, shard imports, Prisma `$connect` (confirmados)
+- **I116:** `GestionForm` global consume `/api/catalogos/tipificaciones` con ETag/304
+
+## v1.2.8 — Arquitectura ARCH I001–I014 sin costos (2026-07-22)
+
+- **I001:** workers Node `npm run worker:cron` / `worker:queue` (cron HTTP Vercel queda como fallback)
+- **I002:** cola MySQL con backpressure (`enqueueImport`, 429 `QUEUE_BACKPRESSURE`); sin Redis/SQS/BullMQ
+- **I003/I004:** diferidos (S3 y réplica MySQL generan costo) — ver ROADMAP PP-2 / SC-1
+- **I005:** barrels bounded contexts `src/lib/contexts/{cartera,gestion,liquidacion}`
+- **I007:** outbox `tbl_domain_event` + `publishDomainEvent` / `drainDomainEvents` (webhooks vía bus)
+- **I008:** ADR row-level + `src/lib/tenancy/tenant-isolation.ts` (schema isolation = SC-3)
+- **I010:** `docs/ARCHITECTURE-C4.md` (incluye digest cron y workers)
+- **I011:** circuit breaker SMTP y Sentry
+- **I012:** `tbl_feature_flag` + `isFeatureEnabled` (`pwa_offline_gestiones`, `event_bus_webhooks`)
+- **I013:** `CobradorShell` en Mi día / Bandeja (sin sidebar gerencial)
+- **I014:** versionado inmutable plantillas import (`contratoId`, `version`, `mapeoHash`)
+
+## v1.2.7 — API pública v1 + idempotency liquidación (2026-07-22)
+
+- **I006 / SC-5:** superficie REST versionada `/api/v1` (health, ready, openapi, imports) + OpenAPI actualizado
+- Portal developer: GraphQL = interno UI; producto integradores = REST v1
+- **I015:** `idempotencyKey` en `tbl_liquidacion` + `generarLiquidacion`; emitir/marcar pagada idempotentes de estado
+- OpenAPI/health/ready públicos sin sesión
+- **I016:** solo bcrypt; eliminada columna `password` legacy
+- **I017:** Zod en mutations GraphQL restantes (inteligencia, metas, deletes, asignaciones)
+- **I036:** PWA cola gestiones offline + `idempotencyKey` en `tbl_gestion`
+- **I037:** Hub reportes consolidado (sidebar único)
+- **I039:** PermissionGate en paneles mandante/config/equipo/centro-inteligencia
+- **I072:** `tbl_pago.folio` generado (`FP-########`) con UNIQUE en BD; expuesto en GraphQL `Pago`
+
 ## v1.2.6 — API hardening I051–I060 (2026-07-21)
 
 - CI/security audit: introspection gated a `NODE_ENV=production` (G-2b)

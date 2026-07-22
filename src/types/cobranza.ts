@@ -176,6 +176,7 @@ export interface SimulacionAcuerdo {
   pagoMinimo: number;
   interesMoratorioExcluido: number;
   gestionCobranzaExcluida: number;
+  montoPagableLedger: number;
 }
 
 export interface AcuerdoCuota {
@@ -299,7 +300,11 @@ export interface DetallePagoLiquidacion {
   idpago: number;
   idprestamo: number;
   noPrestamo: string;
+  /** Monto en moneda base de liquidación. */
   monto: number;
+  monedaOriginal: string;
+  montoOriginal: number;
+  tipoCambioAplicado: number;
   diasMora: number;
   idgestor: number | null;
   nombreGestor: string | null;
@@ -312,6 +317,7 @@ export interface DetallePagoLiquidacion {
 export interface SimulacionLiquidacion {
   idmandante: number;
   periodo: string;
+  moneda: string;
   totalRecuperado: number;
   totalIngresoEmpresa: number;
   totalComision: number;
@@ -461,6 +467,7 @@ export interface MandanteTipificacion {
 
 export interface Agencia {
   idagencia: number;
+  idmandante: number;
   codigo: string;
   nombre: string;
   estado: boolean;
@@ -599,6 +606,10 @@ export interface ConfigCobranzaOperativa {
   metaGestionesSemana: number;
   metaRecuperacionSemana: number;
   metaRecuperacionMes: number;
+  /** I112: límite candidatos bandeja (default 500). */
+  bandejaCandidateLimit: number;
+  /** I112: límite candidatos Mi día (default 200). */
+  miDiaCandidateLimit: number;
 }
 
 export interface KpiCobranzaCore {
@@ -716,10 +727,11 @@ export interface ImportacionJob {
 export interface InformeGerencialIndicadores {
   montoRecuperado: number;
   acuerdosFormalizados: number;
-  /** Cumplidos = todo lo que no esté ROTO (VIGENTE o CUMPLIDO). */
+  /** Solo estado CUMPLIDO (VIGENTE no cuenta como cumplido). */
   acuerdosCumplidos: number;
   /** Solo acuerdos con estado ROTO. */
   acuerdosIncumplidos: number;
+  /** cumplidos / (cumplidos + rotos); VIGENTE no entra al denominador. */
   eficaciaAcuerdosPct: number;
   totalGestiones: number;
 }

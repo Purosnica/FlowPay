@@ -23,7 +23,11 @@ builder.mutationField('createUsuario', (t) =>
     resolve: async (_parent, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.USER_WRITE);
       const data = CreateUsuarioInputSchema.parse(args.input);
-      return crearUsuario(data);
+      const idActor = ctx.usuario?.idusuario;
+      if (!idActor) {
+        throw new Error('Usuario no autenticado');
+      }
+      return crearUsuario(data, idActor);
     },
   }),
 );

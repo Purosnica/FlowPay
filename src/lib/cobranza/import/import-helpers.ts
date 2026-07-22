@@ -83,6 +83,7 @@ export async function crearCacheImportacionCartera(
 export async function resolverAgenciaConCache(
   tx: Tx,
   cache: CacheImportacionCartera,
+  idmandante: number,
   nombreAgencia: string | null | undefined,
 ): Promise<number | null> {
   const nombre = nombreAgencia?.trim();
@@ -95,9 +96,11 @@ export async function resolverAgenciaConCache(
     return enCache;
   }
   const agencia = await tx.tbl_agencia.upsert({
-    where: { codigo },
-    create: { codigo, nombre },
-    update: { nombre, estado: true },
+    where: {
+      idmandante_codigo: { idmandante, codigo },
+    },
+    create: { idmandante, codigo, nombre },
+    update: { nombre, estado: true, deletedAt: null },
   });
   cache.agencias.set(codigo, agencia.idagencia);
   return agencia.idagencia;

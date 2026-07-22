@@ -121,7 +121,7 @@ export async function obtenerComprobantePago(
   return {
     idpago: pago.idpago,
     idprestamo: pago.idprestamo,
-    folio: folioComprobantePago(pago.idpago),
+    folio: pago.folio || folioComprobantePago(pago.idpago),
     fechaPago: pago.fechaPago,
     fechaRegistro: pago.createdAt,
     monto: roundMoney(decimalToNumber(pago.monto)),

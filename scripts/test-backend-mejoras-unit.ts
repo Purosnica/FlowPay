@@ -29,9 +29,31 @@ function testMediosPagoCatalogo(): void {
   assert.equal(calcularMfaSetupRequired('COBRADOR', false), false);
 }
 
+async function testBcryptOnly(): Promise<void> {
+  const { hashPassword, verifyPassword, isBcryptHash } = await import(
+    '@/lib/auth/password'
+  );
+  const { hash, salt } = await hashPassword('flowpay-i016');
+  assert.equal(isBcryptHash(hash), true);
+  assert.equal(await verifyPassword('flowpay-i016', hash, salt), true);
+  assert.equal(await verifyPassword('wrong', hash, salt), false);
+  assert.equal(await verifyPassword('x', 'not-a-bcrypt-hash'), false);
+}
+
 void testWithRetry()
-  .then(() => {
+  .then(async () => {
     testMediosPagoCatalogo();
+    await testBcryptOnly();
+    const { ActualizarConfigCobranzaSchema, IdArgsSchema } = await import(
+      '@/lib/validators/graphql-args'
+    );
+    const cfg = ActualizarConfigCobranzaSchema.parse({
+      maxContactosDia: 5,
+      diasMoraCastigo: 90,
+    });
+    assert.equal(cfg.maxContactosDia, 5);
+    assert.equal(IdArgsSchema.parse({ id: 1 }).id, 1);
+    assert.throws(() => IdArgsSchema.parse({ id: 0 }));
     console.warn('backend-mejoras unit helpers: OK');
   })
   .catch((err: unknown) => {

@@ -8,15 +8,24 @@ import { Button } from '@/components/ui/button';
 import { useFocusMode } from '@/contexts/focus-mode-context';
 import { isFocusModeActivo } from '@/lib/ux/focus-mode';
 import { cn } from '@/lib/utils';
+import { GestionOutboxSync } from '@/components/pwa/gestion-outbox-sync';
+import {
+  CobradorShell,
+  esRutaCobradorCampo,
+} from '@/components/Layouts/cobrador-shell';
 
 /**
- * Shell del dashboard con soporte de modo foco (I180).
- * El foco solo aplica en Mi día; fuera de esa ruta se restaura nav.
+ * Shell del dashboard con soporte de modo foco (I180) y shell campo (I013).
  */
 export function DashboardShell({ children }: PropsWithChildren) {
   const pathname = usePathname();
   const { focusMode, setFocusMode } = useFocusMode();
   const focusActivo = isFocusModeActivo(focusMode, pathname);
+
+  // Campo siempre usa CobradorShell; modo foco solo aplica al shell gerencial.
+  if (esRutaCobradorCampo(pathname)) {
+    return <CobradorShell>{children}</CobradorShell>;
+  }
 
   return (
     <div className="flex min-h-screen">
@@ -29,6 +38,7 @@ export function DashboardShell({ children }: PropsWithChildren) {
         )}
       >
         {!focusActivo ? <Header /> : null}
+        <GestionOutboxSync />
 
         {focusActivo ? (
           <div className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-primary/30 bg-primary/10 px-4 py-2 backdrop-blur dark:bg-primary/15">

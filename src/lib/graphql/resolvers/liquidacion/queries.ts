@@ -4,7 +4,7 @@ import { Liquidacion, LiquidacionPage, SimulacionLiquidacionType, DetallePagoLiq
 import { requerirPermiso } from '@/lib/permissions/permission-service';
 import { PERMISO } from '@/lib/permissions/permiso-codes';
 import { filtroMandante, requerirAccesoMandante } from '@/lib/cobranza/mandante-scope';
-import { simularLiquidacion , obtenerDetalleLiquidacion } from '@/lib/cobranza/liquidacion-service';
+import { simularLiquidacion, obtenerDetalleLiquidacion } from '@/lib/contexts/liquidacion';
 
 import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
 import {

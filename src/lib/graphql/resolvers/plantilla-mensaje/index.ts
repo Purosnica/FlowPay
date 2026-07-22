@@ -14,6 +14,8 @@ import { requerirAccesoMandante } from '@/lib/cobranza/mandante-scope';
 import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
 import { createPageType } from '../../helpers/create-page-type';
 import { resolvePaginatedPrismaQuery } from '../../helpers/paginated-prisma-resolver';
+import { IdPositiveSchema } from '@/lib/validators/graphql-args';
+import { z } from 'zod';
 
 const PlantillaMensajePage = createPageType(
   'PlantillaMensajePage',
@@ -105,8 +107,11 @@ builder.mutationField('deletePlantillaMensaje', (t) =>
     args: { idplantilla: t.arg.int({ required: true }) },
     resolve: async (_parent, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.MANDANTE_WRITE);
+      const { idplantilla } = z
+        .object({ idplantilla: IdPositiveSchema })
+        .parse(args);
       const existente = await ctx.prisma.tbl_plantilla_mensaje.findUnique({
-        where: { idplantilla: args.idplantilla },
+        where: { idplantilla },
       });
       if (!existente || existente.deletedAt) {
         throw new GraphQLValidationError('Plantilla no encontrada.');
@@ -116,7 +121,7 @@ builder.mutationField('deletePlantillaMensaje', (t) =>
         existente.idmandante,
       );
       await ctx.prisma.tbl_plantilla_mensaje.update({
-        where: { idplantilla: args.idplantilla },
+        where: { idplantilla },
         data: { deletedAt: new Date(), estado: false },
       });
       return true;

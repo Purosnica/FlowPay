@@ -9,7 +9,7 @@ import { diferenciaEnDias } from '@/lib/utils/date';
 import { decimalToNumber } from './decimal-utils';
 import {
   CLAVE_MORA_DIAS_GRACIA,
-  obtenerConfigNumerica,
+  obtenerConfigNumericaMandante,
 } from './configuracion-cobranza-service';
 import { sincronizarEstadoPorMora } from './estado-prestamo-service';
 import { evaluarCastigoPrestamo } from './castigo-cartera-service';
@@ -85,7 +85,9 @@ export function calcularDiasMora(datos: DatosCalculoDiasMora): number {
 export async function cargarDatosCalculoMora(
   db: Tx,
   idprestamo: number,
-): Promise<(DatosCalculoDiasMora & { diasMora: number }) | null> {
+): Promise<
+  (DatosCalculoDiasMora & { diasMora: number; idmandante: number }) | null
+> {
   const prestamo = await db.tbl_prestamo.findUnique({
     where: { idprestamo },
     select: {
@@ -94,6 +96,7 @@ export async function cargarDatosCalculoMora(
       saldoTotal: true,
       estado: true,
       diasMora: true,
+      idmandante: true,
     },
   });
 
@@ -117,6 +120,7 @@ export async function cargarDatosCalculoMora(
     saldoTotal: decimalToNumber(prestamo.saldoTotal),
     estado: prestamo.estado,
     diasMora: prestamo.diasMora,
+    idmandante: prestamo.idmandante,
     acuerdoVigente: acuerdoVigente != null,
     fechaInicioAcuerdo: acuerdoVigente?.fechaInicio ?? null,
   };
@@ -132,7 +136,10 @@ export async function resolverDiasMoraPrestamo(
     return 0;
   }
 
-  const diasGracia = await obtenerConfigNumerica(CLAVE_MORA_DIAS_GRACIA);
+  const diasGracia = await obtenerConfigNumericaMandante(
+    CLAVE_MORA_DIAS_GRACIA,
+    datos.idmandante,
+  );
   return calcularDiasMora({
     fechaVencimiento: datos.fechaVencimiento,
     ultimaFechaPago: datos.ultimaFechaPago,
@@ -159,7 +166,10 @@ export async function sincronizarMoraPrestamo(
     return { anterior: 0, nuevo: 0, actualizado: false };
   }
 
-  const diasGracia = await obtenerConfigNumerica(CLAVE_MORA_DIAS_GRACIA);
+  const diasGracia = await obtenerConfigNumericaMandante(
+    CLAVE_MORA_DIAS_GRACIA,
+    datos.idmandante,
+  );
   const nuevo = calcularDiasMora({
     fechaVencimiento: datos.fechaVencimiento,
     ultimaFechaPago: datos.ultimaFechaPago,

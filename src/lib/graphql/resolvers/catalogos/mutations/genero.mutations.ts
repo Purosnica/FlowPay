@@ -9,6 +9,7 @@ import {
   UpdateGeneroInputSchema,
   Genero,
 } from "../types/genero.types";
+import { IdArgsSchema } from "@/lib/validators/graphql-args";
 
 export const createGeneroMutation = builder.mutationField("createGenero", (t) =>
   t.prismaField({
@@ -53,9 +54,10 @@ export const deleteGeneroMutation = builder.mutationField("deleteGenero", (t) =>
     },
     resolve: async (query, _parent, args, ctx: GraphQLContext) => {
       await authCatalogoEscritura(ctx);
+      const { id } = IdArgsSchema.parse(args);
       return ctx.prisma.tbl_genero.delete({
         ...spreadPrismaQuery(query),
-        where: { idgenero: args.id },
+        where: { idgenero: id },
       }) as never;
     },
   })

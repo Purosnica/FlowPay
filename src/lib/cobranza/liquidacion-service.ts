@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { requerirAccesoMandante } from './mandante-scope';
 import { decimalToNumber, roundMoney } from './decimal-utils';
@@ -14,6 +15,22 @@ import {
   adquirirBloqueoMysql,
   liberarBloqueoMysql,
 } from '@/lib/scalability/mysql-advisory-lock';
+import { registrarAuditoria } from './auditoria-service';
+import {
+  puedeAnularLiquidacion,
+  puedeEmitirLiquidacion,
+  puedeMarcarLiquidacionPagada,
+  puedeRegenerarLiquidacion,
+  puedeRevertirLiquidacionPagada,
+} from '@/lib/logic/liquidacion-estado-logic';
+import {
+  puedeEmitirComoChecker,
+  puedeMarcarPagadaComoChecker,
+} from '@/lib/logic/liquidacion-sod-logic';
+import {
+  convertirMontoAMonedaBase,
+  MONEDA_BASE_LIQUIDACION,
+} from '@/lib/logic/liquidacion-fx-logic';
 import type {
   DetallePagoLiquidacion,
   SimulacionLiquidacion,
@@ -25,12 +42,17 @@ export interface GenerarLiquidacionParams {
   idmandante: number;
   periodo: string;
   idusuario: number;
+  /** Si se repite con la misma key (mismo mandante), no regenera. */
+  idempotencyKey?: string;
 }
 
 interface PagoLiquidacionRow {
   idpago: number;
   idprestamo: number;
   monto: number;
+  montoOriginal: number;
+  monedaOriginal: string;
+  tipoCambioAplicado: number;
   noPrestamo: string;
   diasMora: number;
   idgestor: number | null;
@@ -142,10 +164,20 @@ async function cargarPagosPeriodo(
         p.prestamo.diasMora,
       );
 
+    const fx = convertirMontoAMonedaBase({
+      monto: decimalToNumber(p.monto),
+      moneda: p.moneda,
+      tipoCambio: p.tipoCambio != null ? decimalToNumber(p.tipoCambio) : null,
+      monedaBase: MONEDA_BASE_LIQUIDACION,
+    });
+
     return {
       idpago: p.idpago,
       idprestamo: p.idprestamo,
-      monto: decimalToNumber(p.monto),
+      monto: fx.montoBase,
+      montoOriginal: decimalToNumber(p.monto),
+      monedaOriginal: fx.monedaOriginal,
+      tipoCambioAplicado: fx.tipoCambioAplicado,
       noPrestamo: p.prestamo.noPrestamo,
       diasMora,
       idgestor,
@@ -190,6 +222,9 @@ export async function simularLiquidacion(
       idprestamo: pago.idprestamo,
       noPrestamo: pago.noPrestamo,
       monto: pago.monto,
+      monedaOriginal: pago.monedaOriginal,
+      montoOriginal: pago.montoOriginal,
+      tipoCambioAplicado: pago.tipoCambioAplicado,
       diasMora: pago.diasMora,
       idgestor: pago.idgestor,
       nombreGestor: pago.nombreGestor,
@@ -213,6 +248,7 @@ export async function simularLiquidacion(
   return {
     idmandante,
     periodo: p,
+    moneda: MONEDA_BASE_LIQUIDACION,
     totalRecuperado,
     totalIngresoEmpresa,
     totalComision,
@@ -221,9 +257,68 @@ export async function simularLiquidacion(
   };
 }
 
+async function cargarSimulacionDesdeLiquidacion(
+  idliquidacion: number,
+): Promise<SimulacionLiquidacion> {
+  const liq = await prisma.tbl_liquidacion.findUniqueOrThrow({
+    where: { idliquidacion },
+    include: { detalle: true },
+  });
+  const detalle: DetallePagoLiquidacion[] = liq.detalle.map((d) => ({
+    idpago: d.idpago,
+    idprestamo: d.idprestamo,
+    noPrestamo: d.noPrestamo,
+    monto: decimalToNumber(d.monto),
+    monedaOriginal: d.monedaOriginal,
+    montoOriginal: decimalToNumber(d.montoOriginal),
+    tipoCambioAplicado: decimalToNumber(d.tipoCambioAplicado),
+    diasMora: d.diasMora,
+    idgestor: d.idgestor,
+    nombreGestor: d.nombreGestor,
+    porcentajeRecuperacion: decimalToNumber(d.porcentajeRecuperacion),
+    ingresoEmpresa: decimalToNumber(d.ingresoEmpresa),
+    porcentajeComisionCobrador: decimalToNumber(d.porcentajeComisionCobrador),
+    montoComision: decimalToNumber(d.montoComision),
+  }));
+  return {
+    idmandante: liq.idmandante,
+    periodo: liq.periodo,
+    moneda: liq.moneda,
+    totalRecuperado: decimalToNumber(liq.totalRecuperado),
+    totalIngresoEmpresa: roundMoney(
+      detalle.reduce((s, d) => s + d.ingresoEmpresa, 0),
+    ),
+    totalComision: decimalToNumber(liq.totalComision),
+    cantidadPagos: detalle.length,
+    detalle,
+  };
+}
+
 export async function generarLiquidacion(
   params: GenerarLiquidacionParams,
 ): Promise<{ idliquidacion: number; simulacion: SimulacionLiquidacion }> {
+  const key =
+    params.idempotencyKey && params.idempotencyKey.trim().length > 0
+      ? params.idempotencyKey.trim().slice(0, 64)
+      : undefined;
+
+  if (key) {
+    await requerirAccesoMandante(params.idusuario, params.idmandante);
+    const porKey = await prisma.tbl_liquidacion.findFirst({
+      where: {
+        idmandante: params.idmandante,
+        idempotencyKey: key,
+        deletedAt: null,
+      },
+    });
+    if (porKey) {
+      return {
+        idliquidacion: porKey.idliquidacion,
+        simulacion: await cargarSimulacionDesdeLiquidacion(porKey.idliquidacion),
+      };
+    }
+  }
+
   const sim = await simularLiquidacion(
     params.idmandante,
     params.periodo,
@@ -239,6 +334,24 @@ export async function generarLiquidacion(
   }
 
   try {
+    if (key) {
+      const race = await prisma.tbl_liquidacion.findFirst({
+        where: {
+          idmandante: params.idmandante,
+          idempotencyKey: key,
+          deletedAt: null,
+        },
+      });
+      if (race) {
+        return {
+          idliquidacion: race.idliquidacion,
+          simulacion: await cargarSimulacionDesdeLiquidacion(
+            race.idliquidacion,
+          ),
+        };
+      }
+    }
+
     // Unique: (idmandante, periodoActivo). Regenerar debe permitir
     // anexar pagos y volver a liquidar el mismo periodo.
     const existente = await prisma.tbl_liquidacion.findFirst({
@@ -259,56 +372,122 @@ export async function generarLiquidacion(
     const reutilizable =
       existente && !existente.deletedAt ? existente : null;
 
-    const liquidacion = await prisma.$transaction(async (tx) => {
-      const liq = reutilizable
-        ? await tx.tbl_liquidacion.update({
-            where: { idliquidacion: reutilizable.idliquidacion },
-            data: {
-              totalRecuperado: sim.totalRecuperado,
-              totalComision: sim.totalComision,
-              // Reabrir a borrador si estaba emitida/pagada:
-              // permite anexar pagos y volver a liquidar.
-              estado: 'BORRADOR',
-            },
-          })
-        : await tx.tbl_liquidacion.create({
-            data: {
-              idmandante: params.idmandante,
-              periodo: sim.periodo,
-              periodoActivo: sim.periodo,
-              totalRecuperado: sim.totalRecuperado,
-              totalComision: sim.totalComision,
-              estado: 'BORRADOR',
-            },
-          });
+    if (reutilizable && !puedeRegenerarLiquidacion(reutilizable.estado)) {
+      throw new Error(
+        `No se puede regenerar una liquidación en estado ${reutilizable.estado}. ` +
+          'EMITIDA/PAGADA son inmutables; anule el borrador o cree un periodo nuevo.',
+      );
+    }
 
-      await tx.tbl_liquidacion_detalle.deleteMany({
-        where: { idliquidacion: liq.idliquidacion },
+    try {
+      const liquidacion = await prisma.$transaction(async (tx) => {
+        const liq = reutilizable
+          ? await tx.tbl_liquidacion.update({
+              where: { idliquidacion: reutilizable.idliquidacion },
+              data: {
+                totalRecuperado: sim.totalRecuperado,
+                totalComision: sim.totalComision,
+                moneda: sim.moneda,
+                estado: 'BORRADOR',
+                idusuarioCreacion: params.idusuario,
+                idusuarioEmision: null,
+                ...(key ? { idempotencyKey: key } : {}),
+              },
+            })
+          : await tx.tbl_liquidacion.create({
+              data: {
+                idmandante: params.idmandante,
+                periodo: sim.periodo,
+                periodoActivo: sim.periodo,
+                moneda: sim.moneda,
+                totalRecuperado: sim.totalRecuperado,
+                totalComision: sim.totalComision,
+                estado: 'BORRADOR',
+                idusuarioCreacion: params.idusuario,
+                idempotencyKey: key,
+              },
+            });
+
+        await tx.tbl_liquidacion_detalle.deleteMany({
+          where: { idliquidacion: liq.idliquidacion },
+        });
+
+        if (sim.detalle.length > 0) {
+          await tx.tbl_liquidacion_detalle.createMany({
+            data: sim.detalle.map((d) => ({
+              idliquidacion: liq.idliquidacion,
+              idpago: d.idpago,
+              idprestamo: d.idprestamo,
+              noPrestamo: d.noPrestamo,
+              monto: d.monto,
+              monedaOriginal: d.monedaOriginal,
+              montoOriginal: d.montoOriginal,
+              tipoCambioAplicado: d.tipoCambioAplicado,
+              diasMora: d.diasMora,
+              idgestor: d.idgestor,
+              nombreGestor: d.nombreGestor,
+              porcentajeRecuperacion: d.porcentajeRecuperacion,
+              ingresoEmpresa: d.ingresoEmpresa,
+              porcentajeComisionCobrador: d.porcentajeComisionCobrador,
+              montoComision: d.montoComision,
+            })),
+          });
+        }
+
+        await registrarAuditoria(tx, {
+          idusuario: params.idusuario,
+          entidad: 'tbl_liquidacion',
+          entidadId: liq.idliquidacion,
+          accion: reutilizable ? 'REGENERAR' : 'GENERAR',
+          detalle: JSON.stringify({
+            periodo: sim.periodo,
+            moneda: sim.moneda,
+            before: reutilizable
+              ? {
+                  estado: reutilizable.estado,
+                  totalRecuperado: decimalToNumber(
+                    reutilizable.totalRecuperado,
+                  ),
+                  totalComision: decimalToNumber(reutilizable.totalComision),
+                }
+              : null,
+            after: {
+              estado: 'BORRADOR',
+              totalRecuperado: sim.totalRecuperado,
+              totalComision: sim.totalComision,
+              cantidadPagos: sim.cantidadPagos,
+            },
+          }),
+        });
+
+        return liq;
       });
 
-      if (sim.detalle.length > 0) {
-        await tx.tbl_liquidacion_detalle.createMany({
-          data: sim.detalle.map((d) => ({
-            idliquidacion: liq.idliquidacion,
-            idpago: d.idpago,
-            idprestamo: d.idprestamo,
-            noPrestamo: d.noPrestamo,
-            monto: d.monto,
-            diasMora: d.diasMora,
-            idgestor: d.idgestor,
-            nombreGestor: d.nombreGestor,
-            porcentajeRecuperacion: d.porcentajeRecuperacion,
-            ingresoEmpresa: d.ingresoEmpresa,
-            porcentajeComisionCobrador: d.porcentajeComisionCobrador,
-            montoComision: d.montoComision,
-          })),
+      return { idliquidacion: liquidacion.idliquidacion, simulacion: sim };
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002' &&
+        key
+      ) {
+        const dup = await prisma.tbl_liquidacion.findFirst({
+          where: {
+            idmandante: params.idmandante,
+            idempotencyKey: key,
+            deletedAt: null,
+          },
         });
+        if (dup) {
+          return {
+            idliquidacion: dup.idliquidacion,
+            simulacion: await cargarSimulacionDesdeLiquidacion(
+              dup.idliquidacion,
+            ),
+          };
+        }
       }
-
-      return liq;
-    });
-
-    return { idliquidacion: liquidacion.idliquidacion, simulacion: sim };
+      throw err;
+    }
   } finally {
     await liberarBloqueoMysql(lockName);
   }
@@ -325,8 +504,21 @@ export async function emitirLiquidacion(
     throw new Error('Liquidación no encontrada.');
   }
   await requerirAccesoMandante(idusuario, liq.idmandante);
-  if (liq.estado !== 'BORRADOR') {
+  if (liq.estado === 'EMITIDA') {
+    return;
+  }
+  if (!puedeEmitirLiquidacion(liq.estado)) {
     throw new Error('Solo se pueden emitir liquidaciones en estado BORRADOR.');
+  }
+  if (
+    !puedeEmitirComoChecker({
+      idusuarioActor: idusuario,
+      idusuarioCreacion: liq.idusuarioCreacion,
+    })
+  ) {
+    throw new Error(
+      'Maker-checker: quien generó la liquidación no puede emitirla.',
+    );
   }
 
   const lockName = `liq-emit:${idliquidacion}`;
@@ -340,12 +532,45 @@ export async function emitirLiquidacion(
     const actual = await prisma.tbl_liquidacion.findUnique({
       where: { idliquidacion },
     });
-    if (!actual || actual.deletedAt || actual.estado !== 'BORRADOR') {
+    if (!actual || actual.deletedAt || !puedeEmitirLiquidacion(actual.estado)) {
       throw new Error('Solo se pueden emitir liquidaciones en estado BORRADOR.');
     }
-    await prisma.tbl_liquidacion.update({
-      where: { idliquidacion },
-      data: { estado: 'EMITIDA' },
+    if (
+      !puedeEmitirComoChecker({
+        idusuarioActor: idusuario,
+        idusuarioCreacion: actual.idusuarioCreacion,
+      })
+    ) {
+      throw new Error(
+        'Maker-checker: quien generó la liquidación no puede emitirla.',
+      );
+    }
+    await prisma.$transaction(async (tx) => {
+      await tx.tbl_liquidacion.update({
+        where: { idliquidacion },
+        data: {
+          estado: 'EMITIDA',
+          idusuarioEmision: idusuario,
+        },
+      });
+      await registrarAuditoria(tx, {
+        idusuario,
+        entidad: 'tbl_liquidacion',
+        entidadId: idliquidacion,
+        accion: 'EMITIR',
+        detalle: JSON.stringify({
+          before: {
+            estado: actual.estado,
+            totalRecuperado: decimalToNumber(actual.totalRecuperado),
+            totalComision: decimalToNumber(actual.totalComision),
+            idusuarioCreacion: actual.idusuarioCreacion,
+          },
+          after: {
+            estado: 'EMITIDA',
+            idusuarioEmision: idusuario,
+          },
+        }),
+      });
     });
   } finally {
     await liberarBloqueoMysql(lockName);
@@ -363,8 +588,21 @@ export async function marcarLiquidacionPagada(
     throw new Error('Liquidación no encontrada.');
   }
   await requerirAccesoMandante(idusuario, liq.idmandante);
-  if (liq.estado !== 'EMITIDA') {
+  if (liq.estado === 'PAGADA') {
+    return;
+  }
+  if (!puedeMarcarLiquidacionPagada(liq.estado)) {
     throw new Error('Solo se pueden pagar liquidaciones emitidas.');
+  }
+  if (
+    !puedeMarcarPagadaComoChecker({
+      idusuarioActor: idusuario,
+      idusuarioEmision: liq.idusuarioEmision,
+    })
+  ) {
+    throw new Error(
+      'Maker-checker: quien emitió la liquidación no puede marcarla pagada.',
+    );
   }
 
   const lockName = `liq-pagar:${idliquidacion}`;
@@ -378,12 +616,43 @@ export async function marcarLiquidacionPagada(
     const actual = await prisma.tbl_liquidacion.findUnique({
       where: { idliquidacion },
     });
-    if (!actual || actual.deletedAt || actual.estado !== 'EMITIDA') {
+    if (
+      !actual ||
+      actual.deletedAt ||
+      !puedeMarcarLiquidacionPagada(actual.estado)
+    ) {
       throw new Error('Solo se pueden pagar liquidaciones emitidas.');
     }
-    await prisma.tbl_liquidacion.update({
-      where: { idliquidacion },
-      data: { estado: 'PAGADA' },
+    if (
+      !puedeMarcarPagadaComoChecker({
+        idusuarioActor: idusuario,
+        idusuarioEmision: actual.idusuarioEmision,
+      })
+    ) {
+      throw new Error(
+        'Maker-checker: quien emitió la liquidación no puede marcarla pagada.',
+      );
+    }
+    await prisma.$transaction(async (tx) => {
+      await tx.tbl_liquidacion.update({
+        where: { idliquidacion },
+        data: { estado: 'PAGADA' },
+      });
+      await registrarAuditoria(tx, {
+        idusuario,
+        entidad: 'tbl_liquidacion',
+        entidadId: idliquidacion,
+        accion: 'MARCAR_PAGADA',
+        detalle: JSON.stringify({
+          before: {
+            estado: actual.estado,
+            totalRecuperado: decimalToNumber(actual.totalRecuperado),
+            totalComision: decimalToNumber(actual.totalComision),
+            idusuarioEmision: actual.idusuarioEmision,
+          },
+          after: { estado: 'PAGADA' },
+        }),
+      });
     });
   } finally {
     await liberarBloqueoMysql(lockName);
@@ -404,7 +673,7 @@ export async function revertirLiquidacionPagada(
     throw new Error('Liquidación no encontrada.');
   }
   await requerirAccesoMandante(idusuario, liq.idmandante);
-  if (liq.estado !== 'PAGADA') {
+  if (!puedeRevertirLiquidacionPagada(liq.estado)) {
     throw new Error('Solo se puede revertir el pago de liquidaciones PAGADA.');
   }
 
@@ -419,14 +688,34 @@ export async function revertirLiquidacionPagada(
     const actual = await prisma.tbl_liquidacion.findUnique({
       where: { idliquidacion },
     });
-    if (!actual || actual.deletedAt || actual.estado !== 'PAGADA') {
+    if (
+      !actual ||
+      actual.deletedAt ||
+      !puedeRevertirLiquidacionPagada(actual.estado)
+    ) {
       throw new Error(
         'Solo se puede revertir el pago de liquidaciones PAGADA.',
       );
     }
-    await prisma.tbl_liquidacion.update({
-      where: { idliquidacion },
-      data: { estado: 'EMITIDA' },
+    await prisma.$transaction(async (tx) => {
+      await tx.tbl_liquidacion.update({
+        where: { idliquidacion },
+        data: { estado: 'EMITIDA' },
+      });
+      await registrarAuditoria(tx, {
+        idusuario,
+        entidad: 'tbl_liquidacion',
+        entidadId: idliquidacion,
+        accion: 'REVERTIR_PAGADA',
+        detalle: JSON.stringify({
+          before: {
+            estado: actual.estado,
+            totalRecuperado: decimalToNumber(actual.totalRecuperado),
+            totalComision: decimalToNumber(actual.totalComision),
+          },
+          after: { estado: 'EMITIDA' },
+        }),
+      });
     });
   } finally {
     await liberarBloqueoMysql(lockName);
@@ -434,9 +723,9 @@ export async function revertirLiquidacionPagada(
 }
 
 /**
- * Anula (soft-delete) una liquidación y libera periodoActivo
+ * Anula (soft-delete) una liquidación en BORRADOR y libera periodoActivo
  * para poder regenerar el mismo periodo.
- * Permite BORRADOR, EMITIDA y PAGADA.
+ * EMITIDA/PAGADA son inmutables (H01).
  */
 export async function anularLiquidacionBorrador(
   idliquidacion: number,
@@ -449,19 +738,40 @@ export async function anularLiquidacionBorrador(
     throw new Error('Liquidación no encontrada.');
   }
   await requerirAccesoMandante(idusuario, liq.idmandante);
-  const estadosAnulables = ['BORRADOR', 'EMITIDA', 'PAGADA'];
-  if (!estadosAnulables.includes(liq.estado)) {
+  if (!puedeAnularLiquidacion(liq.estado)) {
     throw new Error(
-      `No se puede anular una liquidación en estado ${liq.estado}.`,
+      `No se puede anular una liquidación en estado ${liq.estado}. ` +
+        'Solo BORRADOR es anulable.',
     );
   }
 
-  await prisma.tbl_liquidacion.update({
-    where: { idliquidacion },
-    data: {
-      deletedAt: new Date(),
-      periodoActivo: null,
-    },
+  await prisma.$transaction(async (tx) => {
+    await tx.tbl_liquidacion.update({
+      where: { idliquidacion },
+      data: {
+        deletedAt: new Date(),
+        periodoActivo: null,
+      },
+    });
+    await registrarAuditoria(tx, {
+      idusuario,
+      entidad: 'tbl_liquidacion',
+      entidadId: idliquidacion,
+      accion: 'ANULAR',
+      detalle: JSON.stringify({
+        before: {
+          estado: liq.estado,
+          periodo: liq.periodo,
+          periodoActivo: liq.periodoActivo,
+          totalRecuperado: decimalToNumber(liq.totalRecuperado),
+          totalComision: decimalToNumber(liq.totalComision),
+        },
+        after: {
+          deleted: true,
+          periodoActivo: null,
+        },
+      }),
+    });
   });
 }
 
@@ -487,6 +797,9 @@ export async function obtenerDetalleLiquidacion(
     idprestamo: r.idprestamo,
     noPrestamo: r.noPrestamo,
     monto: decimalToNumber(r.monto),
+    monedaOriginal: r.monedaOriginal,
+    montoOriginal: decimalToNumber(r.montoOriginal),
+    tipoCambioAplicado: decimalToNumber(r.tipoCambioAplicado),
     diasMora: r.diasMora,
     idgestor: r.idgestor,
     nombreGestor: r.nombreGestor,

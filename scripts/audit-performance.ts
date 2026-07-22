@@ -170,13 +170,19 @@ check(
 );
 check(
   'I106',
-  'Resumen diario materializado',
-  resumenSvc && schema.includes('tbl_resumen_diario_cobranza'),
+  'Resumen diario materializado + KPIs reportes',
+  resumenSvc &&
+    schema.includes('tbl_resumen_diario_cobranza') &&
+    read('src/lib/cobranza/metric-kpi-service.ts').includes(
+      'obtenerResumenDiarioMaterializado',
+    ),
 );
 check(
   'I107',
   'CDN cache headers assets estáticos',
-  nextCfg.includes('/_next/static') && nextCfg.includes('immutable'),
+  nextCfg.includes('/_next/static') &&
+    nextCfg.includes('immutable') &&
+    nextCfg.includes('NEXT_PUBLIC_ASSET_PREFIX'),
 );
 check(
   'I108',
@@ -184,16 +190,57 @@ check(
   gqlRoute.includes('quizásComprimirGraphqlResponse'),
 );
 check('I109', 'Lazy ApexCharts compartido', lazyChart);
+
+function noDirectApexOutsideLazy(): boolean {
+  const roots = ['src/components', 'src/app'];
+  const walk = (dir: string): string[] => {
+    if (!fs.existsSync(dir)) {
+      return [];
+    }
+    const out: string[] = [];
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const p = `${dir}/${entry.name}`.replace(/\\/g, '/');
+      if (entry.isDirectory()) {
+        out.push(...walk(p));
+      } else if (/\.(tsx|ts|jsx|js)$/.test(entry.name)) {
+        out.push(p);
+      }
+    }
+    return out;
+  };
+  for (const root of roots) {
+    for (const file of walk(root)) {
+      if (file.endsWith('lazy-apex-chart.tsx')) {
+        continue;
+      }
+      const text = read(file);
+      if (text.includes("from 'react-apexcharts'") || text.includes('from "react-apexcharts"')) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+check(
+  'I109b',
+  'Sin import directo react-apexcharts fuera de lazy',
+  noDirectApexOutsideLazy(),
+);
 check(
   'I110',
   'Virtualizar tablas TanStack',
-  dataTableNow.includes('useVirtualizer'),
+  dataTableNow.includes('useVirtualizer') &&
+    read('src/components/clientes/cliente-table.tsx').includes('DataTable'),
 );
 check(
   'I112',
   'Límites candidatos configurables mandante',
   limits.includes('obtenerLimiteCandidatosBandeja') &&
-    limits.includes('obtenerLimiteCandidatosMiDia'),
+    limits.includes('obtenerLimiteCandidatosMiDia') &&
+    read('src/components/cobranza/configuracion-cobranza-panel.tsx').includes(
+      'bandejaCandidateLimit',
+    ),
 );
 check('I113', 'Exports async >10k', exportJob);
 check('I114', 'Profiling mora recalculo', moraProfile);
@@ -202,7 +249,15 @@ check(
   'Import sync delega a async',
   read('src/app/api/cobranza/importar/route.ts').includes('crearImportacionJob'),
 );
-check('I116', 'ETag catálogos tipificaciones', tipifApi);
+check(
+  'I116',
+  'ETag catálogos tipificaciones + UI',
+  tipifApi &&
+    fs.existsSync('src/hooks/use-catalogos-tipificaciones.ts') &&
+    read('src/components/cobranza/gestion-form.tsx').includes(
+      'useCatalogosTipificaciones',
+    ),
+);
 check(
   'I117',
   'Import shard por mandante',

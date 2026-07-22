@@ -6,6 +6,7 @@ import type {
   ReportePromesaPagoItem,
   ReportePromesasPago,
 } from '@/types/cobranza';
+import { resolverEstadoPromesa } from '@/lib/logic/promesa-estado-logic';
 
 function nombreCliente(row: {
   primer_nombres: string;
@@ -73,14 +74,13 @@ export async function obtenerReportePromesasPago(
 
   const promesas: ReportePromesaPagoItem[] = gestiones.map((g) => {
     const fechaPromesa = g.fechaPromesa ?? hoy;
-    const nota = g.nota ?? '';
-    let estado = 'PENDIENTE';
-    if (nota.includes('[PROMESA_CUMPLIDA]')) {
-      estado = 'CUMPLIDA';
-    } else if (
-      nota.includes('[PROMESA_VENCIDA]') ||
-      fechaPromesa < hoy
-    ) {
+    let estado =
+      resolverEstadoPromesa({
+        estadoPromesa: g.estadoPromesa,
+        nota: g.nota,
+        tienePromesa: true,
+      }) ?? 'PENDIENTE';
+    if (estado === 'PENDIENTE' && fechaPromesa < hoy) {
       estado = 'VENCIDA';
     }
 

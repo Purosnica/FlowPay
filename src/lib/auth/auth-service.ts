@@ -5,7 +5,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
-import { verifyPassword, simpleHash, hashPassword, isBcryptHash } from "./password";
+import { verifyPassword, isBcryptHash } from "./password";
 import { type JWTPayload , generateToken } from "./jwt";
 import { obtenerPermisosUsuario } from "@/lib/permissions/permission-service";
 import { emitirTokenMfaPending } from "@/lib/auth/mfa-pending";
@@ -67,48 +67,24 @@ export async function authenticateUser(
       };
     }
 
-    // Verificar contraseña
-    // Soporta bcrypt (nuevo) y SHA-256 (legacy para migración)
-    let passwordValid = false;
-    let requiereUpgradeHash = false;
-
-    if (usuario.passwordHash) {
-      // Usar verifyPassword que soporta bcrypt y SHA-256 legacy
-      passwordValid = await verifyPassword(
-        credentials.password,
-        usuario.passwordHash,
-        usuario.salt || ""
-      );
-      requiereUpgradeHash =
-        passwordValid && !isBcryptHash(usuario.passwordHash);
-    } else if (usuario.password) {
-      // Para usuarios existentes sin hash/salt, comparar hash simple SHA-256
-      passwordValid = simpleHash(credentials.password) === usuario.password;
-      requiereUpgradeHash = passwordValid;
-    } else {
+    // Verificar contraseña (solo bcrypt — I016)
+    if (!usuario.passwordHash || !isBcryptHash(usuario.passwordHash)) {
       return {
         success: false,
         error: "Usuario sin contraseña configurada",
       };
     }
 
+    const passwordValid = await verifyPassword(
+      credentials.password,
+      usuario.passwordHash,
+    );
+
     if (!passwordValid) {
       return {
         success: false,
         error: "Credenciales inválidas",
       };
-    }
-
-    if (requiereUpgradeHash) {
-      const { hash, salt } = await hashPassword(credentials.password);
-      await prisma.tbl_usuario.update({
-        where: { idusuario: usuario.idusuario },
-        data: {
-          passwordHash: hash,
-          salt,
-          password: null,
-        },
-      });
     }
 
     if (usuario.mfaEnabled && usuario.mfaSecret) {

@@ -3,6 +3,13 @@ import { prisma } from '@/lib/prisma';
 import { decimalToNumber } from './decimal-utils';
 import { registrarAuditoria } from './auditoria-service';
 import { inicioPeriodoActual } from './periodo-utils';
+import {
+  ESTADO_PROMESA,
+  TAG_CUMPLIDA,
+  TAG_VENCIDA,
+  appendNotaPromesa,
+  promesaCumplidaPorMonto,
+} from '@/lib/logic/promesa-estado-logic';
 
 type Tx = Prisma.TransactionClient;
 
@@ -27,10 +34,14 @@ export async function evaluarPromesaPorPago(
       deletedAt: null,
       montoPromesa: { not: null },
       fechaPromesa: { not: null },
-      nota: { not: { contains: '[PROMESA_CUMPLIDA]' } },
+      OR: [
+        { estadoPromesa: ESTADO_PROMESA.PENDIENTE },
+        { estadoPromesa: null },
+      ],
+      NOT: { nota: { contains: TAG_CUMPLIDA } },
     },
     orderBy: { fechaGestion: 'desc' },
-    take: 5,
+    take: 10,
   });
 
   for (const g of gestionesConPromesa) {
@@ -42,23 +53,53 @@ export async function evaluarPromesaPorPago(
 
     const finPromesa = new Date(fechaPromesa);
     finPromesa.setHours(23, 59, 59, 999);
-
-    if (params.fechaPago <= finPromesa && params.montoPago >= montoPromesa * 0.99) {
-      await tx.tbl_gestion.update({
-        where: { idgestion: g.idgestion },
-        data: {
-          nota: `${g.nota}\n[PROMESA_CUMPLIDA] Pago registrado el ${params.fechaPago.toISOString().slice(0, 10)}.`,
-        },
-      });
-      await registrarAuditoria(tx, {
-        idusuario: params.idusuario,
-        entidad: 'tbl_gestion',
-        entidadId: g.idgestion,
-        accion: 'PROMESA_CUMPLIDA',
-        detalle: JSON.stringify({ montoPago: params.montoPago, montoPromesa }),
-      });
-      break;
+    if (params.fechaPago > finPromesa) {
+      continue;
     }
+
+    const pagosAgg = await tx.tbl_pago.aggregate({
+      where: {
+        idprestamo: params.idprestamo,
+        aplicado: true,
+        deletedAt: null,
+        fechaPago: { lte: finPromesa },
+        createdAt: { gte: g.fechaGestion },
+      },
+      _sum: { monto: true },
+    });
+    const acumulado = decimalToNumber(pagosAgg._sum.monto);
+
+    if (
+      !promesaCumplidaPorMonto({
+        montoPromesa,
+        montoAcumuladoPagos: acumulado,
+      })
+    ) {
+      continue;
+    }
+
+    await tx.tbl_gestion.update({
+      where: { idgestion: g.idgestion },
+      data: {
+        estadoPromesa: ESTADO_PROMESA.CUMPLIDA,
+        nota: appendNotaPromesa(
+          g.nota,
+          TAG_CUMPLIDA,
+          `Pago acumulado ${acumulado} al ${params.fechaPago.toISOString().slice(0, 10)}.`,
+        ),
+      },
+    });
+    await registrarAuditoria(tx, {
+      idusuario: params.idusuario,
+      entidad: 'tbl_gestion',
+      entidadId: g.idgestion,
+      accion: 'PROMESA_CUMPLIDA',
+      detalle: JSON.stringify({
+        montoAcumulado: acumulado,
+        montoPromesa,
+      }),
+    });
+    break;
   }
 }
 
@@ -73,25 +114,37 @@ export async function procesarPromesasVencidas(
       deletedAt: null,
       fechaPromesa: { lt: hoy },
       montoPromesa: { not: null },
-      nota: { not: { contains: '[PROMESA_CUMPLIDA]' } },
+      OR: [
+        { estadoPromesa: ESTADO_PROMESA.PENDIENTE },
+        { estadoPromesa: null },
+      ],
+      NOT: { nota: { contains: TAG_CUMPLIDA } },
       prestamo: {
         deletedAt: null,
         estado: { notIn: ['Cancelado', 'Finalizado'] },
         saldoTotal: { gt: 0 },
       },
     },
-    select: { idgestion: true, nota: true },
+    select: { idgestion: true, nota: true, estadoPromesa: true },
   });
 
   let marcadas = 0;
   for (const g of promesasVencidas) {
-    if (g.nota.includes('[PROMESA_VENCIDA]')) {
+    if (
+      g.estadoPromesa === ESTADO_PROMESA.VENCIDA ||
+      g.nota.includes(TAG_VENCIDA)
+    ) {
       continue;
     }
     await prisma.tbl_gestion.update({
       where: { idgestion: g.idgestion },
       data: {
-        nota: `${g.nota}\n[PROMESA_VENCIDA] Sin cumplimiento a la fecha acordada.`,
+        estadoPromesa: ESTADO_PROMESA.VENCIDA,
+        nota: appendNotaPromesa(
+          g.nota,
+          TAG_VENCIDA,
+          'Sin cumplimiento a la fecha acordada.',
+        ),
       },
     });
     marcadas++;
@@ -110,7 +163,10 @@ export async function procesarPromesasVencidas(
   const cumplidas = await prisma.tbl_gestion.count({
     where: {
       deletedAt: null,
-      nota: { contains: '[PROMESA_CUMPLIDA]' },
+      OR: [
+        { estadoPromesa: ESTADO_PROMESA.CUMPLIDA },
+        { nota: { contains: TAG_CUMPLIDA } },
+      ],
       fechaGestion: { gte: inicioPeriodoActual() },
     },
   });

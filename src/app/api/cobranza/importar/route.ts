@@ -16,9 +16,12 @@ import {
   mensajeFormatoImportacionNoSoportado,
 } from '@/lib/cobranza/upload-limits';
 import {
-  crearImportacionJob,
   dispararProcesamientoImportaciones,
 } from '@/lib/cobranza/import/importacion-job-service';
+import {
+  enqueueImport,
+  QueueBackpressureError,
+} from '@/lib/queue/job-queue';
 import {
   parseIdempotencyKeyHeader,
   mensajeIdempotencyKeyInvalida,
@@ -200,18 +203,33 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     // I115: delegar a job async salvo forceSync explícito.
     if (!forceSync) {
-      const job = await crearImportacionJob({
-        idmandante,
-        idusuario: usuario.idusuario,
-        tipo,
-        nombreArchivo: archivo.name,
-        buffer,
-        idcampana,
-        fechaCorte,
-        nombreHoja,
-        idplantillaImp,
-        idempotencyKey,
-      });
+      let job;
+      try {
+        job = await enqueueImport({
+          idmandante,
+          idusuario: usuario.idusuario,
+          tipo,
+          nombreArchivo: archivo.name,
+          buffer,
+          idcampana,
+          fechaCorte,
+          nombreHoja,
+          idplantillaImp,
+          idempotencyKey,
+        });
+      } catch (err) {
+        if (err instanceof QueueBackpressureError) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: err.message,
+              code: 'QUEUE_BACKPRESSURE',
+            },
+            { status: 429 },
+          );
+        }
+        throw err;
+      }
       dispararProcesamientoImportaciones(req.nextUrl.origin);
       return NextResponse.json({
         success: true,

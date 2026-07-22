@@ -67,7 +67,7 @@ staging/producción y cámbialas de inmediato si el seed corrió ahí.
 | `GRAPHQL_MAX_DEPTH` | Límite profundidad GraphQL (default 12) |
 | `GRAPHQL_MAX_FIELDS` | Límite campos GraphQL (default 250) |
 
-Tras pull de cambios de schema: `npx prisma migrate deploy` (si el host no responde, SQL en `scripts/sql/apply-pago-idempotency.sql`).
+Tras pull de cambios de schema: `npx prisma migrate deploy` (si el host no responde, SQL en `scripts/sql/apply-pago-idempotency.sql` / `scripts/sql/apply-liquidacion-idempotency.sql` / `scripts/sql/apply-drop-legacy-password.sql`).
 
 Healthchecks: `GET /api/health` · `GET /api/ready` (DB). Backup/DR: [docs/BACKUP-DR.md](./docs/BACKUP-DR.md).
 

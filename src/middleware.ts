@@ -41,6 +41,10 @@ const publicApiRoutes = [
   '/api/auth/mfa/verify',
   '/api/health',
   '/api/ready',
+  '/api/openapi',
+  '/api/v1/health',
+  '/api/v1/ready',
+  '/api/v1/openapi',
 ];
 
 /** Con MFA pendiente de setup: solo perfil + endpoints MFA/sesión. */

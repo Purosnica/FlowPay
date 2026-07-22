@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { DeleteRowButton } from '@/components/ui/row-action-buttons';
+import { PermissionGate } from '@/components/auth/permission-gate';
 import { PaginatedDataTable } from '@/components/cobranza/paginated-data-table';
 import { usePaginatedPanel } from '@/hooks/use-paginated-panel';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
@@ -14,6 +15,7 @@ import {
   UPDATE_CONTRATO_MANDANTE,
   DELETE_CONTRATO_MANDANTE,
 } from '@/lib/graphql/queries/cobranza.queries';
+import { PERMISO } from '@/lib/permissions/permiso-codes';
 import type { ContratoMandante, Mandante } from '@/types/cobranza';
 
 interface ContratoMandantePanelProps {
@@ -92,48 +94,50 @@ export function ContratoMandantePanel({ mandante }: ContratoMandantePanelProps) 
 
   return (
     <div className="space-y-4">
-      <form
-        className="grid gap-2 sm:grid-cols-4"
-        onSubmit={(e) => {
-          e.preventDefault();
-          createMutation.mutate({
-            input: {
-              idmandante: mandante.idmandante,
-              fechaInicio: new Date(fechaInicio).toISOString(),
-              fechaFin: fechaFin
-                ? new Date(fechaFin).toISOString()
-                : undefined,
-              permitePagoAnticipado: permitePago,
-            },
-          });
-        }}
-      >
-        <input
-          type="date"
-          required
-          value={fechaInicio}
-          onChange={(e) => setFechaInicio(e.target.value)}
-          className="rounded border px-3 py-2 text-sm"
-        />
-        <input
-          type="date"
-          value={fechaFin}
-          onChange={(e) => setFechaFin(e.target.value)}
-          placeholder="Fin (opcional)"
-          className="rounded border px-3 py-2 text-sm"
-        />
-        <label className="flex items-center gap-2 text-sm">
+      <PermissionGate permiso={PERMISO.MANDANTE_WRITE}>
+        <form
+          className="grid gap-2 sm:grid-cols-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            createMutation.mutate({
+              input: {
+                idmandante: mandante.idmandante,
+                fechaInicio: new Date(fechaInicio).toISOString(),
+                fechaFin: fechaFin
+                  ? new Date(fechaFin).toISOString()
+                  : undefined,
+                permitePagoAnticipado: permitePago,
+              },
+            });
+          }}
+        >
           <input
-            type="checkbox"
-            checked={permitePago}
-            onChange={(e) => setPermitePago(e.target.checked)}
+            type="date"
+            required
+            value={fechaInicio}
+            onChange={(e) => setFechaInicio(e.target.value)}
+            className="rounded border px-3 py-2 text-sm"
           />
-          Pago anticipado
-        </label>
-        <Button type="submit" disabled={createMutation.isPending}>
-          Agregar contrato
-        </Button>
-      </form>
+          <input
+            type="date"
+            value={fechaFin}
+            onChange={(e) => setFechaFin(e.target.value)}
+            placeholder="Fin (opcional)"
+            className="rounded border px-3 py-2 text-sm"
+          />
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={permitePago}
+              onChange={(e) => setPermitePago(e.target.checked)}
+            />
+            Pago anticipado
+          </label>
+          <Button type="submit" disabled={createMutation.isPending}>
+            Agregar contrato
+          </Button>
+        </form>
+      </PermissionGate>
       <PaginatedDataTable
         data={pageData?.contratos ?? []}
         columns={columns}
@@ -144,27 +148,29 @@ export function ContratoMandantePanel({ mandante }: ContratoMandantePanelProps) 
         onPageSizeChange={handlePageSizeChange}
         itemLabel="contratos"
         rowActions={(c) => (
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() =>
-                updateMutation.mutate({
-                  input: {
-                    idcontrato: c.idcontrato,
-                    estado: !c.estado,
-                  },
-                })
-              }
-            >
-              {c.estado ? 'Desactivar' : 'Activar'}
-            </Button>
-            <DeleteRowButton
-              onClick={() =>
-                deleteMutation.mutate({ idcontrato: c.idcontrato })
-              }
-            />
-          </div>
+          <PermissionGate permiso={PERMISO.MANDANTE_WRITE}>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  updateMutation.mutate({
+                    input: {
+                      idcontrato: c.idcontrato,
+                      estado: !c.estado,
+                    },
+                  })
+                }
+              >
+                {c.estado ? 'Desactivar' : 'Activar'}
+              </Button>
+              <DeleteRowButton
+                onClick={() =>
+                  deleteMutation.mutate({ idcontrato: c.idcontrato })
+                }
+              />
+            </div>
+          </PermissionGate>
         )}
       />
     </div>

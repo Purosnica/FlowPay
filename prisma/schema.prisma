@@ -164,7 +164,8 @@ model tbl_cliente {
   pais          tbl_pais          @relation(fields: [idpais], references: [idpais])
   departamento  tbl_departamento? @relation(fields: [iddepartamento], references: [iddepartamento])
 
-  // Relaciones de cobranza (el cliente es el deudor/titular, global y compartido entre mandantes)
+  // Relaciones de cobranza: cliente = deudor master compartido (H21).
+  // Acceso multi-tenant vía préstamos del mandante, no por idmandante en esta tabla.
   prestamos  tbl_prestamo[]
   contactos  tbl_deudor_contacto[]
   reclamos   tbl_reclamo[]
@@ -205,10 +206,8 @@ model tbl_usuario {
   email             String    @unique
   telefono          String?
   porcentajeComision Decimal  @default(0) @db.Decimal(5, 2) // % sobre ingreso empresa
-  passwordHash      String? // bcrypt (preferido)
-  salt         String? // Solo legado SHA-256; vacío con bcrypt
-  /// @deprecated Solo lectura para migración; no escribir. Vaciar tras migrate-passwords-bcrypt.
-  password     String? // Hash simple legacy
+  passwordHash      String? // bcrypt
+  salt         String? // vacío con bcrypt (compat)
   mfaEnabled   Boolean  @default(false)
   mfaSecret    String?  // Secreto TOTP cifrado (AES-GCM)
   mfaEnabledAt DateTime?
@@ -239,6 +238,8 @@ model tbl_usuario {
   estadosPrestamoRegistrados   tbl_prestamo_estado_historial[]
   notificacionesLeidas         tbl_notificacion_lectura[]
   notificaciones               tbl_notificacion[]
+  liquidacionesCreadas         tbl_liquidacion[] @relation("LiquidacionCreacion")
+  liquidacionesEmitidas        tbl_liquidacion[] @relation("LiquidacionEmision")
 
   @@index([idrol])
   @@index([idsupervisor])
@@ -333,17 +334,22 @@ model tbl_rol_permiso {
 // ============================================
 
 model tbl_agencia {
-  idagencia Int       @id @default(autoincrement())
-  codigo    String    @unique
-  nombre    String
-  estado    Boolean   @default(true)
-  deletedAt DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  idagencia  Int       @id @default(autoincrement())
+  /// Tenant (H21); agencia pertenece a un mandante.
+  idmandante Int
+  codigo     String
+  nombre     String
+  estado     Boolean   @default(true)
+  deletedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
+  mandante  tbl_mandante   @relation(fields: [idmandante], references: [idmandante])
   rutas     tbl_ruta[]
   prestamos tbl_prestamo[]
 
+  @@unique([idmandante, codigo])
+  @@index([idmandante])
   @@index([deletedAt])
   @@map("tbl_agencia")
 }
@@ -432,6 +438,7 @@ model tbl_mandante {
   resumenesDiarios      tbl_resumen_diario_cobranza[]
   exportacionJobs       tbl_exportacion_job[]
   refinanciamientos     tbl_refinanciamiento[]
+  agencias              tbl_agencia[]
 
   @@index([deletedAt])
   @@map("tbl_mandante")
@@ -512,6 +519,7 @@ model tbl_prestamo {
   bloqueadoAsignacion Boolean @default(false)
 
   noPrestamo       String
+  /// Identificador externo del mandante; único por acreedor (H29).
   codigoUnico      String
   noCuenta         String?
   plazoMeses       Int?
@@ -569,10 +577,12 @@ model tbl_prestamo {
   historialAsignaciones tbl_prestamo_asignacion_historial[]
   historialEstados      tbl_prestamo_estado_historial[]
   cuotas                tbl_prestamo_cuota[]
+  liquidacionDetalles   tbl_liquidacion_detalle[]
   refinanciamientosOrigen tbl_refinanciamiento[] @relation("RefinanciamientoOrigen")
   refinanciamientosNuevo  tbl_refinanciamiento[] @relation("RefinanciamientoNuevo")
 
   @@unique([idmandante, noPrestamo])
+  @@unique([idmandante, codigoUnico])
   @@index([idmandante, estado])
   @@index([idcliente])
   @@index([idgestorAsignado])
@@ -801,10 +811,14 @@ model tbl_gestion {
   razonMora           String?
   montoPromesa        Decimal?  @db.Decimal(14, 2)
   fechaPromesa        DateTime?
+  /// PENDIENTE | CUMPLIDA | VENCIDA (H16); null si no hay promesa.
+  estadoPromesa       String?   @db.VarChar(16)
   fechaProximaGestion DateTime?
   comentario          String?   @db.Text
   latitud             Decimal?  @db.Decimal(9, 6) // gestión de campo
   longitud            Decimal?  @db.Decimal(9, 6)
+  /** Idempotency offline/PWA (I036); único por gestor. */
+  idempotencyKey      String?   @db.VarChar(64)
   deletedAt           DateTime?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
@@ -818,6 +832,7 @@ model tbl_gestion {
   acuerdos tbl_acuerdo[]
   pagos    tbl_pago[]
 
+  @@unique([idgestor, idempotencyKey])
   @@index([idmandante, fechaGestion])
   @@index([idprestamo])
   @@index([idgestor])
@@ -825,6 +840,7 @@ model tbl_gestion {
   @@index([idgestor, fechaProximaGestion, deletedAt])
   @@index([idmandante, deletedAt, fechaPromesa])
   @@index([fechaPromesa])
+  @@index([estadoPromesa, fechaPromesa])
   @@map("tbl_gestion")
 }
 
@@ -904,6 +920,10 @@ model tbl_pago {
   aplicado   Boolean   @default(false) // conciliación con siguiente corte
   /// Snapshot de mora al aplicar el pago (comisiones / liquidación).
   diasMoraAplicacion Int?
+  /// Folio comprobante FlowPay (I072); único; se setea tras create (MariaDB no permite GENERATED sobre AUTO_INCREMENT).
+  folio      String?   @unique @db.VarChar(16)
+  /// JSON de waterfall de aplicación (H04); permite reverso exacto de componentes.
+  aplicacionJson String? @db.VarChar(512)
   reciboUrl  String?
   deletedAt  DateTime?
   createdAt  DateTime  @default(now())
@@ -914,6 +934,7 @@ model tbl_pago {
   acuerdo  tbl_acuerdo? @relation(fields: [idacuerdo], references: [idacuerdo])
   gestion  tbl_gestion? @relation(fields: [idgestion], references: [idgestion])
   gestor   tbl_usuario? @relation(fields: [idgestor], references: [idusuario])
+  liquidacionDetalles tbl_liquidacion_detalle[]
 
   @@index([idmandante])
   @@index([idprestamo])
@@ -931,17 +952,26 @@ model tbl_liquidacion {
   periodo         String // "2026-03"
   /// Igual a periodo si activa; null si soft-delete (permite unique con MySQL).
   periodoActivo   String?
+  /// Moneda de reporte de la liquidación (H25); montos convertidos a esta base.
+  moneda          String    @default("NIO") @db.VarChar(3)
   totalRecuperado Decimal   @db.Decimal(14, 2)
   totalComision   Decimal   @db.Decimal(14, 2)
   estado          String // BORRADOR / EMITIDA / PAGADA
+  idusuarioCreacion Int?
+  idusuarioEmision  Int?
+  /** Idempotency key de generarLiquidacion (I015); único por mandante. */
+  idempotencyKey  String?   @db.VarChar(64)
   deletedAt       DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
   mandante tbl_mandante @relation(fields: [idmandante], references: [idmandante])
   detalle  tbl_liquidacion_detalle[]
+  usuarioCreacion tbl_usuario? @relation("LiquidacionCreacion", fields: [idusuarioCreacion], references: [idusuario])
+  usuarioEmision  tbl_usuario? @relation("LiquidacionEmision", fields: [idusuarioEmision], references: [idusuario])
 
   @@unique([idmandante, periodoActivo])
+  @@unique([idmandante, idempotencyKey])
   @@index([idmandante])
   @@index([idmandante, periodo, deletedAt])
   @@map("tbl_liquidacion")
@@ -953,7 +983,11 @@ model tbl_liquidacion_detalle {
   idpago                     Int
   idprestamo                 Int
   noPrestamo                 String
+  /** Monto en moneda base de la liquidación. */
   monto                      Decimal @db.Decimal(14, 2)
+  monedaOriginal             String  @default("NIO") @db.VarChar(3)
+  montoOriginal              Decimal @db.Decimal(14, 2)
+  tipoCambioAplicado         Decimal @default(1) @db.Decimal(10, 4)
   diasMora                   Int
   idgestor                   Int?
   nombreGestor               String?
@@ -964,9 +998,12 @@ model tbl_liquidacion_detalle {
   createdAt                  DateTime @default(now())
 
   liquidacion tbl_liquidacion @relation(fields: [idliquidacion], references: [idliquidacion], onDelete: Cascade)
+  pago        tbl_pago        @relation(fields: [idpago], references: [idpago])
+  prestamo    tbl_prestamo    @relation(fields: [idprestamo], references: [idprestamo])
 
+  @@unique([idpago])
   @@index([idliquidacion])
-  @@index([idpago])
+  @@index([idprestamo])
   @@map("tbl_liquidacion_detalle")
 }
 
@@ -1091,6 +1128,10 @@ model tbl_plantilla_importacion {
   mapeo          String    @db.Text // JSON: { "NoPrestamo": "noPrestamo", ... }
   formatoFecha   String?
   estado         Boolean   @default(true)
+  /** Familia de contrato inmutable entre versiones (I014). */
+  contratoId     String?   @db.VarChar(36)
+  version        Int       @default(1)
+  mapeoHash      String?   @db.VarChar(64)
   deletedAt      DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -1098,6 +1139,7 @@ model tbl_plantilla_importacion {
   mandante tbl_mandante @relation(fields: [idmandante], references: [idmandante])
 
   @@index([idmandante])
+  @@index([contratoId, version])
   @@map("tbl_plantilla_importacion")
 }
 
@@ -1372,4 +1414,40 @@ model tbl_exportacion_job {
   @@index([estado, createdAt])
   @@index([idusuario, createdAt])
   @@map("tbl_exportacion_job")
+}
+
+// ============================================
+// ARQUITECTURA · FEATURE FLAGS + DOMAIN EVENTS (I007 / I012)
+// ============================================
+
+/// Flag por mandante; idmandante=0 = global (I012).
+model tbl_feature_flag {
+  idflag     Int      @id @default(autoincrement())
+  clave      String   @db.VarChar(64)
+  idmandante Int      @default(0)
+  activo     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([clave, idmandante])
+  @@index([clave])
+  @@map("tbl_feature_flag")
+}
+
+/// Outbox de eventos de dominio (I007).
+model tbl_domain_event {
+  idevento     Int       @id @default(autoincrement())
+  tipo         String    @db.VarChar(64)
+  payload      String    @db.Text
+  idmandante   Int?
+  estado       String    @default("PENDIENTE") @db.VarChar(20)
+  intentos     Int       @default(0)
+  error        String?   @db.Text
+  publishedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([estado, createdAt])
+  @@index([tipo, createdAt])
+  @@map("tbl_domain_event")
 }

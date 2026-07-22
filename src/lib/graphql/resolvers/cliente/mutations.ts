@@ -10,6 +10,7 @@ import {
 import { authClienteEscritura } from "@/lib/graphql/auth-helpers";
 import { requerirAccesoCliente } from "@/lib/cobranza/mandante-scope";
 import { GraphQLValidationError } from "@/lib/errors/graphql-errors";
+import { IdArgsSchema } from "@/lib/validators/graphql-args";
 
 export const createClienteMutation = builder.mutationField(
   "createCliente",
@@ -120,18 +121,19 @@ export const deleteClienteMutation = builder.mutationField(
       },
       resolve: async (_parent, args, ctx: GraphQLContext) => {
         await authClienteEscritura(ctx);
+        const { id } = IdArgsSchema.parse(args);
 
         const existente = await ctx.prisma.tbl_cliente.findFirst({
-          where: { idcliente: args.id, estado: true, deletedAt: null },
+          where: { idcliente: id, estado: true, deletedAt: null },
         });
         if (!existente) {
           throw new GraphQLValidationError("Cliente no encontrado.");
         }
 
-        await requerirAccesoCliente(ctx.usuario?.idusuario, args.id);
+        await requerirAccesoCliente(ctx.usuario?.idusuario, id);
 
         const cliente = await ctx.prisma.tbl_cliente.update({
-          where: { idcliente: args.id },
+          where: { idcliente: id },
           data: { estado: false, deletedAt: new Date() },
           include: {
             tipodocumento: true,

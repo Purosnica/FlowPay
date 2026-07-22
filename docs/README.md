@@ -53,6 +53,10 @@ Instalación técnica: [INSTRUCCIONES-INSTALACION.md](../INSTRUCCIONES-INSTALACI
 | Documento | Contenido |
 |-----------|-----------|
 | [API-DEVELOPER.md](./API-DEVELOPER.md) | Portal developer: OpenAPI, webhooks HMAC, persisted ops |
+| [ARCHITECTURE-C4.md](./ARCHITECTURE-C4.md) | Diagrama C4 vivo (web, workers, MySQL) |
+| [ARCHITECTURE-BOUNDED-CONTEXTS.md](./ARCHITECTURE-BOUNDED-CONTEXTS.md) | Contextos cartera / gestión / liquidación |
+| [ADR-001-MULTI-TENANT.md](./ADR-001-MULTI-TENANT.md) | Decisión row-level vs schema isolation |
+| [ARCH-AUDIT-STATUS.md](./ARCH-AUDIT-STATUS.md) | Estado I001–I014 (oleada sin costos) |
 | [openapi.yaml](./openapi.yaml) | Spec OpenAPI 3 (también `GET /api/openapi`) |
 | [GRAPHQL-DEPRECATION.md](./GRAPHQL-DEPRECATION.md) | Política de deprecación de campos GraphQL |
 | [MORA-AUTOMATICA.md](./MORA-AUTOMATICA.md) | Cálculo y sincronización de mora |

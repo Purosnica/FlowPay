@@ -12,7 +12,9 @@ const envSchema = z.object({
 
   JWT_SECRET: isProduction
     ? z.string().min(32, 'JWT_SECRET debe tener al menos 32 caracteres')
-    : z.string().min(1).optional(),
+    : z
+        .string()
+        .min(16, 'JWT_SECRET debe tener al menos 16 caracteres en desarrollo'),
 
   CRON_SECRET: isProduction
     ? z.string().min(16, 'CRON_SECRET debe tener al menos 16 caracteres')

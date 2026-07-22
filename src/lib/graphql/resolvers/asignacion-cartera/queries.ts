@@ -1,4 +1,4 @@
-import { builder ,type  GraphQLContext } from '../../builder';
+import { builder, type GraphQLContext } from '../../builder';
 
 import { z } from 'zod';
 import { requerirPermiso } from '@/lib/permissions/permission-service';
@@ -9,10 +9,9 @@ import {
   listarHistorialAsignacion,
   cancelarPrestamo,
   toggleBloqueoAsignacion,
-  type MetodoAsignacion,
-} from '@/lib/cobranza/asignacion-cartera-service';
-import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
+} from '@/lib/contexts/cartera';
 import { requerirAccesoPrestamoCobrador } from '@/lib/cobranza/cobrador-scope';
+import { IdPositiveSchema } from '@/lib/validators/graphql-args';
 
 const MetodosAsignacion = [
   'POR_MORA',
@@ -21,14 +20,52 @@ const MetodosAsignacion = [
   'POR_MONTO',
 ] as const;
 
+const MetodoAsignacionSchema = z.enum(MetodosAsignacion, {
+  message: 'Método de asignación inválido.',
+});
+
 const FiltrosAsignacionSchema = z.object({
-  idmandante: z.number().int().positive(),
-  idgestorAsignado: z.number().int().positive().optional(),
+  idmandante: IdPositiveSchema,
+  idgestorAsignado: IdPositiveSchema.optional(),
   estado: z.string().optional(),
   tramoMoraMin: z.number().int().min(0).optional(),
   tramoMoraMax: z.number().int().min(0).nullable().optional(),
-  idprestamos: z.array(z.number().int().positive()).optional(),
+  idprestamos: z.array(IdPositiveSchema).optional(),
   sinAsignar: z.boolean().optional(),
+});
+
+const SimularAsignacionArgsSchema = z.object({
+  filtros: FiltrosAsignacionSchema,
+  idgestores: z
+    .array(IdPositiveSchema)
+    .min(1, 'Debe indicar al menos un gestor'),
+  metodo: MetodoAsignacionSchema,
+});
+
+const EjecutarAsignacionArgsSchema = SimularAsignacionArgsSchema.extend({
+  motivo: z
+    .string()
+    .trim()
+    .max(500, 'El motivo no puede exceder 500 caracteres')
+    .nullish()
+    .transform((v) => v ?? undefined),
+});
+
+const CancelarPrestamoSchema = z.object({
+  idprestamo: IdPositiveSchema,
+  motivo: z
+    .string()
+    .trim()
+    .max(500, 'El motivo no puede exceder 500 caracteres')
+    .nullish()
+    .transform((v) => v ?? undefined),
+});
+
+const ToggleBloqueoAsignacionSchema = z.object({
+  idprestamo: IdPositiveSchema,
+  bloqueado: z.boolean({
+    message: 'bloqueado debe ser booleano',
+  }),
 });
 
 export const FiltrosAsignacionInput = builder.inputRef('FiltrosAsignacionInput').implement({
@@ -106,16 +143,12 @@ builder.queryField('simularAsignacionCartera', (t) =>
     },
     resolve: async (_parent, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.CARTERA_WRITE);
-      const filtros = FiltrosAsignacionSchema.parse(args.filtros);
-      const metodo = args.metodo as MetodoAsignacion;
-      if (!MetodosAsignacion.includes(metodo)) {
-        throw new GraphQLValidationError('Método de asignación inválido.');
-      }
+      const parsed = SimularAsignacionArgsSchema.parse(args);
       return simularAsignacionCartera(
         ctx.usuario?.idusuario ?? 0,
-        filtros,
-        args.idgestores,
-        metodo,
+        parsed.filtros,
+        parsed.idgestores,
+        parsed.metodo,
       );
     },
   }),
@@ -155,14 +188,13 @@ builder.mutationField('ejecutarAsignacionCartera', (t) =>
     },
     resolve: async (_parent, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.CARTERA_WRITE);
-      const filtros = FiltrosAsignacionSchema.parse(args.filtros);
-      const metodo = args.metodo as MetodoAsignacion;
+      const parsed = EjecutarAsignacionArgsSchema.parse(args);
       const result = await ejecutarAsignacionCartera(
         ctx.usuario?.idusuario ?? 0,
-        filtros,
-        args.idgestores,
-        metodo,
-        args.motivo,
+        parsed.filtros,
+        parsed.idgestores,
+        parsed.metodo,
+        parsed.motivo,
       );
       return result.asignados;
     },
@@ -178,10 +210,11 @@ builder.mutationField('cancelarPrestamo', (t) =>
     },
     resolve: async (_parent, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.CARTERA_WRITE);
+      const { idprestamo, motivo } = CancelarPrestamoSchema.parse(args);
       await cancelarPrestamo(
-        args.idprestamo,
+        idprestamo,
         ctx.usuario?.idusuario ?? 0,
-        args.motivo,
+        motivo,
       );
       return true;
     },
@@ -197,10 +230,12 @@ builder.mutationField('toggleBloqueoAsignacion', (t) =>
     },
     resolve: async (_parent, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.CARTERA_WRITE);
+      const { idprestamo, bloqueado } =
+        ToggleBloqueoAsignacionSchema.parse(args);
       await toggleBloqueoAsignacion(
-        args.idprestamo,
+        idprestamo,
         ctx.usuario?.idusuario ?? 0,
-        args.bloqueado,
+        bloqueado,
       );
       return true;
     },

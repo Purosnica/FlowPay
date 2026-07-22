@@ -1,15 +1,17 @@
 /**
  * Almacenamiento y validación de archivos de documentos de cobranza.
+ *
+ * Multi-instancia (H29): defina FLOWPAY_STORAGE_ROOT en un volumen compartido.
+ * Sin object storage externo en esta oleada (I003 diferido).
  */
 
-import os from 'os';
 import path from 'path';
 import { mkdir, writeFile, readFile, access } from 'fs/promises';
 import { constants } from 'fs';
+import { resolverStorageRoot } from '@/lib/cobranza/storage-root';
 
 export const DOCUMENTOS_STORAGE_DIR = path.join(
-  os.tmpdir(),
-  'flowpay-storage',
+  resolverStorageRoot(),
   'documentos',
   'cobranza',
 );

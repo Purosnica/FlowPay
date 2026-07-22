@@ -10,6 +10,7 @@ import { BandejaFiltersPanel } from '@/components/cobranza/bandeja-filters';
 import { EnviarCobroPanel } from '@/components/cobranza/enviar-cobro-panel';
 import { PromesasVencidasPanel } from '@/components/cobranza/promesas-vencidas-panel';
 import { GestionRapidaModal } from '@/components/cobranza/gestion-rapida-modal';
+import { PagoRapidaModal } from '@/components/cobranza/pago-rapida-modal';
 import { OperacionHotkeysHelp } from '@/components/cobranza/operacion-hotkeys-help';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
@@ -39,7 +40,8 @@ import {
 import { obtenerPresetBandejaPorId } from '@/lib/cobranza/bandeja-presets';
 
 const ATAJOS_BANDEJA = [
-  { keys: 'G', descripcion: 'Gestión rápida del primer caso de la página' },
+  { keys: 'P', descripcion: 'Pago rápido del primer caso de la página' },
+  { keys: 'G', descripcion: 'Tipificar el primer caso de la página' },
   { keys: 'N', descripcion: 'Abrir detalle del primer caso' },
   { keys: 'M', descripcion: 'Ir a Mi día' },
   { keys: '?', descripcion: 'Mostrar esta ayuda' },
@@ -145,10 +147,14 @@ function BandejaPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const puedeGestion = usePuede(PERMISO.GESTION_WRITE);
+  const puedePago = usePuede(PERMISO.PAGO_WRITE);
   const [enviarPrestamo, setEnviarPrestamo] = useState<BandejaGraphQLItem | null>(
     null,
   );
   const [gestionRapida, setGestionRapida] = useState<BandejaGraphQLItem | null>(
+    null,
+  );
+  const [pagoRapido, setPagoRapido] = useState<BandejaGraphQLItem | null>(
     null,
   );
   const [filters, setFilters] = useState<BandejaFilters>(() =>
@@ -276,19 +282,24 @@ function BandejaPageContent() {
         header: '',
         cell: ({ row }) => (
           <div className="flex flex-wrap gap-2">
+            <PermissionGate permiso={PERMISO.PAGO_WRITE}>
+              <Button
+                size="sm"
+                data-ux-id="bandeja-pago-rapido"
+                onClick={() => setPagoRapido(row.original)}
+              >
+                Registrar pago
+              </Button>
+            </PermissionGate>
             <PermissionGate permiso={PERMISO.GESTION_WRITE}>
               <Button
                 size="sm"
+                variant="outline"
                 data-ux-id="bandeja-gestion-rapida"
                 onClick={() => setGestionRapida(row.original)}
               >
-                Gestión rápida
+                Tipificar
               </Button>
-              <Link href={`/cobranza/prestamos/${row.original.idprestamo}`}>
-                <Button size="sm" variant="outline" data-ux-id="bandeja-recuperar">
-                  Recuperar
-                </Button>
-              </Link>
               <Button
                 size="sm"
                 variant="outline"
@@ -315,6 +326,15 @@ function BandejaPageContent() {
   const hotkeys = useMemo(
     () => [
       {
+        key: 'p',
+        enabled: puedePago && Boolean(primerItem),
+        handler: () => {
+          if (primerItem) {
+            setPagoRapido(primerItem);
+          }
+        },
+      },
+      {
         key: 'g',
         enabled: puedeGestion && Boolean(primerItem),
         handler: () => {
@@ -337,7 +357,7 @@ function BandejaPageContent() {
         handler: () => router.push('/cobranza/mi-dia'),
       },
     ],
-    [puedeGestion, primerItem, router],
+    [puedeGestion, puedePago, primerItem, router],
   );
 
   useHotkeys(hotkeys);
@@ -347,7 +367,7 @@ function BandejaPageContent() {
       <OperacionHotkeysHelp atajos={ATAJOS_BANDEJA} />
       <PageHeader
         title="Mi bandeja"
-        description="Préstamos asignados con mora activa. Atajos: G gestión · N detalle · M Mi día · ? ayuda."
+        description="Préstamos asignados con mora activa. Atajos: G tipificar · N recuperar · M Mi día · ? ayuda."
       />
 
       {promesas.length > 0 && (
@@ -420,6 +440,12 @@ function BandejaPageContent() {
         <GestionRapidaModal
           prestamo={gestionRapida}
           onClose={() => setGestionRapida(null)}
+        />
+      )}
+      {pagoRapido && (
+        <PagoRapidaModal
+          prestamo={pagoRapido}
+          onClose={() => setPagoRapido(null)}
         />
       )}
     </div>

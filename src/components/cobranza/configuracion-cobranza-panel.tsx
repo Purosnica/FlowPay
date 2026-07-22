@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { PermissionGate } from '@/components/auth/permission-gate';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { useGraphQLMutation } from '@/hooks/use-graphql-mutation';
 import {
   GET_CONFIG_COBRANZA,
   ACTUALIZAR_CONFIG_COBRANZA,
 } from '@/lib/graphql/queries/cobranza.queries';
+import { PERMISO } from '@/lib/permissions/permiso-codes';
 import type { ConfigCobranzaOperativa } from '@/types/cobranza';
 
 export function ConfiguracionCobranzaPanel() {
@@ -20,7 +22,12 @@ export function ConfiguracionCobranzaPanel() {
 
   useEffect(() => {
     if (data?.configCobranzaOperativa) {
-      setForm(data.configCobranzaOperativa);
+      const cfg = data.configCobranzaOperativa;
+      setForm({
+        ...cfg,
+        bandejaCandidateLimit: cfg.bandejaCandidateLimit ?? 500,
+        miDiaCandidateLimit: cfg.miDiaCandidateLimit ?? 200,
+      });
     }
   }, [data]);
 
@@ -132,20 +139,40 @@ export function ConfiguracionCobranzaPanel() {
             max={50000000}
             onChange={(v) => setForm({ ...form, metaRecuperacionMes: v })}
           />
+
+          <h3 className="pt-2 text-sm font-semibold text-gray-600">
+            Rendimiento (I112)
+          </h3>
+          <CampoNumero
+            label="Límite candidatos bandeja (prioridad)"
+            value={form.bandejaCandidateLimit}
+            min={1}
+            max={5000}
+            onChange={(v) => setForm({ ...form, bandejaCandidateLimit: v })}
+          />
+          <CampoNumero
+            label="Límite candidatos Mi día (prioridad)"
+            value={form.miDiaCandidateLimit}
+            min={1}
+            max={5000}
+            onChange={(v) => setForm({ ...form, miDiaCandidateLimit: v })}
+          />
         </div>
       </div>
 
-      <div className="mt-6">
-        <Button
-          disabled={mutation.isPending}
-          onClick={() => mutation.mutate({ ...form })}
-        >
-          Guardar parámetros
-        </Button>
-        {guardado && (
-          <p className="mt-2 text-sm text-green-600">Parámetros guardados.</p>
-        )}
-      </div>
+      <PermissionGate permiso={PERMISO.CONFIG_SYSTEM}>
+        <div className="mt-6">
+          <Button
+            disabled={mutation.isPending}
+            onClick={() => mutation.mutate({ ...form })}
+          >
+            Guardar parámetros
+          </Button>
+          {guardado && (
+            <p className="mt-2 text-sm text-green-600">Parámetros guardados.</p>
+          )}
+        </div>
+      </PermissionGate>
     </div>
   );
 }

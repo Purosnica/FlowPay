@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { hashPassword, verifyPassword, simpleHash } from '@/lib/auth/password';
+import { hashPassword, verifyPassword, isBcryptHash } from '@/lib/auth/password';
 import type { UpdatePerfilInput } from '@/lib/validators/usuario/perfil';
 
 export async function obtenerMiPerfil(idusuario: number) {
@@ -72,17 +72,14 @@ export async function actualizarMiPerfil(
       throw new Error('Debe ingresar su contraseña actual');
     }
 
-    let passwordValid = false;
-
-    if (usuario.passwordHash) {
-      passwordValid = await verifyPassword(
-        data.passwordActual,
-        usuario.passwordHash,
-        usuario.salt ?? '',
-      );
-    } else if (usuario.password) {
-      passwordValid = simpleHash(data.passwordActual) === usuario.password;
+    if (!usuario.passwordHash || !isBcryptHash(usuario.passwordHash)) {
+      throw new Error('Usuario sin contraseña configurada');
     }
+
+    const passwordValid = await verifyPassword(
+      data.passwordActual,
+      usuario.passwordHash,
+    );
 
     if (!passwordValid) {
       throw new Error('La contraseña actual es incorrecta');

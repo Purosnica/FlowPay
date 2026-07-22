@@ -17,6 +17,10 @@ export const CLAVE_BANDEJA_CANDIDATE_LIMIT =
   'cobranza.bandeja_prioridad_candidate_limit';
 export const CLAVE_MI_DIA_CANDIDATE_LIMIT =
   'cobranza.mi_dia_prioridad_candidate_limit';
+export const CLAVE_ASIGNACION_AUTO_POST_IMPORT =
+  'cobranza.asignacion_auto_post_import';
+export const CLAVE_ASIGNACION_AUTO_METODO =
+  'cobranza.asignacion_auto_metodo';
 
 const DEFAULTS: Record<string, string> = {
   [CLAVE_PAGO_AUTO_APLICAR]: 'true',
@@ -32,6 +36,8 @@ const DEFAULTS: Record<string, string> = {
   [CLAVE_CRON_ALERTA_EMAIL_ACTIVA]: 'true',
   [CLAVE_BANDEJA_CANDIDATE_LIMIT]: '500',
   [CLAVE_MI_DIA_CANDIDATE_LIMIT]: '200',
+  [CLAVE_ASIGNACION_AUTO_POST_IMPORT]: 'false',
+  [CLAVE_ASIGNACION_AUTO_METODO]: 'POR_CANTIDAD',
 };
 
 export async function obtenerConfigCobranza(clave: string): Promise<string> {
@@ -70,13 +76,58 @@ export async function obtenerConfigNumericaConFallback(
   const config = await prisma.tbl_configuracion_sistema.findFirst({
     where: { clave: claveEspecifica, deletedAt: null },
   });
-  if (config?.valor) {
+  if (config?.valor != null && config.valor !== '') {
     const n = Number(config.valor);
     if (Number.isFinite(n) && n > 0) {
       return n;
     }
   }
   return obtenerConfigNumerica(claveGlobal);
+}
+
+/** Como ConFallback pero admite 0 (gracia, umbrales desactivados). */
+export async function obtenerConfigNumericaMandante(
+  claveBase: string,
+  idmandante: number,
+): Promise<number> {
+  const especifica = claveMetaMandante(claveBase, idmandante);
+  const config = await prisma.tbl_configuracion_sistema.findFirst({
+    where: { clave: especifica, deletedAt: null },
+  });
+  if (config?.valor != null && config.valor !== '') {
+    const n = Number(config.valor);
+    if (Number.isFinite(n)) {
+      return n;
+    }
+  }
+  return obtenerConfigNumerica(claveBase);
+}
+
+export async function obtenerConfigBooleanaMandante(
+  claveBase: string,
+  idmandante: number,
+): Promise<boolean> {
+  const especifica = claveMetaMandante(claveBase, idmandante);
+  const config = await prisma.tbl_configuracion_sistema.findFirst({
+    where: { clave: especifica, deletedAt: null },
+  });
+  if (config?.valor != null && config.valor !== '') {
+    return config.valor === 'true' || config.valor === '1';
+  }
+  return obtenerConfigBooleana(claveBase);
+}
+
+export async function guardarConfigCobranzaMandante(
+  claveBase: string,
+  idmandante: number,
+  valor: string,
+  idusuario?: number,
+): Promise<void> {
+  await guardarConfigCobranza(
+    claveMetaMandante(claveBase, idmandante),
+    valor,
+    idusuario,
+  );
 }
 
 export async function obtenerMetaRecuperacionMes(

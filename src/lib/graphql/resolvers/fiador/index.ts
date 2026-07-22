@@ -14,6 +14,8 @@ import { requerirAccesoPrestamoCobrador } from '@/lib/cobranza/cobrador-scope';
 import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
 import { createPageType } from '../../helpers/create-page-type';
 import { resolvePaginatedPrismaQuery } from '../../helpers/paginated-prisma-resolver';
+import { IdPositiveSchema } from '@/lib/validators/graphql-args';
+import { z } from 'zod';
 
 const FiadorPage = createPageType('FiadorPage', Fiador, 'fiadores');
 
@@ -123,8 +125,9 @@ builder.mutationField('deleteFiador', (t) =>
     args: { idfiador: t.arg.int({ required: true }) },
     resolve: async (_parent, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.CARTERA_WRITE);
+      const { idfiador } = z.object({ idfiador: IdPositiveSchema }).parse(args);
       const existente = await ctx.prisma.tbl_fiador.findUnique({
-        where: { idfiador: args.idfiador },
+        where: { idfiador },
         include: { prestamo: true },
       });
       if (!existente || existente.deletedAt) {
@@ -139,7 +142,7 @@ builder.mutationField('deleteFiador', (t) =>
         existente.idprestamo,
       );
       await ctx.prisma.tbl_fiador.update({
-        where: { idfiador: args.idfiador },
+        where: { idfiador },
         data: { deletedAt: new Date() },
       });
       return true;

@@ -290,6 +290,7 @@ export const GET_PAGOS = `
         moneda
         medio
         aplicado
+        folio
         reciboUrl
       }
       total
@@ -351,6 +352,7 @@ export const SIMULAR_ACUERDO = `
       pagoMinimo
       interesMoratorioExcluido
       gestionCobranzaExcluida
+      montoPagableLedger
     }
   }
 `;
@@ -415,6 +417,66 @@ export const GET_METAS_MANDANTE = `
       usaGlobalGestionesSemana
       usaGlobalRecuperacionSemana
       usaGlobalRecuperacionMes
+    }
+  }
+`;
+
+export const GET_CONFIG_OPERATIVA_MANDANTE = `
+  query GetConfigOperativaMandante($idmandante: Int!) {
+    configOperativaMandante(idmandante: $idmandante) {
+      idmandante
+      pagoAutoAplicar
+      acuerdoDiasGracia
+      diasMoraCastigo
+      moraDiasGracia
+      usaGlobalPagoAutoAplicar
+      usaGlobalAcuerdoDiasGracia
+      usaGlobalDiasMoraCastigo
+      usaGlobalMoraDiasGracia
+    }
+  }
+`;
+
+export const ACTUALIZAR_CONFIG_OPERATIVA_MANDANTE = `
+  mutation ActualizarConfigOperativaMandante(
+    $idmandante: Int!
+    $pagoAutoAplicar: Boolean
+    $acuerdoDiasGracia: Int
+    $diasMoraCastigo: Int
+    $moraDiasGracia: Int
+  ) {
+    actualizarConfigOperativaMandante(
+      idmandante: $idmandante
+      pagoAutoAplicar: $pagoAutoAplicar
+      acuerdoDiasGracia: $acuerdoDiasGracia
+      diasMoraCastigo: $diasMoraCastigo
+      moraDiasGracia: $moraDiasGracia
+    ) {
+      idmandante
+      pagoAutoAplicar
+      acuerdoDiasGracia
+      diasMoraCastigo
+      moraDiasGracia
+      usaGlobalPagoAutoAplicar
+      usaGlobalAcuerdoDiasGracia
+      usaGlobalDiasMoraCastigo
+      usaGlobalMoraDiasGracia
+    }
+  }
+`;
+
+export const RESTABLECER_CONFIG_OPERATIVA_MANDANTE = `
+  mutation RestablecerConfigOperativaMandanteGlobal($idmandante: Int!) {
+    restablecerConfigOperativaMandanteGlobal(idmandante: $idmandante) {
+      idmandante
+      pagoAutoAplicar
+      acuerdoDiasGracia
+      diasMoraCastigo
+      moraDiasGracia
+      usaGlobalPagoAutoAplicar
+      usaGlobalAcuerdoDiasGracia
+      usaGlobalDiasMoraCastigo
+      usaGlobalMoraDiasGracia
     }
   }
 `;
@@ -793,8 +855,16 @@ export const SIMULAR_LIQUIDACION = `
 `;
 
 export const GENERAR_LIQUIDACION = `
-  mutation GenerarLiquidacion($idmandante: Int!, $periodo: String!) {
-    generarLiquidacion(idmandante: $idmandante, periodo: $periodo) {
+  mutation GenerarLiquidacion(
+    $idmandante: Int!
+    $periodo: String!
+    $idempotencyKey: String
+  ) {
+    generarLiquidacion(
+      idmandante: $idmandante
+      periodo: $periodo
+      idempotencyKey: $idempotencyKey
+    ) {
       idliquidacion
       simulacion {
         totalRecuperado
@@ -1417,10 +1487,11 @@ export const GET_CODIGOS_RESULTADO_MANDANTE = `
 `;
 
 export const GET_AGENCIAS = `
-  query GetAgencias($page: Int, $pageSize: Int, $incluirInactivas: Boolean) {
-    agencias(page: $page, pageSize: $pageSize, incluirInactivas: $incluirInactivas) {
+  query GetAgencias($idmandante: Int!, $page: Int, $pageSize: Int, $incluirInactivas: Boolean) {
+    agencias(idmandante: $idmandante, page: $page, pageSize: $pageSize, incluirInactivas: $incluirInactivas) {
       agencias {
         idagencia
+        idmandante
         codigo
         nombre
         estado
@@ -1455,6 +1526,7 @@ export const CREATE_AGENCIA = `
   mutation CreateAgencia($input: CreateAgenciaInput!) {
     createAgencia(input: $input) {
       idagencia
+      idmandante
       codigo
       nombre
       estado
@@ -1741,6 +1813,8 @@ export const GET_CONFIG_COBRANZA = `
       metaGestionesSemana
       metaRecuperacionSemana
       metaRecuperacionMes
+      bandejaCandidateLimit
+      miDiaCandidateLimit
     }
   }
 `;
@@ -1756,6 +1830,8 @@ export const ACTUALIZAR_CONFIG_COBRANZA = `
     $metaGestionesSemana: Int
     $metaRecuperacionSemana: Int
     $metaRecuperacionMes: Int
+    $bandejaCandidateLimit: Int
+    $miDiaCandidateLimit: Int
   ) {
     actualizarConfigCobranzaOperativa(
       pagoAutoAplicar: $pagoAutoAplicar
@@ -1767,6 +1843,8 @@ export const ACTUALIZAR_CONFIG_COBRANZA = `
       metaGestionesSemana: $metaGestionesSemana
       metaRecuperacionSemana: $metaRecuperacionSemana
       metaRecuperacionMes: $metaRecuperacionMes
+      bandejaCandidateLimit: $bandejaCandidateLimit
+      miDiaCandidateLimit: $miDiaCandidateLimit
     ) {
       pagoAutoAplicar
       maxContactosDia
@@ -1777,6 +1855,8 @@ export const ACTUALIZAR_CONFIG_COBRANZA = `
       metaGestionesSemana
       metaRecuperacionSemana
       metaRecuperacionMes
+      bandejaCandidateLimit
+      miDiaCandidateLimit
     }
   }
 `;

@@ -4,6 +4,10 @@
 
 import { roundMoney } from '@/lib/cobranza/decimal-utils';
 
+/**
+ * Formato canónico del folio FP (I072).
+ * Se persiste en `tbl_pago.folio` tras crear el pago.
+ */
 export function folioComprobantePago(idpago: number): string {
   return `FP-${String(idpago).padStart(8, '0')}`;
 }

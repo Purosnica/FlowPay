@@ -18,6 +18,8 @@ import {
 import {
   parseIdempotencyKeyHeader,
   mensajeIdempotencyKeyInvalida,
+  crearIdempotencyKey,
+  isValidIdempotencyKey,
 } from '@/lib/api/idempotency-key';
 import { extractOperationNameFromQuery } from '@/lib/graphql/plugins/persisted-queries';
 import { PERSISTED_OPERATION_NAMES } from '@/lib/graphql/persisted-operations.generated';
@@ -137,6 +139,9 @@ function testIdempotencyKey(): void {
   assert.equal(parseIdempotencyKeyHeader('abc'), undefined);
   assert.equal(parseIdempotencyKeyHeader('import-job-001'), 'import-job-001');
   assert.ok(mensajeIdempotencyKeyInvalida().includes('Idempotency-Key'));
+  const key = crearIdempotencyKey('liq');
+  assert.ok(isValidIdempotencyKey(key));
+  assert.ok(key.length >= 8 && key.length <= 64);
 }
 
 function testPersistedOps(): void {

@@ -10,7 +10,11 @@ Mecanismos para evitar corridas duplicadas y condiciones de carrera.
 
 **Módulo:** `src/lib/scalability/mysql-advisory-lock.ts`
 
-Usa `GET_LOCK(nombre, timeout)` / `RELEASE_LOCK(nombre)` de MySQL.
+Usa `GET_LOCK(nombre, timeout)` / `RELEASE_LOCK(nombre)` de MySQL
+sobre un **PrismaClient dedicado** con `connection_limit=1`
+(`src/lib/scalability/mysql-advisory-lock.ts`). Así acquire y release
+usan la misma conexión (los locks MySQL son connection-scoped; el pool
+compartido no garantiza afinidad).
 
 | Función | Uso |
 |---------|-----|

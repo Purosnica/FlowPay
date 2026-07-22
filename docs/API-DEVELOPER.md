@@ -1,18 +1,32 @@
-# Portal developer — FlowPay API (I056)
+# Portal developer — FlowPay API (I006 / I056)
 
-Documentación para integradores (REST + webhooks + GraphQL).
+Documentación para integradores. El contrato de producto es **REST OpenAPI v1**
+(`/api/v1/...`). GraphQL (`/api/graphql`) es interno de la UI.
 
 ## OpenAPI
 
-- Spec: [openapi.yaml](./openapi.yaml)
-- Runtime JSON: `GET /api/openapi`
+- Spec canónica: [openapi.yaml](./openapi.yaml)
+- Runtime YAML: `GET /api/v1/openapi` (alias legacy: `GET /api/openapi`)
+- Versionado: paths bajo `/api/v1`; breaking changes → `/api/v2`
 
 ## Autenticación
 
-Sesión cookie (`flowpay_token`) tras `POST /api/auth/login`.  
-GraphQL y REST de cobranza requieren usuario autenticado + CSRF en mutaciones.
+Sesión cookie (`auth-token`) tras `POST /api/auth/login`.  
+REST de cobranza y GraphQL requieren usuario autenticado + CSRF en mutaciones
+(`X-CSRF-Token` / cookie `flowpay-csrf`).
 
-## GraphQL
+## Superficie pública v1
+
+| Método | Path | Auth |
+|--------|------|------|
+| GET | `/api/v1/health` | No |
+| GET | `/api/v1/ready` | No |
+| GET | `/api/v1/openapi` | No |
+| POST | `/api/v1/cobranza/importar` | Sí + CSRF |
+| POST | `/api/v1/cobranza/importar/async` | Sí + CSRF |
+| GET | `/api/v1/cobranza/importar/jobs/{id}` | Sí |
+
+## GraphQL (interno UI)
 
 - Endpoint: `POST /api/graphql`
 - En producción:
@@ -51,14 +65,18 @@ Rechazar si `|now - timestamp| > 300s`.
 
 Verificador de referencia: `verificarFirmaWebhook` en `src/lib/cobranza/webhook-mandante-service.ts`.
 
-## Idempotency-Key (imports)
+## Idempotency-Key
 
-Header opcional en:
+Header opcional (8–64, `[a-zA-Z0-9_-]`):
 
-- `POST /api/cobranza/importar`
-- `POST /api/cobranza/importar/async`
+| Superficie | Scope |
+|------------|--------|
+| `POST /api/v1/cobranza/importar` (+ async) | usuario + key → mismo job |
+| `createPago` (GraphQL) | gestor + key → mismo pago |
+| `generarLiquidacion` (GraphQL) | mandante + key → misma liquidación |
 
-Mismo usuario + misma key → retorna el job existente (no duplica).
+`emitirLiquidacion` / `marcarLiquidacionPagada` son idempotentes de estado
+(si ya está EMITIDA/PAGADA, no-op éxito).
 
 ## Errores REST
 

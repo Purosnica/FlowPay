@@ -26,6 +26,7 @@ import {
 } from '../../helpers/graphql-helpers';
 import { createPageType } from '../../helpers/create-page-type';
 import { resolvePaginatedPrismaQuery } from '../../helpers/paginated-prisma-resolver';
+import { IdPositiveSchema } from '@/lib/validators/graphql-args';
 
 const PrestamoCortePage = createPageType(
   'PrestamoCortePage',
@@ -35,6 +36,7 @@ const PrestamoCortePage = createPageType(
 
 const CreateAgenciaInput = builder.inputType('CreateAgenciaInput', {
   fields: (t) => ({
+    idmandante: t.int({ required: true }),
     codigo: t.string({ required: true }),
     nombre: t.string({ required: true }),
     estado: t.boolean({ required: false }),
@@ -68,6 +70,7 @@ const UpdateRutaInput = builder.inputType('UpdateRutaInput', {
 });
 
 const CreateAgenciaSchema = z.object({
+  idmandante: z.number().int().positive(),
   codigo: z.string().min(1).max(50),
   nombre: z.string().min(1).max(200),
   estado: z.boolean().optional(),
@@ -97,12 +100,14 @@ builder.queryField('agencias', (t) =>
   t.field({
     type: AgenciaPage,
     args: {
+      idmandante: t.arg.int({ required: true }),
       page: t.arg.int({ required: false, defaultValue: 1 }),
       pageSize: t.arg.int({ required: false, defaultValue: 20 }),
       incluirInactivas: t.arg.boolean({ required: false, defaultValue: false }),
     },
     resolve: async (_parent, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.CARTERA_READ);
+      await requerirAccesoMandante(ctx.usuario?.idusuario, args.idmandante);
 
       const { page, pageSize, skip } = resolvePagination(
         args.page,
@@ -110,6 +115,7 @@ builder.queryField('agencias', (t) =>
       );
       const where = {
         deletedAt: null,
+        idmandante: args.idmandante,
         ...(args.incluirInactivas ? {} : { estado: true }),
       };
 
@@ -178,8 +184,11 @@ builder.mutationField('createAgencia', (t) =>
     args: { input: t.arg({ type: CreateAgenciaInput, required: true }) },
     resolve: async (_query, _p, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.CARTERA_WRITE);
+      if (!ctx.usuario) {
+        throw new GraphQLValidationError('Debes estar autenticado.');
+      }
       const data = CreateAgenciaSchema.parse(args.input);
-      return crearAgencia(data);
+      return crearAgencia({ ...data, idusuario: ctx.usuario.idusuario });
     },
   }),
 );
@@ -190,8 +199,11 @@ builder.mutationField('updateAgencia', (t) =>
     args: { input: t.arg({ type: UpdateAgenciaInput, required: true }) },
     resolve: async (_query, _p, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.CARTERA_WRITE);
+      if (!ctx.usuario) {
+        throw new GraphQLValidationError('Debes estar autenticado.');
+      }
       const data = UpdateAgenciaSchema.parse(args.input);
-      return actualizarAgencia(data);
+      return actualizarAgencia({ ...data, idusuario: ctx.usuario.idusuario });
     },
   }),
 );
@@ -202,7 +214,13 @@ builder.mutationField('deleteAgencia', (t) =>
     args: { idagencia: t.arg.int({ required: true }) },
     resolve: async (_p, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.CARTERA_WRITE);
-      return eliminarAgencia(args.idagencia);
+      if (!ctx.usuario) {
+        throw new GraphQLValidationError('Debes estar autenticado.');
+      }
+      const { idagencia } = z
+        .object({ idagencia: IdPositiveSchema })
+        .parse(args);
+      return eliminarAgencia(idagencia, ctx.usuario.idusuario);
     },
   }),
 );
@@ -213,8 +231,11 @@ builder.mutationField('createRuta', (t) =>
     args: { input: t.arg({ type: CreateRutaInput, required: true }) },
     resolve: async (_query, _p, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.CARTERA_WRITE);
+      if (!ctx.usuario) {
+        throw new GraphQLValidationError('Debes estar autenticado.');
+      }
       const data = CreateRutaSchema.parse(args.input);
-      return crearRuta(data);
+      return crearRuta({ ...data, idusuario: ctx.usuario.idusuario });
     },
   }),
 );
@@ -225,8 +246,11 @@ builder.mutationField('updateRuta', (t) =>
     args: { input: t.arg({ type: UpdateRutaInput, required: true }) },
     resolve: async (_query, _p, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.CARTERA_WRITE);
+      if (!ctx.usuario) {
+        throw new GraphQLValidationError('Debes estar autenticado.');
+      }
       const data = UpdateRutaSchema.parse(args.input);
-      return actualizarRuta(data);
+      return actualizarRuta({ ...data, idusuario: ctx.usuario.idusuario });
     },
   }),
 );
@@ -237,7 +261,11 @@ builder.mutationField('deleteRuta', (t) =>
     args: { idruta: t.arg.int({ required: true }) },
     resolve: async (_p, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.CARTERA_WRITE);
-      return eliminarRuta(args.idruta);
+      if (!ctx.usuario) {
+        throw new GraphQLValidationError('Debes estar autenticado.');
+      }
+      const { idruta } = z.object({ idruta: IdPositiveSchema }).parse(args);
+      return eliminarRuta(idruta, ctx.usuario.idusuario);
     },
   }),
 );

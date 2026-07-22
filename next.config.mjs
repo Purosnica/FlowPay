@@ -3,7 +3,10 @@ const nextConfig = {
   // Evita que Turbopack intente empaquetar APIs de Node de Sentry.
   serverExternalPackages: ['@sentry/node', '@sentry/node-core'],
   allowedDevOrigins: ['127.0.0.1', 'localhost'],
+  // I107: CDN opcional (p. ej. https://cdn.example.com). Vacío = origen / Vercel edge.
+  assetPrefix: process.env.NEXT_PUBLIC_ASSET_PREFIX || undefined,
   // CDN / edge cache de assets estáticos (Vercel CDN + browsers).
+  // Verificado: /_next/static hashed + Cache-Control immutable; /images y /fonts con SWR.
   async headers() {
     return [
       {

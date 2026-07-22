@@ -12,7 +12,7 @@ import {
   generarLiquidacion,
   marcarLiquidacionPagada,
   revertirLiquidacionPagada,
-} from '@/lib/cobranza/liquidacion-service';
+} from '@/lib/contexts/liquidacion';
 import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
 import { z } from 'zod';
 
@@ -24,6 +24,16 @@ function wrapServiceError(err: unknown): never {
 const GenerarLiquidacionSchema = z.object({
   idmandante: z.number().int().positive(),
   periodo: z.string().regex(/^\d{4}-\d{2}$/, 'Periodo debe ser YYYY-MM'),
+  idempotencyKey: z.preprocess(
+    (v) => (v === null || v === '' ? undefined : v),
+    z
+      .string()
+      .trim()
+      .min(8)
+      .max(64)
+      .regex(/^[a-zA-Z0-9_-]+$/, 'idempotencyKey inválida')
+      .optional(),
+  ),
 });
 
 const IdLiquidacionSchema = z.object({
@@ -36,6 +46,7 @@ builder.mutationField('generarLiquidacion', (t) =>
     args: {
       idmandante: t.arg.int({ required: true }),
       periodo: t.arg.string({ required: true }),
+      idempotencyKey: t.arg.string({ required: false }),
     },
     resolve: async (_parent, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.LIQUIDACION_WRITE);
@@ -49,6 +60,7 @@ builder.mutationField('generarLiquidacion', (t) =>
           idmandante: parsed.idmandante,
           periodo: parsed.periodo,
           idusuario,
+          idempotencyKey: parsed.idempotencyKey,
         });
       } catch (err) {
         throw wrapServiceError(err);

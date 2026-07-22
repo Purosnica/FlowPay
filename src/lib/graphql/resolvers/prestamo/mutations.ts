@@ -15,13 +15,44 @@ import {
   transicionarEstadoPrestamo,
 } from "@/lib/cobranza/estado-prestamo-service";
 import { parseReferenciasPrestamo } from "@/lib/cobranza/parse-referencias-prestamo";
+import { IdPositiveSchema } from "@/lib/validators/graphql-args";
 import { z } from "zod";
 
+const MotivoOpcionalSchema = z
+  .string()
+  .trim()
+  .max(500, "El motivo no puede exceder 500 caracteres")
+  .nullish()
+  .transform((v) => v ?? undefined);
 
 const TransicionEstadoInputSchema = z.object({
-  idprestamo: z.number().int().positive(),
-  estadoNuevo: z.string().min(1),
-  motivo: z.string().optional(),
+  idprestamo: IdPositiveSchema,
+  estadoNuevo: z.string().min(1, "El estado nuevo es obligatorio"),
+  motivo: MotivoOpcionalSchema,
+});
+
+const AsignarGestorPrestamoSchema = z.object({
+  idprestamo: IdPositiveSchema,
+  idgestor: IdPositiveSchema,
+  motivo: MotivoOpcionalSchema,
+});
+
+const AsignarGestorMasivoSchema = z.object({
+  idprestamos: z
+    .array(IdPositiveSchema)
+    .min(1, "Debe indicar al menos un préstamo"),
+  idgestor: IdPositiveSchema,
+  motivo: MotivoOpcionalSchema,
+});
+
+const AsignarGestorPorReferenciasSchema = z.object({
+  idmandante: IdPositiveSchema,
+  referenciasTexto: z
+    .string()
+    .trim()
+    .min(1, "Pegue al menos un No. préstamo o código único."),
+  idgestor: IdPositiveSchema,
+  motivo: MotivoOpcionalSchema,
 });
 
 builder.mutationField("createPrestamo", (t) =>
@@ -53,22 +84,24 @@ builder.mutationField("asignarGestorPrestamo", (t) =>
       if (!ctx.usuario) {
         throw new GraphQLValidationError('Debes estar autenticado.');
       }
+      const { idprestamo, idgestor, motivo } =
+        AsignarGestorPrestamoSchema.parse(args);
       const prestamo = await ctx.prisma.tbl_prestamo.findUnique({
-        where: { idprestamo: args.idprestamo },
+        where: { idprestamo },
       });
       if (!prestamo || prestamo.deletedAt) {
         throw new GraphQLValidationError("Préstamo no encontrado.");
       }
       await requerirAccesoMandante(ctx.usuario.idusuario, prestamo.idmandante);
       await asignarGestorConHistorial(
-        args.idprestamo,
-        args.idgestor,
+        idprestamo,
+        idgestor,
         ctx.usuario.idusuario,
-        args.motivo,
+        motivo,
       );
       return ctx.prisma.tbl_prestamo.findUnique({
         ...(query as Record<string, unknown>),
-        where: { idprestamo: args.idprestamo },
+        where: { idprestamo },
       }) as never;
     },
   }),
@@ -87,11 +120,12 @@ builder.mutationField('asignarGestorMasivo', (t) =>
       if (!ctx.usuario) {
         throw new GraphQLValidationError('Debes estar autenticado.');
       }
+      const parsed = AsignarGestorMasivoSchema.parse(args);
       const idusuario = ctx.usuario.idusuario;
       const idprestamosValidos: number[] = [];
 
-      for (let i = 0; i < args.idprestamos.length; i += 100) {
-        const batch = args.idprestamos.slice(i, i + 100);
+      for (let i = 0; i < parsed.idprestamos.length; i += 100) {
+        const batch = parsed.idprestamos.slice(i, i + 100);
         const prestamos = await ctx.prisma.tbl_prestamo.findMany({
           where: {
             idprestamo: { in: batch },
@@ -108,8 +142,8 @@ builder.mutationField('asignarGestorMasivo', (t) =>
       return asignarPrestamosAGestorEnLotes(
         idusuario,
         idprestamosValidos,
-        args.idgestor,
-        args.motivo,
+        parsed.idgestor,
+        parsed.motivo,
       );
     },
   }),
@@ -145,7 +179,8 @@ builder.mutationField('asignarGestorPorReferencias', (t) =>
       if (!ctx.usuario) {
         throw new GraphQLValidationError('Debes estar autenticado.');
       }
-      const referencias = parseReferenciasPrestamo(args.referenciasTexto);
+      const parsed = AsignarGestorPorReferenciasSchema.parse(args);
+      const referencias = parseReferenciasPrestamo(parsed.referenciasTexto);
       if (referencias.length === 0) {
         throw new GraphQLValidationError(
           'Pegue al menos un No. préstamo o código único.',
@@ -154,10 +189,10 @@ builder.mutationField('asignarGestorPorReferencias', (t) =>
       try {
         return await asignarGestorPorReferencias(
           ctx.usuario.idusuario,
-          args.idmandante,
+          parsed.idmandante,
           referencias,
-          args.idgestor,
-          args.motivo,
+          parsed.idgestor,
+          parsed.motivo,
         );
       } catch (err) {
         const message =

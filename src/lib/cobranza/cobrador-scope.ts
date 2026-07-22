@@ -27,6 +27,30 @@ export async function wherePrestamoPorRol(
   return {};
 }
 
+/**
+ * Aplica filtros de cartera respetando el scope del cobrador.
+ * Evita IDOR: sinAsignar / idgestorAsignado no pueden pisar la asignación.
+ */
+export async function aplicarFiltrosPrestamoConScopeCobrador(
+  idusuario: number | null | undefined,
+  where: Prisma.tbl_prestamoWhereInput,
+  filters: {
+    idgestorAsignado?: number;
+    sinAsignar?: boolean;
+  },
+): Promise<void> {
+  if (idusuario && (await esUsuarioCobrador(idusuario))) {
+    where.idgestorAsignado = idusuario;
+    return;
+  }
+
+  if (filters.sinAsignar) {
+    where.idgestorAsignado = null;
+  } else if (filters.idgestorAsignado) {
+    where.idgestorAsignado = filters.idgestorAsignado;
+  }
+}
+
 export async function whereGestionPorRol(
   idusuario: number,
 ): Promise<Prisma.tbl_gestionWhereInput> {

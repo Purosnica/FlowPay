@@ -10,8 +10,100 @@ import {
   claveCacheKpisCore,
   conCacheKpi,
 } from '@/lib/cache/kpi-cache';
+import {
+  obtenerResumenDiarioMaterializado,
+  type ResumenDiarioCobranza,
+} from './resumen-diario-service';
 
 export type { KpiCobranzaCore };
+
+/** I106: cartera/recuperación desde resumen materializado. */
+export function mapearKpisDesdeResumenMaterializado(
+  resumen: ResumenDiarioCobranza,
+  live: Pick<
+    KpiCobranzaCore,
+    | 'gestionesMes'
+    | 'tasaContactoPct'
+    | 'promesasAbiertas'
+    | 'acuerdosVigentes'
+  >,
+): KpiCobranzaCore {
+  const carteraTotal = roundMoney(resumen.saldoCartera);
+  const carteraEnMora = roundMoney(resumen.saldoMora);
+  const carteraEnMoraPct =
+    carteraTotal > 0 ? roundMoney((carteraEnMora / carteraTotal) * 100) : 0;
+  return {
+    carteraTotal,
+    carteraEnMora,
+    carteraEnMoraPct,
+    recuperacionMes: roundMoney(resumen.recuperacionMesActual),
+    gestionesMes: live.gestionesMes,
+    tasaContactoPct: live.tasaContactoPct,
+    promesasAbiertas: live.promesasAbiertas,
+    acuerdosVigentes: live.acuerdosVigentes,
+  };
+}
+
+async function obtenerKpisLiveOperativos(
+  mandanteFilter: number | { in: number[] } | undefined,
+): Promise<
+  Pick<
+    KpiCobranzaCore,
+    | 'gestionesMes'
+    | 'tasaContactoPct'
+    | 'promesasAbiertas'
+    | 'acuerdosVigentes'
+  >
+> {
+  const rangoMes = filtroFechaEnPeriodo(rangoPeriodoActual());
+
+  const [gestionesMes, promesasAbiertas, acuerdosVigentes, gestionesConContacto] =
+    await Promise.all([
+      prisma.tbl_gestion.count({
+        where: {
+          deletedAt: null,
+          idmandante: mandanteFilter,
+          fechaGestion: rangoMes,
+        },
+      }),
+      prisma.tbl_gestion.count({
+        where: {
+          deletedAt: null,
+          idmandante: mandanteFilter,
+          fechaPromesa: { gte: new Date() },
+        },
+      }),
+      prisma.tbl_acuerdo.count({
+        where: {
+          deletedAt: null,
+          idmandante: mandanteFilter,
+          estado: 'VIGENTE',
+        },
+      }),
+      prisma.tbl_gestion.count({
+        where: {
+          deletedAt: null,
+          idmandante: mandanteFilter,
+          fechaGestion: rangoMes,
+          codresult: {
+            tipoGestion: { in: ['EFECTIVA', 'EFECTIVA CON TERCERO'] },
+          },
+        },
+      }),
+    ]);
+
+  const tasaContactoPct =
+    gestionesMes > 0
+      ? roundMoney((gestionesConContacto / gestionesMes) * 100)
+      : 0;
+
+  return {
+    gestionesMes,
+    tasaContactoPct,
+    promesasAbiertas,
+    acuerdosVigentes,
+  };
+}
 
 export async function obtenerKpisCobranzaCore(
   idusuario: number,
@@ -25,6 +117,16 @@ export async function obtenerKpisCobranzaCore(
   const cacheKey = claveCacheKpisCore(idusuario, mandanteFilter);
 
   return conCacheKpi(cacheKey, async () => {
+    // I106: un mandante con resumen del día → cartera/recuperación materializada.
+    if (typeof idmandante === 'number') {
+      const materializado =
+        await obtenerResumenDiarioMaterializado(idmandante);
+      if (materializado) {
+        const live = await obtenerKpisLiveOperativos(idmandante);
+        return mapearKpisDesdeResumenMaterializado(materializado, live);
+      }
+    }
+
     const rangoMes = filtroFechaEnPeriodo(rangoPeriodoActual());
 
     const [

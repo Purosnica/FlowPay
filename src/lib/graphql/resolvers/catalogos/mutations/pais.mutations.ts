@@ -9,6 +9,7 @@ import {
   UpdatePaisInputSchema,
   Pais,
 } from "../types/pais.types";
+import { IdArgsSchema } from "@/lib/validators/graphql-args";
 
 export const createPaisMutation = builder.mutationField("createPais", (t) =>
   t.prismaField({
@@ -53,9 +54,10 @@ export const deletePaisMutation = builder.mutationField("deletePais", (t) =>
     },
     resolve: async (query, _parent, args, ctx: GraphQLContext) => {
       await authCatalogoEscritura(ctx);
+      const { id } = IdArgsSchema.parse(args);
       return ctx.prisma.tbl_pais.delete({
         ...spreadPrismaQuery(query),
-        where: { idpais: args.id },
+        where: { idpais: id },
       }) as never;
     },
   })

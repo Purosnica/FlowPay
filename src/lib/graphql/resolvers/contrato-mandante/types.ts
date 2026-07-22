@@ -90,6 +90,7 @@ export const PrestamoCorte = definePrismaObject('tbl_prestamo_corte', {
 export const Agencia = definePrismaObject('tbl_agencia', {
   fields: (t) => ({
     idagencia: t.exposeInt('idagencia'),
+    idmandante: t.exposeInt('idmandante'),
     codigo: t.exposeString('codigo'),
     nombre: t.exposeString('nombre'),
     estado: t.exposeBoolean('estado'),

@@ -20,13 +20,13 @@ export default function AsignacionCarteraPage() {
     <div className="space-y-6">
       <PageHeader
         title="Asignación de cartera"
-        description="Asigne préstamos a cobradores de forma manual o automática"
+        description="Asigne préstamos de forma manual o con distribución asistida; la asignación sin intervención corre post-import si está habilitada en config."
       />
 
       <Tabs defaultValue="manual">
         <TabsList>
           <TabsTrigger value="manual">Manual</TabsTrigger>
-          <TabsTrigger value="automatica">Automática</TabsTrigger>
+          <TabsTrigger value="automatica">Distribución asistida</TabsTrigger>
         </TabsList>
 
         <TabsContent value="manual" className="mt-4">

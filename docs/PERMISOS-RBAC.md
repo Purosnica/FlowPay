@@ -2,7 +2,7 @@
 
 > **Fuente única de verdad:** `src/lib/permissions/permiso-codes.ts`  
 > **Jerarquía organizacional (roles):** `src/lib/permissions/role-codes.ts`  
-> **Última auditoría:** 2026-07-07
+> **Última auditoría:** 2026-07-22 (H07/H28: `PAGO_APPLY`, sync docs)
 
 ---
 
@@ -56,6 +56,7 @@ El sistema tiene permisos RBAC en 3 categorías (ver `PERMISOS_CATALOGO` en `per
 | 4 | Rutas sin regla en middleware: `/cobranza/asignacion`, `/historial-cargas`, `/campanas/wizard` | Bypass de RBAC en UI | Reglas agregadas en `route-permissions.ts` |
 | 5 | Catálogo duplicado en seed y constantes | Mantenimiento frágil | `PERMISOS_CATALOGO` como fuente única |
 | 6 | Bloque redundante en seed re-asignando permisos a ADMIN | Código muerto | Eliminado |
+| 7 | Docs sin `PAGO_APPLY`; `PAGO_WRITE` documentaba aplicar | Drift H07/H28 | Catálogo + PERMISOS-RBAC sync 2026-07-22 |
 
 ### Patrones correctos (no son bugs)
 
@@ -68,7 +69,7 @@ El sistema tiene permisos RBAC en 3 categorías (ver `PERMISOS_CATALOGO` en `per
 
 ### Permisos redundantes
 
-**No se eliminó ningún permiso.** Los 18 cubren módulos distintos. Lo que parecía redundante era **uso incorrecto** (`LIQUIDACION_WRITE` como proxy de gerente), no permisos duplicados.
+**No se eliminó ningún permiso.** El catálogo core incluye `PAGO_APPLY` (SoD H07) además de los módulos históricos. Los finos `REPORTE_*_READ` por pantalla son opcionales: los presets usan grupos.
 
 ---
 
@@ -77,7 +78,7 @@ El sistema tiene permisos RBAC en 3 categorías (ver `PERMISOS_CATALOGO` en `per
 | Rol | Permisos |
 |-----|----------|
 | **COBRADOR** | Cartera lectura, mandante lectura, gestión, acuerdos, pagos, `REPORTE_COBRANZA_READ`, `REPORTE_OPERACION_READ` |
-| **SUPERVISOR** | Cobrador + cartera escritura, inteligencia, equipo, liquidación lectura, `REPORTE_RIESGO_READ`, `REPORTE_EQUIPO_READ` |
+| **SUPERVISOR** | Cobrador + cartera escritura, `PAGO_APPLY`, inteligencia, equipo, liquidación lectura, `REPORTE_RIESGO_READ`, `REPORTE_EQUIPO_READ` |
 | **GERENTE** | Supervisor + liquidación escritura, usuarios lectura, `REPORTE_FINANZAS_READ`, `REPORTE_GERENCIAL_READ` |
 | **ADMIN** | Todos los permisos (incl. comodín `REPORTE_READ`) |
 
@@ -240,9 +241,18 @@ Definidos en `PERMISOS_COBRADOR`, `PERMISOS_SUPERVISOR`, `PERMISOS_GERENTE`, `PE
 
 | Aspecto | Detalle |
 |---------|---------|
-| **Permite** | Registrar y aplicar pagos |
-| **No permite** | Liquidar a mandantes |
-| **GraphQL** | `createPago`, `aplicarPago` |
+| **Permite** | Registrar pagos (`createPago`) |
+| **No permite** | Aplicar / desaplicar / conciliar (eso es `PAGO_APPLY`) |
+| **GraphQL** | `createPago` |
+
+#### `PAGO_APPLY`
+
+| Aspecto | Detalle |
+|---------|---------|
+| **Permite** | Aplicar, desaplicar y conciliación automática de extracto |
+| **No permite** | Sustituir `PAGO_WRITE` (alta de pago) |
+| **Roles** | SUPERVISOR+ (SoD H07; cobrador registra, no aplica) |
+| **GraphQL** | `aplicarPago`, desaplicar, extracto `aplicarAutomatico` |
 
 ---
 

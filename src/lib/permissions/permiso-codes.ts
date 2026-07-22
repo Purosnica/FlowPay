@@ -17,6 +17,8 @@ export const PERMISO = {
   ACUERDO_WRITE: 'ACUERDO_WRITE',
   PAGO_READ: 'PAGO_READ',
   PAGO_WRITE: 'PAGO_WRITE',
+  /** Conciliar / aplicar / desaplicar pagos (SoD H07). */
+  PAGO_APPLY: 'PAGO_APPLY',
   LIQUIDACION_READ: 'LIQUIDACION_READ',
   LIQUIDACION_WRITE: 'LIQUIDACION_WRITE',
   /** Comodín legacy: acceso a todos los reportes. */
@@ -159,6 +161,14 @@ export const PERMISOS_CATALOGO: PermisoDefinicion[] = [
     codigo: PERMISO.PAGO_WRITE,
     nombre: 'Registrar Pagos',
     descripcion: 'Registrar pagos de deudores',
+    categoria: 'COBRANZA',
+    tipo: 'operativo',
+  },
+  {
+    codigo: PERMISO.PAGO_APPLY,
+    nombre: 'Aplicar / Conciliar Pagos',
+    descripcion:
+      'Marcar pagos como aplicados o desaplicarlos (segregación de funciones)',
     categoria: 'COBRANZA',
     tipo: 'operativo',
   },
@@ -435,6 +445,7 @@ export const PERMISOS_SUPERVISOR: PermisoCodigo[] = [
   PERMISO.INTELIGENCIA_READ,
   PERMISO.EQUIPO_READ,
   PERMISO.LIQUIDACION_READ,
+  PERMISO.PAGO_APPLY,
   PERMISO.REPORTE_RIESGO_READ,
   PERMISO.REPORTE_EQUIPO_READ,
 ];

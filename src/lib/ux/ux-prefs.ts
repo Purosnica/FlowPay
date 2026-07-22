@@ -1,5 +1,6 @@
 /**
  * Preferencias UX locales del cobrador (I180, I183, I187).
+ * gamificacionQuiet default true (I187: sin vanity en flujo operativo).
  */
 
 export const UX_PREF_KEYS = {

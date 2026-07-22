@@ -1,5 +1,4 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
@@ -15,8 +14,9 @@ import {
 } from '@/lib/scalability/scalability-config';
 import { isShuttingDown } from '@/lib/scalability/graceful-shutdown';
 import { encolarWebhookMandante } from '@/lib/cobranza/webhook-mandante-service';
+import { resolverStorageRoot } from '@/lib/cobranza/storage-root';
 
-const STORAGE_DIR = path.join(os.tmpdir(), 'flowpay-imports');
+const STORAGE_DIR = path.join(resolverStorageRoot(), 'imports');
 const FINALIZAR_JOB_REINTENTOS = 3;
 const FINALIZAR_JOB_ESPERA_MS = 2_000;
 const RECONCILIAR_GRACIA_MS = 5 * 60_000;
@@ -505,6 +505,29 @@ async function marcarJobCompletado(
           filasTotales,
         },
       });
+
+      if (tipo === 'CARTERA') {
+        try {
+          const { intentarAsignacionAutoPostImport } = await import(
+            '@/lib/cobranza/asignacion-auto-post-import-service'
+          );
+          await intentarAsignacionAutoPostImport({
+            idmandante,
+            idusuario,
+            idjob,
+          });
+        } catch (err) {
+          const msg =
+            err instanceof Error ? err.message : 'Error asignación auto';
+          await registrarAuditoria(prisma, {
+            idusuario,
+            entidad: 'tbl_importacion_job',
+            entidadId: idjob,
+            accion: 'ASIGNACION_AUTO_ERROR',
+            detalle: msg.slice(0, 2000),
+          });
+        }
+      }
       return;
     } catch {
       if (intento < FINALIZAR_JOB_REINTENTOS - 1) {

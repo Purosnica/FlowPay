@@ -3,9 +3,10 @@ import { prisma } from '@/lib/prisma';
 import { decimalToNumber, roundMoney } from './decimal-utils';
 import {
   CLAVE_ACUERDO_DIAS_GRACIA,
-  obtenerConfigNumerica,
+  obtenerConfigNumericaMandante,
 } from './configuracion-cobranza-service';
 import { registrarAuditoria } from './auditoria-service';
+import { condonarResidualTrasAcuerdoCumplido } from './acuerdo-condonacion-service';
 import {
   sincronizarEstadoPorSaldo,
   transicionarEstadoPrestamo,
@@ -109,7 +110,10 @@ export async function evaluarCuotasAcuerdo(
     return (acuerdo?.estado as 'VIGENTE' | 'CUMPLIDO' | 'ROTO') ?? 'VIGENTE';
   }
 
-  const diasGracia = await obtenerConfigNumerica(CLAVE_ACUERDO_DIAS_GRACIA);
+  const diasGracia = await obtenerConfigNumericaMandante(
+    CLAVE_ACUERDO_DIAS_GRACIA,
+    acuerdo.idmandante,
+  );
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
 
@@ -144,6 +148,11 @@ export async function evaluarCuotasAcuerdo(
     await tx.tbl_prestamo.update({
       where: { idprestamo: acuerdo.idprestamo },
       data: { reportableCentralRiesgo: true },
+    });
+    await condonarResidualTrasAcuerdoCumplido(tx, {
+      idprestamo: acuerdo.idprestamo,
+      idacuerdo,
+      idusuario,
     });
     await sincronizarEstadoPorSaldo(tx, acuerdo.idprestamo, idusuario);
 

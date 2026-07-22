@@ -14,6 +14,8 @@ import { requerirAccesoCliente } from '@/lib/cobranza/mandante-scope';
 import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
 import { createPageType } from '../../helpers/create-page-type';
 import { resolvePaginatedPrismaQuery } from '../../helpers/paginated-prisma-resolver';
+import { IdPositiveSchema } from '@/lib/validators/graphql-args';
+import { z } from 'zod';
 
 const DeudorContactoPage = createPageType(
   'DeudorContactoPage',
@@ -108,15 +110,18 @@ builder.mutationField('deleteDeudorContacto', (t) =>
     args: { idcontacto: t.arg.int({ required: true }) },
     resolve: async (_parent, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.CARTERA_WRITE);
+      const { idcontacto } = z
+        .object({ idcontacto: IdPositiveSchema })
+        .parse(args);
       const existente = await ctx.prisma.tbl_deudor_contacto.findUnique({
-        where: { idcontacto: args.idcontacto },
+        where: { idcontacto },
       });
       if (!existente || existente.deletedAt) {
         throw new GraphQLValidationError('Contacto no encontrado.');
       }
       await requerirAccesoCliente(ctx.usuario?.idusuario, existente.idcliente);
       await ctx.prisma.tbl_deudor_contacto.update({
-        where: { idcontacto: args.idcontacto },
+        where: { idcontacto },
         data: { deletedAt: new Date() },
       });
       return true;

@@ -79,8 +79,9 @@ Así las cuotas de acuerdo se evalúan **antes** de recalcular mora y castigar.
 
 ## 5. Gracia y feriados
 
-- Días de gracia: config operativa (`CLAVE_MORA_DIAS_GRACIA` / servicio de configuración).  
-- Feriados Nicaragua: seed `seed-feriados-nicaragua` — usados por el motor de **horarios de contacto**; el cálculo de mora es por diferencia de fechas calendario (no “días hábiles” en la fórmula pura).  
+- Días de gracia: config operativa (`CLAVE_MORA_DIAS_GRACIA`), con override por mandante (`*.mandante.{id}`).
+- Feriados Nicaragua: seed `seed-feriados-nicaragua` — aplican solo a **horarios de contacto**.
+- El cálculo de mora usa diferencia de **fechas calendario**; **no** resta feriados ni convierte a días hábiles.
 
 ---
 

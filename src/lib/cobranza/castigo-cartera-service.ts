@@ -1,6 +1,9 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { obtenerConfigNumerica, CLAVE_DIAS_MORA_CASTIGO } from './configuracion-cobranza-service';
+import {
+  obtenerConfigNumericaMandante,
+  CLAVE_DIAS_MORA_CASTIGO,
+} from './configuracion-cobranza-service';
 import { transicionarEstadoPrestamo } from './estado-prestamo-service';
 
 type Tx = Prisma.TransactionClient | typeof prisma;
@@ -17,14 +20,14 @@ export async function evaluarCastigoPrestamo(
   idprestamo: number,
   idusuario?: number | null,
 ): Promise<boolean> {
-  const umbral = await obtenerConfigNumerica(CLAVE_DIAS_MORA_CASTIGO);
-  if (umbral <= 0) {
-    return false;
-  }
-
   const prestamo = await db.tbl_prestamo.findUnique({
     where: { idprestamo },
-    select: { estado: true, diasMora: true, saldoTotal: true },
+    select: {
+      estado: true,
+      diasMora: true,
+      saldoTotal: true,
+      idmandante: true,
+    },
   });
   if (!prestamo || Number(prestamo.saldoTotal) <= 0) {
     return false;
@@ -32,7 +35,12 @@ export async function evaluarCastigoPrestamo(
   if (ESTADOS_EXCLUIDOS_CASTIGO.includes(prestamo.estado)) {
     return false;
   }
-  if (prestamo.diasMora < umbral) {
+
+  const umbral = await obtenerConfigNumericaMandante(
+    CLAVE_DIAS_MORA_CASTIGO,
+    prestamo.idmandante,
+  );
+  if (umbral <= 0 || prestamo.diasMora < umbral) {
     return false;
   }
 
@@ -49,30 +57,40 @@ export async function evaluarCastigoPrestamo(
 export async function procesarCastigoCartera(
   idmandante?: number,
 ): Promise<{ evaluados: number; castigados: number }> {
-  const umbral = await obtenerConfigNumerica(CLAVE_DIAS_MORA_CASTIGO);
-  if (umbral <= 0) {
-    return { evaluados: 0, castigados: 0 };
-  }
-
   const candidatos = await prisma.tbl_prestamo.findMany({
     where: {
       deletedAt: null,
       idmandante: idmandante ?? undefined,
-      diasMora: { gte: umbral },
       estado: { notIn: ESTADOS_EXCLUIDOS_CASTIGO },
       saldoTotal: { gt: 0 },
     },
-    select: { idprestamo: true },
+    select: { idprestamo: true, idmandante: true, diasMora: true },
     take: 500,
+    orderBy: { diasMora: 'desc' },
   });
 
+  const umbralPorMandante = new Map<number, number>();
+  let evaluados = 0;
   let castigados = 0;
+
   for (const c of candidatos) {
+    let umbral = umbralPorMandante.get(c.idmandante);
+    if (umbral === undefined) {
+      umbral = await obtenerConfigNumericaMandante(
+        CLAVE_DIAS_MORA_CASTIGO,
+        c.idmandante,
+      );
+      umbralPorMandante.set(c.idmandante, umbral);
+    }
+    if (umbral <= 0 || c.diasMora < umbral) {
+      continue;
+    }
+    evaluados++;
     const ok = await evaluarCastigoPrestamo(prisma, c.idprestamo);
     if (ok) {
       castigados++;
     }
   }
 
-  return { evaluados: candidatos.length, castigados };
+  return { evaluados, castigados };
 }

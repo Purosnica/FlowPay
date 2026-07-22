@@ -12,6 +12,8 @@ import { PERMISO } from '@/lib/permissions/permiso-codes';
 import { requerirAccesoMandante } from '@/lib/cobranza/mandante-scope';
 import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
 import { registrarAuditoria } from '@/lib/cobranza/auditoria-service';
+import { IdPositiveSchema } from '@/lib/validators/graphql-args';
+import { z } from 'zod';
 
 builder.mutationField('createComisionCobro', (t) =>
   t.prismaField({
@@ -136,8 +138,11 @@ builder.mutationField('deleteComisionCobro', (t) =>
     args: { idcomision: t.arg.int({ required: true }) },
     resolve: async (_parent, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.MANDANTE_WRITE);
+      const { idcomision } = z
+        .object({ idcomision: IdPositiveSchema })
+        .parse(args);
       const existente = await ctx.prisma.tbl_comision_cobro.findUnique({
-        where: { idcomision: args.idcomision },
+        where: { idcomision },
       });
       if (!existente || existente.deletedAt) {
         throw new GraphQLValidationError('Tramo de comisión no encontrado.');
@@ -147,7 +152,7 @@ builder.mutationField('deleteComisionCobro', (t) =>
         existente.idmandante,
       );
       await ctx.prisma.tbl_comision_cobro.update({
-        where: { idcomision: args.idcomision },
+        where: { idcomision },
         data: { deletedAt: new Date(), estado: false },
       });
       return true;

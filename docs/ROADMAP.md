@@ -2,7 +2,7 @@
 
 Evolución planificada post-preparación Enterprise (Fases 1–13).
 
-**Estado actual:** v1.2.5 — MFA TOTP + health/idle/ops.
+**Estado actual:** v1.2.8 — workers + cola MySQL + event bus + feature flags (ARCH sin costos).
 
 ---
 
@@ -29,8 +29,8 @@ Evolución planificada post-preparación Enterprise (Fases 1–13).
 | ID | Iniciativa | Valor |
 |----|------------|-------|
 | PP-1 | `prisma migrate` formal (baseline `20260711120000_baseline`) | Hecho — usar `migrate deploy` / `db:migrate:resolve-baseline` |
-| PP-2 | Object storage para uploads/import (S3/Azure) | Escalabilidad horizontal |
-| PP-3 | Observabilidad (logs estructurados, métricas APM) | Parcial — Sentry + `/api/health` + `/api/ready` |
+| PP-2 | Object storage para uploads/import (S3/Azure) | **Diferido I003** — genera costo; uploads siguen en disco local |
+| PP-3 | Observabilidad (logs estructurados, métricas APM) | Parcial — Sentry + circuit breaker (I011) + `/api/health` + `/api/ready` |
 | PP-4 | Backup y DR documentado | Hecho — `docs/BACKUP-DR.md` (falta drill real trimestral) |
 | PP-5 | Pentest externo | Seguridad |
 | PP-6 | MFA TOTP (ADMIN/GERENTE) | Hecho — activar en Mi perfil |
@@ -43,7 +43,7 @@ Evolución planificada post-preparación Enterprise (Fases 1–13).
 |----|------------|-------|
 | PR-1 | Portal mandante read-only (reportes + liquidaciones) | Experiencia mandante |
 | PR-2 | Notificaciones push / email operativas | Tiempo de respuesta — **email digest matutino vía cron `digest_email_supervisores` (SMTP)** |
-| PR-3 | App móvil cobrador (PWA o nativa) | Campo |
+| PR-3 | App móvil cobrador (PWA o nativa) | Parcial: PWA shell + cola gestiones offline (I036); sync pagos/acuerdos pendiente |
 | PR-4 | Integración pasarela de pagos | Conciliación automática |
 | PR-5 | Motor de campañas omnicanal (SMS/WhatsApp) | Recuperación |
 
@@ -53,11 +53,11 @@ Evolución planificada post-preparación Enterprise (Fases 1–13).
 
 | ID | Iniciativa | Valor |
 |----|------------|-------|
-| SC-1 | Read replicas MySQL para reportes | Performance lectura |
-| SC-2 | Cola de mensajes (Redis/SQS) para imports masivos | Throughput |
-| SC-3 | Multi-tenant con aislamiento por schema | Nuevos clientes |
+| SC-1 | Read replicas MySQL para reportes | **Diferido I004** — genera costo |
+| SC-2 | Cola de mensajes (Redis/SQS) para imports masivos | **Hecho v1 vía MySQL** (I002 backpressure + workers); Redis/SQS opcional futuro |
+| SC-3 | Multi-tenant con aislamiento por schema | **Parcial I008** — ADR row-level; schema = futuro |
 | SC-4 | ML scoring de prioridad en bandeja | Efectividad cobro |
-| SC-5 | API pública documentada para integradores | Ecosistema |
+| SC-5 | API pública documentada para integradores | Hecho v1: OpenAPI + `/api/v1` (I006); ampliar recursos en releases siguientes |
 
 ---
 
@@ -65,7 +65,8 @@ Evolución planificada post-preparación Enterprise (Fases 1–13).
 
 | Item | Riesgo | Mitigación planificada |
 |------|--------|------------------------|
-| Uploads en disco local | Multi-instancia | Aceptado por ahora (funcional) |
+| Uploads en disco local | Multi-instancia | **I003 diferido** (S3/Azure de pago) |
+| Cron acoplado a Next en Vercel | Deploy detiene jobs | Mitigado: `worker:cron` / `worker:queue` (I001); HTTP cron = fallback |
 | Rate limit in-memory en dev | Solo dev/test | OK por diseño |
 | Smoke test lento en BD remota | CI | Mock o BD efímera |
 | Admin con permisos extra en BD | Drift | `scripts/check-role-drift.ts` (incluye ADMIN/GERENTE) |

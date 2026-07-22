@@ -14,6 +14,19 @@ import {
 } from './acuerdo-cuota-service';
 import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
 import { incrementarVersionPrestamo } from './optimistic-lock';
+import { condonarResidualTrasAcuerdoCumplido } from './acuerdo-condonacion-service';
+import {
+  aplicarWaterfallReverso,
+  calcularWaterfallAplicacion,
+  componentesDesdePrestamo,
+  parseSnapshotAplicacion,
+  serializarSnapshotAplicacion,
+} from '@/lib/logic/pago-waterfall-logic';
+import {
+  aplicarPagoAPlanCuotas,
+  revertirPagoDePlanCuotas,
+} from './prestamo-cuota-pago-service';
+import { acuerdoCumplidoPorPagos } from '@/lib/logic/acuerdo-meta-pagable-logic';
 
 type Tx = Prisma.TransactionClient;
 
@@ -43,6 +56,14 @@ export async function aplicarPagoAlPrestamo(
       diasMora: true,
       deletedAt: true,
       version: true,
+      gestionCobranza: true,
+      cargosAdmin: true,
+      comisionCav: true,
+      comisionInsitu: true,
+      seguroSvsd: true,
+      mantenimientoValor: true,
+      interes: true,
+      montoPrestamo: true,
     },
   });
 
@@ -59,12 +80,35 @@ export async function aplicarPagoAlPrestamo(
 
   await incrementarVersionPrestamo(tx, params.idprestamo, prestamo.version);
 
-  // Decremento atómico: evita lost updates en pagos concurrentes.
+  const componentes = componentesDesdePrestamo({
+    gestionCobranza: decimalToNumber(prestamo.gestionCobranza),
+    cargosAdmin: decimalToNumber(prestamo.cargosAdmin),
+    comisionCav: decimalToNumber(prestamo.comisionCav),
+    comisionInsitu: decimalToNumber(prestamo.comisionInsitu),
+    seguroSvsd: decimalToNumber(prestamo.seguroSvsd),
+    mantenimientoValor: decimalToNumber(prestamo.mantenimientoValor),
+    interes: decimalToNumber(prestamo.interes),
+    montoPrestamo: decimalToNumber(prestamo.montoPrestamo),
+  });
+  const { asignacion, componentesNuevos } = calcularWaterfallAplicacion(
+    componentes,
+    monto,
+  );
+
+  // Decremento atómico de saldo + componentes (waterfall H04).
   const afectados = await tx.$executeRaw`
     UPDATE tbl_prestamo
     SET
       saldoTotal = ROUND(saldoTotal - ${monto}, 2),
-      ultimaFechaPago = ${params.fechaPago}
+      ultimaFechaPago = ${params.fechaPago},
+      gestionCobranza = ${componentesNuevos.gestionCobranza},
+      cargosAdmin = ${componentesNuevos.cargosAdmin},
+      comisionCav = ${componentesNuevos.comisionCav},
+      comisionInsitu = ${componentesNuevos.comisionInsitu},
+      seguroSvsd = ${componentesNuevos.seguroSvsd},
+      mantenimientoValor = ${componentesNuevos.mantenimientoValor},
+      interes = ${componentesNuevos.interes},
+      montoPrestamo = ${componentesNuevos.montoPrestamo}
     WHERE idprestamo = ${params.idprestamo}
       AND deletedAt IS NULL
       AND saldoTotal >= ${monto - TOLERANCIA_SALDO}
@@ -76,10 +120,22 @@ export async function aplicarPagoAlPrestamo(
     );
   }
 
+  const cuotasSnapshot = await aplicarPagoAPlanCuotas(tx, {
+    idprestamo: params.idprestamo,
+    monto,
+  });
+
   if (params.idpago) {
     await tx.tbl_pago.update({
       where: { idpago: params.idpago },
-      data: { diasMoraAplicacion: prestamo.diasMora },
+      data: {
+        diasMoraAplicacion: prestamo.diasMora,
+        aplicacionJson: serializarSnapshotAplicacion({
+          componentes: asignacion,
+          cuotas:
+            cuotasSnapshot.length > 0 ? cuotasSnapshot : undefined,
+        }),
+      },
     });
   }
 
@@ -108,7 +164,6 @@ export async function aplicarPagoAlPrestamo(
     )?.idacuerdo;
 
   if (idacuerdo && params.idpago) {
-    // Vincular pago al acuerdo para acumular abonos y evaluar cumplimiento.
     await tx.tbl_pago.update({
       where: { idpago: params.idpago },
       data: { idacuerdo },
@@ -138,16 +193,66 @@ export async function revertirPagoDelPrestamo(
 
   const prestamo = await tx.tbl_prestamo.findUnique({
     where: { idprestamo: params.idprestamo },
-    select: { idprestamo: true, deletedAt: true },
+    select: {
+      idprestamo: true,
+      deletedAt: true,
+      gestionCobranza: true,
+      cargosAdmin: true,
+      comisionCav: true,
+      comisionInsitu: true,
+      seguroSvsd: true,
+      mantenimientoValor: true,
+      interes: true,
+      montoPrestamo: true,
+    },
   });
 
   if (!prestamo || prestamo.deletedAt) {
     throw new GraphQLValidationError('Préstamo no encontrado.');
   }
 
+  let componentesNuevos = componentesDesdePrestamo({
+    gestionCobranza: decimalToNumber(prestamo.gestionCobranza),
+    cargosAdmin: decimalToNumber(prestamo.cargosAdmin),
+    comisionCav: decimalToNumber(prestamo.comisionCav),
+    comisionInsitu: decimalToNumber(prestamo.comisionInsitu),
+    seguroSvsd: decimalToNumber(prestamo.seguroSvsd),
+    mantenimientoValor: decimalToNumber(prestamo.mantenimientoValor),
+    interes: decimalToNumber(prestamo.interes),
+    montoPrestamo: decimalToNumber(prestamo.montoPrestamo),
+  });
+
+  let cuotasRevertir: { idcuota: number; monto: number }[] = [];
+
+  if (params.idpago) {
+    const pago = await tx.tbl_pago.findUnique({
+      where: { idpago: params.idpago },
+      select: { aplicacionJson: true },
+    });
+    const snapshot = parseSnapshotAplicacion(pago?.aplicacionJson);
+    if (snapshot?.componentes) {
+      componentesNuevos = aplicarWaterfallReverso(
+        componentesNuevos,
+        snapshot.componentes,
+      );
+    }
+    if (snapshot?.cuotas?.length) {
+      cuotasRevertir = snapshot.cuotas;
+    }
+  }
+
   const afectados = await tx.$executeRaw`
     UPDATE tbl_prestamo
-    SET saldoTotal = ROUND(saldoTotal + ${monto}, 2)
+    SET
+      saldoTotal = ROUND(saldoTotal + ${monto}, 2),
+      gestionCobranza = ${componentesNuevos.gestionCobranza},
+      cargosAdmin = ${componentesNuevos.cargosAdmin},
+      comisionCav = ${componentesNuevos.comisionCav},
+      comisionInsitu = ${componentesNuevos.comisionInsitu},
+      seguroSvsd = ${componentesNuevos.seguroSvsd},
+      mantenimientoValor = ${componentesNuevos.mantenimientoValor},
+      interes = ${componentesNuevos.interes},
+      montoPrestamo = ${componentesNuevos.montoPrestamo}
     WHERE idprestamo = ${params.idprestamo}
       AND deletedAt IS NULL
   `;
@@ -158,11 +263,15 @@ export async function revertirPagoDelPrestamo(
     );
   }
 
+  if (cuotasRevertir.length > 0) {
+    await revertirPagoDePlanCuotas(tx, cuotasRevertir);
+  }
+
   if (params.idpago) {
     await revertirCuotasPorPago(tx, params.idpago, params.idusuario);
     await tx.tbl_pago.update({
       where: { idpago: params.idpago },
-      data: { diasMoraAplicacion: null },
+      data: { diasMoraAplicacion: null, aplicacionJson: null },
     });
   }
 
@@ -195,30 +304,49 @@ export async function evaluarCumplimientoAcuerdo(
   const totalPagado = decimalToNumber(pagosAplicados._sum.monto);
   const montoAcordado = decimalToNumber(acuerdo.montoAcordado);
 
-  if (totalPagado >= montoAcordado) {
-    await tx.tbl_acuerdo.update({
-      where: { idacuerdo },
-      data: { estado: 'CUMPLIDO' },
-    });
+  const prestamoSaldo = await tx.tbl_prestamo.findUnique({
+    where: { idprestamo: acuerdo.idprestamo },
+    select: { saldoTotal: true },
+  });
+  const saldoActual = decimalToNumber(prestamoSaldo?.saldoTotal);
 
-    const otroVigente = await tx.tbl_acuerdo.findFirst({
-      where: {
-        idprestamo: acuerdo.idprestamo,
-        estado: 'VIGENTE',
-        deletedAt: null,
-        idacuerdo: { not: idacuerdo },
-      },
-    });
-
-    if (!otroVigente) {
-      await tx.tbl_prestamo.update({
-        where: { idprestamo: acuerdo.idprestamo },
-        data: { reportableCentralRiesgo: true },
-      });
-    }
-
-    await sincronizarEstadoPorSaldo(tx, acuerdo.idprestamo, idusuario);
+  if (
+    !acuerdoCumplidoPorPagos({
+      montoAcordado,
+      saldoActual,
+      totalPagado,
+      dispensarInteresMoratorio: acuerdo.dispensarInteresMoratorio,
+    })
+  ) {
+    return;
   }
+
+  await tx.tbl_acuerdo.update({
+    where: { idacuerdo },
+    data: { estado: 'CUMPLIDO' },
+  });
+
+  const otroVigente = await tx.tbl_acuerdo.findFirst({
+    where: {
+      idprestamo: acuerdo.idprestamo,
+      estado: 'VIGENTE',
+      deletedAt: null,
+      idacuerdo: { not: idacuerdo },
+    },
+  });
+
+  if (!otroVigente) {
+    await tx.tbl_prestamo.update({
+      where: { idprestamo: acuerdo.idprestamo },
+      data: { reportableCentralRiesgo: true },
+    });
+  }
+
+  await condonarResidualTrasAcuerdoCumplido(tx, {
+    idprestamo: acuerdo.idprestamo,
+    idacuerdo,
+    idusuario,
+  });
 }
 
 /** Marca un pago como aplicado de forma condicional (anti doble-aplicación). */
@@ -227,7 +355,6 @@ export async function marcarPagoComoAplicadoAtomico(
   idpago: number,
   extra?: { idacuerdo?: number | null },
 ): Promise<boolean> {
-  // Unchecked: updateMany no admite FKs en UpdateManyMutationInput.
   const data: Prisma.tbl_pagoUncheckedUpdateManyInput = {
     aplicado: true,
   };

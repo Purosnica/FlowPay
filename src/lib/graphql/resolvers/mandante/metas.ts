@@ -12,6 +12,12 @@ import {
   obtenerMetasCobrador,
 } from '@/lib/cobranza/metas-cobrador-service';
 import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
+import {
+  ActualizarMetasCobradorSchema,
+  ActualizarMetasMandanteSchema,
+  IdPositiveSchema,
+} from '@/lib/validators/graphql-args';
+import { z } from 'zod';
 
 const MetasMandanteType = builder
   .objectRef<Awaited<ReturnType<typeof obtenerMetasMandante>>>('MetasMandante')
@@ -85,10 +91,11 @@ builder.mutationField('actualizarMetasMandante', (t) =>
       if (!idusuario) {
         throw new GraphQLValidationError('Usuario no autenticado.');
       }
-      return actualizarMetasMandante(idusuario, args.idmandante, {
-        metaGestionesSemana: args.metaGestionesSemana ?? undefined,
-        metaRecuperacionSemana: args.metaRecuperacionSemana ?? undefined,
-        metaRecuperacionMes: args.metaRecuperacionMes ?? undefined,
+      const parsed = ActualizarMetasMandanteSchema.parse(args);
+      return actualizarMetasMandante(idusuario, parsed.idmandante, {
+        metaGestionesSemana: parsed.metaGestionesSemana ?? undefined,
+        metaRecuperacionSemana: parsed.metaRecuperacionSemana ?? undefined,
+        metaRecuperacionMes: parsed.metaRecuperacionMes ?? undefined,
       });
     },
   }),
@@ -104,7 +111,10 @@ builder.mutationField('restablecerMetasMandanteGlobal', (t) =>
       if (!idusuario) {
         throw new GraphQLValidationError('Usuario no autenticado.');
       }
-      return restablecerMetasMandanteGlobal(idusuario, args.idmandante);
+      const { idmandante } = z
+        .object({ idmandante: IdPositiveSchema })
+        .parse(args);
+      return restablecerMetasMandanteGlobal(idusuario, idmandante);
     },
   }),
 );
@@ -123,9 +133,10 @@ builder.mutationField('actualizarMetasCobrador', (t) =>
       if (!idusuario) {
         throw new GraphQLValidationError('Usuario no autenticado.');
       }
-      return actualizarMetasCobrador(idusuario, args.idgestor, {
-        metaGestionesSemana: args.metaGestionesSemana ?? undefined,
-        metaRecuperacionSemana: args.metaRecuperacionSemana ?? undefined,
+      const parsed = ActualizarMetasCobradorSchema.parse(args);
+      return actualizarMetasCobrador(idusuario, parsed.idgestor, {
+        metaGestionesSemana: parsed.metaGestionesSemana ?? undefined,
+        metaRecuperacionSemana: parsed.metaRecuperacionSemana ?? undefined,
       });
     },
   }),

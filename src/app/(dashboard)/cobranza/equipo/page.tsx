@@ -7,6 +7,7 @@ import { MetasCobradorModal } from '@/components/cobranza/metas-cobrador-modal';
 import { EquipoRankingChart } from '@/components/cobranza/equipo-ranking-chart';
 import { EquipoSupervisoresChart } from '@/components/cobranza/equipo-supervisores-chart';
 import { Button } from '@/components/ui/button';
+import { PermissionGate } from '@/components/auth/permission-gate';
 import {
   DashboardMetricStrip,
   type DashboardMetric,
@@ -19,6 +20,7 @@ import {
   GET_METAS_GAMIFICACION,
 } from '@/lib/graphql/queries/cobranza.queries';
 import { useEsGerente } from '@/hooks/use-rol';
+import { PERMISO } from '@/lib/permissions/permiso-codes';
 import {
   type DashboardSupervisorResumen,
   type MetasGamificacion,
@@ -415,16 +417,18 @@ export default function EquipoPage() {
                             </span>
                           </td>
                           <td className="px-4 py-2.5 text-right">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setMetasCobradorId(row.idgestor);
-                                setMetasCobradorNombre(row.nombre);
-                              }}
-                            >
-                              Metas
-                            </Button>
+                            <PermissionGate permiso={PERMISO.EQUIPO_READ}>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setMetasCobradorId(row.idgestor);
+                                  setMetasCobradorNombre(row.nombre);
+                                }}
+                              >
+                                Metas
+                              </Button>
+                            </PermissionGate>
                           </td>
                         </tr>
                       ))

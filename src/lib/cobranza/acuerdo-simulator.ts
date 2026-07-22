@@ -26,6 +26,8 @@ export interface SimulacionAcuerdoResult {
   pagoMinimo: number;
   interesMoratorioExcluido: number;
   gestionCobranzaExcluida: number;
+  /** Monto máximo cobrable vía pagos al saldo (sin moratorio fuera de ledger). */
+  montoPagableLedger: number;
 }
 
 export function simularAcuerdo(
@@ -69,6 +71,17 @@ export function simularAcuerdo(
   const montoAcordado = roundMoney(baseNegociable - montoDescuento);
   const montoCuota = roundMoney(montoAcordado / numeroCuotas);
   const pagoMinimo = roundMoney(montoCuota / 2);
+  /** Cash máximo exigible vía pagos (ledger); moratorio no dispensado queda fuera. */
+  const montoPagableLedger = roundMoney(
+    Math.min(
+      montoAcordado,
+      Math.max(
+        0,
+        roundMoney(saldoTotal) -
+          (dispensarGestionCobranza ? roundMoney(gestionCobranza) : 0),
+      ),
+    ),
+  );
 
   return {
     baseNegociable,
@@ -78,5 +91,6 @@ export function simularAcuerdo(
     pagoMinimo,
     interesMoratorioExcluido,
     gestionCobranzaExcluida,
+    montoPagableLedger,
   };
 }

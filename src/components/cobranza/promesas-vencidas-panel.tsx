@@ -58,7 +58,7 @@ export function PromesasVencidasPanel({
               href={`/cobranza/prestamos/${p.idprestamo}`}
               className="text-xs text-primary hover:underline"
             >
-              Gestionar
+              Recuperar
             </Link>
           </li>
         ))}

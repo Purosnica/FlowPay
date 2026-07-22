@@ -20,6 +20,8 @@ import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
 import { createPageType } from '../../helpers/create-page-type';
 import { resolvePaginatedPrismaQuery } from '../../helpers/paginated-prisma-resolver';
 import { esDocumentoUrlInterna } from '@/lib/cobranza/documento-storage';
+import { IdPositiveSchema } from '@/lib/validators/graphql-args';
+import { z } from 'zod';
 
 const DocumentoPage = createPageType('DocumentoPage', Documento, 'documentos');
 
@@ -162,8 +164,11 @@ builder.mutationField('deleteDocumento', (t) =>
     args: { iddocumento: t.arg.int({ required: true }) },
     resolve: async (_parent, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.CARTERA_WRITE);
+      const { iddocumento } = z
+        .object({ iddocumento: IdPositiveSchema })
+        .parse(args);
       const doc = await ctx.prisma.tbl_documento.findUnique({
-        where: { iddocumento: args.iddocumento },
+        where: { iddocumento },
         include: { prestamo: true },
       });
       if (!doc || doc.deletedAt) {
@@ -186,7 +191,7 @@ builder.mutationField('deleteDocumento', (t) =>
         );
       }
       await ctx.prisma.tbl_documento.update({
-        where: { iddocumento: args.iddocumento },
+        where: { iddocumento },
         data: { deletedAt: new Date() },
       });
       return true;

@@ -92,11 +92,13 @@ function etiquetaMesAnio(d: Date): string {
 }
 
 function estatusAcuerdoLabel(estado: string): string {
-  // Mientras no esté ROTO, se reporta como cumplido.
+  if (estado === 'CUMPLIDO') {
+    return 'Cumplido';
+  }
   if (estado === 'ROTO') {
     return 'Incumplido';
   }
-  return 'Cumplido';
+  return 'Vigente';
 }
 
 function tipoArregloDesdeCuotas(
@@ -239,7 +241,13 @@ export async function obtenerInformeGerencial(
         deletedAt: null,
         fechaPromesa: { not: null, gte: new Date() },
         montoPromesa: { not: null },
-        NOT: { nota: { contains: '[PROMESA_CUMPLIDA]' } },
+        OR: [
+          { estadoPromesa: 'PENDIENTE' },
+          {
+            estadoPromesa: null,
+            NOT: { nota: { contains: '[PROMESA_CUMPLIDA]' } },
+          },
+        ],
         prestamo: { deletedAt: null, estado: { not: 'Cancelado' } },
       },
       select: { idprestamo: true },
@@ -263,17 +271,16 @@ export async function obtenerInformeGerencial(
   );
 
   const acuerdosFormalizados = acuerdosRaw.length;
-  // VIGENTE y CUMPLIDO cuentan como cumplidos; solo ROTO es incumplido.
+  const acuerdosCumplidos = acuerdosRaw.filter(
+    (a) => a.estado === 'CUMPLIDO',
+  ).length;
   const acuerdosIncumplidos = acuerdosRaw.filter(
     (a) => a.estado === 'ROTO',
   ).length;
-  const acuerdosCumplidos = Math.max(
-    0,
-    acuerdosFormalizados - acuerdosIncumplidos,
-  );
+  const acuerdosCerrados = acuerdosCumplidos + acuerdosIncumplidos;
   const eficaciaAcuerdosPct =
-    acuerdosFormalizados > 0
-      ? roundMoney((acuerdosCumplidos / acuerdosFormalizados) * 100)
+    acuerdosCerrados > 0
+      ? roundMoney((acuerdosCumplidos / acuerdosCerrados) * 100)
       : 0;
 
   const indicadores: InformeGerencialIndicadores = {

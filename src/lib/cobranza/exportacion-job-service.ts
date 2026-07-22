@@ -3,15 +3,15 @@
  */
 
 import { mkdir, writeFile } from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 import * as XLSX from 'xlsx';
 import { prisma } from '@/lib/prisma';
 import { requerirAccesoMandante } from '@/lib/cobranza/mandante-scope';
 import { EXPORT_ASYNC_ROW_THRESHOLD } from '@/lib/cobranza/performance-limits';
 import { logger } from '@/lib/utils/logger';
+import { resolverStorageRoot } from '@/lib/cobranza/storage-root';
 
-const STORAGE_DIR = path.join(os.tmpdir(), 'flowpay-exports');
+const STORAGE_DIR = path.join(resolverStorageRoot(), 'exports');
 
 export type EstadoExportacionJob =
   | 'PENDIENTE'

@@ -2,6 +2,7 @@
 
 import { useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { crearIdempotencyKey } from '@/lib/api/idempotency-key';
 
 export interface PagoFormData {
   monto: number;
@@ -15,13 +16,6 @@ interface PagoFormProps {
   monedaDefault?: 'NIO' | 'USD';
   onSubmit: (data: PagoFormData) => void;
   isLoading?: boolean;
-}
-
-function nuevaIdempotencyKey(): string {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return crypto.randomUUID().replace(/-/g, '');
-  }
-  return `pago_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
 export function PagoForm({
@@ -39,7 +33,7 @@ export function PagoForm({
   );
   const [moneda, setMoneda] = useState<'NIO' | 'USD'>(monedaDefault);
   const [medio, setMedio] = useState('');
-  const [idempotencyKey] = useState(nuevaIdempotencyKey);
+  const [idempotencyKey] = useState(() => crearIdempotencyKey('pago'));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

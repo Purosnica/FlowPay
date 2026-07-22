@@ -39,7 +39,9 @@ Estados protegidos (no sobrescritos por mora automática): En negociación, Con 
 | Regla | Detalle |
 |-------|---------|
 | Cálculo | `diasMora` recalculado por cron `mora_recalculo` |
-| Feriados | Considera calendario Nicaragua (`seed-feriados-nicaragua`) |
+| Calendario | Diferencia de **fechas calendario** (no días hábiles) |
+| Feriados | Calendario Nicaragua (`seed-feriados-nicaragua`) aplica a **horarios de contacto**, no al conteo de mora |
+| Gracia | `cobranza.mora_dias_gracia` (global o override por mandante) |
 | Acuerdos | Cuotas vencidas evaluadas antes del recálculo |
 | Tramos | Parametrizados por Mandante en `tbl_comision_cobro` (helpers en `tramos-mora.ts`) |
 
@@ -74,8 +76,9 @@ Ver: [CASTIGO-CARTERA.md](../CASTIGO-CARTERA.md)
 
 | Regla | Detalle |
 |-------|---------|
-| Registro | En gestión con `fechaPromesa` y monto |
-| Evaluación | Cron `promesas_vencidas` — cumplida vs vencida |
+| Registro | Gestión con `fechaPromesa`, `montoPromesa` y `estadoPromesa` (`PENDIENTE` / `CUMPLIDA` / `VENCIDA`) |
+| Evaluación | Cron `promesas_vencidas` + cumplimiento por pagos aplicados (monto acumulado) |
+| Legado | Tags `[PROMESA_CUMPLIDA]` / `[PROMESA_VENCIDA]` en nota solo como respaldo de migración |
 | Alertas | Dashboard, Mi día, Centro de Inteligencia |
 
 ---
@@ -88,7 +91,7 @@ Ver: [CASTIGO-CARTERA.md](../CASTIGO-CARTERA.md)
 | Auto-aplicar | `pagoAutoAplicar` en config mandante |
 | Conciliación | Módulo `/cobranza/conciliaciones` |
 | Atribución | Por `idgestor` o gestor asignado al préstamo |
-| Comprobante | Térmica 80 mm: saldo anterior, abono, saldo nuevo; folio `FP-########`; ruta `/cobranza/pagos/{id}/comprobante` |
+| Comprobante | Térmica 80 mm: saldo anterior, abono, saldo nuevo; folio `FP-########` único en BD (`tbl_pago.folio`); ruta `/cobranza/pagos/{id}/comprobante` |
 
 ---
 

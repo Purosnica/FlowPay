@@ -5,7 +5,7 @@ import { requerirPermiso } from '@/lib/permissions/permission-service';
 import { PERMISO } from '@/lib/permissions/permiso-codes';
 import { requerirAccesoMandante } from '@/lib/cobranza/mandante-scope';
 import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
-import { validarHorarioCobranza } from '@/lib/cobranza/horario-cobranza-service';
+import { validarHorarioCobranza } from '@/lib/contexts/gestion';
 import { ValidacionHorarioType } from '../contrato-mandante/types';
 import { createPageType } from '../../helpers/create-page-type';
 import { resolvePaginatedPrismaQuery } from '../../helpers/paginated-prisma-resolver';

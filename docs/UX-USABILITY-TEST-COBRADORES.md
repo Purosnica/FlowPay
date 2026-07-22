@@ -60,10 +60,22 @@ Guardar notas en `docs/ux-sessions/` (privado; sin PII de deudores).
 
 ## Criterio de cierre I188
 
-- [ ] 5 sesiones completadas
+- [ ] 5 sesiones completadas → notas en `docs/ux-sessions/`
 - [ ] Hallazgos priorizados (top 5)
 - [ ] Al menos 1 mejora UI mergeada por hallazgo bloqueante
 - [ ] Time-to-first-gestion revisado en analytics de prueba
+
+## Estado producto (H30 — pre-sesiones)
+
+Listo para ejecutar el protocolo (no sustituye las 5 sesiones reales):
+
+- [x] Gestión ≤3 clics desde Mi día / bandeja (`GestionRapidaModal`)
+- [x] CTA pago primario (`PagoRapidaModal` / hotkey P — H15)
+- [x] Alerta horario Ley 787
+- [x] Script verbal en formulario de gestión
+- [x] Modo foco Mi día
+- [x] Métrica TTFG (`flowpay_ux_ttfg`)
+- [x] Carpeta `docs/ux-sessions/` + plantilla de sesión
 
 ## Privacidad
 

@@ -13,6 +13,7 @@ import {
 } from '../../helpers/graphql-helpers';
 import { LISTA_USUARIOS_ACTIVOS_LIMIT } from '@/lib/cobranza/performance-limits';
 import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
+import { AsignarUsuarioMandanteArgsSchema } from '@/lib/validators/graphql-args';
 
 export const UsuarioBasico = builder
   .objectRef<{
@@ -299,11 +300,13 @@ builder.mutationField('desasignarUsuarioMandante', (t) =>
     },
     resolve: async (_parent, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.MANDANTE_WRITE);
-      await requerirAccesoMandante(ctx.usuario?.idusuario, args.idmandante);
+      const { idusuario, idmandante } =
+        AsignarUsuarioMandanteArgsSchema.parse(args);
+      await requerirAccesoMandante(ctx.usuario?.idusuario, idmandante);
       await ctx.prisma.tbl_usuario_mandante.deleteMany({
         where: {
-          idusuario: args.idusuario,
-          idmandante: args.idmandante,
+          idusuario,
+          idmandante,
         },
       });
       return true;

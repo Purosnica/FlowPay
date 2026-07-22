@@ -38,11 +38,16 @@ import type {
 } from './types';
 import {
   registrarEstadoInicial,
+  transicionarEstadoPrestamo,
 } from '@/lib/cobranza/estado-prestamo-service';
 import {
   resolverDiasMoraPrestamo,
   sincronizarMoraPrestamo,
 } from '@/lib/cobranza/dias-mora-service';
+import {
+  debePreservarSaldoVivo,
+  normalizarEstadoImportacion,
+} from '@/lib/logic/import-saldo-policy-logic';
 
 const TAMANO_LOTE_PRECARGA = 200;
 
@@ -386,40 +391,70 @@ async function procesarFilaCartera(
 
   if (prestamoExistente) {
     const saldoAnterior = prestamoExistente.saldoTotal;
-    if (Math.abs(saldoAnterior - saldoNuevo) > 0.009) {
+    const pagosAplicados = await db.tbl_pago.count({
+      where: {
+        idprestamo: prestamoExistente.idprestamo,
+        aplicado: true,
+        deletedAt: null,
+      },
+    });
+    const preservarSaldo = debePreservarSaldoVivo({
+      cantidadPagosAplicados: pagosAplicados,
+    });
+
+    if (!preservarSaldo && Math.abs(saldoAnterior - saldoNuevo) > 0.009) {
       resultado.prestamosSaldoActualizado++;
     }
 
-    const estadoFila = valorTexto(fila.valores.estado) ?? 'Vencido';
+    const estadoFila =
+      normalizarEstadoImportacion(valorTexto(fila.valores.estado)) ??
+      undefined;
+
+    const dataUpdate: Prisma.tbl_prestamoUncheckedUpdateInput = {
+      diasMora: diasMoraImportada,
+      idcampana: params.idcampana,
+      deletedAt: null,
+      fechaVencimiento:
+        valorFecha(fila.valores.fechaVencimiento) ?? undefined,
+      ultimaFechaPago:
+        valorFecha(fila.valores.ultimaFechaPago) ?? undefined,
+    };
+
+    if (!preservarSaldo) {
+      dataUpdate.saldoTotal = saldoNuevo;
+      dataUpdate.montoPrestamo = datosFinancieros.montoPrestamo;
+      dataUpdate.interes = datosFinancieros.interes;
+      dataUpdate.interesMoratorio = datosFinancieros.interesMoratorio;
+      dataUpdate.comisionCav = datosFinancieros.comisionCav;
+      dataUpdate.comisionInsitu = datosFinancieros.comisionInsitu;
+      dataUpdate.mantenimientoValor = datosFinancieros.mantenimientoValor;
+      dataUpdate.gestionCobranza = datosFinancieros.gestionCobranza;
+      dataUpdate.seguroSvsd = datosFinancieros.seguroSvsd;
+      dataUpdate.cargosAdmin = datosFinancieros.cargosAdmin;
+      dataUpdate.devolucionSaldoFavor = datosFinancieros.devolucionSaldoFavor;
+      dataUpdate.descuentosArchivo = datosFinancieros.descuentosArchivo;
+    }
 
     const prestamo = await db.tbl_prestamo.update({
       where: { idprestamo: prestamoExistente.idprestamo },
-      data: {
-        saldoTotal: saldoNuevo,
-        diasMora: diasMoraImportada,
-        montoPrestamo: datosFinancieros.montoPrestamo,
-        interes: datosFinancieros.interes,
-        interesMoratorio: datosFinancieros.interesMoratorio,
-        comisionCav: datosFinancieros.comisionCav,
-        comisionInsitu: datosFinancieros.comisionInsitu,
-        mantenimientoValor: datosFinancieros.mantenimientoValor,
-        gestionCobranza: datosFinancieros.gestionCobranza,
-        seguroSvsd: datosFinancieros.seguroSvsd,
-        cargosAdmin: datosFinancieros.cargosAdmin,
-        devolucionSaldoFavor: datosFinancieros.devolucionSaldoFavor,
-        descuentosArchivo: datosFinancieros.descuentosArchivo,
-        idcampana: params.idcampana,
-        deletedAt: null,
-        estado: estadoFila,
-        fechaVencimiento:
-          valorFecha(fila.valores.fechaVencimiento) ?? undefined,
-        ultimaFechaPago:
-          valorFecha(fila.valores.ultimaFechaPago) ?? undefined,
-      },
+      data: dataUpdate,
     });
 
     prestamoId = prestamo.idprestamo;
     resultado.prestamosActualizados++;
+
+    if (estadoFila) {
+      try {
+        await transicionarEstadoPrestamo(db, {
+          idprestamo: prestamoId,
+          estadoNuevo: estadoFila,
+          idusuario: params.idusuario,
+          motivo: 'Importación de cartera (corte)',
+        });
+      } catch {
+        // Transición no permitida: se conserva estado vivo; el corte guarda el del archivo.
+      }
+    }
 
     if (valorNumeroNullable(fila.valores.diasMora) === null) {
       await sincronizarMoraPrestamo(
@@ -435,7 +470,7 @@ async function procesarFilaCartera(
       noPrestamo,
       esNuevo: false,
       saldoAnterior,
-      saldoNuevo,
+      saldoNuevo: preservarSaldo ? saldoAnterior : saldoNuevo,
     });
   } else {
     const codigoUnico = valorTexto(fila.valores.codigoUnico) ?? noPrestamo;
@@ -445,6 +480,7 @@ async function procesarFilaCartera(
     const idagencia = await resolverAgenciaConCache(
       db,
       cacheImportacion,
+      params.idmandante,
       valorTexto(fila.valores.agencia),
     );
     const idruta = await resolverRutaConCache(
@@ -484,7 +520,9 @@ async function procesarFilaCartera(
       fechaPrestamo: valorFecha(fila.valores.fechaPrestamo) ?? undefined,
       fechaVencimiento: valorFecha(fila.valores.fechaVencimiento) ?? undefined,
       ultimaFechaPago: valorFecha(fila.valores.ultimaFechaPago) ?? undefined,
-      estado: valorTexto(fila.valores.estado) ?? 'Vencido',
+      estado:
+        normalizarEstadoImportacion(valorTexto(fila.valores.estado)) ??
+        'Vencido',
       moneda,
       tipoCambio: valorNumero(fila.valores.tipoCambio) || undefined,
       saldoTotal: saldoNuevo,

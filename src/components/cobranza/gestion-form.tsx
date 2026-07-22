@@ -5,12 +5,11 @@ import { Button } from '@/components/ui/button';
 import { PermissionGate } from '@/components/auth/permission-gate';
 import { PERMISO } from '@/lib/permissions/permiso-codes';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
+import { useCatalogosTipificaciones } from '@/hooks/use-catalogos-tipificaciones';
 import {
   GET_PLANTILLAS_MENSAJE,
   GET_CODIGOS_ACCION_MANDANTE,
   GET_CODIGOS_RESULTADO_MANDANTE,
-  GET_CODIGOS_ACCION,
-  GET_CODIGOS_RESULTADO,
 } from '@/lib/graphql/queries/cobranza.queries';
 import {
   aplicarVariablesPlantilla,
@@ -92,9 +91,7 @@ export function GestionForm({
     { enabled: !!idmandante },
   );
 
-  const { data: accionesGlobal } = useGraphQLQuery<{
-    codigosAccion: CodigoAccion[];
-  }>(GET_CODIGOS_ACCION, undefined, { enabled: !idmandante });
+  const { data: catalogoGlobal } = useCatalogosTipificaciones(!idmandante);
 
   const { data: resultadosMandante } = useGraphQLQuery<{
     codigosResultadoPorMandante: CodigoResultado[];
@@ -103,10 +100,6 @@ export function GestionForm({
     { idmandante: idmandante ?? 0 },
     { enabled: !!idmandante },
   );
-
-  const { data: resultadosGlobal } = useGraphQLQuery<{
-    codigosResultado: CodigoResultado[];
-  }>(GET_CODIGOS_RESULTADO, undefined, { enabled: !idmandante });
 
   const { data: plantillasData } = useGraphQLQuery<{
     plantillasMensaje: {
@@ -120,11 +113,11 @@ export function GestionForm({
 
   const acciones =
     accionesMandante?.codigosAccionPorMandante ??
-    accionesGlobal?.codigosAccion ??
+    catalogoGlobal?.acciones ??
     [];
   const resultados =
     resultadosMandante?.codigosResultadoPorMandante ??
-    resultadosGlobal?.codigosResultado ??
+    catalogoGlobal?.resultados ??
     [];
   const plantillas = plantillasData?.plantillasMensaje?.plantillas ?? [];
 

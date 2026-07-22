@@ -187,6 +187,12 @@ export function AcuerdoSimulator({
             </p>
           </div>
           <div>
+            <span className="text-gray-6">Pagable (ledger)</span>
+            <p className="font-medium">
+              {formatearMoneda(sim.montoPagableLedger, moneda)}
+            </p>
+          </div>
+          <div>
             <span className="text-gray-6">Cuota</span>
             <p className="font-medium">
               {formatearMoneda(sim.montoCuota, moneda)}

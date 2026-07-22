@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
+import { PermissionGate } from '@/components/auth/permission-gate';
 import { AlertasOperativasPanel } from '@/components/cobranza/alertas-operativas-panel';
 import { ForecastPanel } from '@/components/cobranza/forecast-panel';
 import { MandanteSelect } from '@/components/cobranza/mandante-select';
@@ -28,6 +29,7 @@ import {
   formatearMoneda,
 } from '@/types/cobranza';
 import { cn } from '@/lib/utils';
+import { PERMISO } from '@/lib/permissions/permiso-codes';
 import { useAuth } from '@/contexts/auth-context';
 import { TourCentroInteligencia } from '@/components/cobranza/tour-centro-inteligencia';
 
@@ -175,13 +177,15 @@ export default function CentroInteligenciaPage() {
         title="Centro de Inteligencia"
         description="Decisiones basadas en datos: salud de cartera, alertas e insights operativos."
         actions={
-          <Button
-            variant="outline"
-            disabled={procesarMutation.isPending}
-            onClick={() => procesarMutation.mutate({})}
-          >
-            Evaluar acuerdos vencidos
-          </Button>
+          <PermissionGate permiso={PERMISO.ACUERDO_WRITE}>
+            <Button
+              variant="outline"
+              disabled={procesarMutation.isPending}
+              onClick={() => procesarMutation.mutate({})}
+            >
+              Evaluar acuerdos vencidos
+            </Button>
+          </PermissionGate>
         }
       />
 

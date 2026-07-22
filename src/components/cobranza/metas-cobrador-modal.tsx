@@ -3,12 +3,14 @@
 import { useEffect, useState } from 'react';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
+import { PermissionGate } from '@/components/auth/permission-gate';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { useGraphQLMutation } from '@/hooks/use-graphql-mutation';
 import {
   GET_METAS_COBRADOR,
   ACTUALIZAR_METAS_COBRADOR,
 } from '@/lib/graphql/queries/cobranza.queries';
+import { PERMISO } from '@/lib/permissions/permiso-codes';
 
 interface MetasCobradorData {
   idgestor: number;
@@ -104,20 +106,22 @@ export function MetasCobradorModal({
               <p className="mt-1 text-xs text-gray-400">Usando meta global</p>
             )}
           </div>
-          <Button
-            disabled={!idgestor || mutation.isPending}
-            onClick={() => {
-              if (idgestor) {
-                mutation.mutate({
-                  idgestor,
-                  metaGestionesSemana: form.metaGestionesSemana,
-                  metaRecuperacionSemana: form.metaRecuperacionSemana,
-                });
-              }
-            }}
-          >
-            Guardar metas del cobrador
-          </Button>
+          <PermissionGate permiso={PERMISO.EQUIPO_READ}>
+            <Button
+              disabled={!idgestor || mutation.isPending}
+              onClick={() => {
+                if (idgestor) {
+                  mutation.mutate({
+                    idgestor,
+                    metaGestionesSemana: form.metaGestionesSemana,
+                    metaRecuperacionSemana: form.metaRecuperacionSemana,
+                  });
+                }
+              }}
+            >
+              Guardar metas del cobrador
+            </Button>
+          </PermissionGate>
         </div>
       )}
     </Modal>
