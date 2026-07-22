@@ -10,13 +10,19 @@ export function esRuntimeVercel(): boolean {
   return process.env.VERCEL === '1';
 }
 
+/** Subconjunto de env usado para decidir el backend de imports. */
+export type ImportFileStorageEnv = {
+  VERCEL?: string;
+  FLOWPAY_IMPORT_STORAGE?: string;
+};
+
 /**
  * Modo de escritura del archivo de importación.
  * - db: payload en columna Bytes (multi-instancia / Vercel)
  * - fs: disco local (self-host con volumen o single-instance)
  */
 export function resolverImportFileStorageMode(
-  env: NodeJS.ProcessEnv = process.env,
+  env: ImportFileStorageEnv = process.env,
 ): ImportFileStorageMode {
   if (env.VERCEL === '1') {
     return 'db';
