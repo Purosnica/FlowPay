@@ -7,6 +7,7 @@ import {
   GestionForm,
   type GestionFormData,
 } from '@/components/cobranza/gestion-form';
+import { ContactoRapidoAcciones } from '@/components/cobranza/contacto-rapido-acciones';
 import { HorarioAlerta } from '@/components/cobranza/horario-alerta';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { useGraphQLMutation } from '@/hooks/use-graphql-mutation';
@@ -35,7 +36,11 @@ interface GestionRapidaModalProps {
   prestamo?: BandejaGraphQLItem | null;
   idprestamo?: number | null;
   onClose: () => void;
-  onSuccess?: () => void;
+  /**
+   * Tras guardar. Retornar `false` para no cerrar (auto-avance:
+   * el padre cambia idprestamo / prestamo).
+   */
+  onSuccess?: () => boolean | void;
 }
 
 function toBandejaItem(p: Prestamo): BandejaGraphQLItem {
@@ -85,21 +90,30 @@ export function GestionRapidaModal({
   const horarioBloqueado =
     horarioData?.verificarHorarioCobranza.permitido === false;
 
+  const finalizarExito = () => {
+    trackGestionCreated();
+    void queryClient.invalidateQueries({ queryKey: [GET_BANDEJA_COBRADOR] });
+    void queryClient.invalidateQueries({ queryKey: [GET_RESUMEN_MI_DIA] });
+    void queryClient.invalidateQueries({
+      queryKey: [GET_CASOS_PRIORITARIOS_MI_DIA],
+    });
+    const keepOpen = onSuccess?.() === false;
+    if (!keepOpen) {
+      onClose();
+    }
+  };
+
   const mutation = useGraphQLMutation(CREATE_GESTION, {
     onSuccess: () => {
-      trackGestionCreated();
-      void queryClient.invalidateQueries({ queryKey: [GET_BANDEJA_COBRADOR] });
-      void queryClient.invalidateQueries({ queryKey: [GET_RESUMEN_MI_DIA] });
-      void queryClient.invalidateQueries({
-        queryKey: [GET_CASOS_PRIORITARIOS_MI_DIA],
-      });
-      onSuccess?.();
-      onClose();
+      finalizarExito();
     },
   });
 
   const handleSubmit = (form: GestionFormData) => {
     if (!prestamo || horarioBloqueado) {
+      return;
+    }
+    if (!form.nota.trim()) {
       return;
     }
     const input = {
@@ -122,8 +136,7 @@ export function GestionRapidaModal({
 
     if (estaOffline()) {
       encolarGestionOutbox(input);
-      onSuccess?.();
-      onClose();
+      finalizarExito();
       return;
     }
 
@@ -161,6 +174,8 @@ export function GestionRapidaModal({
   const nombreCliente = prestamo?.cliente
     ? nombreCompletoCliente(prestamo.cliente)
     : undefined;
+  const celular =
+    prestamo?.cliente?.celular ?? prestamo?.cliente?.telefono ?? null;
 
   return (
     <Modal
@@ -181,9 +196,12 @@ export function GestionRapidaModal({
       >
         {prestamo && plantillaContext && (
           <>
-            <p className="mb-3 text-sm text-gray-500">
-              {nombreCliente} · {prestamo.diasMora} días mora
-            </p>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm text-gray-500">
+                {nombreCliente} · {prestamo.diasMora} días mora
+              </p>
+              <ContactoRapidoAcciones telefono={celular} />
+            </div>
             {horarioData?.verificarHorarioCobranza && (
               <div className="mb-4">
                 <HorarioAlerta
@@ -193,13 +211,15 @@ export function GestionRapidaModal({
               </div>
             )}
             <GestionForm
+              key={prestamo.idprestamo}
               modoRapido
+              tipificarUnClic
               idmandante={prestamo.idmandante}
               plantillaContext={plantillaContext}
               noPrestamo={prestamo.noPrestamo}
               nombreCliente={nombreCliente}
               saldoTotal={prestamo.saldoTotal}
-              celularCliente={prestamo.cliente?.celular}
+              celularCliente={celular}
               isLoading={mutation.isPending}
               submitDisabled={horarioBloqueado}
               onCancel={onClose}

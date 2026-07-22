@@ -3,6 +3,10 @@
 import { useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { crearIdempotencyKey } from '@/lib/api/idempotency-key';
+import {
+  construirMontosRapidos,
+  type MontoRapidoChip,
+} from '@/lib/logic/pago-montos-rapidos-logic';
 
 export interface PagoFormData {
   monto: number;
@@ -14,12 +18,21 @@ export interface PagoFormData {
 
 interface PagoFormProps {
   monedaDefault?: 'NIO' | 'USD';
+  /** Medio por defecto (ej. EFECTIVO en campo). */
+  medioDefault?: string;
+  saldoTotal?: number | null;
+  montoCuota?: number | null;
+  montoPromesa?: number | null;
   onSubmit: (data: PagoFormData) => void;
   isLoading?: boolean;
 }
 
 export function PagoForm({
   monedaDefault = 'NIO',
+  medioDefault = '',
+  saldoTotal,
+  montoCuota,
+  montoPromesa,
   onSubmit,
   isLoading,
 }: PagoFormProps) {
@@ -32,8 +45,14 @@ export function PagoForm({
     new Date().toISOString().slice(0, 10),
   );
   const [moneda, setMoneda] = useState<'NIO' | 'USD'>(monedaDefault);
-  const [medio, setMedio] = useState('');
+  const [medio, setMedio] = useState(medioDefault);
   const [idempotencyKey] = useState(() => crearIdempotencyKey('pago'));
+
+  const chips: MontoRapidoChip[] = construirMontosRapidos({
+    saldoTotal,
+    montoCuota,
+    montoPromesa,
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,6 +71,25 @@ export function PagoForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+      {chips.length > 0 && (
+        <div>
+          <p className="mb-1 text-sm font-medium">Monto rápido</p>
+          <div className="flex flex-wrap gap-2">
+            {chips.map((chip) => (
+              <Button
+                key={`${chip.label}-${chip.valor}`}
+                type="button"
+                size="sm"
+                variant="outline"
+                data-ux-id={`pago-monto-${chip.label.toLowerCase()}`}
+                onClick={() => setMonto(String(chip.valor))}
+              >
+                {chip.label}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
           <label htmlFor={montoId} className="mb-1 block text-sm font-medium">

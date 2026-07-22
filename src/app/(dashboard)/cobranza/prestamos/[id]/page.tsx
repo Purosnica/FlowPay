@@ -17,6 +17,8 @@ import {
 import { GestionForm } from '@/components/cobranza/gestion-form';
 import { AcuerdoSimulator } from '@/components/cobranza/acuerdo-simulator';
 import { PagoForm } from '@/components/cobranza/pago-form';
+import { PagoRapidaModal } from '@/components/cobranza/pago-rapida-modal';
+import { ContactoRapidoAcciones } from '@/components/cobranza/contacto-rapido-acciones';
 import { FiadorPanel } from '@/components/cobranza/fiador-panel';
 import { DocumentoPanel } from '@/components/cobranza/documento-panel';
 import { DeudorContactoPanel } from '@/components/cobranza/deudor-contacto-panel';
@@ -71,10 +73,14 @@ export default function PrestamoDetailPage({ params }: PageProps) {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('resumen');
   const [gestionModal, setGestionModal] = useState(false);
+  const [pagoRapidoOpen, setPagoRapidoOpen] = useState(false);
   const [notaPrefill, setNotaPrefill] = useState('');
   const [ultimoPagoId, setUltimoPagoId] = useState<number | null>(null);
   const [pagoFormKey, setPagoFormKey] = useState(0);
   const [acuerdoRotoId, setAcuerdoRotoId] = useState<number | null>(null);
+  const [masSeccion, setMasSeccion] = useState<
+    'contactos' | 'cortes' | 'timeline' | 'estados' | 'fiadores' | 'documentos'
+  >('timeline');
   const gestionesPagination = usePagination({ initialPageSize: 10 });
   const pagosPagination = useScopedPagination(idprestamo, {
     initialPageSize: 10,
@@ -104,7 +110,7 @@ export default function PrestamoDetailPage({ params }: PageProps) {
   const { data: acuerdosData } = useGraphQLQuery<{ acuerdos: Acuerdo[] }>(
     GET_ACUERDOS,
     { idprestamo },
-    { enabled: prestamoCargado && activeTab === 'acuerdo' },
+    { enabled: prestamoCargado },
   );
 
   const { data: pagosData, isLoading: loadingPagos } = useGraphQLQuery<{
@@ -269,47 +275,73 @@ export default function PrestamoDetailPage({ params }: PageProps) {
     prestamo,
     acuerdoVigente,
   );
+  const celularCliente = cliente?.celular ?? cliente?.telefono ?? null;
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <Link
-            href={esCobrador ? '/cobranza/bandeja' : '/cobranza/cartera'}
-            className="text-sm text-primary hover:underline"
-          >
-            ← {esCobrador ? 'Bandeja' : 'Cartera'}
-          </Link>
-          <h1 className="mt-1 text-2xl font-bold text-dark dark:text-white">
-            Préstamo {prestamo.noPrestamo}
-          </h1>
-          {cliente && (
-            <p className="text-gray-6">
-              {nombreCompletoCliente(cliente)} · {cliente.numerodocumento}
-            </p>
-          )}
+      <div className="sticky top-0 z-20 -mx-4 space-y-3 border-b border-stroke bg-gray-2/95 px-4 py-3 backdrop-blur dark:border-dark-3 dark:bg-[#020d1a]/95 md:-mx-6 md:px-6 2xl:-mx-10 2xl:px-10">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <Link
+              href={esCobrador ? '/cobranza/bandeja' : '/cobranza/cartera'}
+              className="text-sm text-primary hover:underline"
+            >
+              ← {esCobrador ? 'Bandeja' : 'Cartera'}
+            </Link>
+            <h1 className="mt-1 text-2xl font-bold text-dark dark:text-white">
+              Préstamo {prestamo.noPrestamo}
+            </h1>
+            {cliente && (
+              <p className="text-gray-6">
+                {nombreCompletoCliente(cliente)} · {cliente.numerodocumento}
+              </p>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <ContactoRapidoAcciones telefono={celularCliente} />
+            <PermissionGate permiso={PERMISO.PAGO_WRITE}>
+              <Button
+                data-ux-id="prestamo-registrar-pago"
+                onClick={() => setPagoRapidoOpen(true)}
+              >
+                Registrar pago
+              </Button>
+            </PermissionGate>
+            <PermissionGate permiso={PERMISO.GESTION_WRITE}>
+              <Button
+                variant="outline"
+                data-ux-id="prestamo-tipificar"
+                onClick={() => setGestionModal(true)}
+                disabled={
+                  horarioData?.verificarHorarioCobranza.permitido === false
+                }
+              >
+                Tipificar gestión
+              </Button>
+            </PermissionGate>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <PermissionGate permiso={PERMISO.PAGO_WRITE}>
-            <Button
-              data-ux-id="prestamo-registrar-pago"
-              onClick={() => setActiveTab('pagos')}
-            >
-              Registrar pago
-            </Button>
-          </PermissionGate>
-          <PermissionGate permiso={PERMISO.GESTION_WRITE}>
-            <Button
-              variant="outline"
-              data-ux-id="prestamo-tipificar"
-              onClick={() => setGestionModal(true)}
-              disabled={
-                horarioData?.verificarHorarioCobranza.permitido === false
-              }
-            >
-              Tipificar gestión
-            </Button>
-          </PermissionGate>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="rounded-lg bg-white p-3 shadow-1 dark:bg-gray-dark">
+            <p className="text-xs text-gray-6">Saldo total</p>
+            <p className="text-base font-bold text-primary">
+              {formatearMoneda(prestamo.saldoTotal, prestamo.moneda)}
+            </p>
+          </div>
+          <div className="rounded-lg bg-white p-3 shadow-1 dark:bg-gray-dark">
+            <p className="text-xs text-gray-6">Días mora</p>
+            <p className="text-base font-bold">{prestamo.diasMora}</p>
+          </div>
+          <div className="rounded-lg bg-white p-3 shadow-1 dark:bg-gray-dark">
+            <p className="text-xs text-gray-6">Estado</p>
+            <p className="text-base font-bold">{prestamo.estado}</p>
+          </div>
+          <div className="rounded-lg bg-white p-3 shadow-1 dark:bg-gray-dark">
+            <p className="text-xs text-gray-6">Int. moratorio</p>
+            <p className="text-base font-bold">
+              {formatearMoneda(prestamo.interesMoratorio, prestamo.moneda)}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -320,54 +352,14 @@ export default function PrestamoDetailPage({ params }: PageProps) {
         />
       )}
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <div className="rounded-lg bg-white p-4 shadow-1 dark:bg-gray-dark">
-          <p className="text-xs text-gray-6">Saldo total</p>
-          <p className="text-lg font-bold text-primary">
-            {formatearMoneda(prestamo.saldoTotal, prestamo.moneda)}
-          </p>
-        </div>
-        <div className="rounded-lg bg-white p-4 shadow-1 dark:bg-gray-dark">
-          <p className="text-xs text-gray-6">Días mora</p>
-          <p className="text-lg font-bold">{prestamo.diasMora}</p>
-        </div>
-        <div className="rounded-lg bg-white p-4 shadow-1 dark:bg-gray-dark">
-          <p className="text-xs text-gray-6">Int. moratorio</p>
-          <p className="text-lg font-bold">
-            {formatearMoneda(prestamo.interesMoratorio, prestamo.moneda)}
-          </p>
-        </div>
-        <div className="rounded-lg bg-white p-4 shadow-1 dark:bg-gray-dark">
-          <p className="text-xs text-gray-6">Interés</p>
-          <p className="text-lg font-bold">
-            {formatearMoneda(prestamo.interes, prestamo.moneda)}
-          </p>
-        </div>
-        <div className="rounded-lg bg-white p-4 shadow-1 dark:bg-gray-dark">
-          <p className="text-xs text-gray-6">Gestión de cobranza</p>
-          <p className="text-lg font-bold">
-            {formatearMoneda(prestamo.gestionCobranza ?? 0, prestamo.moneda)}
-          </p>
-        </div>
-        <div className="rounded-lg bg-white p-4 shadow-1 dark:bg-gray-dark">
-          <p className="text-xs text-gray-6">Estado</p>
-          <p className="text-lg font-bold">{prestamo.estado}</p>
-        </div>
-      </div>
-
       <Tabs defaultValue="resumen" onValueChange={setActiveTab}>
-        <TabsList className="w-full">
+        <TabsList className="w-full flex-wrap">
           <TabsTrigger value="resumen">Resumen</TabsTrigger>
           <TabsTrigger value="gestiones">Gestiones</TabsTrigger>
-          <TabsTrigger value="acuerdo">Acuerdo</TabsTrigger>
           <TabsTrigger value="pagos">Pagos</TabsTrigger>
-          <TabsTrigger value="contactos">Contactos</TabsTrigger>
-          <TabsTrigger value="cortes">Cortes</TabsTrigger>
-          <TabsTrigger value="timeline">Timeline</TabsTrigger>
-          <TabsTrigger value="historial-estado">Estados</TabsTrigger>
+          <TabsTrigger value="acuerdo">Acuerdo</TabsTrigger>
           <TabsTrigger value="enviar">Enviar cobro</TabsTrigger>
-          <TabsTrigger value="fiadores">Fiadores</TabsTrigger>
-          <TabsTrigger value="documentos">Documentos</TabsTrigger>
+          <TabsTrigger value="mas">Más</TabsTrigger>
         </TabsList>
 
         <TabsContent value="resumen">
@@ -398,12 +390,6 @@ export default function PrestamoDetailPage({ params }: PageProps) {
               <dt className="text-gray-6">Gestión de cobranza</dt>
               <dd>
                 {formatearMoneda(prestamo.gestionCobranza ?? 0, prestamo.moneda)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-gray-6">Interés moratorio</dt>
-              <dd>
-                {formatearMoneda(prestamo.interesMoratorio, prestamo.moneda)}
               </dd>
             </div>
             <div>
@@ -567,12 +553,17 @@ export default function PrestamoDetailPage({ params }: PageProps) {
                 role="status"
               >
                 <p className="mb-2 font-medium">Pago registrado.</p>
-                <PostPagoAcciones idpago={ultimoPagoId} />
+                <PostPagoAcciones
+                  idpago={ultimoPagoId}
+                  telefono={celularCliente}
+                />
               </div>
             ) : null}
             <PagoForm
               key={pagoFormKey}
               monedaDefault={prestamo.moneda as 'NIO' | 'USD'}
+              saldoTotal={prestamo.saldoTotal}
+              montoCuota={acuerdoVigente?.montoCuota}
               isLoading={pagoMutation.isPending}
               onSubmit={(data) =>
                 pagoMutation.mutate({
@@ -598,37 +589,6 @@ export default function PrestamoDetailPage({ params }: PageProps) {
         </div>
         </TabsContent>
 
-        <TabsContent value="contactos">
-          {cliente && (
-            <div className="rounded-lg bg-white p-6 shadow-1 dark:bg-gray-dark">
-              <DeudorContactoPanel idcliente={cliente.idcliente} />
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="cortes">
-          <div className="rounded-lg bg-white p-6 shadow-1 dark:bg-gray-dark">
-            <PrestamoCortesPanel
-              idprestamo={idprestamo}
-              moneda={prestamo.moneda}
-            />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="timeline">
-          <div className="rounded-lg bg-white p-6 shadow-1 dark:bg-gray-dark">
-            <h2 className="mb-4 font-semibold">Timeline del préstamo</h2>
-            <PrestamoTimelinePanel idprestamo={idprestamo} />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="historial-estado">
-          <div className="rounded-lg bg-white p-6 shadow-1 dark:bg-gray-dark">
-            <h2 className="mb-4 font-semibold">Historial de estados</h2>
-            <PrestamoEstadoHistorialPanel idprestamo={idprestamo} />
-          </div>
-        </TabsContent>
-
         <TabsContent value="enviar">
           <div className="rounded-lg bg-white p-6 shadow-1 dark:bg-gray-dark">
             <h2 className="mb-4 font-semibold">Enviar cobro</h2>
@@ -645,15 +605,58 @@ export default function PrestamoDetailPage({ params }: PageProps) {
           </div>
         </TabsContent>
 
-        <TabsContent value="fiadores">
-          <div className="rounded-lg bg-white p-6 shadow-1 dark:bg-gray-dark">
-            <FiadorPanel idprestamo={idprestamo} />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="documentos">
-          <div className="rounded-lg bg-white p-6 shadow-1 dark:bg-gray-dark">
-            <DocumentoPanel idprestamo={idprestamo} />
+        <TabsContent value="mas">
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-2">
+              {(
+                [
+                  ['timeline', 'Timeline'],
+                  ['contactos', 'Contactos'],
+                  ['cortes', 'Cortes'],
+                  ['estados', 'Estados'],
+                  ['fiadores', 'Fiadores'],
+                  ['documentos', 'Documentos'],
+                ] as const
+              ).map(([id, label]) => (
+                <Button
+                  key={id}
+                  size="sm"
+                  variant={masSeccion === id ? 'primary' : 'outline'}
+                  onClick={() => setMasSeccion(id)}
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
+            <div className="rounded-lg bg-white p-6 shadow-1 dark:bg-gray-dark">
+              {masSeccion === 'timeline' && (
+                <>
+                  <h2 className="mb-4 font-semibold">Timeline del préstamo</h2>
+                  <PrestamoTimelinePanel idprestamo={idprestamo} />
+                </>
+              )}
+              {masSeccion === 'contactos' && cliente && (
+                <DeudorContactoPanel idcliente={cliente.idcliente} />
+              )}
+              {masSeccion === 'cortes' && (
+                <PrestamoCortesPanel
+                  idprestamo={idprestamo}
+                  moneda={prestamo.moneda}
+                />
+              )}
+              {masSeccion === 'estados' && (
+                <>
+                  <h2 className="mb-4 font-semibold">Historial de estados</h2>
+                  <PrestamoEstadoHistorialPanel idprestamo={idprestamo} />
+                </>
+              )}
+              {masSeccion === 'fiadores' && (
+                <FiadorPanel idprestamo={idprestamo} />
+              )}
+              {masSeccion === 'documentos' && (
+                <DocumentoPanel idprestamo={idprestamo} />
+              )}
+            </div>
           </div>
         </TabsContent>
       </Tabs>
@@ -664,13 +667,16 @@ export default function PrestamoDetailPage({ params }: PageProps) {
         title="Registrar gestión"
         size="lg"
       >
+        <div className="mb-3">
+          <ContactoRapidoAcciones telefono={celularCliente} />
+        </div>
         <GestionForm
           idmandante={prestamo.idmandante}
           plantillaContext={plantillaContext}
           noPrestamo={prestamo.noPrestamo}
           nombreCliente={cliente ? nombreCompletoCliente(cliente) : undefined}
           saldoTotal={prestamo.saldoTotal}
-          celularCliente={cliente?.celular}
+          celularCliente={celularCliente}
           initialNota={notaPrefill}
           isLoading={gestionMutation.isPending}
           onCancel={() => {
@@ -698,6 +704,17 @@ export default function PrestamoDetailPage({ params }: PageProps) {
           }}
         />
       </Modal>
+
+      {pagoRapidoOpen && (
+        <PagoRapidaModal
+          idprestamo={idprestamo}
+          onClose={() => setPagoRapidoOpen(false)}
+          onSuccess={() => {
+            invalidate();
+            setActiveTab('pagos');
+          }}
+        />
+      )}
 
       <ConfirmDialog
         isOpen={acuerdoRotoId != null}

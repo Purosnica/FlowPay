@@ -65,6 +65,18 @@ import {
   cumpleComplejidadPassword,
 } from '@/lib/logic/password-policy-logic';
 import { convertirMontoAMonedaBase } from '@/lib/logic/liquidacion-fx-logic';
+import { construirMontosRapidos } from '@/lib/logic/pago-montos-rapidos-logic';
+import {
+  moverIndiceCola,
+  siguienteIdEnCola,
+} from '@/lib/logic/cola-operativa-logic';
+import { enlaceLlamadaTelefonica } from '@/lib/logic/contacto-rapido-logic';
+import {
+  filtrosBandejaDesdeSearchParams,
+  searchParamsDesdeFiltrosBandeja,
+} from '@/lib/logic/bandeja-url-filters-logic';
+import { filtrarNavPorRol } from '@/lib/navigation/filter-nav-por-rol';
+import type { NavSection } from '@/lib/navigation/filter-nav-by-permisos';
 
 function testTransicionesEstado(): void {
   assert.equal(puedeTransicionar('Vigente', 'Vencido'), true);
@@ -526,7 +538,64 @@ function testLiquidacionFxEInformeAcuerdos(): void {
   assert.ok(PASSWORD_COMPLEXITY_MESSAGE.includes('mayúscula'));
 }
 
+function testUxColaYMontosRapidos(): void {
+  assert.equal(siguienteIdEnCola([10, 20, 30], 10), 20);
+  assert.equal(siguienteIdEnCola([10, 20, 30], 30), null);
+  assert.equal(siguienteIdEnCola([10, 20], 99), 10);
+  assert.equal(moverIndiceCola(0, 3, 1), 1);
+  assert.equal(moverIndiceCola(2, 3, 1), 2);
+  assert.equal(moverIndiceCola(0, 3, -1), 0);
+
+  const chips = construirMontosRapidos({
+    saldoTotal: 1000,
+    montoCuota: 200,
+    montoPromesa: 150,
+  });
+  assert.equal(chips[0]?.label, 'Cuota');
+  assert.equal(chips.some((c) => c.label === 'Saldo' && c.valor === 1000), true);
+  assert.equal(chips.some((c) => c.label === '50%' && c.valor === 500), true);
+
+  assert.equal(enlaceLlamadaTelefonica('8888-1234'), 'tel:88881234');
+  assert.equal(enlaceLlamadaTelefonica(null), null);
+
+  const params = searchParamsDesdeFiltrosBandeja(
+    { soloPromesaVencida: true, idmandante: 5 },
+    'ABC-1',
+  );
+  assert.equal(params.get('soloPromesaVencida'), '1');
+  assert.equal(params.get('idmandante'), '5');
+  assert.equal(params.get('search'), 'ABC-1');
+  const parsed = filtrosBandejaDesdeSearchParams(params);
+  assert.equal(parsed.soloPromesaVencida, true);
+  assert.equal(parsed.idmandante, 5);
+  assert.equal(parsed.search, 'ABC-1');
+
+  const nav: NavSection[] = [
+    {
+      label: 'MAIN',
+      items: [
+        { title: 'Mi día', url: '/cobranza/mi-dia' },
+        { title: 'Importar', url: '/cobranza/importar' },
+        {
+          title: 'Cobranza',
+          items: [
+            { title: 'Bandeja', url: '/cobranza/bandeja' },
+            { title: 'Asignación', url: '/cobranza/asignacion' },
+          ],
+        },
+      ],
+    },
+  ];
+  const cobrador = filtrarNavPorRol(nav, 'COBRADOR');
+  assert.equal(cobrador[0]?.items.length, 2);
+  assert.equal(
+    cobrador[0]?.items.find((i) => i.title === 'Cobranza')?.items?.length,
+    1,
+  );
+}
+
 testPrestamoCuotaYMetaAcuerdo();
 testPromesaEstadoYConfigMandante();
 testLiquidacionFxEInformeAcuerdos();
+testUxColaYMontosRapidos();
 process.stdout.write('tests unitarios cobranza: OK\n');

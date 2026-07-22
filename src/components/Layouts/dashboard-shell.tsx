@@ -9,23 +9,15 @@ import { useFocusMode } from '@/contexts/focus-mode-context';
 import { isFocusModeActivo } from '@/lib/ux/focus-mode';
 import { cn } from '@/lib/utils';
 import { GestionOutboxSync } from '@/components/pwa/gestion-outbox-sync';
-import {
-  CobradorShell,
-  esRutaCobradorCampo,
-} from '@/components/Layouts/cobrador-shell';
 
 /**
- * Shell del dashboard con soporte de modo foco (I180) y shell campo (I013).
+ * Shell del dashboard con sidebar permanente y soporte de modo foco (I180).
+ * El modo foco solo oculta sidebar/header en Mi día cuando el usuario lo activa.
  */
 export function DashboardShell({ children }: PropsWithChildren) {
   const pathname = usePathname();
   const { focusMode, setFocusMode } = useFocusMode();
   const focusActivo = isFocusModeActivo(focusMode, pathname);
-
-  // Campo siempre usa CobradorShell; modo foco solo aplica al shell gerencial.
-  if (esRutaCobradorCampo(pathname)) {
-    return <CobradorShell>{children}</CobradorShell>;
-  }
 
   return (
     <div className="flex min-h-screen">

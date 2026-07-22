@@ -24,6 +24,7 @@ interface DataTableProps<T> {
   emptyMessage?: string;
   emptyAction?: React.ReactNode;
   onRowClick?: (row: T) => void;
+  getRowClassName?: (row: T, index: number) => string | undefined;
   rowActions?: (row: T) => React.ReactNode;
   sorting?: SortingState;
   onSortingChange?: OnChangeFn<SortingState>;
@@ -47,6 +48,7 @@ function DataTableInner<T>({
   emptyMessage = 'No se encontraron registros',
   emptyAction,
   onRowClick,
+  getRowClassName,
   rowActions,
   sorting: sortingControlled,
   onSortingChange,
@@ -197,6 +199,7 @@ function DataTableInner<T>({
                     onRowClick
                       ? 'cursor-pointer hover:bg-gray-2 dark:hover:bg-dark-2'
                       : 'hover:bg-gray-2/40 dark:hover:bg-dark-2/50',
+                    getRowClassName?.(row.original, virtualRow.index),
                   )}
                   onClick={() => onRowClick?.(row.original)}
                 >
@@ -254,6 +257,7 @@ function DataTableInner<T>({
                   onRowClick
                     ? 'cursor-pointer hover:bg-gray-2 dark:hover:bg-dark-2'
                     : 'hover:bg-gray-2/40 dark:hover:bg-dark-2/50',
+                  getRowClassName?.(row.original, row.index),
                 )}
                 onClick={() => onRowClick?.(row.original)}
               >

@@ -24,6 +24,10 @@ import {
   leerBoolPref,
 } from '@/lib/ux/ux-prefs';
 import {
+  moverIndiceCola,
+  siguienteIdEnCola,
+} from '@/lib/logic/cola-operativa-logic';
+import {
   GET_RESUMEN_MI_DIA,
   GET_MI_GAMIFICACION,
   GET_CASOS_PRIORITARIOS_MI_DIA,
@@ -37,12 +41,14 @@ import {
   type RankingCobrador,
   formatearMoneda,
 } from '@/types/cobranza';
+import { cn } from '@/lib/utils';
 
 const ATAJOS_MI_DIA = [
+  { keys: 'J / K', descripcion: 'Caso anterior / siguiente' },
+  { keys: 'P', descripcion: 'Pago rápido del caso seleccionado' },
+  { keys: 'G', descripcion: 'Tipificar el caso seleccionado' },
+  { keys: 'N', descripcion: 'Abrir detalle del caso seleccionado' },
   { keys: 'B', descripcion: 'Ir a bandeja' },
-  { keys: 'P', descripcion: 'Pago rápido del 1.er caso prioritario' },
-  { keys: 'G', descripcion: 'Tipificar el 1.er caso prioritario' },
-  { keys: 'N', descripcion: 'Abrir detalle del 1.er caso' },
   { keys: '?', descripcion: 'Mostrar esta ayuda' },
 ];
 
@@ -55,6 +61,7 @@ export default function MiDiaPage() {
     null,
   );
   const [pagoPrestamoId, setPagoPrestamoId] = useState<number | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState(0);
   /** I187: quiet por defecto — sin vanity metrics en el flujo operativo. */
   const [gamifQuiet, setGamifQuiet] = useState(true);
 
@@ -71,9 +78,13 @@ export default function MiDiaPage() {
 
   const { data: gamifData, isLoading: gamifLoading } = useGraphQLQuery<{
     miGamificacion: RankingCobrador | null;
-  }>(GET_MI_GAMIFICACION, undefined, { enabled: !gamifQuiet });
+  }>(GET_MI_GAMIFICACION, undefined, { enabled: !gamifQuiet && !focusMode });
 
-  const { data: casosData, isLoading: casosLoading } = useGraphQLQuery<{
+  const {
+    data: casosData,
+    isLoading: casosLoading,
+    refetch: refetchCasos,
+  } = useGraphQLQuery<{
     casosPrioritariosMiDia: MiDiaCaso[];
   }>(GET_CASOS_PRIORITARIOS_MI_DIA, { limite: 10 });
 
@@ -83,7 +94,7 @@ export default function MiDiaPage() {
     refetch: refetchAgenda,
   } = useGraphQLQuery<{
     agendaSecuenciaHoy: AgendaSecuenciaItem[];
-  }>(GET_AGENDA_SECUENCIA_HOY);
+  }>(GET_AGENDA_SECUENCIA_HOY, undefined, { enabled: !focusMode });
 
   const { data: horarioData } = useGraphQLQuery<{
     verificarHorarioCobranza: { permitido: boolean; motivo?: string | null };
@@ -93,43 +104,63 @@ export default function MiDiaPage() {
   const g = gamifData?.miGamificacion;
   const casos = casosData?.casosPrioritariosMiDia ?? [];
   const agendaSecuencia = agendaData?.agendaSecuenciaHoy ?? [];
-  const primerCaso = casos[0];
+  const colaIds = useMemo(() => casos.map((c) => c.idprestamo), [casos]);
+
+  useEffect(() => {
+    if (selectedIndex >= casos.length && casos.length > 0) {
+      setSelectedIndex(casos.length - 1);
+    }
+  }, [casos.length, selectedIndex]);
+
+  const casoSeleccionado = casos[selectedIndex] ?? casos[0];
 
   const hotkeys = useMemo(
     () => [
+      {
+        key: 'j',
+        handler: () =>
+          setSelectedIndex((i) => moverIndiceCola(i, casos.length, 1)),
+        enabled: casos.length > 0,
+      },
+      {
+        key: 'k',
+        handler: () =>
+          setSelectedIndex((i) => moverIndiceCola(i, casos.length, -1)),
+        enabled: casos.length > 0,
+      },
       {
         key: 'b',
         handler: () => router.push('/cobranza/bandeja'),
       },
       {
         key: 'p',
-        enabled: puedePago && Boolean(primerCaso),
+        enabled: puedePago && Boolean(casoSeleccionado),
         handler: () => {
-          if (primerCaso) {
-            setPagoPrestamoId(primerCaso.idprestamo);
+          if (casoSeleccionado) {
+            setPagoPrestamoId(casoSeleccionado.idprestamo);
           }
         },
       },
       {
         key: 'g',
-        enabled: puedeGestion && Boolean(primerCaso),
+        enabled: puedeGestion && Boolean(casoSeleccionado),
         handler: () => {
-          if (primerCaso) {
-            setGestionPrestamoId(primerCaso.idprestamo);
+          if (casoSeleccionado) {
+            setGestionPrestamoId(casoSeleccionado.idprestamo);
           }
         },
       },
       {
         key: 'n',
-        enabled: Boolean(primerCaso),
+        enabled: Boolean(casoSeleccionado),
         handler: () => {
-          if (primerCaso) {
-            router.push(`/cobranza/prestamos/${primerCaso.idprestamo}`);
+          if (casoSeleccionado) {
+            router.push(`/cobranza/prestamos/${casoSeleccionado.idprestamo}`);
           }
         },
       },
     ],
-    [router, puedeGestion, puedePago, primerCaso],
+    [router, puedeGestion, puedePago, casoSeleccionado, casos.length],
   );
 
   useHotkeys(hotkeys);
@@ -149,8 +180,8 @@ export default function MiDiaPage() {
         title="Mi día"
         description={
           focusMode
-            ? 'Modo foco: solo prioridades de recuperación. Atajos: B · P · G · N · ?'
-            : 'Agenda operativa y prioridades. Atajos: B bandeja · P pago · G tipificar · N detalle · ? ayuda.'
+            ? 'Modo foco: solo prioridades. J/K navegar · P pago · G tipificar · N detalle · ? ayuda.'
+            : 'Agenda operativa y prioridades. Atajos: J/K · P · G · N · B · ?'
         }
         actions={
           <div className="field-sticky-actions flex flex-wrap gap-2">
@@ -190,100 +221,115 @@ export default function MiDiaPage() {
         />
       )}
 
-      <AsyncPanel
-        isLoading={isLoading}
-        error={error}
-        isEmpty={!r}
-        emptyMessage="No hay resumen disponible para hoy."
-      >
-        {r && (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            <KpiCard
-              label="Casos prioritarios"
-              value={String(r.casosPrioritarios)}
-              href="/cobranza/bandeja"
-            />
-            <KpiCard
-              label="Agenda hoy"
-              value={String(r.agendaHoy)}
-              href="/cobranza/bandeja"
-            />
-            <KpiCard
-              label="Promesas hoy"
-              value={String(r.promesasHoy)}
-              alert={r.promesasHoy > 0}
-            />
-            <KpiCard
-              label="Promesas vencidas"
-              value={String(r.promesasVencidas)}
-              href="/cobranza/bandeja?soloPromesaVencida=1"
-              alert={r.promesasVencidas > 0}
-            />
-            <KpiCard label="Gestiones hoy" value={String(r.gestionesHoy)} />
-            <KpiCard label="Pagos hoy" value={String(r.pagosHoy)} />
-            <KpiCard
-              label="Recuperado hoy"
-              value={formatearMoneda(r.montoRecuperadoHoy)}
-            />
-          </div>
-        )}
-      </AsyncPanel>
-
-      <AsyncPanel
-        isLoading={agendaLoading}
-        isEmpty={agendaSecuencia.length === 0}
-        emptyMessage="Sin contactos de secuencia programados para hoy."
-      >
-        {agendaSecuencia.length > 0 && (
-          <div className="rounded-lg border border-primary/30 bg-primary/5 p-6 dark:border-primary/40">
-            <h2 className="mb-4 text-lg font-semibold text-dark dark:text-white">
-              Secuencia de contacto — hoy
-            </h2>
-            {puedeGestion ? (
-              <SecuenciaLotePanel
-                items={agendaSecuencia}
-                onDone={() => {
-                  void refetchAgenda();
-                  void refetchResumen();
-                }}
+      {!focusMode && (
+        <AsyncPanel
+          isLoading={isLoading}
+          error={error}
+          isEmpty={!r}
+          emptyMessage="No hay resumen disponible para hoy."
+        >
+          {r && (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              <KpiCard
+                label="Casos prioritarios"
+                value={String(r.casosPrioritarios)}
+                href="/cobranza/bandeja"
               />
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b text-left text-gray-500">
-                      <th className="pb-2 pr-4">Préstamo</th>
-                      <th className="pb-2 pr-4">Cliente</th>
-                      <th className="pb-2 pr-4">Canal</th>
-                      <th className="pb-2 pr-4">Acción</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {agendaSecuencia.map((item) => (
-                      <tr
-                        key={`${item.idprestamo}-${item.idpaso}`}
-                        className="border-b border-stroke dark:border-dark-3"
-                      >
-                        <td className="py-2 pr-4">
-                          <Link
-                            href={`/cobranza/prestamos/${item.idprestamo}`}
-                            className="text-primary hover:underline"
-                          >
-                            {item.noPrestamo}
-                          </Link>
-                        </td>
-                        <td className="py-2 pr-4">{item.nombreCliente}</td>
-                        <td className="py-2 pr-4">{item.canal}</td>
-                        <td className="py-2 pr-4">{item.accion ?? '—'}</td>
+              <KpiCard
+                label="Agenda hoy"
+                value={String(r.agendaHoy)}
+                href="/cobranza/bandeja"
+              />
+              <KpiCard
+                label="Promesas hoy"
+                value={String(r.promesasHoy)}
+                alert={r.promesasHoy > 0}
+              />
+              <KpiCard
+                label="Promesas vencidas"
+                value={String(r.promesasVencidas)}
+                href="/cobranza/bandeja?soloPromesaVencida=1"
+                alert={r.promesasVencidas > 0}
+              />
+              <KpiCard label="Gestiones hoy" value={String(r.gestionesHoy)} />
+              <KpiCard label="Pagos hoy" value={String(r.pagosHoy)} />
+              <KpiCard
+                label="Recuperado hoy"
+                value={formatearMoneda(r.montoRecuperadoHoy)}
+              />
+            </div>
+          )}
+        </AsyncPanel>
+      )}
+
+      {focusMode && r && r.promesasVencidas > 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm dark:border-amber-900 dark:bg-amber-950/30">
+          <Link
+            href="/cobranza/bandeja?soloPromesaVencida=1"
+            className="font-medium text-amber-800 hover:underline dark:text-amber-300"
+          >
+            {r.promesasVencidas} promesa(s) vencida(s) — ver en bandeja
+          </Link>
+        </div>
+      )}
+
+      {!focusMode && (
+        <AsyncPanel
+          isLoading={agendaLoading}
+          isEmpty={agendaSecuencia.length === 0}
+          emptyMessage="Sin contactos de secuencia programados para hoy."
+        >
+          {agendaSecuencia.length > 0 && (
+            <div className="rounded-lg border border-primary/30 bg-primary/5 p-6 dark:border-primary/40">
+              <h2 className="mb-4 text-lg font-semibold text-dark dark:text-white">
+                Secuencia de contacto — hoy
+              </h2>
+              {puedeGestion ? (
+                <SecuenciaLotePanel
+                  items={agendaSecuencia}
+                  onDone={() => {
+                    void refetchAgenda();
+                    void refetchResumen();
+                  }}
+                />
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b text-left text-gray-500">
+                        <th className="pb-2 pr-4">Préstamo</th>
+                        <th className="pb-2 pr-4">Cliente</th>
+                        <th className="pb-2 pr-4">Canal</th>
+                        <th className="pb-2 pr-4">Acción</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
-      </AsyncPanel>
+                    </thead>
+                    <tbody>
+                      {agendaSecuencia.map((item) => (
+                        <tr
+                          key={`${item.idprestamo}-${item.idpaso}`}
+                          className="border-b border-stroke dark:border-dark-3"
+                        >
+                          <td className="py-2 pr-4">
+                            <Link
+                              href={`/cobranza/prestamos/${item.idprestamo}`}
+                              className="text-primary hover:underline"
+                            >
+                              {item.noPrestamo}
+                            </Link>
+                          </td>
+                          <td className="py-2 pr-4">{item.nombreCliente}</td>
+                          <td className="py-2 pr-4">{item.canal}</td>
+                          <td className="py-2 pr-4">{item.accion ?? '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+        </AsyncPanel>
+      )}
 
       <AsyncPanel
         isLoading={casosLoading}
@@ -313,10 +359,15 @@ export default function MiDiaPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {casos.map((c) => (
+                  {casos.map((c, idx) => (
                     <tr
                       key={c.idprestamo}
-                      className="border-b border-stroke dark:border-dark-3"
+                      className={cn(
+                        'border-b border-stroke dark:border-dark-3',
+                        idx === selectedIndex &&
+                          'bg-primary/5 dark:bg-primary/10',
+                      )}
+                      onClick={() => setSelectedIndex(idx)}
                     >
                       <td className="py-2 pr-4">
                         <Link
@@ -345,7 +396,11 @@ export default function MiDiaPage() {
                             <Button
                               size="sm"
                               data-ux-id="mi-dia-pago-rapido"
-                              onClick={() => setPagoPrestamoId(c.idprestamo)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedIndex(idx);
+                                setPagoPrestamoId(c.idprestamo);
+                              }}
                             >
                               Registrar pago
                             </Button>
@@ -355,7 +410,11 @@ export default function MiDiaPage() {
                               size="sm"
                               variant="outline"
                               data-ux-id="mi-dia-gestionar"
-                              onClick={() => setGestionPrestamoId(c.idprestamo)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedIndex(idx);
+                                setGestionPrestamoId(c.idprestamo);
+                              }}
                             >
                               Tipificar
                             </Button>
@@ -429,20 +488,46 @@ export default function MiDiaPage() {
 
       {puedeGestion && gestionPrestamoId != null && (
         <GestionRapidaModal
+          key={`ges-${gestionPrestamoId}`}
           idprestamo={gestionPrestamoId}
           onClose={() => setGestionPrestamoId(null)}
           onSuccess={() => {
+            const actual = gestionPrestamoId;
+            const nextId = siguienteIdEnCola(colaIds, actual);
             void refetchResumen();
+            void refetchCasos();
             void refetchAgenda();
+            if (nextId == null) {
+              return;
+            }
+            const nextIdx = colaIds.indexOf(nextId);
+            if (nextIdx >= 0) {
+              setSelectedIndex(nextIdx);
+            }
+            setGestionPrestamoId(nextId);
+            return false;
           }}
         />
       )}
       {puedePago && pagoPrestamoId != null && (
         <PagoRapidaModal
+          key={`pago-${pagoPrestamoId}`}
           idprestamo={pagoPrestamoId}
           onClose={() => setPagoPrestamoId(null)}
           onSuccess={() => {
+            const actual = pagoPrestamoId;
+            const nextId = siguienteIdEnCola(colaIds, actual);
             void refetchResumen();
+            void refetchCasos();
+            if (nextId == null) {
+              return;
+            }
+            const nextIdx = colaIds.indexOf(nextId);
+            if (nextIdx >= 0) {
+              setSelectedIndex(nextIdx);
+            }
+            setPagoPrestamoId(nextId);
+            return false;
           }}
         />
       )}

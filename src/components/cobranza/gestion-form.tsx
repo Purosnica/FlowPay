@@ -47,6 +47,11 @@ interface GestionFormProps {
   celularCliente?: string | null;
   initialNota?: string;
   modoRapido?: boolean;
+  /**
+   * En modoRapido, un clic en chip tipifica y envía (1 clic).
+   * Doble control: el usuario puede expandir catálogo completo.
+   */
+  tipificarUnClic?: boolean;
   onSubmit: (data: GestionFormData) => void;
   onCancel?: () => void;
   isLoading?: boolean;
@@ -63,6 +68,7 @@ export function GestionForm({
   celularCliente,
   initialNota,
   modoRapido = false,
+  tipificarUnClic = true,
   onSubmit,
   onCancel,
   isLoading,
@@ -75,13 +81,23 @@ export function GestionForm({
   });
   const [capturandoGps, setCapturandoGps] = useState(false);
   const [mostrarMas, setMostrarMas] = useState(!modoRapido);
-  const [scriptVisible, setScriptVisible] = useState(modoRapido);
+  const [mostrarCatalogo, setMostrarCatalogo] = useState(!modoRapido);
+  const [scriptVisible, setScriptVisible] = useState(false);
 
   useEffect(() => {
     if (initialNota) {
       setForm((prev) => ({ ...prev, nota: initialNota }));
     }
   }, [initialNota]);
+
+  useEffect(() => {
+    if (celularCliente) {
+      setForm((prev) => ({
+        ...prev,
+        telefonoContacto: prev.telefonoContacto || celularCliente,
+      }));
+    }
+  }, [celularCliente]);
 
   const { data: accionesMandante } = useGraphQLQuery<{
     codigosAccionPorMandante: CodigoAccion[];
@@ -108,7 +124,7 @@ export function GestionForm({
   }>(
     GET_PLANTILLAS_MENSAJE,
     { idmandante: idmandante ?? 0, page: 1, pageSize: 100 },
-    { enabled: !!idmandante },
+    { enabled: !!idmandante && !modoRapido },
   );
 
   const acciones =
@@ -161,18 +177,32 @@ export function GestionForm({
     );
   };
 
-  /** Tipificar en 1 clic: selecciona resultado y deja listo el submit (I176). */
+  /** Tipificar en 1 clic: selecciona resultado, rellena nota y opcionalmente envía. */
   const tipificarRapido = (resultado: CodigoResultado) => {
-    setForm((prev) => ({
-      ...prev,
+    if (submitDisabled || isLoading) {
+      return;
+    }
+    const next: GestionFormData = {
+      ...form,
       idcodresultado: resultado.idcodresultado,
       nota:
-        prev.nota.trim() ||
-        `${resultado.codigo} — ${resultado.descripcion}`,
-    }));
+        form.nota.trim() && form.idcodresultado === resultado.idcodresultado
+          ? form.nota
+          : `${resultado.codigo} — ${resultado.descripcion}`,
+    };
+    setForm(next);
+    if (
+      modoRapido &&
+      tipificarUnClic &&
+      next.nota.trim() &&
+      !(next.contactoTercero && !next.comentario?.trim())
+    ) {
+      onSubmit(next);
+    }
   };
 
   const resultadosRapidos = resultados.slice(0, 6);
+  const mostrarSelects = !modoRapido || mostrarCatalogo;
 
   return (
     <form
@@ -180,7 +210,7 @@ export function GestionForm({
       className="space-y-4"
       data-ux-id="gestion-form"
     >
-      {/* I184 — Script confirmación verbal */}
+      {/* I184 — Script confirmación verbal (colapsado por defecto) */}
       <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-900 dark:bg-blue-950/30">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm font-semibold text-blue-950 dark:text-blue-100">
@@ -245,11 +275,12 @@ export function GestionForm({
         </div>
       )}
 
-      {/* I176 — Tipificación en ≤3 clics */}
+      {/* I176 — Tipificación en ≤3 clics / 1 clic en modoRapido */}
       {modoRapido && resultadosRapidos.length > 0 && (
         <div>
           <label className="mb-1 block text-sm font-medium">
-            Tipificar (1 clic)
+            Tipificar
+            {tipificarUnClic ? ' (1 clic = guardar)' : ' (1 clic)'}
           </label>
           <div className="flex flex-wrap gap-2">
             {resultadosRapidos.map((r) => (
@@ -262,6 +293,7 @@ export function GestionForm({
                     ? 'primary'
                     : 'outline'
                 }
+                disabled={isLoading || submitDisabled}
                 data-ux-id={`tipificar-rapido-${r.codigo}`}
                 onClick={() => tipificarRapido(r)}
               >
@@ -269,55 +301,68 @@ export function GestionForm({
               </Button>
             ))}
           </div>
+          <button
+            type="button"
+            className="mt-2 text-xs text-primary hover:underline"
+            onClick={() => setMostrarCatalogo((v) => !v)}
+          >
+            {mostrarCatalogo
+              ? 'Ocultar catálogo completo'
+              : 'Más códigos (acción / resultado)'}
+          </button>
         </div>
       )}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div>
-          <label className="mb-1 block text-sm font-medium">Acción</label>
-          <select
-            value={form.idcodaccion ?? ''}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                idcodaccion: e.target.value
-                  ? Number(e.target.value)
-                  : undefined,
-              })
-            }
-            className="w-full rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2 dark:text-white"
-          >
-            <option value="">Seleccione...</option>
-            {acciones.map((a) => (
-              <option key={a.idcodaccion} value={a.idcodaccion}>
-                {a.codigo} — {a.descripcion}
-              </option>
-            ))}
-          </select>
-        </div>
+        {mostrarSelects && (
+          <>
+            <div>
+              <label className="mb-1 block text-sm font-medium">Acción</label>
+              <select
+                value={form.idcodaccion ?? ''}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    idcodaccion: e.target.value
+                      ? Number(e.target.value)
+                      : undefined,
+                  })
+                }
+                className="w-full rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2 dark:text-white"
+              >
+                <option value="">Seleccione...</option>
+                {acciones.map((a) => (
+                  <option key={a.idcodaccion} value={a.idcodaccion}>
+                    {a.codigo} — {a.descripcion}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-        <div>
-          <label className="mb-1 block text-sm font-medium">Resultado</label>
-          <select
-            value={form.idcodresultado ?? ''}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                idcodresultado: e.target.value
-                  ? Number(e.target.value)
-                  : undefined,
-              })
-            }
-            className="w-full rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2 dark:text-white"
-          >
-            <option value="">Seleccione...</option>
-            {resultados.map((r) => (
-              <option key={r.idcodresultado} value={r.idcodresultado}>
-                {r.codigo} — {r.descripcion}
-              </option>
-            ))}
-          </select>
-        </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">Resultado</label>
+              <select
+                value={form.idcodresultado ?? ''}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    idcodresultado: e.target.value
+                      ? Number(e.target.value)
+                      : undefined,
+                  })
+                }
+                className="w-full rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2 dark:text-white"
+              >
+                <option value="">Seleccione...</option>
+                {resultados.map((r) => (
+                  <option key={r.idcodresultado} value={r.idcodresultado}>
+                    {r.codigo} — {r.descripcion}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </>
+        )}
 
         {(mostrarMas || !modoRapido) && (
           <>
@@ -442,16 +487,20 @@ export function GestionForm({
         </button>
       )}
 
-      <div>
-        <label className="mb-1 block text-sm font-medium">Nota *</label>
-        <textarea
-          required
-          rows={modoRapido ? 2 : 3}
-          value={form.nota}
-          onChange={(e) => setForm({ ...form, nota: e.target.value })}
-          className="w-full rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2 dark:text-white"
-        />
-      </div>
+      {(!modoRapido || !tipificarUnClic || mostrarCatalogo || form.nota) && (
+        <div>
+          <label className="mb-1 block text-sm font-medium">
+            Nota{modoRapido && tipificarUnClic ? '' : ' *'}
+          </label>
+          <textarea
+            required={!modoRapido || !tipificarUnClic}
+            rows={modoRapido ? 2 : 3}
+            value={form.nota}
+            onChange={(e) => setForm({ ...form, nota: e.target.value })}
+            className="w-full rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2 dark:text-white"
+          />
+        </div>
+      )}
 
       {form.contactoTercero && (
         <div>
@@ -479,7 +528,7 @@ export function GestionForm({
         <PermissionGate permiso={PERMISO.GESTION_WRITE}>
           <Button
             type="submit"
-            disabled={isLoading || submitDisabled}
+            disabled={isLoading || submitDisabled || !form.nota.trim()}
             data-ux-id="gestion-submit"
           >
             {isLoading ? 'Guardando...' : 'Registrar gestión'}

@@ -19,9 +19,6 @@ import {
   puedeAceptarMasImports,
 } from '@/lib/queue/job-queue';
 import {
-  esRutaCobradorCampo,
-} from '@/components/Layouts/cobrador-shell';
-import {
   getTenantIsolationPolicy,
   TENANT_ISOLATION_POLICY,
 } from '@/lib/tenancy/tenant-isolation';
@@ -81,15 +78,6 @@ function testQueueBackpressure(): void {
   );
 }
 
-function testCobradorRutas(): void {
-  assert.equal(esRutaCobradorCampo('/cobranza/mi-dia'), true);
-  assert.equal(esRutaCobradorCampo('/cobranza/bandeja'), true);
-  assert.equal(esRutaCobradorCampo('/cobranza/gestiones'), true);
-  assert.equal(esRutaCobradorCampo('/cobranza/prestamos/12'), true);
-  assert.equal(esRutaCobradorCampo('/cobranza/reportes'), false);
-  assert.equal(esRutaCobradorCampo('/cobranza/liquidaciones'), false);
-}
-
 function testTenancyYFlags(): void {
   assert.equal(getTenantIsolationPolicy(), TENANT_ISOLATION_POLICY);
   assert.equal(FEATURE_FLAG.EVENT_BUS_WEBHOOKS, 'event_bus_webhooks');
@@ -100,7 +88,6 @@ function main(): void {
   testCircuitBreaker();
   testPlantillaVersion();
   testQueueBackpressure();
-  testCobradorRutas();
   testTenancyYFlags();
   console.warn('arch-mejoras unit helpers: OK');
 }

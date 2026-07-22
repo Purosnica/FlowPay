@@ -7,6 +7,7 @@ import {
   PagoForm,
   type PagoFormData,
 } from '@/components/cobranza/pago-form';
+import { ContactoRapidoAcciones } from '@/components/cobranza/contacto-rapido-acciones';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { useGraphQLMutation } from '@/hooks/use-graphql-mutation';
 import {
@@ -27,7 +28,10 @@ interface PagoRapidaModalProps {
   prestamo?: BandejaGraphQLItem | null;
   idprestamo?: number | null;
   onClose: () => void;
-  onSuccess?: () => void;
+  /**
+   * Tras guardar. Retornar `false` para no cerrar (auto-avance).
+   */
+  onSuccess?: () => boolean | void;
 }
 
 function toBandejaItem(p: Prestamo): BandejaGraphQLItem {
@@ -60,8 +64,9 @@ export function PagoRapidaModal({
     { enabled: !!resolvedId && !prestamoProp },
   );
 
+  const prestamoFetched = data?.prestamo ?? null;
   const prestamo =
-    prestamoProp ?? (data?.prestamo ? toBandejaItem(data.prestamo) : null);
+    prestamoProp ?? (prestamoFetched ? toBandejaItem(prestamoFetched) : null);
 
   const mutation = useGraphQLMutation(CREATE_PAGO, {
     onSuccess: () => {
@@ -70,8 +75,10 @@ export function PagoRapidaModal({
       void queryClient.invalidateQueries({
         queryKey: [GET_CASOS_PRIORITARIOS_MI_DIA],
       });
-      onSuccess?.();
-      onClose();
+      const keepOpen = onSuccess?.() === false;
+      if (!keepOpen) {
+        onClose();
+      }
     },
   });
 
@@ -98,6 +105,10 @@ export function PagoRapidaModal({
   const nombreCliente = prestamo?.cliente
     ? nombreCompletoCliente(prestamo.cliente)
     : undefined;
+  const celular =
+    prestamo?.cliente?.celular ?? prestamo?.cliente?.telefono ?? null;
+  const saldo =
+    prestamoFetched?.saldoTotal ?? prestamo?.saldoTotal ?? null;
 
   return (
     <Modal
@@ -118,15 +129,20 @@ export function PagoRapidaModal({
       >
         {prestamo && (
           <>
-            <p className="mb-3 text-sm text-gray-500">
-              {nombreCliente ? `${nombreCliente} · ` : ''}
-              Saldo {formatearMoneda(prestamo.saldoTotal, prestamo.moneda)} ·{' '}
-              {prestamo.diasMora} días mora
-            </p>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm text-gray-500">
+                {nombreCliente ? `${nombreCliente} · ` : ''}
+                Saldo {formatearMoneda(prestamo.saldoTotal, prestamo.moneda)} ·{' '}
+                {prestamo.diasMora} días mora
+              </p>
+              <ContactoRapidoAcciones telefono={celular} />
+            </div>
             <PagoForm
+              key={prestamo.idprestamo}
               monedaDefault={
                 prestamo.moneda === 'USD' ? 'USD' : 'NIO'
               }
+              saldoTotal={saldo}
               isLoading={mutation.isPending}
               onSubmit={handleSubmit}
             />

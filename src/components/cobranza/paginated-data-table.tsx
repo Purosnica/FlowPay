@@ -16,6 +16,7 @@ interface PaginatedDataTableProps<T> {
   emptyMessage?: string;
   emptyAction?: React.ReactNode;
   onRowClick?: (row: T) => void;
+  getRowClassName?: (row: T, index: number) => string | undefined;
   rowActions?: (row: T) => React.ReactNode;
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
@@ -33,6 +34,7 @@ export function PaginatedDataTable<T>({
   emptyMessage,
   emptyAction,
   onRowClick,
+  getRowClassName,
   rowActions,
   onPageChange,
   onPageSizeChange,
@@ -50,6 +52,7 @@ export function PaginatedDataTable<T>({
         emptyMessage={emptyMessage}
         emptyAction={emptyAction}
         onRowClick={onRowClick}
+        getRowClassName={getRowClassName}
         rowActions={rowActions}
         sorting={sorting}
         onSortingChange={onSortingChange}

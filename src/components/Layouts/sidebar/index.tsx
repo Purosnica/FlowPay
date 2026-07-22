@@ -8,21 +8,24 @@ import { useEffect, useMemo, useState } from "react";
 import { NAV_DATA } from "./data";
 import { useAuth } from "@/contexts/auth-context";
 import { filtrarNavPorPermisos } from "@/lib/navigation/filter-nav-by-permisos";
+import { filtrarNavPorRol } from "@/lib/navigation/filter-nav-por-rol";
 import { ArrowLeftIcon, ChevronUp } from "./icons";
 import { MenuItem } from "./menu-item";
 import { useSidebarContext } from "./sidebar-context";
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { permisos, loading: authLoading } = useAuth();
+  const { permisos, usuario, loading: authLoading } = useAuth();
   const { setIsOpen, isOpen, isMobile, toggleSidebar } = useSidebarContext();
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
 
-  const navData = useMemo(
-    () =>
-      authLoading ? NAV_DATA : filtrarNavPorPermisos(NAV_DATA, permisos),
-    [authLoading, permisos],
-  );
+  const navData = useMemo(() => {
+    if (authLoading) {
+      return NAV_DATA;
+    }
+    const porPermiso = filtrarNavPorPermisos(NAV_DATA, permisos);
+    return filtrarNavPorRol(porPermiso, usuario?.rolCodigo);
+  }, [authLoading, permisos, usuario?.rolCodigo]);
 
   const toggleExpanded = (title: string) => {
     setExpandedItems((prev) => (prev.includes(title) ? [] : [title]));

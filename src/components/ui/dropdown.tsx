@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { useClickOutside } from "@/hooks/use-click-outside";
-import { createContext, useContext, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useCallback, type MouseEvent, type ReactNode } from "react";
 
 type DropdownContextType = {
   isOpen: boolean;
@@ -21,7 +21,7 @@ type DropdownTriggerProps = {
   children: ReactNode;
   className?: string;
   "aria-label"?: string;
-  onClick?: () => void;
+  onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
 };
 
 type DropdownContentProps = {
@@ -62,11 +62,11 @@ export function DropdownTrigger({
 
   const { isOpen, setIsOpen } = context;
 
-  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setIsOpen(!isOpen);
-    onClick?.();
+    onClick?.(e);
   };
 
   return (

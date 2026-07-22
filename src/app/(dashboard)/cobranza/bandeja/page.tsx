@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import type { ColumnDef } from '@tanstack/react-table';
 import { keepPreviousData } from '@tanstack/react-query';
 import { PaginatedDataTable } from '@/components/cobranza/paginated-data-table';
@@ -16,6 +16,11 @@ import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { PageHeader } from '@/components/ui/page-header';
 import { SearchParamsBoundary } from '@/components/ui/search-params-boundary';
+import {
+  Dropdown,
+  DropdownContent,
+  DropdownTrigger,
+} from '@/components/ui/dropdown';
 import { PermissionGate } from '@/components/auth/permission-gate';
 import { PERMISO } from '@/lib/permissions/permiso-codes';
 import { useDebounce } from '@/hooks/use-debounce';
@@ -29,6 +34,14 @@ import {
 } from '@/lib/graphql/queries/cobranza.queries';
 import { buildPlantillaContextFromPrestamo } from '@/lib/cobranza/plantilla-mensaje-utils';
 import {
+  moverIndiceCola,
+  siguienteIdEnCola,
+} from '@/lib/logic/cola-operativa-logic';
+import {
+  filtrosBandejaDesdeSearchParams,
+  searchParamsDesdeFiltrosBandeja,
+} from '@/lib/logic/bandeja-url-filters-logic';
+import {
   type BandejaFilters,
   type BandejaGraphQLItem,
   type Prestamo,
@@ -36,38 +49,16 @@ import {
   formatearMoneda,
   nombreCompletoCliente,
 } from '@/types/cobranza';
-
-import { obtenerPresetBandejaPorId } from '@/lib/cobranza/bandeja-presets';
+import { cn } from '@/lib/utils';
 
 const ATAJOS_BANDEJA = [
-  { keys: 'P', descripcion: 'Pago rápido del primer caso de la página' },
-  { keys: 'G', descripcion: 'Tipificar el primer caso de la página' },
-  { keys: 'N', descripcion: 'Abrir detalle del primer caso' },
+  { keys: 'J / K', descripcion: 'Caso anterior / siguiente' },
+  { keys: 'P', descripcion: 'Pago rápido del caso seleccionado' },
+  { keys: 'G', descripcion: 'Tipificar el caso seleccionado' },
+  { keys: 'N', descripcion: 'Abrir detalle del caso seleccionado' },
   { keys: 'M', descripcion: 'Ir a Mi día' },
   { keys: '?', descripcion: 'Mostrar esta ayuda' },
 ];
-
-function filtrosDesdeUrl(searchParams: URLSearchParams): BandejaFilters {
-  const presetId = searchParams.get('preset');
-  if (presetId) {
-    const preset = obtenerPresetBandejaPorId(presetId);
-    if (preset) {
-      return { ...preset.filters };
-    }
-  }
-
-  const filters: BandejaFilters = {};
-  if (searchParams.get('soloPromesaVencida') === '1') {
-    filters.soloPromesaVencida = true;
-  }
-  if (searchParams.get('soloSinGestion') === '1') {
-    filters.soloSinGestion = true;
-  }
-  if (searchParams.get('soloAgendaHoy') === '1') {
-    filters.soloAgendaHoy = true;
-  }
-  return filters;
-}
 
 function buildBandejaQueryFilters(
   filters: BandejaFilters,
@@ -82,7 +73,6 @@ function buildBandejaQueryFilters(
   }
   if (filters.tramoMoraMin !== undefined) {
     cleaned.tramoMoraMin = filters.tramoMoraMin;
-    // GraphQL Int no acepta null; omitir max abierto — el resolver usa gte.
     if (filters.tramoMoraMax != null) {
       cleaned.tramoMoraMax = filters.tramoMoraMax;
     }
@@ -143,8 +133,83 @@ function bandejaItemToPrestamo(item: BandejaGraphQLItem): Prestamo {
   };
 }
 
+function BandejaAccionesFila({
+  item,
+  onPago,
+  onGestion,
+  onEnviar,
+}: {
+  item: BandejaGraphQLItem;
+  onPago: () => void;
+  onGestion: () => void;
+  onEnviar: () => void;
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <PermissionGate permiso={PERMISO.PAGO_WRITE}>
+        <Button
+          size="sm"
+          data-ux-id="bandeja-pago-rapido"
+          onClick={(e) => {
+            e.stopPropagation();
+            onPago();
+          }}
+        >
+          Registrar pago
+        </Button>
+      </PermissionGate>
+      <Dropdown isOpen={menuOpen} setIsOpen={setMenuOpen}>
+        <DropdownTrigger
+          aria-label="Más acciones"
+          className="inline-flex h-8 items-center rounded-md border border-stroke px-2 text-sm dark:border-dark-3"
+          onClick={(e) => e.stopPropagation()}
+        >
+          ⋯
+        </DropdownTrigger>
+        <DropdownContent className="min-w-[160px] border border-stroke bg-white p-1 shadow-lg dark:border-dark-3 dark:bg-gray-dark">
+          <PermissionGate permiso={PERMISO.GESTION_WRITE}>
+            <button
+              type="button"
+              className="block w-full rounded px-3 py-2 text-left text-sm hover:bg-gray-2 dark:hover:bg-dark-2"
+              data-ux-id="bandeja-gestion-rapida"
+              onClick={(e) => {
+                e.stopPropagation();
+                setMenuOpen(false);
+                onGestion();
+              }}
+            >
+              Tipificar
+            </button>
+            <button
+              type="button"
+              className="block w-full rounded px-3 py-2 text-left text-sm hover:bg-gray-2 dark:hover:bg-dark-2"
+              onClick={(e) => {
+                e.stopPropagation();
+                setMenuOpen(false);
+                onEnviar();
+              }}
+            >
+              Enviar cobro
+            </button>
+          </PermissionGate>
+          <Link
+            href={`/cobranza/prestamos/${item.idprestamo}`}
+            className="block rounded px-3 py-2 text-sm hover:bg-gray-2 dark:hover:bg-dark-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            Detalle
+          </Link>
+        </DropdownContent>
+      </Dropdown>
+    </div>
+  );
+}
+
 function BandejaPageContent() {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const puedeGestion = usePuede(PERMISO.GESTION_WRITE);
   const puedePago = usePuede(PERMISO.PAGO_WRITE);
@@ -157,10 +222,13 @@ function BandejaPageContent() {
   const [pagoRapido, setPagoRapido] = useState<BandejaGraphQLItem | null>(
     null,
   );
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const [filters, setFilters] = useState<BandejaFilters>(() =>
-    filtrosDesdeUrl(searchParams),
+    filtrosBandejaDesdeSearchParams(searchParams),
   );
-  const [searchInput, setSearchInput] = useState('');
+  const [searchInput, setSearchInput] = useState(
+    () => searchParams.get('search') ?? '',
+  );
   const debouncedSearch = useDebounce(searchInput.trim(), 300);
   const {
     queryVars,
@@ -176,6 +244,29 @@ function BandejaPageContent() {
     }),
     [filters, debouncedSearch],
   );
+
+  const syncUrl = useCallback(
+    (nextFilters: BandejaFilters, nextSearch: string) => {
+      const params = searchParamsDesdeFiltrosBandeja(nextFilters, nextSearch);
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [pathname, router],
+  );
+
+  const handleFiltersChange = useCallback(
+    (next: BandejaFilters) => {
+      setFilters(next);
+      syncUrl(next, searchInput);
+    },
+    [searchInput, syncUrl],
+  );
+
+  useEffect(() => {
+    syncUrl(filters, debouncedSearch);
+    // Solo al estabilizar la búsqueda tipada.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sync búsqueda debounceada
+  }, [debouncedSearch]);
 
   const bandejaQueryVariables = useMemo(
     () => ({
@@ -201,6 +292,17 @@ function BandejaPageContent() {
     placeholderData: keepPreviousData,
   });
   const bandejaData = data?.bandejaCobrador;
+  const prestamos = bandejaData?.prestamos ?? [];
+  const colaIds = useMemo(
+    () => prestamos.map((p) => p.idprestamo),
+    [prestamos],
+  );
+
+  useEffect(() => {
+    if (selectedIndex >= prestamos.length && prestamos.length > 0) {
+      setSelectedIndex(prestamos.length - 1);
+    }
+  }, [prestamos.length, selectedIndex]);
 
   const { data: promesasData, isLoading: promesasLoading } = useGraphQLQuery<{
     promesasVencidas: PromesaVencida[];
@@ -213,6 +315,8 @@ function BandejaPageContent() {
         : null,
     [enviarPrestamo],
   );
+
+  const itemSeleccionado = prestamos[selectedIndex] ?? prestamos[0];
 
   const columns = useMemo<ColumnDef<BandejaGraphQLItem>[]>(
     () => [
@@ -281,39 +385,21 @@ function BandejaPageContent() {
         id: 'accion',
         header: '',
         cell: ({ row }) => (
-          <div className="flex flex-wrap gap-2">
-            <PermissionGate permiso={PERMISO.PAGO_WRITE}>
-              <Button
-                size="sm"
-                data-ux-id="bandeja-pago-rapido"
-                onClick={() => setPagoRapido(row.original)}
-              >
-                Registrar pago
-              </Button>
-            </PermissionGate>
-            <PermissionGate permiso={PERMISO.GESTION_WRITE}>
-              <Button
-                size="sm"
-                variant="outline"
-                data-ux-id="bandeja-gestion-rapida"
-                onClick={() => setGestionRapida(row.original)}
-              >
-                Tipificar
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setEnviarPrestamo(row.original)}
-              >
-                Enviar cobro
-              </Button>
-            </PermissionGate>
-            <Link href={`/cobranza/prestamos/${row.original.idprestamo}`}>
-              <Button size="sm" variant="ghost">
-                Detalle
-              </Button>
-            </Link>
-          </div>
+          <BandejaAccionesFila
+            item={row.original}
+            onPago={() => {
+              setSelectedIndex(row.index);
+              setPagoRapido(row.original);
+            }}
+            onGestion={() => {
+              setSelectedIndex(row.index);
+              setGestionRapida(row.original);
+            }}
+            onEnviar={() => {
+              setSelectedIndex(row.index);
+              setEnviarPrestamo(row.original);
+            }}
+          />
         ),
       },
     ],
@@ -321,34 +407,47 @@ function BandejaPageContent() {
   );
 
   const promesas = promesasData?.promesasVencidas ?? [];
-  const primerItem = bandejaData?.prestamos?.[0];
+  const mostrarPanelPromesas =
+    promesas.length > 0 && !filters.soloPromesaVencida;
 
   const hotkeys = useMemo(
     () => [
       {
+        key: 'j',
+        enabled: prestamos.length > 0,
+        handler: () =>
+          setSelectedIndex((i) => moverIndiceCola(i, prestamos.length, 1)),
+      },
+      {
+        key: 'k',
+        enabled: prestamos.length > 0,
+        handler: () =>
+          setSelectedIndex((i) => moverIndiceCola(i, prestamos.length, -1)),
+      },
+      {
         key: 'p',
-        enabled: puedePago && Boolean(primerItem),
+        enabled: puedePago && Boolean(itemSeleccionado),
         handler: () => {
-          if (primerItem) {
-            setPagoRapido(primerItem);
+          if (itemSeleccionado) {
+            setPagoRapido(itemSeleccionado);
           }
         },
       },
       {
         key: 'g',
-        enabled: puedeGestion && Boolean(primerItem),
+        enabled: puedeGestion && Boolean(itemSeleccionado),
         handler: () => {
-          if (primerItem) {
-            setGestionRapida(primerItem);
+          if (itemSeleccionado) {
+            setGestionRapida(itemSeleccionado);
           }
         },
       },
       {
         key: 'n',
-        enabled: Boolean(primerItem),
+        enabled: Boolean(itemSeleccionado),
         handler: () => {
-          if (primerItem) {
-            router.push(`/cobranza/prestamos/${primerItem.idprestamo}`);
+          if (itemSeleccionado) {
+            router.push(`/cobranza/prestamos/${itemSeleccionado.idprestamo}`);
           }
         },
       },
@@ -357,24 +456,58 @@ function BandejaPageContent() {
         handler: () => router.push('/cobranza/mi-dia'),
       },
     ],
-    [puedeGestion, puedePago, primerItem, router],
+    [puedeGestion, puedePago, itemSeleccionado, router, prestamos.length],
   );
 
   useHotkeys(hotkeys);
+
+  const avanzarEnLista = (
+    idActual: number,
+    setter: (item: BandejaGraphQLItem | null) => void,
+  ): boolean | void => {
+    const nextId = siguienteIdEnCola(colaIds, idActual);
+    if (nextId == null) {
+      return;
+    }
+    const next = prestamos.find((p) => p.idprestamo === nextId);
+    if (!next) {
+      return;
+    }
+    const nextIdx = colaIds.indexOf(nextId);
+    if (nextIdx >= 0) {
+      setSelectedIndex(nextIdx);
+    }
+    setter(next);
+    return false;
+  };
 
   return (
     <div className="field-layout space-y-6">
       <OperacionHotkeysHelp atajos={ATAJOS_BANDEJA} />
       <PageHeader
         title="Mi bandeja"
-        description="Préstamos asignados con mora activa. Atajos: G tipificar · N recuperar · M Mi día · ? ayuda."
+        description="Préstamos asignados con mora activa. Atajos: J/K · G tipificar · P pago · N detalle · M Mi día · ?"
       />
 
-      {promesas.length > 0 && (
+      {mostrarPanelPromesas && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/30">
-          <h2 className="mb-2 font-semibold text-amber-800 dark:text-amber-300">
-            Promesas vencidas ({promesas.length})
-          </h2>
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-semibold text-amber-800 dark:text-amber-300">
+              Promesas vencidas ({promesas.length})
+            </h2>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() =>
+                handleFiltersChange({
+                  ...filters,
+                  soloPromesaVencida: true,
+                })
+              }
+            >
+              Filtrar bandeja
+            </Button>
+          </div>
           <PromesasVencidasPanel
             promesas={promesas}
             isLoading={promesasLoading}
@@ -387,11 +520,12 @@ function BandejaPageContent() {
         filters={filters}
         searchInput={searchInput}
         onSearchChange={setSearchInput}
-        onChange={setFilters}
+        onChange={handleFiltersChange}
         onReset={() => {
           setFilters({});
           setSearchInput('');
           resetPage();
+          syncUrl({}, '');
         }}
       />
 
@@ -400,21 +534,41 @@ function BandejaPageContent() {
           Error al cargar la bandeja.
         </p>
       )}
-      <PaginatedDataTable
-        data={bandejaData?.prestamos ?? []}
-        columns={columns}
-        pagination={bandejaData}
-        isLoading={isLoading || (isFetching && !bandejaData)}
-        emptyMessage="No tiene préstamos asignados que coincidan con los filtros."
-        emptyAction={
-          <Link href="/cobranza/mi-dia">
-            <Button size="sm">Ir a Mi día</Button>
-          </Link>
-        }
-        onPageChange={handlePageChange}
-        onPageSizeChange={handlePageSizeChange}
-        itemLabel="préstamos"
-      />
+      <div
+        className={cn(
+          'rounded-lg',
+          itemSeleccionado && 'ring-1 ring-primary/20',
+        )}
+      >
+        <PaginatedDataTable
+          data={prestamos}
+          columns={columns}
+          pagination={bandejaData}
+          isLoading={isLoading || (isFetching && !bandejaData)}
+          emptyMessage="No tiene préstamos asignados que coincidan con los filtros."
+          emptyAction={
+            <Link href="/cobranza/mi-dia">
+              <Button size="sm">Ir a Mi día</Button>
+            </Link>
+          }
+          onPageChange={handlePageChange}
+          onPageSizeChange={handlePageSizeChange}
+          itemLabel="préstamos"
+          onRowClick={(row) => {
+            const idx = prestamos.findIndex(
+              (p) => p.idprestamo === row.idprestamo,
+            );
+            if (idx >= 0) {
+              setSelectedIndex(idx);
+            }
+          }}
+          getRowClassName={(_row, index) =>
+            index === selectedIndex
+              ? 'bg-primary/5 dark:bg-primary/10'
+              : undefined
+          }
+        />
+      </div>
 
       <Modal
         isOpen={!!enviarPrestamo}
@@ -438,14 +592,22 @@ function BandejaPageContent() {
 
       {gestionRapida && (
         <GestionRapidaModal
+          key={`ges-${gestionRapida.idprestamo}`}
           prestamo={gestionRapida}
           onClose={() => setGestionRapida(null)}
+          onSuccess={() =>
+            avanzarEnLista(gestionRapida.idprestamo, setGestionRapida)
+          }
         />
       )}
       {pagoRapido && (
         <PagoRapidaModal
+          key={`pago-${pagoRapido.idprestamo}`}
           prestamo={pagoRapido}
           onClose={() => setPagoRapido(null)}
+          onSuccess={() =>
+            avanzarEnLista(pagoRapido.idprestamo, setPagoRapido)
+          }
         />
       )}
     </div>
