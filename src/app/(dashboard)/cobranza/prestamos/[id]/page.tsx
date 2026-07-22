@@ -677,7 +677,7 @@ export default function PrestamoDetailPage({ params }: PageProps) {
             setGestionModal(false);
             setNotaPrefill('');
           }}
-          onSubmit={(form) =>
+          onSubmit={(form) => {
             const input = {
               idprestamo,
               ...form,
@@ -695,7 +695,7 @@ export default function PrestamoDetailPage({ params }: PageProps) {
               return;
             }
             gestionMutation.mutate({ input });
-          }
+          }}
         />
       </Modal>
 
