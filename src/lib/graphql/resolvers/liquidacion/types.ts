@@ -24,6 +24,12 @@ export const Liquidacion = definePrismaObject('tbl_liquidacion', {
     totalRecuperado: exposeDecimal(t, 'totalRecuperado'),
     totalComision: exposeDecimal(t, 'totalComision'),
     estado: t.exposeString('estado'),
+    idusuarioCreacion: t.exposeInt('idusuarioCreacion', {
+      nullable: true,
+    }),
+    idusuarioEmision: t.exposeInt('idusuarioEmision', {
+      nullable: true,
+    }),
     createdAt: t.expose('createdAt', { type: 'DateTime' }),
     updatedAt: t.expose('updatedAt', { type: 'DateTime' }),
     mandante: t.relation('mandante'),

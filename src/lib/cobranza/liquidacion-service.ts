@@ -24,10 +24,6 @@ import {
   puedeRevertirLiquidacionPagada,
 } from '@/lib/logic/liquidacion-estado-logic';
 import {
-  puedeEmitirComoChecker,
-  puedeMarcarPagadaComoChecker,
-} from '@/lib/logic/liquidacion-sod-logic';
-import {
   convertirMontoAMonedaBase,
   MONEDA_BASE_LIQUIDACION,
 } from '@/lib/logic/liquidacion-fx-logic';
@@ -510,16 +506,6 @@ export async function emitirLiquidacion(
   if (!puedeEmitirLiquidacion(liq.estado)) {
     throw new Error('Solo se pueden emitir liquidaciones en estado BORRADOR.');
   }
-  if (
-    !puedeEmitirComoChecker({
-      idusuarioActor: idusuario,
-      idusuarioCreacion: liq.idusuarioCreacion,
-    })
-  ) {
-    throw new Error(
-      'Maker-checker: quien generó la liquidación no puede emitirla.',
-    );
-  }
 
   const lockName = `liq-emit:${idliquidacion}`;
   const locked = await adquirirBloqueoMysql(lockName, 5);
@@ -534,16 +520,6 @@ export async function emitirLiquidacion(
     });
     if (!actual || actual.deletedAt || !puedeEmitirLiquidacion(actual.estado)) {
       throw new Error('Solo se pueden emitir liquidaciones en estado BORRADOR.');
-    }
-    if (
-      !puedeEmitirComoChecker({
-        idusuarioActor: idusuario,
-        idusuarioCreacion: actual.idusuarioCreacion,
-      })
-    ) {
-      throw new Error(
-        'Maker-checker: quien generó la liquidación no puede emitirla.',
-      );
     }
     await prisma.$transaction(async (tx) => {
       await tx.tbl_liquidacion.update({
@@ -594,16 +570,6 @@ export async function marcarLiquidacionPagada(
   if (!puedeMarcarLiquidacionPagada(liq.estado)) {
     throw new Error('Solo se pueden pagar liquidaciones emitidas.');
   }
-  if (
-    !puedeMarcarPagadaComoChecker({
-      idusuarioActor: idusuario,
-      idusuarioEmision: liq.idusuarioEmision,
-    })
-  ) {
-    throw new Error(
-      'Maker-checker: quien emitió la liquidación no puede marcarla pagada.',
-    );
-  }
 
   const lockName = `liq-pagar:${idliquidacion}`;
   const locked = await adquirirBloqueoMysql(lockName, 5);
@@ -622,16 +588,6 @@ export async function marcarLiquidacionPagada(
       !puedeMarcarLiquidacionPagada(actual.estado)
     ) {
       throw new Error('Solo se pueden pagar liquidaciones emitidas.');
-    }
-    if (
-      !puedeMarcarPagadaComoChecker({
-        idusuarioActor: idusuario,
-        idusuarioEmision: actual.idusuarioEmision,
-      })
-    ) {
-      throw new Error(
-        'Maker-checker: quien emitió la liquidación no puede marcarla pagada.',
-      );
     }
     await prisma.$transaction(async (tx) => {
       await tx.tbl_liquidacion.update({

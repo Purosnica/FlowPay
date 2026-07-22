@@ -294,6 +294,8 @@ export interface Liquidacion {
   totalRecuperado: number;
   totalComision: number;
   estado: string;
+  idusuarioCreacion?: number | null;
+  idusuarioEmision?: number | null;
   createdAt: string;
   mandante?: { nombre: string; codigo: string };
 }

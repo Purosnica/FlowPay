@@ -845,6 +845,8 @@ export const GET_LIQUIDACIONES = `
         totalRecuperado
         totalComision
         estado
+        idusuarioCreacion
+        idusuarioEmision
         createdAt
         mandante {
           nombre

@@ -1,6 +1,7 @@
 import { apiClient } from "@/lib/axios";
 import { clientErrorLogger } from "@/lib/errors/client-error-logger";
 import { type StructuredError, ErrorCode } from "@/lib/errors/types";
+import { notificationToast } from "@/lib/notifications/notification-toast";
 
 
 export interface GraphQLError {
@@ -103,45 +104,30 @@ export async function graphqlRequest<T = unknown>(
       },
     );
 
-    // Si hay errores en la respuesta GraphQL
+    // Si hay errores en la respuesta GraphQL (suele ser HTTP 200)
     if (response.data.errors && response.data.errors.length > 0) {
       const firstError = response.data.errors[0];
       const structuredError = extractStructuredErrorFromGraphQL(firstError);
+      const userMessage =
+        structuredError.userMessage ||
+        firstError?.message ||
+        "Ocurrió un error inesperado. Por favor, intente nuevamente.";
 
-      // Validar que el error estructurado sea válido antes de registrarlo
-      // Solo registrar errores GraphQL (no errores HTTP, esos ya los registró el interceptor)
-      if (structuredError && structuredError.code && structuredError.message) {
-        // Registrar error solo si es un error GraphQL (no HTTP)
-        // Los errores HTTP (4xx, 5xx) ya fueron registrados por el interceptor de axios
-        // Solo registramos errores GraphQL que vienen en respuestas HTTP 200
-        if (typeof window !== "undefined" && response.status === 200) {
-          clientErrorLogger.log(structuredError, {
-            query: query.substring(0, 100), // Solo primeros 100 caracteres
-            variables: JSON.stringify(variables),
-          });
-        }
-      } else {
-        // Si el error no es válido, crear uno por defecto y registrarlo
-        const defaultError: StructuredError = {
-          code: ErrorCode.INTERNAL_SERVER_ERROR,
-          message: firstError?.message || "Error desconocido de GraphQL",
-          userMessage: firstError?.message || "Ocurrió un error inesperado. Por favor, intente nuevamente.",
-          statusCode: 500,
-          timestamp: new Date().toISOString(),
-        };
-        if (typeof window !== "undefined" && response.status === 200) {
-          clientErrorLogger.log(defaultError, {
-            query: query.substring(0, 100),
-            variables: JSON.stringify(variables),
-          });
+      if (typeof window !== "undefined" && response.status === 200) {
+        clientErrorLogger.log(structuredError, {
+          query: query.substring(0, 100),
+          variables: JSON.stringify(variables),
+        });
+        if (!options?.suppressErrorToast) {
+          notificationToast.error(userMessage);
         }
       }
 
       throw new GraphQLRequestError(
-        structuredError.userMessage,
+        userMessage,
         response.data.errors,
         structuredError.statusCode,
-        structuredError
+        structuredError,
       );
     }
 
@@ -150,21 +136,24 @@ export async function graphqlRequest<T = unknown>(
       const structuredError: StructuredError = {
         code: ErrorCode.INTERNAL_SERVER_ERROR,
         message: "No se recibieron datos de la respuesta",
-        userMessage: "No se recibieron datos de la respuesta. Por favor, intente nuevamente.",
+        userMessage:
+          "No se recibieron datos de la respuesta. Por favor, intente nuevamente.",
         statusCode: 500,
         timestamp: new Date().toISOString(),
       };
 
-      // Solo registrar si es HTTP 200 (errores HTTP ya fueron registrados por el interceptor)
       if (typeof window !== "undefined" && response.status === 200) {
         clientErrorLogger.log(structuredError);
+        if (!options?.suppressErrorToast) {
+          notificationToast.error(structuredError.userMessage);
+        }
       }
 
       throw new GraphQLRequestError(
         structuredError.userMessage,
         undefined,
         structuredError.statusCode,
-        structuredError
+        structuredError,
       );
     }
 

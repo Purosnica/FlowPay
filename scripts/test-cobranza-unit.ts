@@ -46,10 +46,6 @@ import {
   puedeEditarPermisosDelRol,
 } from '@/lib/logic/rol-privilege-logic';
 import {
-  puedeEmitirComoChecker,
-  puedeMarcarPagadaComoChecker,
-} from '@/lib/logic/liquidacion-sod-logic';
-import {
   debePreservarSaldoVivo,
   normalizarEstadoImportacion,
 } from '@/lib/logic/import-saldo-policy-logic';
@@ -445,27 +441,6 @@ function testRolPrivilegeYSod(): void {
     puedeEditarPermisosDelRol({
       codigoActor: 'GERENTE',
       codigoRolObjetivo: 'ADMIN',
-    }),
-    false,
-  );
-  assert.equal(
-    puedeEmitirComoChecker({
-      idusuarioActor: 2,
-      idusuarioCreacion: 1,
-    }),
-    true,
-  );
-  assert.equal(
-    puedeEmitirComoChecker({
-      idusuarioActor: 1,
-      idusuarioCreacion: 1,
-    }),
-    false,
-  );
-  assert.equal(
-    puedeMarcarPagadaComoChecker({
-      idusuarioActor: 1,
-      idusuarioEmision: 1,
     }),
     false,
   );

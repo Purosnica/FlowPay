@@ -25,8 +25,11 @@ import {
   REVERTIR_LIQUIDACION_PAGADA,
   ANULAR_LIQUIDACION,
 } from '@/lib/graphql/queries/cobranza.queries';
-import { type Liquidacion, type SimulacionLiquidacion , formatearMoneda } from '@/types/cobranza';
-
+import {
+  type Liquidacion,
+  type SimulacionLiquidacion,
+  formatearMoneda,
+} from '@/types/cobranza';
 import { periodoActual } from '@/lib/cobranza/periodo-utils';
 import { crearIdempotencyKey } from '@/lib/api/idempotency-key';
 
@@ -191,66 +194,66 @@ export default function LiquidacionesPage() {
                 Detalle
               </Button>
               <PermissionGate permiso={PERMISO.LIQUIDACION_WRITE}>
-              {liq.estado === 'BORRADOR' && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={emitirMutation.isPending}
-                  onClick={() =>
-                    emitirMutation.mutate({
-                      idliquidacion: liq.idliquidacion,
-                    })
-                  }
-                >
-                  Emitir
-                </Button>
-              )}
-              {liq.estado === 'EMITIDA' && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={pagadaMutation.isPending}
-                  onClick={() =>
-                    pagadaMutation.mutate({
-                      idliquidacion: liq.idliquidacion,
-                    })
-                  }
-                >
-                  Marcar pagada
-                </Button>
-              )}
-              {liq.estado === 'PAGADA' && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={revertirPagadaMutation.isPending}
-                  onClick={() =>
-                    setConfirmLiq({
-                      tipo: 'revertir',
-                      id: liq.idliquidacion,
-                    })
-                  }
-                >
-                  Revertir pago
-                </Button>
-              )}
-              {(liq.estado === 'BORRADOR' ||
-                liq.estado === 'EMITIDA' ||
-                liq.estado === 'PAGADA') && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={anularMutation.isPending}
-                  onClick={() =>
-                    setConfirmLiq({
-                      tipo: 'anular',
-                      id: liq.idliquidacion,
-                    })
-                  }
-                >
-                  Anular
-                </Button>
-              )}
+                {liq.estado === 'BORRADOR' && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={emitirMutation.isPending}
+                    onClick={() =>
+                      emitirMutation.mutate({
+                        idliquidacion: liq.idliquidacion,
+                      })
+                    }
+                  >
+                    Emitir
+                  </Button>
+                )}
+                {liq.estado === 'EMITIDA' && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={pagadaMutation.isPending}
+                    onClick={() =>
+                      pagadaMutation.mutate({
+                        idliquidacion: liq.idliquidacion,
+                      })
+                    }
+                  >
+                    Marcar pagada
+                  </Button>
+                )}
+                {liq.estado === 'PAGADA' && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={revertirPagadaMutation.isPending}
+                    onClick={() =>
+                      setConfirmLiq({
+                        tipo: 'revertir',
+                        id: liq.idliquidacion,
+                      })
+                    }
+                  >
+                    Revertir pago
+                  </Button>
+                )}
+                {(liq.estado === 'BORRADOR' ||
+                  liq.estado === 'EMITIDA' ||
+                  liq.estado === 'PAGADA') && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={anularMutation.isPending}
+                    onClick={() =>
+                      setConfirmLiq({
+                        tipo: 'anular',
+                        id: liq.idliquidacion,
+                      })
+                    }
+                  >
+                    Anular
+                  </Button>
+                )}
               </PermissionGate>
             </div>
           );
