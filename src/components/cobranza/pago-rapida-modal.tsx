@@ -12,12 +12,18 @@ import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { useGraphQLMutation } from '@/hooks/use-graphql-mutation';
 import {
   CREATE_PAGO,
+  GET_ACUERDOS,
   GET_BANDEJA_COBRADOR,
   GET_CASOS_PRIORITARIOS_MI_DIA,
   GET_PRESTAMO,
   GET_RESUMEN_MI_DIA,
 } from '@/lib/graphql/queries/cobranza.queries';
 import {
+  encolarPagoOutbox,
+} from '@/lib/offline/pago-outbox';
+import { estaOffline } from '@/lib/offline/gestion-outbox';
+import {
+  type Acuerdo,
   type BandejaGraphQLItem,
   type Prestamo,
   formatearMoneda,
@@ -64,21 +70,34 @@ export function PagoRapidaModal({
     { enabled: !!resolvedId && !prestamoProp },
   );
 
+  const { data: acuerdosData } = useGraphQLQuery<{ acuerdos: Acuerdo[] }>(
+    GET_ACUERDOS,
+    { idprestamo: resolvedId ?? 0 },
+    { enabled: !!resolvedId },
+  );
+
   const prestamoFetched = data?.prestamo ?? null;
   const prestamo =
     prestamoProp ?? (prestamoFetched ? toBandejaItem(prestamoFetched) : null);
 
+  const acuerdoVigente =
+    acuerdosData?.acuerdos.find((a) => a.estado === 'VIGENTE') ?? null;
+
+  const finalizarExito = () => {
+    void queryClient.invalidateQueries({ queryKey: [GET_BANDEJA_COBRADOR] });
+    void queryClient.invalidateQueries({ queryKey: [GET_RESUMEN_MI_DIA] });
+    void queryClient.invalidateQueries({
+      queryKey: [GET_CASOS_PRIORITARIOS_MI_DIA],
+    });
+    const keepOpen = onSuccess?.() === false;
+    if (!keepOpen) {
+      onClose();
+    }
+  };
+
   const mutation = useGraphQLMutation(CREATE_PAGO, {
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: [GET_BANDEJA_COBRADOR] });
-      void queryClient.invalidateQueries({ queryKey: [GET_RESUMEN_MI_DIA] });
-      void queryClient.invalidateQueries({
-        queryKey: [GET_CASOS_PRIORITARIOS_MI_DIA],
-      });
-      const keepOpen = onSuccess?.() === false;
-      if (!keepOpen) {
-        onClose();
-      }
+      finalizarExito();
     },
   });
 
@@ -86,16 +105,22 @@ export function PagoRapidaModal({
     if (!prestamo) {
       return;
     }
-    mutation.mutate({
-      input: {
-        idprestamo: prestamo.idprestamo,
-        monto: form.monto,
-        fechaPago: form.fechaPago,
-        moneda: form.moneda,
-        medio: form.medio,
-        idempotencyKey: form.idempotencyKey,
-      },
-    });
+    const input = {
+      idprestamo: prestamo.idprestamo,
+      monto: form.monto,
+      fechaPago: form.fechaPago,
+      moneda: form.moneda,
+      medio: form.medio,
+      idempotencyKey: form.idempotencyKey,
+    };
+
+    if (estaOffline()) {
+      encolarPagoOutbox(input);
+      finalizarExito();
+      return;
+    }
+
+    mutation.mutate({ input });
   };
 
   if (!resolvedId) {
@@ -143,6 +168,7 @@ export function PagoRapidaModal({
                 prestamo.moneda === 'USD' ? 'USD' : 'NIO'
               }
               saldoTotal={saldo}
+              montoCuota={acuerdoVigente?.montoCuota}
               isLoading={mutation.isPending}
               onSubmit={handleSubmit}
             />

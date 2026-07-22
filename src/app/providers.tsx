@@ -5,7 +5,6 @@ import { ThemeProvider } from "next-themes";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { AuthProvider } from "@/contexts/auth-context";
-import { FocusModeProvider } from "@/contexts/focus-mode-context";
 import { PrivacySafeClickTracker } from "@/components/analytics/privacy-safe-click-tracker";
 import { OpsThemePreference } from "@/components/pwa/ops-theme-preference";
 
@@ -47,12 +46,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
       >
         <AuthProvider>
           <OpsThemePreference />
-          <FocusModeProvider>
-            <SidebarProvider>
-              <PrivacySafeClickTracker />
-              {children}
-            </SidebarProvider>
-          </FocusModeProvider>
+          <SidebarProvider>
+            <PrivacySafeClickTracker />
+            {children}
+          </SidebarProvider>
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>

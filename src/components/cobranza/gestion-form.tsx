@@ -21,6 +21,10 @@ import {
   LEY_787,
   scriptConfirmacionVerbal,
 } from '@/lib/compliance/ley-787-microcopy';
+import {
+  resultadoRequierePromesa,
+  resultadoRequiereProximaGestion,
+} from '@/lib/logic/resultado-tipificacion-logic';
 import type { CodigoAccion, CodigoResultado, PlantillaMensaje } from '@/types/cobranza';
 
 export interface GestionFormData {
@@ -82,7 +86,9 @@ export function GestionForm({
   const [capturandoGps, setCapturandoGps] = useState(false);
   const [mostrarMas, setMostrarMas] = useState(!modoRapido);
   const [mostrarCatalogo, setMostrarCatalogo] = useState(!modoRapido);
-  const [scriptVisible, setScriptVisible] = useState(false);
+  /** En modo rápido el script se muestra para usarlo en la llamada. */
+  const [scriptVisible, setScriptVisible] = useState(modoRapido);
+  const [avisoCamposExtra, setAvisoCamposExtra] = useState<string | null>(null);
 
   useEffect(() => {
     if (initialNota) {
@@ -155,6 +161,28 @@ export function GestionForm({
     if (submitDisabled || !form.nota.trim()) {
       return;
     }
+    const seleccionado = resultados.find(
+      (r) => r.idcodresultado === form.idcodresultado,
+    );
+    if (seleccionado && resultadoRequierePromesa(seleccionado)) {
+      if (!form.montoPromesa || !form.fechaPromesa) {
+        setMostrarMas(true);
+        setAvisoCamposExtra(
+          'Complete monto y fecha de promesa antes de guardar.',
+        );
+        return;
+      }
+    }
+    if (
+      seleccionado &&
+      resultadoRequiereProximaGestion(seleccionado) &&
+      !form.fechaProximaGestion
+    ) {
+      setMostrarMas(true);
+      setAvisoCamposExtra('Indique la fecha de próxima gestión.');
+      return;
+    }
+    setAvisoCamposExtra(null);
     onSubmit(form);
   };
 
@@ -177,7 +205,9 @@ export function GestionForm({
     );
   };
 
-  /** Tipificar en 1 clic: selecciona resultado, rellena nota y opcionalmente envía. */
+  /**
+   * Tipificar: 1 clic guarda salvo promesa/agenda/tercero (pide campos extra).
+   */
   const tipificarRapido = (resultado: CodigoResultado) => {
     if (submitDisabled || isLoading) {
       return;
@@ -191,12 +221,26 @@ export function GestionForm({
           : `${resultado.codigo} — ${resultado.descripcion}`,
     };
     setForm(next);
+
+    const pidePromesa = resultadoRequierePromesa(resultado);
+    const pideAgenda = resultadoRequiereProximaGestion(resultado);
+    if (pidePromesa || pideAgenda) {
+      setMostrarMas(true);
+      setAvisoCamposExtra(
+        pidePromesa
+          ? 'Promesa: complete monto y fecha, luego Registrar gestión.'
+          : 'Agenda: indique próxima gestión, luego Registrar gestión.',
+      );
+      return;
+    }
+
     if (
       modoRapido &&
       tipificarUnClic &&
       next.nota.trim() &&
       !(next.contactoTercero && !next.comentario?.trim())
     ) {
+      setAvisoCamposExtra(null);
       onSubmit(next);
     }
   };
@@ -210,7 +254,7 @@ export function GestionForm({
       className="space-y-4"
       data-ux-id="gestion-form"
     >
-      {/* I184 — Script confirmación verbal (colapsado por defecto) */}
+      {/* I184 — Script confirmación verbal (visible en modo rápido) */}
       <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-900 dark:bg-blue-950/30">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm font-semibold text-blue-950 dark:text-blue-100">
@@ -279,27 +323,51 @@ export function GestionForm({
       {modoRapido && resultadosRapidos.length > 0 && (
         <div>
           <label className="mb-1 block text-sm font-medium">
-            Tipificar
-            {tipificarUnClic ? ' (1 clic = guardar)' : ' (1 clic)'}
+            Tipificar (1 clic = guardar)
           </label>
+          <p className="mb-2 text-xs text-gray-500">
+            Excepciones: promesa, agenda o contacto a tercero piden datos
+            extra antes de guardar.
+          </p>
+          {avisoCamposExtra && (
+            <p className="mb-2 text-xs text-amber-700 dark:text-amber-300" role="status">
+              {avisoCamposExtra}
+            </p>
+          )}
+          {submitDisabled && (
+            <p className="mb-2 text-xs text-red-600" role="alert">
+              Fuera de horario de cobranza: no se puede tipificar ahora.
+            </p>
+          )}
           <div className="flex flex-wrap gap-2">
-            {resultadosRapidos.map((r) => (
-              <Button
-                key={r.idcodresultado}
-                type="button"
-                size="sm"
-                variant={
-                  form.idcodresultado === r.idcodresultado
-                    ? 'primary'
-                    : 'outline'
-                }
-                disabled={isLoading || submitDisabled}
-                data-ux-id={`tipificar-rapido-${r.codigo}`}
-                onClick={() => tipificarRapido(r)}
-              >
-                {r.codigo}
-              </Button>
-            ))}
+            {resultadosRapidos.map((r) => {
+              const descCorta =
+                r.descripcion.length > 28
+                  ? `${r.descripcion.slice(0, 28)}…`
+                  : r.descripcion;
+              return (
+                <Button
+                  key={r.idcodresultado}
+                  type="button"
+                  size="sm"
+                  variant={
+                    form.idcodresultado === r.idcodresultado
+                      ? 'primary'
+                      : 'outline'
+                  }
+                  disabled={isLoading || submitDisabled}
+                  title={`${r.codigo} — ${r.descripcion}`}
+                  aria-label={`Tipificar ${r.codigo}: ${r.descripcion}`}
+                  data-ux-id={`tipificar-rapido-${r.codigo}`}
+                  onClick={() => tipificarRapido(r)}
+                >
+                  <span className="font-semibold">{r.codigo}</span>
+                  <span className="ml-1 font-normal opacity-80">
+                    {descCorta}
+                  </span>
+                </Button>
+              );
+            })}
           </div>
           <button
             type="button"

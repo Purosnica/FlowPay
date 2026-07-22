@@ -2,8 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
 import { graphqlRequest } from '@/lib/graphql/client';
-import { CREATE_GESTION } from '@/lib/graphql/queries/cobranza.queries';
+import {
+  CREATE_GESTION,
+  CREATE_PAGO,
+} from '@/lib/graphql/queries/cobranza.queries';
 import {
   contarGestionOutbox,
   listarGestionOutbox,
@@ -11,21 +15,29 @@ import {
   removerGestionOutbox,
   type GestionOutboxItem,
 } from '@/lib/offline/gestion-outbox';
+import {
+  contarPagoOutbox,
+  listarPagoOutbox,
+  marcarErrorPagoOutbox,
+  removerPagoOutbox,
+  type PagoOutboxItem,
+} from '@/lib/offline/pago-outbox';
 import { trackGestionCreated } from '@/lib/analytics/product-analytics';
 
 /**
- * Sincroniza la cola offline de gestiones al recuperar red (I036 / H20).
- * Continúa con el siguiente ítem si uno falla (no aborta toda la cola).
+ * Sincroniza colas offline de gestiones y pagos al recuperar red.
  */
 export function GestionOutboxSync() {
   const queryClient = useQueryClient();
-  const [pendientes, setPendientes] = useState(0);
+  const [pendientesGes, setPendientesGes] = useState(0);
+  const [pendientesPago, setPendientesPago] = useState(0);
   const [sincronizando, setSincronizando] = useState(false);
   const [ultimoError, setUltimoError] = useState<string | null>(null);
   const flushing = useRef(false);
 
   const refrescar = useCallback(() => {
-    setPendientes(contarGestionOutbox());
+    setPendientesGes(contarGestionOutbox());
+    setPendientesPago(contarPagoOutbox());
   }, []);
 
   const flush = useCallback(async () => {
@@ -35,8 +47,9 @@ export function GestionOutboxSync() {
     if (flushing.current) {
       return;
     }
-    const cola = listarGestionOutbox();
-    if (cola.length === 0) {
+    const colaGes = listarGestionOutbox();
+    const colaPago = listarPagoOutbox();
+    if (colaGes.length === 0 && colaPago.length === 0) {
       return;
     }
     flushing.current = true;
@@ -45,16 +58,28 @@ export function GestionOutboxSync() {
     let enviados = 0;
     let ultimoMsg: string | null = null;
     try {
-      for (const item of cola) {
+      for (const item of colaGes) {
         try {
-          await enviarItem(item);
+          await enviarGestion(item);
           removerGestionOutbox(item.id);
           trackGestionCreated();
-          enviados++;
+          enviados += 1;
         } catch (err) {
           const msg =
             err instanceof Error ? err.message : 'Fallo de sincronización';
           marcarErrorGestionOutbox(item.id, msg);
+          ultimoMsg = msg;
+        }
+      }
+      for (const item of colaPago) {
+        try {
+          await enviarPago(item);
+          removerPagoOutbox(item.id);
+          enviados += 1;
+        } catch (err) {
+          const msg =
+            err instanceof Error ? err.message : 'Fallo de sincronización';
+          marcarErrorPagoOutbox(item.id, msg);
           ultimoMsg = msg;
         }
       }
@@ -79,36 +104,64 @@ export function GestionOutboxSync() {
     };
     window.addEventListener('online', onChange);
     window.addEventListener('flowpay:gestion-outbox', onChange);
+    window.addEventListener('flowpay:pago-outbox', onChange);
     void flush();
     return () => {
       window.removeEventListener('online', onChange);
       window.removeEventListener('flowpay:gestion-outbox', onChange);
+      window.removeEventListener('flowpay:pago-outbox', onChange);
     };
   }, [flush, refrescar]);
 
+  const pendientes = pendientesGes + pendientesPago;
   if (pendientes === 0 && !ultimoError) {
     return null;
+  }
+
+  const partes: string[] = [];
+  if (pendientesGes > 0) {
+    partes.push(`${pendientesGes} gestión(es)`);
+  }
+  if (pendientesPago > 0) {
+    partes.push(`${pendientesPago} pago(s)`);
   }
 
   return (
     <div
       role="status"
-      className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100"
+      className="flex flex-wrap items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100"
     >
-      {sincronizando
-        ? `Sincronizando ${pendientes} gestión(es) pendientes…`
-        : pendientes > 0
-          ? `${pendientes} gestión(es) pendientes de sincronizar (sin conexión previa).`
-          : null}
+      <span>
+        {sincronizando
+          ? `Sincronizando ${partes.join(' y ')}…`
+          : pendientes > 0
+            ? `${partes.join(' y ')} pendientes de sincronizar.`
+            : null}
+      </span>
       {ultimoError ? (
-        <span className="ml-2 text-red-700 dark:text-red-300">
-          {ultimoError}
-        </span>
+        <span className="text-red-700 dark:text-red-300">{ultimoError}</span>
+      ) : null}
+      {!sincronizando && pendientes > 0 ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          data-ux-id="outbox-reintentar"
+          onClick={() => {
+            void flush();
+          }}
+        >
+          Reintentar
+        </Button>
       ) : null}
     </div>
   );
 }
 
-async function enviarItem(item: GestionOutboxItem): Promise<void> {
+async function enviarGestion(item: GestionOutboxItem): Promise<void> {
   await graphqlRequest(CREATE_GESTION, { input: item.payload });
+}
+
+async function enviarPago(item: PagoOutboxItem): Promise<void> {
+  await graphqlRequest(CREATE_PAGO, { input: item.payload });
 }

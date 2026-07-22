@@ -126,3 +126,35 @@ export function delayMs(ms: number): Promise<void> {
     setTimeout(resolve, ms);
   });
 }
+
+/**
+ * Índice del siguiente ítem accionable (no omitido) desde `fromIndex` inclusive.
+ */
+export function siguienteIndiceAccionable(
+  items: readonly AgendaSecuenciaItem[],
+  fromIndex: number,
+): number | null {
+  for (let i = Math.max(0, fromIndex); i < items.length; i += 1) {
+    const item = items[i];
+    if (!item) {
+      continue;
+    }
+    if (resolverAccionContacto(item).tipo !== 'omitido') {
+      return i;
+    }
+  }
+  return null;
+}
+
+export function etiquetaCanalAccion(accion: AccionContactoAgenda): string {
+  if (accion.tipo === 'whatsapp') {
+    return 'WhatsApp';
+  }
+  if (accion.tipo === 'sms') {
+    return 'SMS';
+  }
+  if (accion.tipo === 'email') {
+    return 'Email';
+  }
+  return 'Omitido';
+}

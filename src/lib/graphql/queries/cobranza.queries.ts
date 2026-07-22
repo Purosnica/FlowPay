@@ -1932,6 +1932,7 @@ export const GET_CASOS_PRIORITARIOS_MI_DIA = `
       diasMora
       scorePrioridad
       motivoPrioridad
+      telefono
     }
   }
 `;

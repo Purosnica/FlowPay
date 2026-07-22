@@ -1,10 +1,9 @@
 /**
- * Preferencias UX locales del cobrador (I180, I183, I187).
+ * Preferencias UX locales del cobrador (I183, I187).
  * gamificacionQuiet default true (I187: sin vanity en flujo operativo).
  */
 
 export const UX_PREF_KEYS = {
-  focoMiDia: 'flowpay_ux_foco_mi_dia',
   gamificacionQuiet: 'flowpay_ux_gamif_quiet',
   reporteColumnas: 'flowpay_ux_reporte_cols',
   tourCentroInteligencia: 'flowpay_ux_tour_ci',

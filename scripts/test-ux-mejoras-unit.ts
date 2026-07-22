@@ -14,7 +14,6 @@ import {
   UX_PREF_KEYS,
   claveReporteColumnas,
 } from '@/lib/ux/ux-prefs';
-import { isFocusModeActivo } from '@/lib/ux/focus-mode';
 import {
   ensureAnalyticsSession,
   trackGestionCreated,
@@ -56,18 +55,10 @@ function testTourCi(): void {
 }
 
 function testUxPrefsKeys(): void {
-  assert.ok(UX_PREF_KEYS.focoMiDia.startsWith('flowpay_ux_'));
   assert.ok(UX_PREF_KEYS.gamificacionQuiet.startsWith('flowpay_ux_'));
   const clave = claveReporteColumnas(42, 'efectividad-por-gestor');
   assert.ok(clave.includes('42'));
   assert.ok(clave.includes('efectividad-por-gestor'));
-}
-
-function testFocusModeScope(): void {
-  assert.equal(isFocusModeActivo(true, '/cobranza/mi-dia'), true);
-  assert.equal(isFocusModeActivo(true, '/cobranza/bandeja'), false);
-  assert.equal(isFocusModeActivo(false, '/cobranza/mi-dia'), false);
-  assert.equal(isFocusModeActivo(true, null), false);
 }
 
 function testAnalyticsExports(): void {
@@ -88,7 +79,6 @@ function main(): void {
   testLey787Microcopy();
   testTourCi();
   testUxPrefsKeys();
-  testFocusModeScope();
   testAnalyticsExports();
   // eslint-disable-next-line no-console
   console.warn('test-ux-mejoras-unit: OK');

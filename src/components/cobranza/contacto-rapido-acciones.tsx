@@ -31,7 +31,7 @@ export function ContactoRapidoAcciones({
   return (
     <div className={className ?? 'flex flex-wrap gap-2'}>
       {telHref ? (
-        <a href={telHref}>
+        <a href={telHref} aria-label={`Llamar a ${telefono}`}>
           <Button
             type="button"
             size="sm"
@@ -43,7 +43,12 @@ export function ContactoRapidoAcciones({
         </a>
       ) : null}
       {waHref ? (
-        <a href={waHref} target="_blank" rel="noopener noreferrer">
+        <a
+          href={waHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`Abrir WhatsApp con ${telefono}`}
+        >
           <Button
             type="button"
             size="sm"

@@ -25,6 +25,10 @@ interface DataTableProps<T> {
   emptyAction?: React.ReactNode;
   onRowClick?: (row: T) => void;
   getRowClassName?: (row: T, index: number) => string | undefined;
+  getRowAttrs?: (
+    row: T,
+    index: number,
+  ) => Record<string, string | boolean | number | undefined>;
   rowActions?: (row: T) => React.ReactNode;
   sorting?: SortingState;
   onSortingChange?: OnChangeFn<SortingState>;
@@ -49,6 +53,7 @@ function DataTableInner<T>({
   emptyAction,
   onRowClick,
   getRowClassName,
+  getRowAttrs,
   rowActions,
   sorting: sortingControlled,
   onSortingChange,
@@ -194,6 +199,7 @@ function DataTableInner<T>({
                   key={row.id}
                   data-index={virtualRow.index}
                   ref={rowVirtualizer.measureElement}
+                  {...getRowAttrs?.(row.original, virtualRow.index)}
                   className={cn(
                     'border-b border-stroke transition-colors dark:border-dark-3',
                     onRowClick
@@ -252,6 +258,7 @@ function DataTableInner<T>({
             {rows.map((row) => (
               <tr
                 key={row.id}
+                {...getRowAttrs?.(row.original, row.index)}
                 className={cn(
                   'border-b border-stroke transition-colors dark:border-dark-3',
                   onRowClick

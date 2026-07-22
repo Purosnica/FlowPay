@@ -209,6 +209,7 @@ const MiDiaCasoType = builder.objectRef<{
   diasMora: number;
   scorePrioridad: number;
   motivoPrioridad: string;
+  telefono: string | null;
 }>('MiDiaCaso').implement({
   fields: (t) => ({
     idprestamo: t.exposeInt('idprestamo'),
@@ -218,6 +219,7 @@ const MiDiaCasoType = builder.objectRef<{
     diasMora: t.exposeInt('diasMora'),
     scorePrioridad: t.exposeFloat('scorePrioridad'),
     motivoPrioridad: t.exposeString('motivoPrioridad'),
+    telefono: t.exposeString('telefono', { nullable: true }),
   }),
 });
 

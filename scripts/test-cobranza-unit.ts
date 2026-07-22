@@ -77,6 +77,17 @@ import {
 } from '@/lib/logic/bandeja-url-filters-logic';
 import { filtrarNavPorRol } from '@/lib/navigation/filter-nav-por-rol';
 import type { NavSection } from '@/lib/navigation/filter-nav-by-permisos';
+import {
+  siguienteIndiceAccionable,
+  resolverAccionContacto,
+} from '@/lib/logic/secuencia-lote-logic';
+import {
+  resultadoRequierePromesa,
+  resultadoRequiereProximaGestion,
+} from '@/lib/logic/resultado-tipificacion-logic';
+import { mensajeAvanceOperativo } from '@/lib/logic/avance-operativo-feedback-logic';
+import type { AgendaSecuenciaItem } from '@/types/cobranza';
+import type { CodigoResultado } from '@/types/cobranza';
 
 function testTransicionesEstado(): void {
   assert.equal(puedeTransicionar('Vigente', 'Vencido'), true);
@@ -591,6 +602,83 @@ function testUxColaYMontosRapidos(): void {
   assert.equal(
     cobrador[0]?.items.find((i) => i.title === 'Cobranza')?.items?.length,
     1,
+  );
+
+  const agenda: AgendaSecuenciaItem[] = [
+    {
+      idprestamo: 1,
+      noPrestamo: 'A',
+      canal: 'WHATSAPP',
+      accion: null,
+      diasDesdeInicio: 0,
+      nombreCliente: 'A',
+      idpaso: 1,
+      idsecuencia: 1,
+      idplantilla: null,
+      idmandante: 1,
+      plantillaNombre: null,
+      plantillaContenido: null,
+      telefono: null,
+      email: null,
+      saldoTotal: 100,
+      diasMora: 10,
+      interesMoratorio: 0,
+      gestionCobranza: 0,
+      moneda: 'NIO',
+      mandanteNombre: null,
+    },
+    {
+      idprestamo: 2,
+      noPrestamo: 'B',
+      canal: 'WHATSAPP',
+      accion: null,
+      diasDesdeInicio: 0,
+      nombreCliente: 'B',
+      idpaso: 2,
+      idsecuencia: 1,
+      idplantilla: null,
+      idmandante: 1,
+      plantillaNombre: null,
+      plantillaContenido: 'Hola',
+      telefono: '88881234',
+      email: null,
+      saldoTotal: 200,
+      diasMora: 5,
+      interesMoratorio: 0,
+      gestionCobranza: 0,
+      moneda: 'NIO',
+      mandanteNombre: null,
+    },
+  ];
+  assert.equal(resolverAccionContacto(agenda[0]!).tipo, 'omitido');
+  assert.equal(resolverAccionContacto(agenda[1]!).tipo, 'whatsapp');
+  assert.equal(siguienteIndiceAccionable(agenda, 0), 1);
+  assert.equal(siguienteIndiceAccionable(agenda, 2), null);
+
+  const prom: CodigoResultado = {
+    idcodresultado: 1,
+    codigo: 'PROMESA',
+    descripcion: 'Promesa de pago',
+    grupo: 'CONTACTO',
+    tipoGestion: 'EFECTIVA',
+  };
+  const nc: CodigoResultado = {
+    idcodresultado: 2,
+    codigo: 'NC',
+    descripcion: 'No contesta',
+    grupo: 'SIN_CONTACTO',
+    tipoGestion: 'INTENTO',
+  };
+  assert.equal(resultadoRequierePromesa(prom), true);
+  assert.equal(resultadoRequierePromesa(nc), false);
+  assert.equal(resultadoRequiereProximaGestion(nc), false);
+  assert.ok(
+    mensajeAvanceOperativo({
+      accion: 'gestion',
+      haySiguiente: true,
+      posicionSiguiente: 2,
+      total: 10,
+    }).includes('2/10'),
   );
 }
 

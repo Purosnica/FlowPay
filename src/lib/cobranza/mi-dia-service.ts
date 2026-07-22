@@ -66,6 +66,8 @@ export async function obtenerCasosPrioritariosMiDia(
           segundo_nombres: true,
           primer_apellido: true,
           segundo_apellido: true,
+          celular: true,
+          telefono: true,
         },
       },
     },
@@ -86,6 +88,7 @@ export async function obtenerCasosPrioritariosMiDia(
     diasMora: p.diasMora,
     scorePrioridad: p.scorePrioridad,
     motivoPrioridad: p.motivoPrioridad,
+    telefono: p.cliente?.celular ?? p.cliente?.telefono ?? null,
   }));
 }
 

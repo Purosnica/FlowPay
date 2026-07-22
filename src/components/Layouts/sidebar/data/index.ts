@@ -22,7 +22,7 @@ export const NAV_DATA: NavSection[] = [
       {
         title: "Mi día",
         url: "/cobranza/mi-dia",
-        icon: Icons.HomeIcon,
+        icon: Icons.Calendar,
         permiso: PERMISO.CARTERA_READ,
       },
       {

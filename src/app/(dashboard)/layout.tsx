@@ -2,7 +2,6 @@
  * LAYOUT PARA RUTAS DEL DASHBOARD
  *
  * Layout con sidebar y header para páginas protegidas.
- * El modo foco (I180) se aplica en DashboardShell.
  */
 
 import type { PropsWithChildren } from 'react';

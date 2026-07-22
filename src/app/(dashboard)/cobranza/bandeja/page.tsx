@@ -11,6 +11,7 @@ import { EnviarCobroPanel } from '@/components/cobranza/enviar-cobro-panel';
 import { PromesasVencidasPanel } from '@/components/cobranza/promesas-vencidas-panel';
 import { GestionRapidaModal } from '@/components/cobranza/gestion-rapida-modal';
 import { PagoRapidaModal } from '@/components/cobranza/pago-rapida-modal';
+import { EstacionCasoPanel } from '@/components/cobranza/estacion-caso-panel';
 import { OperacionHotkeysHelp } from '@/components/cobranza/operacion-hotkeys-help';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
@@ -28,19 +29,18 @@ import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { useHotkeys } from '@/hooks/use-hotkeys';
 import { usePagination } from '@/hooks/use-pagination';
 import { usePuede } from '@/hooks/use-permisos';
+import { useColaOperativa } from '@/hooks/use-cola-operativa';
 import {
   GET_BANDEJA_COBRADOR,
   GET_PROMESAS_VENCIDAS,
 } from '@/lib/graphql/queries/cobranza.queries';
 import { buildPlantillaContextFromPrestamo } from '@/lib/cobranza/plantilla-mensaje-utils';
 import {
-  moverIndiceCola,
-  siguienteIdEnCola,
-} from '@/lib/logic/cola-operativa-logic';
-import {
   filtrosBandejaDesdeSearchParams,
   searchParamsDesdeFiltrosBandeja,
 } from '@/lib/logic/bandeja-url-filters-logic';
+import { notificationToast } from '@/lib/notifications/notification-toast';
+import { mensajeAvanceOperativo } from '@/lib/logic/avance-operativo-feedback-logic';
 import {
   type BandejaFilters,
   type BandejaGraphQLItem,
@@ -160,6 +160,19 @@ function BandejaAccionesFila({
           Registrar pago
         </Button>
       </PermissionGate>
+      <PermissionGate permiso={PERMISO.GESTION_WRITE}>
+        <Button
+          size="sm"
+          variant="outline"
+          data-ux-id="bandeja-gestion-rapida"
+          onClick={(e) => {
+            e.stopPropagation();
+            onGestion();
+          }}
+        >
+          Tipificar
+        </Button>
+      </PermissionGate>
       <Dropdown isOpen={menuOpen} setIsOpen={setMenuOpen}>
         <DropdownTrigger
           aria-label="Más acciones"
@@ -170,18 +183,6 @@ function BandejaAccionesFila({
         </DropdownTrigger>
         <DropdownContent className="min-w-[160px] border border-stroke bg-white p-1 shadow-lg dark:border-dark-3 dark:bg-gray-dark">
           <PermissionGate permiso={PERMISO.GESTION_WRITE}>
-            <button
-              type="button"
-              className="block w-full rounded px-3 py-2 text-left text-sm hover:bg-gray-2 dark:hover:bg-dark-2"
-              data-ux-id="bandeja-gestion-rapida"
-              onClick={(e) => {
-                e.stopPropagation();
-                setMenuOpen(false);
-                onGestion();
-              }}
-            >
-              Tipificar
-            </button>
             <button
               type="button"
               className="block w-full rounded px-3 py-2 text-left text-sm hover:bg-gray-2 dark:hover:bg-dark-2"
@@ -222,7 +223,6 @@ function BandejaPageContent() {
   const [pagoRapido, setPagoRapido] = useState<BandejaGraphQLItem | null>(
     null,
   );
-  const [selectedIndex, setSelectedIndex] = useState(0);
   const [filters, setFilters] = useState<BandejaFilters>(() =>
     filtrosBandejaDesdeSearchParams(searchParams),
   );
@@ -293,16 +293,40 @@ function BandejaPageContent() {
   });
   const bandejaData = data?.bandejaCobrador;
   const prestamos = bandejaData?.prestamos ?? [];
-  const colaIds = useMemo(
-    () => prestamos.map((p) => p.idprestamo),
-    [prestamos],
-  );
+
+  const {
+    selectedIndex,
+    setSelectedIndex,
+    casoSeleccionado: itemSeleccionado,
+    avanzarTrasId,
+    mover,
+  } = useColaOperativa(prestamos);
 
   useEffect(() => {
-    if (selectedIndex >= prestamos.length && prestamos.length > 0) {
-      setSelectedIndex(prestamos.length - 1);
+    const el = document.querySelector(
+      `[data-caso-id="${itemSeleccionado?.idprestamo ?? ''}"]`,
+    );
+    if (el instanceof HTMLElement) {
+      el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
-  }, [prestamos.length, selectedIndex]);
+  }, [itemSeleccionado?.idprestamo]);
+
+  const notificarAvance = (
+    accion: 'gestion' | 'pago',
+    next: BandejaGraphQLItem | null,
+  ) => {
+    const idx = next
+      ? prestamos.findIndex((p) => p.idprestamo === next.idprestamo)
+      : -1;
+    notificationToast.success(
+      mensajeAvanceOperativo({
+        accion,
+        haySiguiente: Boolean(next),
+        posicionSiguiente: idx >= 0 ? idx + 1 : undefined,
+        total: prestamos.length,
+      }),
+    );
+  };
 
   const { data: promesasData, isLoading: promesasLoading } = useGraphQLQuery<{
     promesasVencidas: PromesaVencida[];
@@ -315,9 +339,6 @@ function BandejaPageContent() {
         : null,
     [enviarPrestamo],
   );
-
-  const itemSeleccionado = prestamos[selectedIndex] ?? prestamos[0];
-
   const columns = useMemo<ColumnDef<BandejaGraphQLItem>[]>(
     () => [
       { accessorKey: 'noPrestamo', header: 'Préstamo' },
@@ -415,14 +436,12 @@ function BandejaPageContent() {
       {
         key: 'j',
         enabled: prestamos.length > 0,
-        handler: () =>
-          setSelectedIndex((i) => moverIndiceCola(i, prestamos.length, 1)),
+        handler: () => mover(1),
       },
       {
         key: 'k',
         enabled: prestamos.length > 0,
-        handler: () =>
-          setSelectedIndex((i) => moverIndiceCola(i, prestamos.length, -1)),
+        handler: () => mover(-1),
       },
       {
         key: 'p',
@@ -456,30 +475,10 @@ function BandejaPageContent() {
         handler: () => router.push('/cobranza/mi-dia'),
       },
     ],
-    [puedeGestion, puedePago, itemSeleccionado, router, prestamos.length],
+    [puedeGestion, puedePago, itemSeleccionado, router, prestamos.length, mover],
   );
 
   useHotkeys(hotkeys);
-
-  const avanzarEnLista = (
-    idActual: number,
-    setter: (item: BandejaGraphQLItem | null) => void,
-  ): boolean | void => {
-    const nextId = siguienteIdEnCola(colaIds, idActual);
-    if (nextId == null) {
-      return;
-    }
-    const next = prestamos.find((p) => p.idprestamo === nextId);
-    if (!next) {
-      return;
-    }
-    const nextIdx = colaIds.indexOf(nextId);
-    if (nextIdx >= 0) {
-      setSelectedIndex(nextIdx);
-    }
-    setter(next);
-    return false;
-  };
 
   return (
     <div className="field-layout space-y-6">
@@ -535,39 +534,87 @@ function BandejaPageContent() {
         </p>
       )}
       <div
-        className={cn(
-          'rounded-lg',
-          itemSeleccionado && 'ring-1 ring-primary/20',
-        )}
+        className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(280px,0.7fr)]"
+        data-ux-id="estacion-bandeja"
       >
-        <PaginatedDataTable
-          data={prestamos}
-          columns={columns}
-          pagination={bandejaData}
-          isLoading={isLoading || (isFetching && !bandejaData)}
-          emptyMessage="No tiene préstamos asignados que coincidan con los filtros."
-          emptyAction={
-            <Link href="/cobranza/mi-dia">
-              <Button size="sm">Ir a Mi día</Button>
-            </Link>
-          }
-          onPageChange={handlePageChange}
-          onPageSizeChange={handlePageSizeChange}
-          itemLabel="préstamos"
-          onRowClick={(row) => {
-            const idx = prestamos.findIndex(
-              (p) => p.idprestamo === row.idprestamo,
-            );
-            if (idx >= 0) {
-              setSelectedIndex(idx);
+        <div
+          className={cn(
+            'rounded-lg',
+            itemSeleccionado && 'ring-1 ring-primary/20',
+          )}
+        >
+          <PaginatedDataTable
+            data={prestamos}
+            columns={columns}
+            pagination={bandejaData}
+            isLoading={isLoading || (isFetching && !bandejaData)}
+            emptyMessage="No tiene préstamos asignados que coincidan con los filtros."
+            emptyAction={
+              <Link href="/cobranza/mi-dia">
+                <Button size="sm">Ir a Mi día</Button>
+              </Link>
             }
-          }}
-          getRowClassName={(_row, index) =>
-            index === selectedIndex
-              ? 'bg-primary/5 dark:bg-primary/10'
-              : undefined
-          }
-        />
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+            itemLabel="préstamos"
+            onRowClick={(row) => {
+              const idx = prestamos.findIndex(
+                (p) => p.idprestamo === row.idprestamo,
+              );
+              if (idx >= 0) {
+                setSelectedIndex(idx);
+              }
+            }}
+            getRowClassName={(_row, index) =>
+              index === selectedIndex
+                ? 'bg-primary/5 dark:bg-primary/10'
+                : undefined
+            }
+            getRowAttrs={(row, index) => ({
+              'data-caso-id': row.idprestamo,
+              'aria-selected': index === selectedIndex,
+            })}
+          />
+        </div>
+        <div className="lg:sticky lg:top-4 lg:self-start">
+          <EstacionCasoPanel
+            caso={
+              itemSeleccionado
+                ? {
+                    idprestamo: itemSeleccionado.idprestamo,
+                    noPrestamo: itemSeleccionado.noPrestamo,
+                    nombreCliente: itemSeleccionado.cliente
+                      ? nombreCompletoCliente(itemSeleccionado.cliente)
+                      : '—',
+                    saldoTotal: itemSeleccionado.saldoTotal,
+                    diasMora: itemSeleccionado.diasMora,
+                    moneda: itemSeleccionado.moneda,
+                    telefono:
+                      itemSeleccionado.cliente?.celular ??
+                      itemSeleccionado.cliente?.telefono ??
+                      null,
+                    motivoPrioridad: itemSeleccionado.motivoPrioridad,
+                    scorePrioridad: itemSeleccionado.scorePrioridad,
+                  }
+                : null
+            }
+            posicion={selectedIndex + 1}
+            total={prestamos.length}
+            puedeGestion={puedeGestion}
+            puedePago={puedePago}
+            mostrarLinkBandeja={false}
+            onTipificar={() => {
+              if (itemSeleccionado) {
+                setGestionRapida(itemSeleccionado);
+              }
+            }}
+            onPago={() => {
+              if (itemSeleccionado) {
+                setPagoRapido(itemSeleccionado);
+              }
+            }}
+          />
+        </div>
       </div>
 
       <Modal
@@ -595,9 +642,15 @@ function BandejaPageContent() {
           key={`ges-${gestionRapida.idprestamo}`}
           prestamo={gestionRapida}
           onClose={() => setGestionRapida(null)}
-          onSuccess={() =>
-            avanzarEnLista(gestionRapida.idprestamo, setGestionRapida)
-          }
+          onSuccess={() => {
+            const next = avanzarTrasId(gestionRapida.idprestamo);
+            notificarAvance('gestion', next);
+            if (!next) {
+              return;
+            }
+            setGestionRapida(next);
+            return false;
+          }}
         />
       )}
       {pagoRapido && (
@@ -605,9 +658,15 @@ function BandejaPageContent() {
           key={`pago-${pagoRapido.idprestamo}`}
           prestamo={pagoRapido}
           onClose={() => setPagoRapido(null)}
-          onSuccess={() =>
-            avanzarEnLista(pagoRapido.idprestamo, setPagoRapido)
-          }
+          onSuccess={() => {
+            const next = avanzarTrasId(pagoRapido.idprestamo);
+            notificarAvance('pago', next);
+            if (!next) {
+              return;
+            }
+            setPagoRapido(next);
+            return false;
+          }}
         />
       )}
     </div>

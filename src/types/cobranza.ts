@@ -545,6 +545,7 @@ export interface MiDiaCaso {
   diasMora: number;
   scorePrioridad: number;
   motivoPrioridad: string;
+  telefono: string | null;
 }
 
 export interface RankingCobrador {
