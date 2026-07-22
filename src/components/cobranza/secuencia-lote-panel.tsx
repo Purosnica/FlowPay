@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useGraphQLMutation } from '@/hooks/use-graphql-mutation';
 import { CREATE_GESTION } from '@/lib/graphql/queries/cobranza.queries';
+import { trackGestionCreated } from '@/lib/analytics/product-analytics';
 import {
   claveAgendaItem,
   construirNotaGestionSecuencia,
@@ -136,6 +137,7 @@ export function SecuenciaLotePanel({ items, onDone }: SecuenciaLotePanelProps) {
               telefonoContacto: item.telefono ?? undefined,
             },
           });
+          trackGestionCreated();
           ok += 1;
         } catch {
           fail += 1;

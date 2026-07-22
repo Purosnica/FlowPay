@@ -340,6 +340,9 @@ export function GestionForm({
                 }
                 className="w-full rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2 dark:text-white"
               />
+              <p className="mt-1 text-xs text-gray-500">
+                {LEY_787.contactoAutorizado}
+              </p>
             </div>
 
             <div>

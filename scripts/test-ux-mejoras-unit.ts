@@ -27,6 +27,10 @@ function testLey787Microcopy(): void {
   assert.ok(LEY_787.contactoTerceroLabel.includes('Ley 787'));
   assert.ok(LEY_787.horarioPermitido.includes('Ley 787'));
   assert.ok(LEY_787.scriptVerbalTitulo.length > 0);
+  assert.ok(LEY_787.contactoAutorizado.includes('Ley 787'));
+  assert.ok(LEY_787.noContactar.includes('no contactar'));
+  assert.ok(LEY_787.noAutorizado.includes('autorizado'));
+  assert.ok(LEY_787.panelContactos.includes('Ley 787'));
 
   const script = scriptConfirmacionVerbal({
     nombre: 'Ana Pérez',

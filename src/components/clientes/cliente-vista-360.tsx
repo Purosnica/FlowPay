@@ -19,6 +19,7 @@ import {
   cellTexto,
 } from '@/components/cobranza/reporte-table-cells';
 import { getContactoEstadoUi } from '@/lib/logic/cliente-contacto-estado';
+import { LEY_787 } from '@/lib/compliance/ley-787-microcopy';
 import { rutaComprobantePago } from '@/lib/logic/comprobante-pago-logic';
 import { formatearMoneda } from '@/types/cobranza';
 import type { ClienteVista360 } from '@/types/cliente';
@@ -256,11 +257,15 @@ export function ClienteVista360View({ data }: ClienteVista360ViewProps) {
         </TabsContent>
 
         <TabsContent value="contactos" className="mt-4">
-          <SectionPanel title="Contactos (Ley 787)">
+          <SectionPanel title={`Contactos (${LEY_787.tituloCorto})`}>
             {contactos.length === 0 ? (
               <EmptyState message="No hay contactos registrados." />
             ) : (
-              <ul className="divide-y divide-stroke dark:divide-dark-3">
+              <>
+                <p className="mb-3 text-sm text-gray-500 dark:text-gray-400">
+                  {LEY_787.panelContactos}
+                </p>
+                <ul className="divide-y divide-stroke dark:divide-dark-3">
                 {contactos.map((c) => {
                   const estado = getContactoEstadoUi(c);
                   return (
@@ -277,7 +282,8 @@ export function ClienteVista360View({ data }: ClienteVista360ViewProps) {
                     </li>
                   );
                 })}
-              </ul>
+                </ul>
+              </>
             )}
           </SectionPanel>
         </TabsContent>

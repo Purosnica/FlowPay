@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { LEY_787 } from '@/lib/compliance/ley-787-microcopy';
 import {
   CLAVE_MAX_CONTACTOS_DIA,
   obtenerConfigNumerica,
@@ -42,16 +43,14 @@ export async function validarContactoParaGestion(params: {
   if (contactoMatch?.noContactar) {
     return {
       permitido: false,
-      motivo:
-        'Contacto marcado como "no contactar" (Ley 787). No se puede gestionar por este medio.',
+      motivo: LEY_787.noContactar,
     };
   }
 
   if (contactoMatch && !contactoMatch.autorizado && !contactoMatch.esTercero) {
     return {
       permitido: false,
-      motivo:
-        'Contacto no autorizado por el deudor (Ley 787). Marque el contacto como autorizado antes de gestionar.',
+      motivo: LEY_787.noAutorizado,
     };
   }
 
