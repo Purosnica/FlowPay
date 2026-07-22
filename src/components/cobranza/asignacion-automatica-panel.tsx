@@ -140,8 +140,37 @@ export function AsignacionAutomaticaPanel() {
     });
   };
 
+  const handleEjecutarHandsOff = () => {
+    if (!idmandante || gestores.length === 0) {
+      setError('Seleccione mandante con cobradores disponibles.');
+      return;
+    }
+    const todos = gestores.map((g) => g.idusuario);
+    setGestoresSeleccionados(new Set(todos));
+    setSinAsignar(true);
+    setSimulacion(null);
+    setError(null);
+    ejecutarMutation.mutate({
+      filtros: {
+        idmandante: idmandante as number,
+        sinAsignar: true,
+      },
+      idgestores: todos,
+      metodo,
+      motivo:
+        motivo.trim() ||
+        'Asignación automática hands-off (sin gestor)',
+    });
+  };
+
   return (
     <div className="space-y-6">
+      <p className="text-sm text-gray-600 dark:text-gray-400">
+        La asignación sin intervención corre post-import y en el cron diario
+        si están habilitados en configuración. Use el botón hands-off para
+        repartir ahora todos los préstamos sin gestor entre todos los
+        cobradores del mandante.
+      </p>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         <MandanteSelect
           value={idmandante}
@@ -262,9 +291,27 @@ export function AsignacionAutomaticaPanel() {
         </div>
       )}
 
-      <Button onClick={handleSimular} disabled={simularMutation.isPending}>
-        {simularMutation.isPending ? 'Simulando...' : 'Simular asignación'}
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          onClick={handleEjecutarHandsOff}
+          disabled={
+            ejecutarMutation.isPending ||
+            typeof idmandante !== 'number' ||
+            gestores.length === 0
+          }
+        >
+          {ejecutarMutation.isPending
+            ? 'Asignando...'
+            : 'Asignar ahora (sin simular)'}
+        </Button>
+        <Button
+          variant="outline"
+          onClick={handleSimular}
+          disabled={simularMutation.isPending}
+        >
+          {simularMutation.isPending ? 'Simulando...' : 'Simular primero'}
+        </Button>
+      </div>
 
       {simulacion && (
         <div className="rounded-lg border border-stroke p-4 dark:border-dark-3">

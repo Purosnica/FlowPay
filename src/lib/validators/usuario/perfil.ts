@@ -2,6 +2,8 @@ import { z } from 'zod';
 import {
   PASSWORD_MIN_LENGTH,
   PASSWORD_MIN_MESSAGE,
+  cumpleComplejidadPassword,
+  PASSWORD_COMPLEXITY_MESSAGE,
 } from '@/lib/logic/password-policy-logic';
 
 export const UpdatePerfilInputSchema = z
@@ -16,6 +18,9 @@ export const UpdatePerfilInputSchema = z
     passwordNueva: z
       .string()
       .min(PASSWORD_MIN_LENGTH, PASSWORD_MIN_MESSAGE)
+      .refine(cumpleComplejidadPassword, {
+        message: PASSWORD_COMPLEXITY_MESSAGE,
+      })
       .optional(),
   })
   .refine((data) => !data.passwordNueva || !!data.passwordActual, {

@@ -154,6 +154,26 @@ export const CRON_SUB_JOBS: CronJobDefinition[] = [
     },
   },
   {
+    codigo: 'asignacion_auto_cron',
+    nombre: 'Asignación automática sin gestor',
+    descripcion:
+      'Reparte préstamos sin gestor en mandantes con asignacion_auto_cron.',
+    timeoutMs: 300_000,
+    maxReintentos: 1,
+    orden: 65,
+    dependeDe: ['importaciones_pendientes'],
+    ejecutar: async () => {
+      const { procesarAsignacionAutoCron } = await import(
+        '@/lib/cobranza/asignacion-auto-post-import-service'
+      );
+      const r = await procesarAsignacionAutoCron();
+      return {
+        registrosProcesados: r.asignados,
+        detalle: { ...r },
+      };
+    },
+  },
+  {
     codigo: 'auditoria_retencion',
     nombre: 'Retención auditoría y cron',
     descripcion:

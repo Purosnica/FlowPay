@@ -61,6 +61,8 @@ import { claveMetaMandante } from '@/lib/cobranza/configuracion-cobranza-service
 import {
   PASSWORD_MIN_LENGTH,
   PASSWORD_MIN_MESSAGE,
+  PASSWORD_COMPLEXITY_MESSAGE,
+  cumpleComplejidadPassword,
 } from '@/lib/logic/password-policy-logic';
 import { convertirMontoAMonedaBase } from '@/lib/logic/liquidacion-fx-logic';
 
@@ -149,7 +151,9 @@ function testNarrativaInformeGerencial(): void {
   });
   assert.ok(n.resumenEjecutivo.includes('junio'));
   assert.equal(n.hallazgosPositivos.length, 3);
-  assert.ok(n.valoracionGeneral.includes('cumplidos mientras no se registren'));
+  assert.ok(n.valoracionGeneral.includes('acuerdo(s) cumplidos'));
+  assert.ok(!n.valoracionGeneral.includes('mientras no se registren'));
+  assert.ok(n.conclusion.includes('Solo los acuerdos en estado CUMPLIDO'));
   assert.ok(n.conclusion.includes('15 acuerdos'));
 }
 
@@ -515,6 +519,11 @@ function testLiquidacionFxEInformeAcuerdos(): void {
 
   assert.equal(PASSWORD_MIN_LENGTH, 8);
   assert.ok(PASSWORD_MIN_MESSAGE.includes('8'));
+  assert.equal(cumpleComplejidadPassword('Abcd1234'), true);
+  assert.equal(cumpleComplejidadPassword('abcdefgh'), false);
+  assert.equal(cumpleComplejidadPassword('ABCDEFGH'), false);
+  assert.equal(cumpleComplejidadPassword('Abcdefgh'), false);
+  assert.ok(PASSWORD_COMPLEXITY_MESSAGE.includes('mayúscula'));
 }
 
 testPrestamoCuotaYMetaAcuerdo();

@@ -243,10 +243,7 @@ export async function obtenerInformeGerencial(
         montoPromesa: { not: null },
         OR: [
           { estadoPromesa: 'PENDIENTE' },
-          {
-            estadoPromesa: null,
-            NOT: { nota: { contains: '[PROMESA_CUMPLIDA]' } },
-          },
+          { estadoPromesa: null },
         ],
         prestamo: { deletedAt: null, estado: { not: 'Cancelado' } },
       },

@@ -2,14 +2,23 @@ import { z } from 'zod';
 import {
   PASSWORD_MIN_LENGTH,
   PASSWORD_MIN_MESSAGE,
+  cumpleComplejidadPassword,
+  PASSWORD_COMPLEXITY_MESSAGE,
 } from '@/lib/logic/password-policy-logic';
+
+const passwordField = z
+  .string()
+  .min(PASSWORD_MIN_LENGTH, PASSWORD_MIN_MESSAGE)
+  .refine(cumpleComplejidadPassword, {
+    message: PASSWORD_COMPLEXITY_MESSAGE,
+  });
 
 export const CreateUsuarioInputSchema = z.object({
   nombre: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
   email: z.string().email('Email inválido'),
   telefono: z.string().optional(),
   idrol: z.number().int().positive('Debe seleccionar un rol'),
-  password: z.string().min(PASSWORD_MIN_LENGTH, PASSWORD_MIN_MESSAGE),
+  password: passwordField,
   porcentajeComision: z
     .number()
     .min(0, 'La comisión no puede ser negativa')
@@ -25,7 +34,7 @@ export const UpdateUsuarioInputSchema = z.object({
   email: z.string().email().optional(),
   telefono: z.string().nullable().optional(),
   idrol: z.number().int().positive().optional(),
-  password: z.string().min(PASSWORD_MIN_LENGTH, PASSWORD_MIN_MESSAGE).optional(),
+  password: passwordField.optional(),
   porcentajeComision: z.number().min(0).max(100).optional(),
   activo: z.boolean().optional(),
   idsupervisor: z.number().int().positive().nullable().optional(),

@@ -1,5 +1,5 @@
 import { definePrismaObject } from '../../helpers/prisma-object';
-import { builder } from '../../builder';
+import { builder, type GraphQLContext } from '../../builder';
 import { z } from 'zod';
 import { exposeDecimal } from '../../helpers/graphql-helpers';
 
@@ -72,7 +72,11 @@ export const Pago = definePrismaObject('tbl_pago', {
     /** I111: nombre del gestor vía batch-loader (evita N+1 en listas). */
     gestorNombre: t.string({
       nullable: true,
-      resolve: async (pago, _args, ctx) => {
+      resolve: async (
+        pago: { idgestor: number | null },
+        _args: Record<string, never>,
+        ctx: GraphQLContext,
+      ) => {
         if (pago.idgestor == null) {
           return null;
         }

@@ -18,7 +18,8 @@ function pct(n: number): string {
 
 /**
  * Genera textos del informe a partir de indicadores del período.
- * Mientras un acuerdo no esté ROTO, se considera cumplido.
+ * Cumplidos = estado CUMPLIDO; incumplidos = ROTO; VIGENTE no cuenta
+ * como cumplido (H24).
  */
 export function construirNarrativaInforme(params: {
   periodoLabel: string;
@@ -39,6 +40,7 @@ export function construirNarrativaInforme(params: {
   const formalizados = indicadores.acuerdosFormalizados;
   const incumplidos = indicadores.acuerdosIncumplidos;
   const cumplidos = indicadores.acuerdosCumplidos;
+  const vigentes = Math.max(0, formalizados - cumplidos - incumplidos);
   const eficacia = indicadores.eficaciaAcuerdosPct;
 
   const resumenEjecutivo =
@@ -49,13 +51,21 @@ export function construirNarrativaInforme(params: {
     `clientes de difícil localización.`;
 
   let valoracionGeneral: string;
-  if (incumplidos === 0) {
+  if (incumplidos === 0 && cumplidos > 0) {
     valoracionGeneral =
       `La gestión refleja un enfoque operativo efectivo, logrando avances ` +
       `en la recuperación de saldos (${monto}) y la activación de acuerdos ` +
-      `de pago (${formalizados}). Los acuerdos formalizados se mantienen ` +
-      `cumplidos mientras no se registren como rotos ` +
-      `(eficacia ${pct(eficacia)}).`;
+      `de pago (${formalizados}). Se registran ${cumplidos} acuerdo(s) ` +
+      `cumplidos` +
+      (vigentes > 0 ? ` y ${vigentes} aún vigente(s)` : '') +
+      ` (eficacia de cierre ${pct(eficacia)}).`;
+  } else if (incumplidos === 0) {
+    valoracionGeneral =
+      `La gestión refleja un enfoque operativo efectivo, logrando avances ` +
+      `en la recuperación de saldos (${monto}) y la activación de acuerdos ` +
+      `de pago (${formalizados}). Aún no hay acuerdos cerrados como ` +
+      `cumplidos; los vigentes no se contabilizan como cumplidos hasta ` +
+      `su cierre formal.`;
   } else if (eficacia >= 70) {
     valoracionGeneral =
       `La gestión refleja un enfoque operativo efectivo, con ` +
@@ -112,7 +122,7 @@ export function construirNarrativaInforme(params: {
   if (brechasCriticas.length === 0) {
     brechasCriticas.push(
       'No se identificaron brechas críticas materiales en el período; ' +
-        'los acuerdos se mantienen cumplidos al no existir casos rotos.',
+        'no hay acuerdos rotos y los cumplidos se limitan a estado CUMPLIDO.',
     );
   }
 
@@ -122,13 +132,15 @@ export function construirNarrativaInforme(params: {
     `de cartera, reflejados en:\n` +
     `• ${formalizados} acuerdos de pago formalizados\n` +
     `• ${monto} recuperados efectivamente\n` +
-    `• ${cumplidos} acuerdo(s) cumplidos · ${incumplidos} roto(s)\n\n` +
+    `• ${cumplidos} acuerdo(s) cumplidos · ${incumplidos} roto(s)` +
+    (vigentes > 0 ? ` · ${vigentes} vigente(s)` : '') +
+    `\n\n` +
     (incumplidos > formalizados * 0.3
       ? `Se reconoce la necesidad de intensificar el seguimiento sobre ` +
         `acuerdos rotos y ajustar estrategias de cobranza.\n\n`
       : `Los resultados del período sustentan la continuidad de la ` +
-        `estrategia vigente, manteniendo como cumplidos los acuerdos ` +
-        `mientras no se marquen como rotos.\n\n`) +
+        `estrategia vigente. Solo los acuerdos en estado CUMPLIDO ` +
+        `cuentan como cumplidos; los VIGENTE siguen en seguimiento.\n\n`) +
     `Frente a este panorama, como empresa especializada en recuperación ` +
     `de cartera, continuaremos ejecutando una gestión firme, estructurada ` +
     `y escalonada. Continuaremos informando de manera periódica la ` +

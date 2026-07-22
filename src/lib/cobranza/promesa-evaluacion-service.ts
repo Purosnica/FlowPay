@@ -5,9 +5,6 @@ import { registrarAuditoria } from './auditoria-service';
 import { inicioPeriodoActual } from './periodo-utils';
 import {
   ESTADO_PROMESA,
-  TAG_CUMPLIDA,
-  TAG_VENCIDA,
-  appendNotaPromesa,
   promesaCumplidaPorMonto,
 } from '@/lib/logic/promesa-estado-logic';
 
@@ -18,6 +15,13 @@ export interface ResultadoProcesarPromesas {
   cumplidas: number;
   vencidas: number;
 }
+
+const wherePromesaEstadoAbierto: Prisma.tbl_gestionWhereInput = {
+  OR: [
+    { estadoPromesa: ESTADO_PROMESA.PENDIENTE },
+    { estadoPromesa: null },
+  ],
+};
 
 export async function evaluarPromesaPorPago(
   tx: Tx,
@@ -34,11 +38,7 @@ export async function evaluarPromesaPorPago(
       deletedAt: null,
       montoPromesa: { not: null },
       fechaPromesa: { not: null },
-      OR: [
-        { estadoPromesa: ESTADO_PROMESA.PENDIENTE },
-        { estadoPromesa: null },
-      ],
-      NOT: { nota: { contains: TAG_CUMPLIDA } },
+      ...wherePromesaEstadoAbierto,
     },
     orderBy: { fechaGestion: 'desc' },
     take: 10,
@@ -82,11 +82,6 @@ export async function evaluarPromesaPorPago(
       where: { idgestion: g.idgestion },
       data: {
         estadoPromesa: ESTADO_PROMESA.CUMPLIDA,
-        nota: appendNotaPromesa(
-          g.nota,
-          TAG_CUMPLIDA,
-          `Pago acumulado ${acumulado} al ${params.fechaPago.toISOString().slice(0, 10)}.`,
-        ),
       },
     });
     await registrarAuditoria(tx, {
@@ -114,37 +109,25 @@ export async function procesarPromesasVencidas(
       deletedAt: null,
       fechaPromesa: { lt: hoy },
       montoPromesa: { not: null },
-      OR: [
-        { estadoPromesa: ESTADO_PROMESA.PENDIENTE },
-        { estadoPromesa: null },
-      ],
-      NOT: { nota: { contains: TAG_CUMPLIDA } },
+      ...wherePromesaEstadoAbierto,
       prestamo: {
         deletedAt: null,
         estado: { notIn: ['Cancelado', 'Finalizado'] },
         saldoTotal: { gt: 0 },
       },
     },
-    select: { idgestion: true, nota: true, estadoPromesa: true },
+    select: { idgestion: true, estadoPromesa: true },
   });
 
   let marcadas = 0;
   for (const g of promesasVencidas) {
-    if (
-      g.estadoPromesa === ESTADO_PROMESA.VENCIDA ||
-      g.nota.includes(TAG_VENCIDA)
-    ) {
+    if (g.estadoPromesa === ESTADO_PROMESA.VENCIDA) {
       continue;
     }
     await prisma.tbl_gestion.update({
       where: { idgestion: g.idgestion },
       data: {
         estadoPromesa: ESTADO_PROMESA.VENCIDA,
-        nota: appendNotaPromesa(
-          g.nota,
-          TAG_VENCIDA,
-          'Sin cumplimiento a la fecha acordada.',
-        ),
       },
     });
     marcadas++;
@@ -163,10 +146,7 @@ export async function procesarPromesasVencidas(
   const cumplidas = await prisma.tbl_gestion.count({
     where: {
       deletedAt: null,
-      OR: [
-        { estadoPromesa: ESTADO_PROMESA.CUMPLIDA },
-        { nota: { contains: TAG_CUMPLIDA } },
-      ],
+      estadoPromesa: ESTADO_PROMESA.CUMPLIDA,
       fechaGestion: { gte: inicioPeriodoActual() },
     },
   });

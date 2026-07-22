@@ -1,6 +1,6 @@
 /**
  * Estado tipado de promesas de pago (H16).
- * Reemplaza el uso exclusivo de tags en `nota`.
+ * Fuente de verdad: columna `estadoPromesa` (tags en nota solo legado lectura).
  */
 
 export const ESTADO_PROMESA = {
@@ -12,10 +12,11 @@ export const ESTADO_PROMESA = {
 export type EstadoPromesa =
   (typeof ESTADO_PROMESA)[keyof typeof ESTADO_PROMESA];
 
+/** Tags legacy — solo para lectura de filas pre-backfill. */
 const TAG_CUMPLIDA = '[PROMESA_CUMPLIDA]';
 const TAG_VENCIDA = '[PROMESA_VENCIDA]';
 
-/** Deriva estado desde columna o, en legado, desde tags en nota. */
+/** Deriva estado desde columna; tags solo si columna vacía (legado). */
 export function resolverEstadoPromesa(params: {
   estadoPromesa?: string | null;
   nota?: string | null;
@@ -51,6 +52,10 @@ export function esPromesaAbierta(params: {
   return estado === ESTADO_PROMESA.PENDIENTE;
 }
 
+/**
+ * @deprecated H16: no escribir tags; usar solo `estadoPromesa`.
+ * Conservado para tests de lectura legado.
+ */
 export function appendNotaPromesa(
   notaActual: string,
   tag: typeof TAG_CUMPLIDA | typeof TAG_VENCIDA,

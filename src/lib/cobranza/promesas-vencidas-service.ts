@@ -4,10 +4,7 @@ import { decimalToNumber } from './decimal-utils';
 import type { Prisma } from '@prisma/client';
 
 import type { PromesaVencida } from '@/types/cobranza';
-import {
-  ESTADO_PROMESA,
-  TAG_CUMPLIDA,
-} from '@/lib/logic/promesa-estado-logic';
+import { ESTADO_PROMESA } from '@/lib/logic/promesa-estado-logic';
 
 export type PromesaVencidaGql = Omit<PromesaVencida, 'fechaPromesa'> & {
   fechaPromesa: Date;
@@ -39,12 +36,12 @@ const wherePromesaVencidaBase = (
   idmandante: mandanteFilter ?? { in: [] },
   fechaPromesa: { lt: hoy },
   montoPromesa: { not: null },
-  NOT: {
-    OR: [
-      { estadoPromesa: ESTADO_PROMESA.CUMPLIDA },
-      { nota: { contains: TAG_CUMPLIDA } },
-    ],
-  },
+  NOT: { estadoPromesa: ESTADO_PROMESA.CUMPLIDA },
+  OR: [
+    { estadoPromesa: ESTADO_PROMESA.PENDIENTE },
+    { estadoPromesa: ESTADO_PROMESA.VENCIDA },
+    { estadoPromesa: null },
+  ],
   prestamo: {
     deletedAt: null,
     estado: { not: 'Cancelado' },
@@ -52,9 +49,13 @@ const wherePromesaVencidaBase = (
   },
   ...(soloMisAsignados
     ? {
-        OR: [
-          { idgestor: idusuario },
-          { prestamo: { idgestorAsignado: idusuario } },
+        AND: [
+          {
+            OR: [
+              { idgestor: idusuario },
+              { prestamo: { idgestorAsignado: idusuario } },
+            ],
+          },
         ],
       }
     : {}),

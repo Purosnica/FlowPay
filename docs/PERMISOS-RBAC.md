@@ -2,7 +2,7 @@
 
 > **Fuente única de verdad:** `src/lib/permissions/permiso-codes.ts`  
 > **Jerarquía organizacional (roles):** `src/lib/permissions/role-codes.ts`  
-> **Última auditoría:** 2026-07-22 (H07/H28: `PAGO_APPLY`, sync docs)
+> **Última auditoría:** 2026-07-22 (H07/H28: `PAGO_APPLY`, finos de reporte en presets)
 
 ---
 
@@ -69,7 +69,7 @@ El sistema tiene permisos RBAC en 3 categorías (ver `PERMISOS_CATALOGO` en `per
 
 ### Permisos redundantes
 
-**No se eliminó ningún permiso.** El catálogo core incluye `PAGO_APPLY` (SoD H07) además de los módulos históricos. Los finos `REPORTE_*_READ` por pantalla son opcionales: los presets usan grupos.
+**No se eliminó ningún permiso.** El catálogo core incluye `PAGO_APPLY` (SoD H07) además de los módulos históricos. Los finos `REPORTE_*_READ` por pantalla **están incluidos en los presets** de rol (H28): grupos + finos del grupo correspondiente.
 
 ---
 

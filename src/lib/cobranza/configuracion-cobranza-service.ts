@@ -21,6 +21,8 @@ export const CLAVE_ASIGNACION_AUTO_POST_IMPORT =
   'cobranza.asignacion_auto_post_import';
 export const CLAVE_ASIGNACION_AUTO_METODO =
   'cobranza.asignacion_auto_metodo';
+export const CLAVE_ASIGNACION_AUTO_CRON =
+  'cobranza.asignacion_auto_cron';
 
 const DEFAULTS: Record<string, string> = {
   [CLAVE_PAGO_AUTO_APLICAR]: 'true',
@@ -38,6 +40,7 @@ const DEFAULTS: Record<string, string> = {
   [CLAVE_MI_DIA_CANDIDATE_LIMIT]: '200',
   [CLAVE_ASIGNACION_AUTO_POST_IMPORT]: 'false',
   [CLAVE_ASIGNACION_AUTO_METODO]: 'POR_CANTIDAD',
+  [CLAVE_ASIGNACION_AUTO_CRON]: 'false',
 };
 
 export async function obtenerConfigCobranza(clave: string): Promise<string> {

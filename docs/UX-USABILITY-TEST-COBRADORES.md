@@ -65,6 +65,9 @@ Guardar notas en `docs/ux-sessions/` (privado; sin PII de deudores).
 - [ ] Al menos 1 mejora UI mergeada por hallazgo bloqueante
 - [ ] Time-to-first-gestion revisado en analytics de prueba
 
+> **H30:** el producto está listo para el protocolo; **I188 no se cierra en código**.
+> Requiere 5 sesiones con cobradores reales y notas en `docs/ux-sessions/`.
+
 ## Estado producto (H30 — pre-sesiones)
 
 Listo para ejecutar el protocolo (no sustituye las 5 sesiones reales):

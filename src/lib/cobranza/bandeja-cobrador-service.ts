@@ -211,11 +211,13 @@ export async function cargarContextosPrioridad(
           fechaPromesa: { lt: hoy },
           montoPromesa: { not: null },
           NOT: {
-            OR: [
-              { estadoPromesa: 'CUMPLIDA' },
-              { nota: { contains: '[PROMESA_CUMPLIDA]' } },
-            ],
+            estadoPromesa: 'CUMPLIDA',
           },
+          OR: [
+            { estadoPromesa: 'PENDIENTE' },
+            { estadoPromesa: 'VENCIDA' },
+            { estadoPromesa: null },
+          ],
         },
         select: { idprestamo: true },
         distinct: ['idprestamo'],

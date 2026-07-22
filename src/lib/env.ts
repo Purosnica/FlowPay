@@ -10,11 +10,9 @@ const envSchema = z.object({
     ? z.string().url().optional()
     : z.string().url('DATABASE_URL debe ser una URL válida'),
 
-  JWT_SECRET: isProduction
-    ? z.string().min(32, 'JWT_SECRET debe tener al menos 32 caracteres')
-    : z
-        .string()
-        .min(16, 'JWT_SECRET debe tener al menos 16 caracteres en desarrollo'),
+  JWT_SECRET: z
+    .string()
+    .min(32, 'JWT_SECRET debe tener al menos 32 caracteres'),
 
   CRON_SECRET: isProduction
     ? z.string().min(16, 'CRON_SECRET debe tener al menos 16 caracteres')

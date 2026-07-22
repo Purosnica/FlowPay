@@ -20,4 +20,4 @@ export {
   procesarRecalculoMoraCartera,
 } from '@/lib/cobranza/dias-mora-service';
 export { procesarCastigoCartera } from '@/lib/cobranza/castigo-cartera-service';
-export { intentarAsignacionAutoPostImport } from '@/lib/cobranza/asignacion-auto-post-import-service';
+export { intentarAsignacionAutoPostImport, procesarAsignacionAutoCron } from '@/lib/cobranza/asignacion-auto-post-import-service';
