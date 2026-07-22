@@ -290,6 +290,8 @@ export const GET_PAGOS = `
         moneda
         medio
         aplicado
+        deletedAt
+        estado
         folio
         reciboUrl
       }
@@ -686,7 +688,20 @@ export const UPDATE_PAGO = `
       moneda
       medio
       aplicado
+      deletedAt
+      estado
       reciboUrl
+    }
+  }
+`;
+
+export const ANULAR_PAGO = `
+  mutation AnularPago($idpago: Int!) {
+    anularPago(idpago: $idpago) {
+      idpago
+      aplicado
+      deletedAt
+      estado
     }
   }
 `;

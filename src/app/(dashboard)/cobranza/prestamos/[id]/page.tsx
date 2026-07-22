@@ -49,6 +49,7 @@ import {
   CREATE_ACUERDO,
   CREATE_PAGO,
   UPDATE_PAGO,
+  ANULAR_PAGO,
   MARCAR_PAGO_APLICADO,
   ACTUALIZAR_ESTADO_ACUERDO,
   VERIFICAR_HORARIO_COBRANZA,
@@ -58,6 +59,14 @@ import { type Acuerdo, type Gestion, type Pago, type Prestamo ,
   nombreCompletoCliente,
 } from '@/types/cobranza';
 import { rutaComprobantePago } from '@/lib/logic/comprobante-pago-logic';
+import {
+  etiquetaEstadoPago,
+  puedeAnularPago,
+  puedeConciliarPago,
+  puedeEditarPago,
+  resolverEstadoPago,
+  type EstadoPago,
+} from '@/lib/logic/pago-estado-logic';
 import { PostPagoAcciones } from '@/components/cobranza/post-pago-acciones';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
@@ -79,6 +88,7 @@ export default function PrestamoDetailPage({ params }: PageProps) {
   const [ultimoPagoId, setUltimoPagoId] = useState<number | null>(null);
   const [pagoFormKey, setPagoFormKey] = useState(0);
   const [pagoEditando, setPagoEditando] = useState<Pago | null>(null);
+  const [pagoAnularId, setPagoAnularId] = useState<number | null>(null);
   const [acuerdoRotoId, setAcuerdoRotoId] = useState<number | null>(null);
   const [masSeccion, setMasSeccion] = useState<
     'contactos' | 'cortes' | 'timeline' | 'estados' | 'fiadores' | 'documentos'
@@ -176,6 +186,13 @@ export default function PrestamoDetailPage({ params }: PageProps) {
     },
   });
 
+  const anularPagoMutation = useGraphQLMutation(ANULAR_PAGO, {
+    onSuccess: () => {
+      invalidate();
+      setPagoAnularId(null);
+    },
+  });
+
   const aplicadoMutation = useGraphQLMutation(MARCAR_PAGO_APLICADO, {
     onSuccess: invalidate,
   });
@@ -193,9 +210,14 @@ export default function PrestamoDetailPage({ params }: PageProps) {
       cell: ({ row }) => row.original.medio ?? '-',
     },
     {
-      accessorKey: 'aplicado',
+      accessorKey: 'estado',
       header: 'Estado',
-      cell: ({ row }) => (row.original.aplicado ? 'Conciliado' : 'Pendiente'),
+      cell: ({ row }) => {
+        const estado =
+          (row.original.estado as EstadoPago | undefined) ??
+          resolverEstadoPago(row.original);
+        return etiquetaEstadoPago(estado);
+      },
     },
     {
       accessorKey: 'monto',
@@ -206,41 +228,60 @@ export default function PrestamoDetailPage({ params }: PageProps) {
     {
       id: 'acciones',
       header: '',
-      cell: ({ row }) => (
-        <div className="flex flex-wrap justify-end gap-2">
-          <Link href={rutaComprobantePago(row.original.idpago)}>
-            <Button size="sm" variant="outline">
-              Comprobante
-            </Button>
-          </Link>
-          {!row.original.aplicado && (
-            <PermissionGate permiso={PERMISO.PAGO_WRITE}>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setPagoEditando(row.original)}
-              >
-                Editar
+      cell: ({ row }) => {
+        const pago = row.original;
+        const editable = puedeEditarPago(pago);
+        const anulable = puedeAnularPago(pago);
+        const conciliable = puedeConciliarPago(pago);
+        return (
+          <div className="flex flex-wrap justify-end gap-2">
+            <Link href={rutaComprobantePago(pago.idpago)}>
+              <Button size="sm" variant="outline">
+                Comprobante
               </Button>
-            </PermissionGate>
-          )}
-          <PermissionGate permiso={PERMISO.PAGO_APPLY}>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={aplicadoMutation.isPending}
-              onClick={() =>
-                aplicadoMutation.mutate({
-                  idpago: row.original.idpago,
-                  aplicado: !row.original.aplicado,
-                })
-              }
-            >
-              {row.original.aplicado ? 'Desmarcar' : 'Conciliar'}
-            </Button>
-          </PermissionGate>
-        </div>
-      ),
+            </Link>
+            {editable && (
+              <PermissionGate permiso={PERMISO.PAGO_WRITE}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setPagoEditando(pago)}
+                >
+                  Editar
+                </Button>
+              </PermissionGate>
+            )}
+            {anulable && (
+              <PermissionGate permiso={PERMISO.PAGO_WRITE}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setPagoAnularId(pago.idpago)}
+                >
+                  Anular
+                </Button>
+              </PermissionGate>
+            )}
+            {conciliable && (
+              <PermissionGate permiso={PERMISO.PAGO_APPLY}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={aplicadoMutation.isPending}
+                  onClick={() =>
+                    aplicadoMutation.mutate({
+                      idpago: pago.idpago,
+                      aplicado: !pago.aplicado,
+                    })
+                  }
+                >
+                  {pago.aplicado ? 'Desmarcar' : 'Conciliar'}
+                </Button>
+              </PermissionGate>
+            )}
+          </div>
+        );
+      },
     },
   ];
 
@@ -775,6 +816,22 @@ export default function PrestamoDetailPage({ params }: PageProps) {
           </>
         ) : null}
       </Modal>
+
+      <ConfirmDialog
+        isOpen={pagoAnularId != null}
+        onClose={() => setPagoAnularId(null)}
+        title="Anular pago"
+        description="El pago quedará en estado Anulado. Si estaba conciliado, se revertirá del saldo del préstamo. Esta acción no se puede deshacer."
+        confirmLabel="Anular pago"
+        variant="danger"
+        isLoading={anularPagoMutation.isPending}
+        onConfirm={() => {
+          if (pagoAnularId == null) {
+            return;
+          }
+          anularPagoMutation.mutate({ idpago: pagoAnularId });
+        }}
+      />
 
       <ConfirmDialog
         isOpen={acuerdoRotoId != null}

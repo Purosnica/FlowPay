@@ -2,6 +2,7 @@ import { definePrismaObject } from '../../helpers/prisma-object';
 import { builder, type GraphQLContext } from '../../builder';
 import { z } from 'zod';
 import { exposeDecimal } from '../../helpers/graphql-helpers';
+import { resolverEstadoPago } from '@/lib/logic/pago-estado-logic';
 
 export const MEDIOS_PAGO = [
   'EFECTIVO',
@@ -103,6 +104,14 @@ export const Pago = definePrismaObject('tbl_pago', {
     moneda: t.exposeString('moneda'),
     medio: t.exposeString('medio', { nullable: true }),
     aplicado: t.exposeBoolean('aplicado'),
+    deletedAt: t.expose('deletedAt', { type: 'DateTime', nullable: true }),
+    /** Estado operativo: PENDIENTE | CONCILIADO | ANULADO. */
+    estado: t.string({
+      resolve: (pago: {
+        aplicado: boolean;
+        deletedAt: Date | null;
+      }) => resolverEstadoPago(pago),
+    }),
     folio: t.exposeString('folio', { nullable: true }),
     reciboUrl: t.exposeString('reciboUrl', { nullable: true }),
     createdAt: t.expose('createdAt', { type: 'DateTime' }),

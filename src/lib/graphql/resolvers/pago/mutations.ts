@@ -33,7 +33,8 @@ import {
   rutaComprobantePago,
 } from '@/lib/logic/comprobante-pago-logic';
 import { encolarWebhookMandante } from '@/lib/cobranza/webhook-mandante-service';
-import { MarcarPagoAplicadoSchema } from '@/lib/validators/graphql-args';
+import { MarcarPagoAplicadoSchema, IdPositiveSchema } from '@/lib/validators/graphql-args';
+import { anularPagoEnTransaccion } from '@/lib/cobranza/pago-anulacion-service';
 
 builder.mutationField('createPago', (t) =>
   t.prismaField({
@@ -331,6 +332,46 @@ builder.mutationField('updatePago', (t) =>
   }),
 );
 
+builder.mutationField('anularPago', (t) =>
+  t.prismaField({
+    type: Pago,
+    args: { idpago: t.arg.int({ required: true }) },
+    resolve: async (query, _parent, args, ctx: GraphQLContext) => {
+      await requerirPermiso(ctx.usuario?.idusuario, PERMISO.PAGO_WRITE);
+      const idpago = IdPositiveSchema.parse(args.idpago);
+
+      const pago = await ctx.prisma.tbl_pago.findUnique({
+        where: { idpago },
+        include: {
+          liquidacionDetalles: {
+            select: {
+              iddetalle: true,
+              liquidacion: { select: { estado: true } },
+            },
+          },
+        },
+      });
+      if (!pago) {
+        throw new GraphQLValidationError('Pago no encontrado.');
+      }
+      await requerirAccesoMandante(ctx.usuario?.idusuario, pago.idmandante);
+      await requerirAccesoPrestamoCobrador(
+        ctx.usuario?.idusuario,
+        pago.idprestamo,
+      );
+
+      await ctx.prisma.$transaction(async (tx) => {
+        await anularPagoEnTransaccion(tx, pago, ctx.usuario?.idusuario);
+      });
+
+      return ctx.prisma.tbl_pago.findUniqueOrThrow({
+        ...(query as Record<string, unknown>),
+        where: { idpago },
+      }) as never;
+    },
+  }),
+);
+
 builder.mutationField('marcarPagoAplicado', (t) =>
   t.prismaField({
     type: Pago,
@@ -340,6 +381,7 @@ builder.mutationField('marcarPagoAplicado', (t) =>
     },
     resolve: async (query, _parent, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.PAGO_APPLY);
+
       const { idpago, aplicado } = MarcarPagoAplicadoSchema.parse(args);
       const pago = await ctx.prisma.tbl_pago.findUnique({
         where: { idpago },

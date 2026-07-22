@@ -160,7 +160,7 @@ export const PERMISOS_CATALOGO: PermisoDefinicion[] = [
   {
     codigo: PERMISO.PAGO_WRITE,
     nombre: 'Registrar Pagos',
-    descripcion: 'Registrar y corregir pagos de deudores',
+    descripcion: 'Registrar, corregir y anular pagos de deudores',
     categoria: 'COBRANZA',
     tipo: 'operativo',
   },

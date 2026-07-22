@@ -212,6 +212,8 @@ export interface Pago {
   moneda: string;
   medio: string | null;
   aplicado: boolean;
+  deletedAt?: string | null;
+  estado?: 'PENDIENTE' | 'CONCILIADO' | 'ANULADO';
   reciboUrl?: string | null;
 }
 

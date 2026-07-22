@@ -161,7 +161,6 @@ builder.queryField("pagos", (t) =>
 
       const where = {
         idprestamo: args.idprestamo,
-        deletedAt: null,
         idmandante: mandanteFilter,
       };
 

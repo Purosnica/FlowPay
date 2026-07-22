@@ -23,6 +23,14 @@ import {
   puedeRevertirLiquidacionPagada,
 } from '@/lib/logic/liquidacion-estado-logic';
 import {
+  ESTADOS_PAGO,
+  etiquetaEstadoPago,
+  puedeAnularPago,
+  puedeConciliarPago,
+  puedeEditarPago,
+  resolverEstadoPago,
+} from '@/lib/logic/pago-estado-logic';
+import {
   aplicarWaterfallReverso,
   calcularWaterfallAplicacion,
   componentesDesdePrestamo,
@@ -322,6 +330,49 @@ function testLiquidacionEstadoLogic(): void {
   assert.equal(puedeRevertirLiquidacionPagada('PAGADA'), true);
 }
 
+function testPagoEstadoLogic(): void {
+  assert.equal(
+    resolverEstadoPago({ aplicado: false, deletedAt: null }),
+    ESTADOS_PAGO.PENDIENTE,
+  );
+  assert.equal(
+    resolverEstadoPago({ aplicado: true, deletedAt: null }),
+    ESTADOS_PAGO.CONCILIADO,
+  );
+  assert.equal(
+    resolverEstadoPago({
+      aplicado: true,
+      deletedAt: new Date('2026-07-22T00:00:00.000Z'),
+    }),
+    ESTADOS_PAGO.ANULADO,
+  );
+  assert.equal(etiquetaEstadoPago(ESTADOS_PAGO.ANULADO), 'Anulado');
+  assert.equal(puedeEditarPago({ aplicado: false, deletedAt: null }), true);
+  assert.equal(puedeEditarPago({ aplicado: true, deletedAt: null }), false);
+  assert.equal(
+    puedeEditarPago({
+      aplicado: false,
+      deletedAt: new Date('2026-07-22T00:00:00.000Z'),
+    }),
+    false,
+  );
+  assert.equal(puedeAnularPago({ deletedAt: null }), true);
+  assert.equal(
+    puedeAnularPago({ deletedAt: new Date('2026-07-22T00:00:00.000Z') }),
+    false,
+  );
+  assert.equal(
+    puedeConciliarPago({
+      aplicado: false,
+      deletedAt: new Date('2026-07-22T00:00:00.000Z'),
+    }),
+    false,
+  );
+}
+
+testLiquidacionEstadoLogic();
+testPagoEstadoLogic();
+
 function testPagoWaterfallLogic(): void {
   const base = componentesDesdePrestamo({
     gestionCobranza: 50,
@@ -368,7 +419,6 @@ function testAcuerdoCondonacionLogic(): void {
   assert.equal(m.moratorioCondonado, 40);
 }
 
-testLiquidacionEstadoLogic();
 testPagoWaterfallLogic();
 testAcuerdoCondonacionLogic();
 
