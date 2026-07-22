@@ -3,6 +3,38 @@ const nextConfig = {
   // Evita que Turbopack intente empaquetar APIs de Node de Sentry.
   serverExternalPackages: ['@sentry/node', '@sentry/node-core'],
   allowedDevOrigins: ['127.0.0.1', 'localhost'],
+  // CDN / edge cache de assets estáticos (Vercel CDN + browsers).
+  async headers() {
+    return [
+      {
+        source: '/_next/static/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/images/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=86400, stale-while-revalidate=604800',
+          },
+        ],
+      },
+      {
+        source: '/fonts/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       {

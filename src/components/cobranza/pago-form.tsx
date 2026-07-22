@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
 
 export interface PagoFormData {
@@ -29,6 +29,10 @@ export function PagoForm({
   onSubmit,
   isLoading,
 }: PagoFormProps) {
+  const montoId = useId();
+  const fechaId = useId();
+  const monedaId = useId();
+  const medioId = useId();
   const [monto, setMonto] = useState('');
   const [fechaPago, setFechaPago] = useState(
     new Date().toISOString().slice(0, 10),
@@ -53,47 +57,61 @@ export function PagoForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4" noValidate>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
-          <label className="mb-1 block text-sm font-medium">Monto *</label>
+          <label htmlFor={montoId} className="mb-1 block text-sm font-medium">
+            Monto <span aria-hidden="true">*</span>
+          </label>
           <input
+            id={montoId}
             type="number"
             required
+            aria-required
             min="0.01"
             step="0.01"
             value={monto}
             onChange={(e) => setMonto(e.target.value)}
-            className="w-full rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2 dark:text-white"
+            className="field-touch-target w-full rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2 dark:text-white"
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium">Fecha pago *</label>
+          <label htmlFor={fechaId} className="mb-1 block text-sm font-medium">
+            Fecha pago <span aria-hidden="true">*</span>
+          </label>
           <input
+            id={fechaId}
             type="date"
             required
+            aria-required
             value={fechaPago}
             onChange={(e) => setFechaPago(e.target.value)}
-            className="w-full rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2 dark:text-white"
+            className="field-touch-target w-full rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2 dark:text-white"
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium">Moneda</label>
+          <label htmlFor={monedaId} className="mb-1 block text-sm font-medium">
+            Moneda
+          </label>
           <select
+            id={monedaId}
             value={moneda}
             onChange={(e) => setMoneda(e.target.value as 'NIO' | 'USD')}
-            className="w-full rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2 dark:text-white"
+            className="field-touch-target w-full rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2 dark:text-white"
           >
             <option value="NIO">NIO (Córdobas)</option>
             <option value="USD">USD</option>
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium">Medio</label>
+          <label htmlFor={medioId} className="mb-1 block text-sm font-medium">
+            Medio
+          </label>
           <select
+            id={medioId}
             value={medio}
             onChange={(e) => setMedio(e.target.value)}
-            className="w-full rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2 dark:text-white"
+            className="field-touch-target w-full rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2 dark:text-white"
           >
             <option value="">Seleccione...</option>
             <option value="EFECTIVO">Efectivo</option>
@@ -105,9 +123,11 @@ export function PagoForm({
           </select>
         </div>
       </div>
-      <Button type="submit" disabled={isLoading}>
-        {isLoading ? 'Registrando...' : 'Registrar pago'}
-      </Button>
+      <div className="field-sticky-actions">
+        <Button type="submit" disabled={isLoading} className="field-touch-target">
+          {isLoading ? 'Registrando...' : 'Registrar pago'}
+        </Button>
+      </div>
     </form>
   );
 }

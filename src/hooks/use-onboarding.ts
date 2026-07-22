@@ -2,20 +2,23 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  claveOnboarding,
+  claveOnboardingLegacyCobrador,
+  claveOnboardingRol,
   ESTADO_ONBOARDING_INICIAL,
-  PASOS_ONBOARDING_COBRADOR,
+  pasosOnboardingPorRol,
+  rolTieneOnboarding,
   type EstadoOnboarding,
-} from '@/lib/onboarding/cobrador-onboarding';
+} from '@/lib/onboarding/onboarding-por-rol';
+import { ROL } from '@/lib/permissions/role-codes';
 
-function cargarEstado(clave: string): EstadoOnboarding {
+function cargarEstado(clave: string): EstadoOnboarding | null {
   if (typeof window === 'undefined') {
-    return ESTADO_ONBOARDING_INICIAL;
+    return null;
   }
   try {
     const raw = localStorage.getItem(clave);
     if (!raw) {
-      return ESTADO_ONBOARDING_INICIAL;
+      return null;
     }
     const parsed = JSON.parse(raw) as Partial<EstadoOnboarding>;
     return {
@@ -25,12 +28,16 @@ function cargarEstado(clave: string): EstadoOnboarding {
         : [],
     };
   } catch {
-    return ESTADO_ONBOARDING_INICIAL;
+    return null;
   }
 }
 
-export function useOnboardingCobrador(
+/**
+ * Onboarding medible por rol (I046). Reemplaza el hook solo-cobrador.
+ */
+export function useOnboardingPorRol(
   idusuario: number | null,
+  rolCodigo: string | null,
   habilitado: boolean,
 ) {
   const [hidratado, setHidratado] = useState(false);
@@ -38,26 +45,36 @@ export function useOnboardingCobrador(
     ESTADO_ONBOARDING_INICIAL,
   );
 
+  const pasos = useMemo(
+    () => pasosOnboardingPorRol(rolCodigo),
+    [rolCodigo],
+  );
+
   useEffect(() => {
-    if (idusuario == null) {
+    if (idusuario == null || !rolCodigo || !rolTieneOnboarding(rolCodigo)) {
       return;
     }
-    setEstado(cargarEstado(claveOnboarding(idusuario)));
+    const clave = claveOnboardingRol(idusuario, rolCodigo);
+    let cargado = cargarEstado(clave);
+    if (!cargado && rolCodigo === ROL.COBRADOR) {
+      cargado = cargarEstado(claveOnboardingLegacyCobrador(idusuario));
+    }
+    setEstado(cargado ?? ESTADO_ONBOARDING_INICIAL);
     setHidratado(true);
-  }, [idusuario]);
+  }, [idusuario, rolCodigo]);
 
   const persistir = useCallback(
     (siguiente: EstadoOnboarding) => {
-      if (idusuario == null) {
+      if (idusuario == null || !rolCodigo) {
         return;
       }
       setEstado(siguiente);
       localStorage.setItem(
-        claveOnboarding(idusuario),
+        claveOnboardingRol(idusuario, rolCodigo),
         JSON.stringify(siguiente),
       );
     },
-    [idusuario],
+    [idusuario, rolCodigo],
   );
 
   const marcarPaso = useCallback(
@@ -70,16 +87,16 @@ export function useOnboardingCobrador(
           ...actual,
           pasosCompletados: [...actual.pasosCompletados, idpaso],
         };
-        if (idusuario != null) {
+        if (idusuario != null && rolCodigo) {
           localStorage.setItem(
-            claveOnboarding(idusuario),
+            claveOnboardingRol(idusuario, rolCodigo),
             JSON.stringify(siguiente),
           );
         }
         return siguiente;
       });
     },
-    [idusuario],
+    [idusuario, rolCodigo],
   );
 
   const omitir = useCallback(() => {
@@ -90,25 +107,42 @@ export function useOnboardingCobrador(
     persistir(ESTADO_ONBOARDING_INICIAL);
   }, [persistir]);
 
-  const totalPasos = PASOS_ONBOARDING_COBRADOR.length;
+  const totalPasos = pasos.length;
   const completados = estado.pasosCompletados.length;
-  const finalizado = completados >= totalPasos;
-  const visible = habilitado && hidratado && !estado.omitido && !finalizado;
+  const finalizado = totalPasos > 0 && completados >= totalPasos;
+  const visible =
+    habilitado &&
+    hidratado &&
+    rolTieneOnboarding(rolCodigo) &&
+    !estado.omitido &&
+    !finalizado;
 
   const pasosCompletados = useMemo(
     () => new Set(estado.pasosCompletados),
     [estado.pasosCompletados],
   );
 
+  const progresoPct =
+    totalPasos > 0 ? Math.round((completados / totalPasos) * 100) : 0;
+
   return {
     visible,
-    pasos: PASOS_ONBOARDING_COBRADOR,
+    pasos,
     pasosCompletados,
     completados,
     totalPasos,
+    progresoPct,
     finalizado,
     marcarPaso,
     omitir,
     reiniciar,
   };
+}
+
+/** Compat: onboarding cobrador con la firma anterior. */
+export function useOnboardingCobrador(
+  idusuario: number | null,
+  habilitado: boolean,
+) {
+  return useOnboardingPorRol(idusuario, ROL.COBRADOR, habilitado);
 }

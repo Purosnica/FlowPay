@@ -16,6 +16,7 @@ import {
   type PlantillaMensajeContext,
 } from '@/lib/cobranza/plantilla-mensaje-utils';
 import { csrfHeaders } from '@/lib/security/csrf';
+import { LEY_787 } from '@/lib/compliance/ley-787-microcopy';
 import type { PlantillaMensaje } from '@/types/cobranza';
 
 interface EnviarCobroPanelProps {
@@ -191,9 +192,7 @@ export function EnviarCobroPanel({
   return (
     <div className={compact ? 'space-y-3' : 'space-y-4'}>
       <p className="rounded border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
-        Antes de contactar verifique autorización del deudor, límite diario y
-        horarios permitidos (Ley 787). La validación se aplica al registrar la
-        gestión.
+        {LEY_787.enviarCobroHint}
       </p>
 
       <div className="flex flex-wrap gap-2">

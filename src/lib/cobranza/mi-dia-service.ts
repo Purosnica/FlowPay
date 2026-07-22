@@ -10,7 +10,7 @@ import {
   ordenarPorPrioridad,
 } from './priorizacion-cartera-service';
 import { cargarContextosPrioridad } from './bandeja-cobrador-service';
-import { MI_DIA_PRIORIDAD_CANDIDATE_LIMIT } from './performance-limits';
+import { MI_DIA_PRIORIDAD_CANDIDATE_LIMIT, obtenerLimiteCandidatosMiDia } from './performance-limits';
 import type { MiDiaCaso, MiDiaResumen } from '@/types/cobranza';
 
 export type { MiDiaCaso, MiDiaResumen };
@@ -42,6 +42,12 @@ export async function obtenerCasosPrioritariosMiDia(
 ): Promise<MiDiaCaso[]> {
   const mandanteFilter = await filtroMandante(idusuario);
   const diasAlerta = await obtenerConfigNumerica(CLAVE_DIAS_SIN_GESTION_ALERTA);
+  const candidateLimit = await obtenerLimiteCandidatosMiDia(
+    typeof mandanteFilter?.in?.[0] === 'number' &&
+      mandanteFilter.in.length === 1
+      ? mandanteFilter.in[0]
+      : undefined,
+  );
 
   const prestamos = await prisma.tbl_prestamo.findMany({
     where: {
@@ -52,7 +58,7 @@ export async function obtenerCasosPrioritariosMiDia(
       estado: { notIn: ['Cancelado', 'Finalizado'] },
     },
     orderBy: { diasMora: 'desc' },
-    take: MI_DIA_PRIORIDAD_CANDIDATE_LIMIT,
+    take: candidateLimit || MI_DIA_PRIORIDAD_CANDIDATE_LIMIT,
     include: {
       cliente: {
         select: {

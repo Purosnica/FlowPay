@@ -27,6 +27,7 @@ import { PrestamoEstadoHistorialPanel } from '@/components/cobranza/prestamo-est
 import { PrestamoTimelinePanel } from '@/components/cobranza/prestamo-timeline-panel';
 import { PrestamoSaldoDesglosePanel } from '@/components/cobranza/prestamo-saldo-desglose-panel';
 import { buildPlantillaContextFromPrestamo } from '@/lib/cobranza/plantilla-mensaje-utils';
+import { trackGestionCreated } from '@/lib/analytics/product-analytics';
 import { PaginatedDataTable } from '@/components/cobranza/paginated-data-table';
 import { usePagination } from '@/hooks/use-pagination';
 import { useScopedPagination } from '@/hooks/use-scoped-pagination';
@@ -49,6 +50,8 @@ import { type Acuerdo, type Gestion, type Pago, type Prestamo ,
   nombreCompletoCliente,
 } from '@/types/cobranza';
 import { rutaComprobantePago } from '@/lib/logic/comprobante-pago-logic';
+import { PostPagoAcciones } from '@/components/cobranza/post-pago-acciones';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -66,6 +69,7 @@ export default function PrestamoDetailPage({ params }: PageProps) {
   const [notaPrefill, setNotaPrefill] = useState('');
   const [ultimoPagoId, setUltimoPagoId] = useState<number | null>(null);
   const [pagoFormKey, setPagoFormKey] = useState(0);
+  const [acuerdoRotoId, setAcuerdoRotoId] = useState<number | null>(null);
   const gestionesPagination = usePagination({ initialPageSize: 10 });
   const pagosPagination = useScopedPagination(idprestamo, {
     initialPageSize: 10,
@@ -127,6 +131,7 @@ export default function PrestamoDetailPage({ params }: PageProps) {
 
   const gestionMutation = useGraphQLMutation(CREATE_GESTION, {
     onSuccess: () => {
+      trackGestionCreated();
       invalidate();
       setGestionModal(false);
     },
@@ -277,14 +282,28 @@ export default function PrestamoDetailPage({ params }: PageProps) {
             </p>
           )}
         </div>
-        <PermissionGate permiso={PERMISO.GESTION_WRITE}>
-          <Button
-            onClick={() => setGestionModal(true)}
-            disabled={horarioData?.verificarHorarioCobranza.permitido === false}
-          >
-            Nueva gestión
-          </Button>
-        </PermissionGate>
+        <div className="flex flex-wrap gap-2">
+          <PermissionGate permiso={PERMISO.PAGO_WRITE}>
+            <Button
+              data-ux-id="prestamo-registrar-pago"
+              onClick={() => setActiveTab('pagos')}
+            >
+              Registrar pago
+            </Button>
+          </PermissionGate>
+          <PermissionGate permiso={PERMISO.GESTION_WRITE}>
+            <Button
+              variant="outline"
+              data-ux-id="prestamo-tipificar"
+              onClick={() => setGestionModal(true)}
+              disabled={
+                horarioData?.verificarHorarioCobranza.permitido === false
+              }
+            >
+              Tipificar gestión
+            </Button>
+          </PermissionGate>
+        </div>
       </div>
 
       {horarioData?.verificarHorarioCobranza && (
@@ -505,21 +524,18 @@ export default function PrestamoDetailPage({ params }: PageProps) {
                       )}
                     </div>
                     {a.estado === 'VIGENTE' && (
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={acuerdoEstadoMutation.isPending}
-                          onClick={() =>
-                            acuerdoEstadoMutation.mutate({
-                              idacuerdo: a.idacuerdo,
-                              estado: 'ROTO',
-                            })
-                          }
-                        >
-                          Marcar roto
-                        </Button>
-                      </div>
+                      <PermissionGate permiso={PERMISO.ACUERDO_WRITE}>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={acuerdoEstadoMutation.isPending}
+                            onClick={() => setAcuerdoRotoId(a.idacuerdo)}
+                          >
+                            Marcar roto
+                          </Button>
+                        </div>
+                      </PermissionGate>
                     )}
                   </li>
                 ))}
@@ -543,13 +559,8 @@ export default function PrestamoDetailPage({ params }: PageProps) {
                 className="mb-4 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800 dark:border-green-800 dark:bg-green-900/20 dark:text-green-300"
                 role="status"
               >
-                Pago registrado.{' '}
-                <Link
-                  href={rutaComprobantePago(ultimoPagoId)}
-                  className="font-medium underline"
-                >
-                  Imprimir comprobante
-                </Link>
+                <p className="mb-2 font-medium">Pago registrado.</p>
+                <PostPagoAcciones idpago={ultimoPagoId} />
               </div>
             ) : null}
             <PagoForm
@@ -675,6 +686,25 @@ export default function PrestamoDetailPage({ params }: PageProps) {
           }
         />
       </Modal>
+
+      <ConfirmDialog
+        isOpen={acuerdoRotoId != null}
+        onClose={() => setAcuerdoRotoId(null)}
+        title="Marcar acuerdo como roto"
+        description="El acuerdo dejará de estar vigente y el préstamo podrá volver a reportarse en central de riesgo según política."
+        confirmLabel="Marcar roto"
+        variant="danger"
+        isLoading={acuerdoEstadoMutation.isPending}
+        onConfirm={() => {
+          if (acuerdoRotoId == null) {
+            return;
+          }
+          acuerdoEstadoMutation.mutate(
+            { idacuerdo: acuerdoRotoId, estado: 'ROTO' },
+            { onSuccess: () => setAcuerdoRotoId(null) },
+          );
+        }}
+      />
     </div>
   );
 }

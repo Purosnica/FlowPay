@@ -20,6 +20,10 @@ import type {
   CentroInteligenciaResumen,
   InsightAutomatico,
 } from '@/types/cobranza';
+import {
+  obtenerResumenDiarioMaterializado,
+  type ResumenDiarioCobranza,
+} from './resumen-diario-service';
 
 export type { CentroInteligenciaResumen, InsightAutomatico };
 
@@ -73,6 +77,173 @@ function calcularSaludCartera(
   return Math.max(0, Math.round(score));
 }
 
+function construirInsights(params: {
+  variacionRecuperacionPct: number;
+  pctTramoAlto: number;
+  etiquetaTramoAlto: string;
+  promesasVencidas: number;
+  acuerdosEnRiesgo: number;
+  reclamosFueraSla: number;
+}): InsightAutomatico[] {
+  const insights: InsightAutomatico[] = [];
+  const {
+    variacionRecuperacionPct,
+    pctTramoAlto,
+    etiquetaTramoAlto,
+    promesasVencidas,
+    acuerdosEnRiesgo,
+    reclamosFueraSla,
+  } = params;
+
+  if (variacionRecuperacionPct < -10) {
+    insights.push({
+      id: 'rec-down',
+      severidad: 'critical',
+      titulo: 'Caída en recuperación',
+      descripcion: `La recuperación del mes cayó ${Math.abs(variacionRecuperacionPct)}% vs el mes anterior.`,
+      metrica: `${variacionRecuperacionPct}%`,
+      accionSugerida: 'Revisar contactabilidad y promesas vencidas por equipo.',
+    });
+  } else if (variacionRecuperacionPct > 10) {
+    insights.push({
+      id: 'rec-up',
+      severidad: 'info',
+      titulo: 'Recuperación en alza',
+      descripcion: `Recuperación ${variacionRecuperacionPct}% superior al mes anterior.`,
+      metrica: `+${variacionRecuperacionPct}%`,
+    });
+  }
+
+  if (pctTramoAlto > 25) {
+    insights.push({
+      id: 'aging-alto',
+      severidad: 'warning',
+      titulo: 'Concentración en mora severa',
+      descripcion: `${pctTramoAlto}% del saldo está en ${etiquetaTramoAlto}.`,
+      accionSugerida:
+        'Evaluar estrategia de negociación o reasignación especializada.',
+    });
+  }
+
+  if (promesasVencidas > 0) {
+    insights.push({
+      id: 'promesas',
+      severidad: promesasVencidas > 10 ? 'critical' : 'warning',
+      titulo: 'Promesas vencidas sin cumplir',
+      descripcion: `${promesasVencidas} promesa(s) vencida(s) requieren seguimiento inmediato.`,
+      accionSugerida: 'Priorizar en bandeja y contactar hoy.',
+    });
+  }
+
+  if (acuerdosEnRiesgo > 0) {
+    insights.push({
+      id: 'acuerdos',
+      severidad: 'warning',
+      titulo: 'Acuerdos con cuotas vencidas',
+      descripcion: `${acuerdosEnRiesgo} cuota(s) de acuerdo vencida(s).`,
+      accionSugerida: 'Ejecutar evaluación de acuerdos o contactar deudor.',
+    });
+  }
+
+  if (reclamosFueraSla > 0) {
+    insights.push({
+      id: 'reclamos',
+      severidad: 'critical',
+      titulo: 'Reclamos fuera de SLA',
+      descripcion: `${reclamosFueraSla} reclamo(s) exceden fecha límite legal.`,
+      accionSugerida: 'Escalar a supervisor y registrar resolución.',
+    });
+  }
+
+  if (insights.length === 0) {
+    insights.push({
+      id: 'ok',
+      severidad: 'info',
+      titulo: 'Operación estable',
+      descripcion:
+        'No se detectaron alertas críticas en los indicadores principales.',
+    });
+  }
+
+  return insights;
+}
+
+async function pctTramoAltoMandante(
+  idmandante: number,
+  idusuario: number,
+): Promise<{ pctTramoAlto: number; etiquetaTramoAlto: string }> {
+  const aging = await obtenerReporteAgingCartera(idmandante, idusuario);
+  const tramoAlto =
+    aging.tramos.length > 0
+      ? aging.tramos.reduce((a, b) =>
+          a.tramoMoraMin >= b.tramoMoraMin ? a : b,
+        )
+      : undefined;
+  return {
+    pctTramoAlto: tramoAlto?.porcentajeSaldo ?? 0,
+    etiquetaTramoAlto: tramoAlto?.tramo ?? 'tramo más severo',
+  };
+}
+
+async function construirCentroDesdeMaterializado(
+  idusuario: number,
+  idmandante: number,
+  materializado: ResumenDiarioCobranza,
+): Promise<CentroInteligenciaResumen> {
+  const { pctTramoAlto, etiquetaTramoAlto } = await pctTramoAltoMandante(
+    idmandante,
+    idusuario,
+  );
+
+  const recuperacion = {
+    actual: materializado.recuperacionMesActual,
+    anterior: materializado.recuperacionMesAnterior,
+  };
+
+  const variacionRecuperacionPct =
+    recuperacion.anterior > 0
+      ? roundMoney(
+          ((recuperacion.actual - recuperacion.anterior) /
+            recuperacion.anterior) *
+            100,
+        )
+      : recuperacion.actual > 0
+        ? 100
+        : 0;
+
+  const prestamosEnMoraPct =
+    materializado.totalPrestamos > 0
+      ? roundMoney(
+          (materializado.prestamosEnMora / materializado.totalPrestamos) * 100,
+        )
+      : 0;
+
+  const saludCartera = calcularSaludCartera(
+    materializado.prestamosEnMora,
+    materializado.totalPrestamos,
+    pctTramoAlto,
+    materializado.promesasVencidas,
+  );
+
+  return {
+    saludCartera,
+    recuperacionMes: recuperacion.actual,
+    variacionRecuperacionPct,
+    prestamosEnMoraPct,
+    promesasVencidas: materializado.promesasVencidas,
+    acuerdosEnRiesgo: materializado.acuerdosEnRiesgo,
+    reclamosFueraSla: materializado.reclamosFueraSla,
+    insights: construirInsights({
+      variacionRecuperacionPct,
+      pctTramoAlto,
+      etiquetaTramoAlto,
+      promesasVencidas: materializado.promesasVencidas,
+      acuerdosEnRiesgo: materializado.acuerdosEnRiesgo,
+      reclamosFueraSla: materializado.reclamosFueraSla,
+    }),
+  };
+}
+
 export async function obtenerCentroInteligencia(
   idusuario: number,
   idmandante?: number,
@@ -84,6 +255,17 @@ export async function obtenerCentroInteligencia(
   const mandanteFilter = idmandante
     ? undefined
     : await filtroMandante(idusuario);
+
+  if (idmandante) {
+    const materializado = await obtenerResumenDiarioMaterializado(idmandante);
+    if (materializado) {
+      return construirCentroDesdeMaterializado(
+        idusuario,
+        idmandante,
+        materializado,
+      );
+    }
+  }
 
   const prestamoWhere = {
     deletedAt: null,
@@ -148,17 +330,9 @@ export async function obtenerCentroInteligencia(
   let pctTramoAlto = 0;
   let etiquetaTramoAlto = 'tramo más severo';
   if (idmandante) {
-    const aging = await obtenerReporteAgingCartera(idmandante, idusuario);
-    const tramoAlto =
-      aging.tramos.length > 0
-        ? aging.tramos.reduce((a, b) =>
-            a.tramoMoraMin >= b.tramoMoraMin ? a : b,
-          )
-        : undefined;
-    pctTramoAlto = tramoAlto?.porcentajeSaldo ?? 0;
-    if (tramoAlto) {
-      etiquetaTramoAlto = tramoAlto.tramo;
-    }
+    const aging = await pctTramoAltoMandante(idmandante, idusuario);
+    pctTramoAlto = aging.pctTramoAlto;
+    etiquetaTramoAlto = aging.etiquetaTramoAlto;
   } else {
     const prestamos = await prisma.tbl_prestamo.findMany({
       where: { ...prestamoWhere, saldoTotal: { gt: 0 } },
@@ -213,76 +387,6 @@ export async function obtenerCentroInteligencia(
     promesasVencidas,
   );
 
-  const insights: InsightAutomatico[] = [];
-
-  if (variacionRecuperacionPct < -10) {
-    insights.push({
-      id: 'rec-down',
-      severidad: 'critical',
-      titulo: 'Caída en recuperación',
-      descripcion: `La recuperación del mes cayó ${Math.abs(variacionRecuperacionPct)}% vs el mes anterior.`,
-      metrica: `${variacionRecuperacionPct}%`,
-      accionSugerida: 'Revisar contactabilidad y promesas vencidas por equipo.',
-    });
-  } else if (variacionRecuperacionPct > 10) {
-    insights.push({
-      id: 'rec-up',
-      severidad: 'info',
-      titulo: 'Recuperación en alza',
-      descripcion: `Recuperación ${variacionRecuperacionPct}% superior al mes anterior.`,
-      metrica: `+${variacionRecuperacionPct}%`,
-    });
-  }
-
-  if (pctTramoAlto > 25) {
-    insights.push({
-      id: 'aging-alto',
-      severidad: 'warning',
-      titulo: 'Concentración en mora severa',
-      descripcion: `${pctTramoAlto}% del saldo está en ${etiquetaTramoAlto}.`,
-      accionSugerida: 'Evaluar estrategia de negociación o reasignación especializada.',
-    });
-  }
-
-  if (promesasVencidas > 0) {
-    insights.push({
-      id: 'promesas',
-      severidad: promesasVencidas > 10 ? 'critical' : 'warning',
-      titulo: 'Promesas vencidas sin cumplir',
-      descripcion: `${promesasVencidas} promesa(s) vencida(s) requieren seguimiento inmediato.`,
-      accionSugerida: 'Priorizar en bandeja y contactar hoy.',
-    });
-  }
-
-  if (acuerdosEnRiesgo > 0) {
-    insights.push({
-      id: 'acuerdos',
-      severidad: 'warning',
-      titulo: 'Acuerdos con cuotas vencidas',
-      descripcion: `${acuerdosEnRiesgo} cuota(s) de acuerdo vencida(s).`,
-      accionSugerida: 'Ejecutar evaluación de acuerdos o contactar deudor.',
-    });
-  }
-
-  if (reclamosFueraSla > 0) {
-    insights.push({
-      id: 'reclamos',
-      severidad: 'critical',
-      titulo: 'Reclamos fuera de SLA',
-      descripcion: `${reclamosFueraSla} reclamo(s) exceden fecha límite legal.`,
-      accionSugerida: 'Escalar a supervisor y registrar resolución.',
-    });
-  }
-
-  if (insights.length === 0) {
-    insights.push({
-      id: 'ok',
-      severidad: 'info',
-      titulo: 'Operación estable',
-      descripcion: 'No se detectaron alertas críticas en los indicadores principales.',
-    });
-  }
-
   return {
     saludCartera,
     recuperacionMes: recuperacion.actual,
@@ -291,7 +395,14 @@ export async function obtenerCentroInteligencia(
     promesasVencidas,
     acuerdosEnRiesgo,
     reclamosFueraSla,
-    insights,
+    insights: construirInsights({
+      variacionRecuperacionPct,
+      pctTramoAlto,
+      etiquetaTramoAlto,
+      promesasVencidas,
+      acuerdosEnRiesgo,
+      reclamosFueraSla,
+    }),
   };
 }
 

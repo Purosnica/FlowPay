@@ -6,6 +6,9 @@ import { escalarReclamosFueraSla } from '@/lib/cobranza/reclamo-sla-service';
 import { purgarDatosHistoricos } from '@/lib/cobranza/auditoria-retention-service';
 import { procesarImportacionesPendientes } from '@/lib/cobranza/import/importacion-job-service';
 import { procesarDigestEmailSupervisores } from '@/lib/cobranza/digest-email-supervisor-service';
+import { materializarResumenesDiariosTodos } from '@/lib/cobranza/resumen-diario-service';
+import { procesarExportacionesPendientes } from '@/lib/cobranza/exportacion-job-service';
+import { procesarOutboxEmailNotificaciones } from '@/lib/cobranza/notificacion-outbox-service';
 import { obtenerImportMaxJobsPerRun } from '@/lib/scalability/scalability-config';
 import type { CronJobDefinition } from './cron-types';
 
@@ -40,7 +43,43 @@ export const CRON_SUB_JOBS: CronJobDefinition[] = [
       const r = await procesarRecalculoMoraCartera();
       return {
         registrosProcesados: r.evaluados,
-        detalle: { evaluados: r.evaluados, actualizados: r.actualizados },
+        detalle: {
+          evaluados: r.evaluados,
+          actualizados: r.actualizados,
+          profiling: r.profiling,
+        },
+      };
+    },
+  },
+  {
+    codigo: 'resumen_diario_materializar',
+    nombre: 'Materializar resumen diario',
+    descripcion:
+      'Persiste KPIs diarios por mandante para centro de inteligencia y reportes.',
+    timeoutMs: 300_000,
+    maxReintentos: 2,
+    orden: 25,
+    dependeDe: ['mora_recalculo'],
+    ejecutar: async () => {
+      const r = await materializarResumenesDiariosTodos();
+      return {
+        registrosProcesados: r.ok,
+        detalle: r,
+      };
+    },
+  },
+  {
+    codigo: 'exportaciones_async',
+    nombre: 'Procesar exportaciones async',
+    descripcion: 'Genera archivos de reportes grandes (>10k filas) en background.',
+    timeoutMs: 300_000,
+    maxReintentos: 1,
+    orden: 55,
+    ejecutar: async () => {
+      const r = await procesarExportacionesPendientes();
+      return {
+        registrosProcesados: r.procesados,
+        detalle: r,
       };
     },
   },
@@ -146,6 +185,22 @@ export const CRON_SUB_JOBS: CronJobDefinition[] = [
       const r = await procesarDigestEmailSupervisores();
       return {
         registrosProcesados: r.enviados,
+        detalle: { ...r },
+      };
+    },
+  },
+  {
+    codigo: 'notificacion_email_outbox',
+    nombre: 'Outbox email notificaciones',
+    descripcion:
+      'Envía correos pendientes vinculados a tbl_notificacion (estado PENDIENTE).',
+    timeoutMs: 180_000,
+    maxReintentos: 1,
+    orden: 85,
+    ejecutar: async () => {
+      const r = await procesarOutboxEmailNotificaciones();
+      return {
+        registrosProcesados: r.enviados + r.fallidos,
         detalle: { ...r },
       };
     },

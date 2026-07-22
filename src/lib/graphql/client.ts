@@ -83,11 +83,17 @@ export async function graphqlRequest<T = unknown>(
   options?: GraphQLRequestOptions,
 ): Promise<T> {
   try {
+    const operationNameMatch = query.match(
+      /\b(?:query|mutation|subscription)\s+([A-Za-z_][A-Za-z0-9_]*)/,
+    );
+    const operationName = operationNameMatch?.[1];
+
     const response = await apiClient.post<GraphQLResponse<T>>(
       '/api/graphql',
       {
         query,
         variables,
+        ...(operationName ? { operationName } : {}),
       },
       {
         ...(options?.timeout ? { timeout: options.timeout } : {}),

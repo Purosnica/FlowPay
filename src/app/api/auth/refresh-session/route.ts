@@ -15,6 +15,7 @@ import {
 } from '@/lib/auth/jwt';
 import { getUserById } from '@/lib/auth/auth-service';
 import { obtenerPermisosUsuario } from '@/lib/permissions/permission-service';
+import { obtenerMfaSetupRequired } from '@/lib/auth/mfa-session';
 import {
   CSRF_COOKIE,
   csrfCookieOptions,
@@ -101,6 +102,10 @@ export async function GET(req: NextRequest) {
 
   const ahora = Math.floor(Date.now() / 1000);
   const permisos = await obtenerPermisosUsuario(usuario.idusuario);
+  const mfaSetupRequired = await obtenerMfaSetupRequired(usuario.idusuario);
+  const destino = mfaSetupRequired
+    ? new URL('/perfil', origin)
+    : redirectTo;
   const tokenNuevo = generateToken(
     {
       idusuario: usuario.idusuario,
@@ -111,11 +116,12 @@ export async function GET(req: NextRequest) {
       sessionStartedAt,
       lastActivityAt: ahora,
       permisosAt: ahora,
+      mfaSetupRequired,
     },
     remaining,
   );
 
-  const response = NextResponse.redirect(redirectTo);
+  const response = NextResponse.redirect(destino);
   response.cookies.set('auth-token', tokenNuevo, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',

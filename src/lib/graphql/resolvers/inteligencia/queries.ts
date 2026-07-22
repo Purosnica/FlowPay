@@ -40,6 +40,7 @@ import { marcarNotificacionesLeidas } from '@/lib/cobranza/notificacion-lectura-
 import { procesarCastigoCartera } from '@/lib/cobranza/castigo-cartera-service';
 import { escalarReclamosFueraSla } from '@/lib/cobranza/reclamo-sla-service';
 import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
+import { requerirScopeOperacionCartera } from '@/lib/cobranza/mandante-scope';
 
 const InsightType = builder.objectRef<{
   id: string;
@@ -459,9 +460,11 @@ builder.mutationField('recalcularMoraCartera', (t) =>
     args: { idmandante: t.arg.int({ required: false }) },
     resolve: async (_p, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.CONFIG_SYSTEM);
-      const resultado = await procesarRecalculoMoraCartera(
+      const idmandante = await requerirScopeOperacionCartera(
+        ctx.usuario?.idusuario,
         args.idmandante ?? undefined,
       );
+      const resultado = await procesarRecalculoMoraCartera(idmandante);
       return {
         evaluados: resultado.evaluados,
         actualizados: resultado.actualizados,
@@ -829,7 +832,11 @@ builder.mutationField('procesarCastigoCartera', (t) =>
     args: { idmandante: t.arg.int({ required: false }) },
     resolve: async (_p, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.CARTERA_WRITE);
-      const resultado = await procesarCastigoCartera(args.idmandante ?? undefined);
+      const idmandante = await requerirScopeOperacionCartera(
+        ctx.usuario?.idusuario,
+        args.idmandante ?? undefined,
+      );
+      const resultado = await procesarCastigoCartera(idmandante);
       return {
         evaluados: resultado.evaluados,
         castigados: resultado.castigados,

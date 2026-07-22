@@ -43,6 +43,24 @@ const publicApiRoutes = [
   '/api/ready',
 ];
 
+/** Con MFA pendiente de setup: solo perfil + endpoints MFA/sesión. */
+const MFA_SETUP_PAGE_PREFIXES = ['/perfil'];
+const MFA_SETUP_API_PREFIXES = [
+  '/api/auth/mfa/',
+  '/api/auth/me',
+  '/api/auth/logout',
+  '/api/auth/refresh-session',
+];
+
+function rutaPermitidaConMfaSetup(pathname: string): boolean {
+  if (MFA_SETUP_PAGE_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
+    return true;
+  }
+  return MFA_SETUP_API_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(p),
+  );
+}
+
 // Cron: autenticación propia vía CRON_SECRET en el handler
 const cronApiPrefix = '/api/cron/';
 
@@ -206,6 +224,25 @@ export async function middleware(request: NextRequest) {
       maxAge: remainingAbs,
       path: '/',
     });
+  }
+
+  if (payload.mfaSetupRequired && !rutaPermitidaConMfaSetup(pathname)) {
+    if (pathname.startsWith('/api')) {
+      return responderConSeguridad(
+        request,
+        NextResponse.json(
+          {
+            success: false,
+            error: 'Debe activar MFA antes de continuar.',
+            code: 'MFA_SETUP_REQUIRED',
+          },
+          { status: 403 },
+        ),
+      );
+    }
+    const perfilUrl = new URL('/perfil', request.url);
+    perfilUrl.searchParams.set('mfa', 'required');
+    return responderConSeguridad(request, NextResponse.redirect(perfilUrl));
   }
 
   const regla = obtenerReglaPermisoRuta(pathname);

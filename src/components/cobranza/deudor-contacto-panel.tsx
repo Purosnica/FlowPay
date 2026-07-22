@@ -17,6 +17,7 @@ import type { DeudorContacto } from '@/types/cobranza';
 import type { ColumnDef } from '@tanstack/react-table';
 import { PermissionGate } from '@/components/auth/permission-gate';
 import { PERMISO } from '@/lib/permissions/permiso-codes';
+import { LEY_787 } from '@/lib/compliance/ley-787-microcopy';
 
 interface DeudorContactoPanelProps {
   idcliente: number;
@@ -102,10 +103,7 @@ export function DeudorContactoPanel({ idcliente }: DeudorContactoPanelProps) {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-gray-500">
-        Contactos del deudor (Ley 787). Solo marque autorizado si el deudor
-        consintió el contacto.
-      </p>
+      <p className="text-sm text-gray-500">{LEY_787.panelContactos}</p>
       <PermissionGate permiso={PERMISO.CARTERA_WRITE}>
       <form
         className="grid gap-2 sm:grid-cols-3"

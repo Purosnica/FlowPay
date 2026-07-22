@@ -6,6 +6,7 @@ import { prisma } from '@/lib/prisma';
 import { generateToken, type JWTPayload } from '@/lib/auth/jwt';
 import { obtenerPermisosUsuario } from '@/lib/permissions/permission-service';
 import { verificarMfaUsuario } from '@/lib/auth/mfa-service';
+import { calcularMfaSetupRequired } from '@/lib/auth/mfa-policy';
 import type { AuthResult } from '@/lib/auth/auth-service';
 
 export async function completarLoginConMfa(
@@ -29,6 +30,11 @@ export async function completarLoginConMfa(
   }
 
   const permisos = await obtenerPermisosUsuario(usuario.idusuario);
+  const rolCodigo = usuario.rol?.codigo ?? '';
+  const mfaSetupRequired = calcularMfaSetupRequired(
+    rolCodigo,
+    Boolean(usuario.mfaEnabled),
+  );
   const ahora = Math.floor(Date.now() / 1000);
   const payload: JWTPayload = {
     idusuario: usuario.idusuario,
@@ -39,6 +45,7 @@ export async function completarLoginConMfa(
     sessionStartedAt: ahora,
     lastActivityAt: ahora,
     permisosAt: ahora,
+    mfaSetupRequired,
   };
 
   const token = generateToken(payload);
@@ -52,12 +59,13 @@ export async function completarLoginConMfa(
     success: true,
     token,
     permisos,
+    mfaSetupRequired,
     usuario: {
       idusuario: usuario.idusuario,
       nombre: usuario.nombre,
       email: usuario.email,
       idrol: usuario.idrol || 0,
-      rolCodigo: usuario.rol?.codigo ?? '',
+      rolCodigo,
     },
   };
 }

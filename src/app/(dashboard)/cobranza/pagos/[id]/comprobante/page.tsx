@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import { ComprobantePagoDocument } from '@/components/cobranza/comprobante-pago-document';
+import { PostPagoAcciones } from '@/components/cobranza/post-pago-acciones';
 import { PermissionGate } from '@/components/auth/permission-gate';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { GET_COMPROBANTE_PAGO } from '@/lib/graphql/queries/cobranza.queries';
@@ -48,7 +49,7 @@ export default function ComprobantePagoPage({
                 : 'Vista para impresora térmica'
             }
             actions={
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 print:hidden">
                 {comprobante ? (
                   <>
                     <Link
@@ -58,9 +59,10 @@ export default function ComprobantePagoPage({
                         Ver préstamo
                       </Button>
                     </Link>
-                    <Button type="button" onClick={() => window.print()}>
-                      Imprimir
-                    </Button>
+                    <PostPagoAcciones
+                      comprobante={comprobante}
+                      imprimirInline
+                    />
                   </>
                 ) : (
                   <Button

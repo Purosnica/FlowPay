@@ -9,6 +9,7 @@ import { verifyPassword, simpleHash, hashPassword, isBcryptHash } from "./passwo
 import { type JWTPayload , generateToken } from "./jwt";
 import { obtenerPermisosUsuario } from "@/lib/permissions/permission-service";
 import { emitirTokenMfaPending } from "@/lib/auth/mfa-pending";
+import { calcularMfaSetupRequired } from "@/lib/auth/mfa-policy";
 
 import { logger } from "@/lib/utils/logger";
 
@@ -22,6 +23,7 @@ export interface AuthResult {
   token?: string;
   mfaRequired?: boolean;
   mfaPendingToken?: string;
+  mfaSetupRequired?: boolean;
   permisos?: string[];
   usuario?: {
     idusuario: number;
@@ -120,6 +122,11 @@ export async function authenticateUser(
 
     // Generar token JWT
     const permisos = await obtenerPermisosUsuario(usuario.idusuario);
+    const rolCodigo = usuario.rol?.codigo ?? '';
+    const mfaSetupRequired = calcularMfaSetupRequired(
+      rolCodigo,
+      Boolean(usuario.mfaEnabled),
+    );
 
     const ahora = Math.floor(Date.now() / 1000);
     const payload: JWTPayload = {
@@ -131,6 +138,7 @@ export async function authenticateUser(
       sessionStartedAt: ahora,
       lastActivityAt: ahora,
       permisosAt: ahora,
+      mfaSetupRequired,
     };
 
     const token = generateToken(payload);
@@ -147,12 +155,13 @@ export async function authenticateUser(
       success: true,
       token,
       permisos,
+      mfaSetupRequired,
       usuario: {
         idusuario: usuario.idusuario,
         nombre: usuario.nombre,
         email: usuario.email,
         idrol: usuario.idrol || 0,
-        rolCodigo: usuario.rol?.codigo ?? '',
+        rolCodigo,
       },
     };
   } catch (error: unknown) {

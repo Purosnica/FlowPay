@@ -48,17 +48,51 @@ type FormFieldProps =
 export function FormField(props: FormFieldProps) {
   const { label, error, hint, required, className } = props;
   const fieldId = useId();
+  const hintId = `${fieldId}-hint`;
+  const errorId = `${fieldId}-error`;
+
+  const a11yProps: {
+    'aria-invalid'?: boolean;
+    'aria-describedby'?: string;
+    'aria-required'?: boolean;
+  } = {
+    ...(error ? { 'aria-invalid': true, 'aria-describedby': errorId } : {}),
+    ...(!error && hint ? { 'aria-describedby': hintId } : {}),
+    ...(required ? { 'aria-required': true } : {}),
+  };
 
   const renderInput = () => {
     switch (props.type) {
       case "input":
-        return <Input id={fieldId} {...props.inputProps} error={error} />;
+        return (
+          <Input
+            id={fieldId}
+            {...props.inputProps}
+            {...a11yProps}
+            error={error}
+          />
+        );
       case "select":
-        return <Select id={fieldId} {...props.inputProps} error={error} />;
+        return (
+          <Select
+            id={fieldId}
+            {...props.inputProps}
+            {...a11yProps}
+            error={error}
+          />
+        );
       case "date":
-        return <DateInput id={fieldId} {...props.inputProps} />;
+        return (
+          <DateInput id={fieldId} {...props.inputProps} {...a11yProps} />
+        );
       case "autocomplete":
-        return <AutocompleteInput id={fieldId} {...props.inputProps} />;
+        return (
+          <AutocompleteInput
+            id={fieldId}
+            {...props.inputProps}
+            {...a11yProps}
+          />
+        );
     }
   };
 
@@ -69,14 +103,27 @@ export function FormField(props: FormFieldProps) {
         className="mb-1.5 block text-sm font-medium text-dark dark:text-white"
       >
         {label}
-        {required && <span className="ml-1 text-red-500">*</span>}
+        {required && (
+          <span className="ml-1 text-red-500" aria-hidden="true">
+            *
+          </span>
+        )}
       </label>
       {renderInput()}
       {hint && !error && (
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{hint}</p>
+        <p
+          id={hintId}
+          className="mt-1 text-xs text-gray-500 dark:text-gray-400"
+        >
+          {hint}
+        </p>
       )}
       {error && (
-        <div className="mt-1 flex items-center gap-1 text-xs text-red-600 dark:text-red-400">
+        <div
+          id={errorId}
+          className="mt-1 flex items-center gap-1 text-xs text-red-600 dark:text-red-400"
+          role="alert"
+        >
           <svg
             className="h-4 w-4"
             fill="currentColor"

@@ -5,6 +5,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { PaginatedDataTable } from '@/components/cobranza/paginated-data-table';
 import { MandanteSelect } from '@/components/cobranza/mandante-select';
 import { PageHeader } from '@/components/ui/page-header';
@@ -28,6 +29,11 @@ import { type Liquidacion, type SimulacionLiquidacion , formatearMoneda } from '
 
 import { periodoActual } from '@/lib/cobranza/periodo-utils';
 
+type ConfirmLiq =
+  | { tipo: 'anular'; id: number }
+  | { tipo: 'revertir'; id: number }
+  | null;
+
 function estadoBadge(estado: string): string {
   switch (estado) {
     case 'BORRADOR':
@@ -49,6 +55,7 @@ export default function LiquidacionesPage() {
     null,
   );
   const [detalleId, setDetalleId] = useState<number | null>(null);
+  const [confirmLiq, setConfirmLiq] = useState<ConfirmLiq>(null);
   const {
     queryVars,
     resetPage,
@@ -215,8 +222,9 @@ export default function LiquidacionesPage() {
                   variant="outline"
                   disabled={revertirPagadaMutation.isPending}
                   onClick={() =>
-                    revertirPagadaMutation.mutate({
-                      idliquidacion: liq.idliquidacion,
+                    setConfirmLiq({
+                      tipo: 'revertir',
+                      id: liq.idliquidacion,
                     })
                   }
                 >
@@ -231,8 +239,9 @@ export default function LiquidacionesPage() {
                   variant="outline"
                   disabled={anularMutation.isPending}
                   onClick={() =>
-                    anularMutation.mutate({
-                      idliquidacion: liq.idliquidacion,
+                    setConfirmLiq({
+                      tipo: 'anular',
+                      id: liq.idliquidacion,
                     })
                   }
                 >
@@ -440,6 +449,44 @@ export default function LiquidacionesPage() {
           </div>
         </AsyncPanel>
       </Modal>
+
+      <ConfirmDialog
+        isOpen={confirmLiq != null}
+        onClose={() => setConfirmLiq(null)}
+        title={
+          confirmLiq?.tipo === 'anular'
+            ? 'Anular liquidación'
+            : 'Revertir pago de liquidación'
+        }
+        description={
+          confirmLiq?.tipo === 'anular'
+            ? 'La liquidación quedará anulada. Esta acción queda auditada.'
+            : 'Se revertirá el estado pagada. Confirme solo si el pago no se concretó.'
+        }
+        confirmLabel={
+          confirmLiq?.tipo === 'anular' ? 'Anular' : 'Revertir pago'
+        }
+        variant="danger"
+        isLoading={
+          anularMutation.isPending || revertirPagadaMutation.isPending
+        }
+        onConfirm={() => {
+          if (!confirmLiq) {
+            return;
+          }
+          if (confirmLiq.tipo === 'anular') {
+            anularMutation.mutate(
+              { idliquidacion: confirmLiq.id },
+              { onSuccess: () => setConfirmLiq(null) },
+            );
+            return;
+          }
+          revertirPagadaMutation.mutate(
+            { idliquidacion: confirmLiq.id },
+            { onSuccess: () => setConfirmLiq(null) },
+          );
+        }}
+      />
     </div>
   );
 }

@@ -14,11 +14,21 @@ import {
   revertirLiquidacionPagada,
 } from '@/lib/cobranza/liquidacion-service';
 import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
+import { z } from 'zod';
 
 function wrapServiceError(err: unknown): never {
   const msg = err instanceof Error ? err.message : 'Operación fallida.';
   throw new GraphQLValidationError(msg);
 }
+
+const GenerarLiquidacionSchema = z.object({
+  idmandante: z.number().int().positive(),
+  periodo: z.string().regex(/^\d{4}-\d{2}$/, 'Periodo debe ser YYYY-MM'),
+});
+
+const IdLiquidacionSchema = z.object({
+  idliquidacion: z.number().int().positive(),
+});
 
 builder.mutationField('generarLiquidacion', (t) =>
   t.field({
@@ -33,10 +43,11 @@ builder.mutationField('generarLiquidacion', (t) =>
       if (!idusuario) {
         throw new GraphQLValidationError('Usuario no autenticado.');
       }
+      const parsed = GenerarLiquidacionSchema.parse(args);
       try {
         return await generarLiquidacion({
-          idmandante: args.idmandante,
-          periodo: args.periodo,
+          idmandante: parsed.idmandante,
+          periodo: parsed.periodo,
           idusuario,
         });
       } catch (err) {
@@ -56,14 +67,15 @@ builder.mutationField('emitirLiquidacion', (t) =>
       if (!idusuario) {
         throw new GraphQLValidationError('Usuario no autenticado.');
       }
+      const { idliquidacion } = IdLiquidacionSchema.parse(args);
       try {
-        await emitirLiquidacion(args.idliquidacion, idusuario);
+        await emitirLiquidacion(idliquidacion, idusuario);
       } catch (err) {
         throw wrapServiceError(err);
       }
       return ctx.prisma.tbl_liquidacion.findUniqueOrThrow({
         ...(query as Record<string, unknown>),
-        where: { idliquidacion: args.idliquidacion },
+        where: { idliquidacion },
       }) as never;
     },
   }),
@@ -79,14 +91,15 @@ builder.mutationField('marcarLiquidacionPagada', (t) =>
       if (!idusuario) {
         throw new GraphQLValidationError('Usuario no autenticado.');
       }
+      const { idliquidacion } = IdLiquidacionSchema.parse(args);
       try {
-        await marcarLiquidacionPagada(args.idliquidacion, idusuario);
+        await marcarLiquidacionPagada(idliquidacion, idusuario);
       } catch (err) {
         throw wrapServiceError(err);
       }
       return ctx.prisma.tbl_liquidacion.findUniqueOrThrow({
         ...(query as Record<string, unknown>),
-        where: { idliquidacion: args.idliquidacion },
+        where: { idliquidacion },
       }) as never;
     },
   }),
@@ -102,14 +115,15 @@ builder.mutationField('revertirLiquidacionPagada', (t) =>
       if (!idusuario) {
         throw new GraphQLValidationError('Usuario no autenticado.');
       }
+      const { idliquidacion } = IdLiquidacionSchema.parse(args);
       try {
-        await revertirLiquidacionPagada(args.idliquidacion, idusuario);
+        await revertirLiquidacionPagada(idliquidacion, idusuario);
       } catch (err) {
         throw wrapServiceError(err);
       }
       return ctx.prisma.tbl_liquidacion.findUniqueOrThrow({
         ...(query as Record<string, unknown>),
-        where: { idliquidacion: args.idliquidacion },
+        where: { idliquidacion },
       }) as never;
     },
   }),
@@ -125,8 +139,9 @@ builder.mutationField('anularLiquidacion', (t) =>
       if (!idusuario) {
         throw new GraphQLValidationError('Usuario no autenticado.');
       }
+      const { idliquidacion } = IdLiquidacionSchema.parse(args);
       try {
-        await anularLiquidacionBorrador(args.idliquidacion, idusuario);
+        await anularLiquidacionBorrador(idliquidacion, idusuario);
       } catch (err) {
         throw wrapServiceError(err);
       }

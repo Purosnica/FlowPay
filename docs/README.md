@@ -52,6 +52,9 @@ Instalación técnica: [INSTRUCCIONES-INSTALACION.md](../INSTRUCCIONES-INSTALACI
 
 | Documento | Contenido |
 |-----------|-----------|
+| [API-DEVELOPER.md](./API-DEVELOPER.md) | Portal developer: OpenAPI, webhooks HMAC, persisted ops |
+| [openapi.yaml](./openapi.yaml) | Spec OpenAPI 3 (también `GET /api/openapi`) |
+| [GRAPHQL-DEPRECATION.md](./GRAPHQL-DEPRECATION.md) | Política de deprecación de campos GraphQL |
 | [MORA-AUTOMATICA.md](./MORA-AUTOMATICA.md) | Cálculo y sincronización de mora |
 | [CASTIGO-CARTERA.md](./CASTIGO-CARTERA.md) | Castigo automático |
 | [CONFIGURACION-SISTEMA.md](./CONFIGURACION-SISTEMA.md) | Env + parámetros operativos |

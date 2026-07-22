@@ -6,6 +6,7 @@ import nodemailer, { type Transporter } from 'nodemailer';
 import { z } from 'zod';
 import { env } from '@/lib/env';
 import { errorValidacion, ServicioError, ErrorCode } from '@/lib/services/error-types';
+import { withRetry } from '@/lib/utils/with-retry';
 
 export const EnviarEmailCobroSchema = z.object({
   to: z.string().email('Correo del deudor inválido'),
@@ -90,13 +91,17 @@ export async function enviarEmailCobro(
   const mailer = getTransporter();
 
   try {
-    const info = await mailer.sendMail({
-      from: `"${fromName}" <${fromAddress}>`,
-      to: data.to,
-      subject: data.subject,
-      text: data.body,
-      html: textoAHtml(data.body),
-    });
+    const info = await withRetry(
+      () =>
+        mailer.sendMail({
+          from: `"${fromName}" <${fromAddress}>`,
+          to: data.to,
+          subject: data.subject,
+          text: data.body,
+          html: textoAHtml(data.body),
+        }),
+      { maxAttempts: 3, baseDelayMs: 500 },
+    );
 
     return {
       messageId: info.messageId ?? '',
@@ -141,13 +146,17 @@ export async function enviarEmailOperativo(
   const mailer = getTransporter();
 
   try {
-    const info = await mailer.sendMail({
-      from: `"${fromName}" <${fromAddress}>`,
-      to: data.to,
-      subject: data.subject,
-      text: data.body,
-      html: textoAHtml(data.body),
-    });
+    const info = await withRetry(
+      () =>
+        mailer.sendMail({
+          from: `"${fromName}" <${fromAddress}>`,
+          to: data.to,
+          subject: data.subject,
+          text: data.body,
+          html: textoAHtml(data.body),
+        }),
+      { maxAttempts: 3, baseDelayMs: 500 },
+    );
 
     return {
       messageId: info.messageId ?? '',

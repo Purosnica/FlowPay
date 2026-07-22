@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useState } from 'react';
+import { memo, useRef, useState } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -10,9 +10,11 @@ import {
   type OnChangeFn,
   type SortingState,
 } from '@tanstack/react-table';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PAGE_SIZE_OPTIONS } from '@/lib/pagination/pagination';
+import { TABLE_VIRTUALIZE_ROW_THRESHOLD } from '@/lib/cobranza/performance-limits';
 import { cn } from '@/lib/utils';
 
 interface DataTableProps<T> {
@@ -20,11 +22,14 @@ interface DataTableProps<T> {
   columns: ColumnDef<T>[];
   isLoading?: boolean;
   emptyMessage?: string;
+  emptyAction?: React.ReactNode;
   onRowClick?: (row: T) => void;
   rowActions?: (row: T) => React.ReactNode;
   sorting?: SortingState;
   onSortingChange?: OnChangeFn<SortingState>;
   manualSorting?: boolean;
+  /** Forzar virtualización (default: auto si filas ≥ umbral). */
+  virtualize?: boolean;
 }
 
 const ALIGN_CLASS = {
@@ -33,21 +38,26 @@ const ALIGN_CLASS = {
   center: 'text-center',
 } as const;
 
+const ROW_HEIGHT_PX = 48;
+
 function DataTableInner<T>({
   data,
   columns,
   isLoading = false,
   emptyMessage = 'No se encontraron registros',
+  emptyAction,
   onRowClick,
   rowActions,
   sorting: sortingControlled,
   onSortingChange,
   manualSorting = false,
+  virtualize,
 }: DataTableProps<T>) {
   const [sortingUncontrolled, setSortingUncontrolled] = useState<SortingState>(
     [],
   );
   const sorting = sortingControlled ?? sortingUncontrolled;
+  const scrollParentRef = useRef<HTMLDivElement>(null);
 
   const table = useReactTable({
     data,
@@ -59,6 +69,17 @@ function DataTableInner<T>({
     state: { sorting },
   });
 
+  const rows = table.getRowModel().rows;
+  const shouldVirtualize =
+    virtualize ?? rows.length >= TABLE_VIRTUALIZE_ROW_THRESHOLD;
+
+  const rowVirtualizer = useVirtualizer({
+    count: shouldVirtualize ? rows.length : 0,
+    getScrollElement: () => scrollParentRef.current,
+    estimateSize: () => ROW_HEIGHT_PX,
+    overscan: 8,
+  });
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -68,13 +89,27 @@ function DataTableInner<T>({
   }
 
   if (data.length === 0) {
-    return <EmptyState message={emptyMessage} className="py-12" />;
+    return (
+      <EmptyState
+        message={emptyMessage}
+        action={emptyAction}
+        className="py-12"
+      />
+    );
   }
 
+  const colCount = columns.length + (rowActions ? 1 : 0);
+
   return (
-    <div className="overflow-x-auto">
+    <div
+      ref={scrollParentRef}
+      className={cn(
+        'overflow-x-auto',
+        shouldVirtualize && 'max-h-[70vh] overflow-y-auto',
+      )}
+    >
       <table className="w-full table-auto">
-        <thead>
+        <thead className="sticky top-0 z-10">
           {table.getHeaderGroups().map((headerGroup) => (
             <tr
               key={headerGroup.id}
@@ -133,46 +168,124 @@ function DataTableInner<T>({
             </tr>
           ))}
         </thead>
-        <tbody>
-          {table.getRowModel().rows.map((row) => (
-            <tr
-              key={row.id}
-              className={cn(
-                'border-b border-stroke transition-colors dark:border-dark-3',
-                onRowClick
-                  ? 'cursor-pointer hover:bg-gray-2 dark:hover:bg-dark-2'
-                  : 'hover:bg-gray-2/40 dark:hover:bg-dark-2/50',
-              )}
-              onClick={() => onRowClick?.(row.original)}
-            >
-              {row.getVisibleCells().map((cell) => {
-                const align = cell.column.columnDef.meta?.align ?? 'left';
-                return (
-                  <td
-                    key={cell.id}
-                    className={cn(
-                      'px-4 py-3 text-sm text-dark dark:text-white',
-                      ALIGN_CLASS[align],
-                    )}
-                  >
-                    {flexRender(
-                      cell.column.columnDef.cell,
-                      cell.getContext(),
-                    )}
-                  </td>
-                );
-              })}
-              {rowActions && (
+        {shouldVirtualize ? (
+          <tbody>
+            {rowVirtualizer.getVirtualItems().length > 0 && (
+              <tr aria-hidden>
                 <td
-                  className="px-4 py-3 text-right"
-                  onClick={(e) => e.stopPropagation()}
+                  colSpan={colCount}
+                  style={{
+                    height: `${rowVirtualizer.getVirtualItems()[0]?.start ?? 0}px`,
+                    padding: 0,
+                    border: 'none',
+                  }}
+                />
+              </tr>
+            )}
+            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+              const row = rows[virtualRow.index];
+              if (!row) {
+                return null;
+              }
+              return (
+                <tr
+                  key={row.id}
+                  data-index={virtualRow.index}
+                  ref={rowVirtualizer.measureElement}
+                  className={cn(
+                    'border-b border-stroke transition-colors dark:border-dark-3',
+                    onRowClick
+                      ? 'cursor-pointer hover:bg-gray-2 dark:hover:bg-dark-2'
+                      : 'hover:bg-gray-2/40 dark:hover:bg-dark-2/50',
+                  )}
+                  onClick={() => onRowClick?.(row.original)}
                 >
-                  {rowActions(row.original)}
-                </td>
-              )}
-            </tr>
-          ))}
-        </tbody>
+                  {row.getVisibleCells().map((cell) => {
+                    const align = cell.column.columnDef.meta?.align ?? 'left';
+                    return (
+                      <td
+                        key={cell.id}
+                        className={cn(
+                          'px-4 py-3 text-sm text-dark dark:text-white',
+                          ALIGN_CLASS[align],
+                        )}
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
+                      </td>
+                    );
+                  })}
+                  {rowActions && (
+                    <td
+                      className="px-4 py-3 text-right"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {rowActions(row.original)}
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
+            {rowVirtualizer.getVirtualItems().length > 0 && (
+              <tr aria-hidden>
+                <td
+                  colSpan={colCount}
+                  style={{
+                    height: `${
+                      rowVirtualizer.getTotalSize() -
+                      (rowVirtualizer.getVirtualItems().at(-1)?.end ?? 0)
+                    }px`,
+                    padding: 0,
+                    border: 'none',
+                  }}
+                />
+              </tr>
+            )}
+          </tbody>
+        ) : (
+          <tbody>
+            {rows.map((row) => (
+              <tr
+                key={row.id}
+                className={cn(
+                  'border-b border-stroke transition-colors dark:border-dark-3',
+                  onRowClick
+                    ? 'cursor-pointer hover:bg-gray-2 dark:hover:bg-dark-2'
+                    : 'hover:bg-gray-2/40 dark:hover:bg-dark-2/50',
+                )}
+                onClick={() => onRowClick?.(row.original)}
+              >
+                {row.getVisibleCells().map((cell) => {
+                  const align = cell.column.columnDef.meta?.align ?? 'left';
+                  return (
+                    <td
+                      key={cell.id}
+                      className={cn(
+                        'px-4 py-3 text-sm text-dark dark:text-white',
+                        ALIGN_CLASS[align],
+                      )}
+                    >
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext(),
+                      )}
+                    </td>
+                  );
+                })}
+                {rowActions && (
+                  <td
+                    className="px-4 py-3 text-right"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {rowActions(row.original)}
+                  </td>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        )}
       </table>
     </div>
   );

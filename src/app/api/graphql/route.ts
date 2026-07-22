@@ -18,7 +18,12 @@ import { useRequireAuthPlugin } from '@/lib/graphql/plugins/require-auth-plugin'
 import {
   createMaxDepthRule,
   createMaxFieldsRule,
+  createMaxCostRule,
 } from '@/lib/graphql/plugins/query-limits';
+import { createPersistedOperationsRule } from '@/lib/graphql/plugins/persisted-queries';
+import { useOperationMetricsPlugin } from '@/lib/graphql/plugins/operation-metrics';
+import { quizásComprimirGraphqlResponse } from '@/lib/graphql/compress-response';
+import { peekGraphqlOperationName } from '@/lib/graphql/peek-operation-name';
 
 interface FormattableGraphQLError {
   message: string;
@@ -42,6 +47,10 @@ const queryLimitPlugins = [
   useValidationRule(createMaxDepthRule()),
   // eslint-disable-next-line react-hooks/rules-of-hooks -- plugin GraphQL Yoga, no React hook
   useValidationRule(createMaxFieldsRule()),
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- plugin GraphQL Yoga, no React hook
+  useValidationRule(createMaxCostRule()),
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- plugin GraphQL Yoga, no React hook
+  useValidationRule(createPersistedOperationsRule()),
 ];
 
 const { handleRequest } = createYoga<NextRouteContext>({
@@ -81,6 +90,8 @@ const { handleRequest } = createYoga<NextRouteContext>({
     ...queryLimitPlugins,
     // eslint-disable-next-line react-hooks/rules-of-hooks -- plugin GraphQL Yoga, no React hook
     useRequireAuthPlugin(),
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- plugin GraphQL Yoga, no React hook
+    useOperationMetricsPlugin(),
     {
       onExecute: () => ({
         onExecuteDone: ({
@@ -240,9 +251,50 @@ async function handleGraphQLRequest(
         },
       );
     }
+
+    const opName = await peekGraphqlOperationName(request);
+    if (opName) {
+      const opAllowed = await checkRateLimit(
+        `graphql:user:${usuarioRl.idusuario}:op:${opName}`,
+        RATE_LIMIT_CONFIG.GRAPHQL_OPERATION.maxRequests,
+        RATE_LIMIT_CONFIG.GRAPHQL_OPERATION.windowMs,
+      );
+      if (!opAllowed) {
+        logger.warn('Rate limit excedido en GraphQL por operación', {
+          idusuario: usuarioRl.idusuario,
+          operation: opName,
+        });
+        return new Response(
+          JSON.stringify({
+            errors: [
+              {
+                message:
+                  'Demasiadas solicitudes para esta operación. Intente más tarde.',
+                extensions: {
+                  code: 'RATE_LIMITED',
+                  operation: opName,
+                },
+              },
+            ],
+          }),
+          {
+            status: 429,
+            headers: {
+              'Content-Type': 'application/json',
+              'Retry-After': String(
+                Math.ceil(RATE_LIMIT_CONFIG.GRAPHQL_OPERATION.windowMs / 1000),
+              ),
+            },
+          },
+        );
+      }
+    }
   }
 
-  return handleRequest(request, routeContext);
+  return quizásComprimirGraphqlResponse(
+    request,
+    await handleRequest(request, routeContext),
+  );
 }
 
 export async function GET(

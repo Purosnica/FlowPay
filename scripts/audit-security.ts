@@ -38,6 +38,29 @@ check(
   'NoSchemaIntrospectionCustomRule en GraphQL',
   gqlRoute.includes('NoSchemaIntrospectionCustomRule'),
 );
+check(
+  'G-2b',
+  'Introspection gated a NODE_ENV production',
+  gqlRoute.includes("NODE_ENV === 'production'") &&
+    gqlRoute.includes('NoSchemaIntrospectionCustomRule'),
+);
+check(
+  'G-3',
+  'Costo GraphQL (createMaxCostRule)',
+  gqlRoute.includes('createMaxCostRule'),
+);
+check(
+  'G-4',
+  'Persisted operations en GraphQL',
+  gqlRoute.includes('createPersistedOperationsRule'),
+);
+check(
+  'G-5',
+  'Rate limit GraphQL por operación',
+  gqlRoute.includes('graphql:user:') &&
+    gqlRoute.includes(':op:') &&
+    gqlRoute.includes('peekGraphqlOperationName'),
+);
 
 // J-1: JWT alineado con cookie (8h)
 const jwt = read('src/lib/auth/jwt.ts');
@@ -110,6 +133,31 @@ check(
   'CS-1c',
   'GraphQL valida CSRF en POST',
   gqlRoute.includes('validarCsrfHeader'),
+);
+check(
+  'CS-1d',
+  'CSRF exige cookie double-submit (sin bootstrap)',
+  csrf.includes('if (!cookieToken)') &&
+    csrf.includes('return false') &&
+    !csrf.includes('Bootstrap'),
+);
+
+const inteligencia = read('src/lib/graphql/resolvers/inteligencia/queries.ts');
+check(
+  'IDOR-1',
+  'Castigo/mora con requerirScopeOperacionCartera',
+  inteligencia.includes('requerirScopeOperacionCartera') &&
+    mandanteScope.includes('requerirScopeOperacionCartera'),
+);
+
+const mfaPolicy = fs.existsSync('src/lib/auth/mfa-policy.ts')
+  ? read('src/lib/auth/mfa-policy.ts')
+  : '';
+check(
+  'MFA-1',
+  'Política MFA obligatorio ADMIN/GERENTE',
+  mfaPolicy.includes('calcularMfaSetupRequired') &&
+    middleware.includes('mfaSetupRequired'),
 );
 
 // M-3: security headers en rutas públicas

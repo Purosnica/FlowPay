@@ -4,8 +4,24 @@ import { MandanteTipificacion } from '../contrato-mandante/types';
 import { requerirPermiso } from '@/lib/permissions/permission-service';
 import { PERMISO } from '@/lib/permissions/permiso-codes';
 import { requerirAccesoMandante } from '@/lib/cobranza/mandante-scope';
+import { registrarAuditoria } from '@/lib/cobranza/auditoria-service';
 import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
 import { CodigoAccion, CodigoResultado } from '../tipificacion/types';
+import { z } from 'zod';
+
+const AddTipificacionMandanteSchema = z
+  .object({
+    idmandante: z.number().int().positive(),
+    idcodaccion: z.number().int().positive().nullable().optional(),
+    idcodresultado: z.number().int().positive().nullable().optional(),
+  })
+  .refine((d) => d.idcodaccion != null || d.idcodresultado != null, {
+    message: 'Debe indicar código de acción o resultado.',
+  });
+
+const RemoveTipificacionMandanteSchema = z.object({
+  idmt: z.number().int().positive(),
+});
 
 builder.queryField('tipificacionesMandante', (t) =>
   t.field({
@@ -99,21 +115,29 @@ builder.mutationField('addTipificacionMandante', (t) =>
     },
     resolve: async (query, _parent, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.MANDANTE_WRITE);
-      await requerirAccesoMandante(ctx.usuario?.idusuario, args.idmandante);
-      if (!args.idcodaccion && !args.idcodresultado) {
-        throw new GraphQLValidationError(
-          'Debe indicar código de acción o resultado.',
-        );
-      }
-      return ctx.prisma.tbl_mandante_tipificacion.create({
+      const data = AddTipificacionMandanteSchema.parse(args);
+      await requerirAccesoMandante(ctx.usuario?.idusuario, data.idmandante);
+      const created = await ctx.prisma.tbl_mandante_tipificacion.create({
         ...(query as Record<string, unknown>),
         data: {
-          idmandante: args.idmandante,
-          idcodaccion: args.idcodaccion ?? null,
-          idcodresultado: args.idcodresultado ?? null,
+          idmandante: data.idmandante,
+          idcodaccion: data.idcodaccion ?? null,
+          idcodresultado: data.idcodresultado ?? null,
           activo: true,
         },
-      }) as never;
+      });
+      await registrarAuditoria(ctx.prisma, {
+        idusuario: ctx.usuario?.idusuario,
+        entidad: 'tbl_mandante_tipificacion',
+        entidadId: created.idmt,
+        accion: 'CREATE',
+        detalle: JSON.stringify({
+          idmandante: data.idmandante,
+          idcodaccion: data.idcodaccion ?? null,
+          idcodresultado: data.idcodresultado ?? null,
+        }),
+      });
+      return created as never;
     },
   }),
 );
@@ -124,16 +148,24 @@ builder.mutationField('removeTipificacionMandante', (t) =>
     args: { idmt: t.arg.int({ required: true }) },
     resolve: async (_parent, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.MANDANTE_WRITE);
+      const { idmt } = RemoveTipificacionMandanteSchema.parse(args);
       const row = await ctx.prisma.tbl_mandante_tipificacion.findUnique({
-        where: { idmt: args.idmt },
+        where: { idmt },
       });
       if (!row) {
         throw new GraphQLValidationError('Tipificación no encontrada.');
       }
       await requerirAccesoMandante(ctx.usuario?.idusuario, row.idmandante);
       await ctx.prisma.tbl_mandante_tipificacion.update({
-        where: { idmt: args.idmt },
+        where: { idmt },
         data: { activo: false },
+      });
+      await registrarAuditoria(ctx.prisma, {
+        idusuario: ctx.usuario?.idusuario,
+        entidad: 'tbl_mandante_tipificacion',
+        entidadId: idmt,
+        accion: 'SOFT_DELETE',
+        detalle: JSON.stringify({ idmandante: row.idmandante }),
       });
       return true;
     },

@@ -26,7 +26,7 @@ export const clienteQuery = builder.queryField("cliente", (t) =>
       await requerirAccesoCliente(ctx.usuario?.idusuario, args.id);
       const cliente = await ctx.prisma.tbl_cliente.findFirst({
         ...(query as Record<string, unknown>),
-        where: { idcliente: args.id, estado: true },
+        where: { idcliente: args.id, estado: true, deletedAt: null },
         include: {
           tipodocumento: true,
           genero: true,
@@ -66,6 +66,7 @@ export const clientesQuery = builder.queryField("clientes", (t) =>
 
       const where: Prisma.tbl_clienteWhereInput = {
         estado: true,
+        deletedAt: null,
         ...(scopeCliente ?? {}),
       };
       const filtersData = filters as {

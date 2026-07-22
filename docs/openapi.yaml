@@ -1,0 +1,138 @@
+openapi: 3.0.3
+info:
+  title: FlowPay REST API
+  version: 1.2.6
+  description: |
+    Superficie REST pública/operativa de FlowPay (imports, health, auth MFA).
+    GraphQL autenticado en `/api/graphql` (ver portal developer).
+  contact:
+    name: FlowPay
+servers:
+  - url: /
+    description: Same-origin
+paths:
+  /api/health:
+    get:
+      summary: Liveness
+      tags: [Ops]
+      responses:
+        '200':
+          description: Proceso vivo
+  /api/ready:
+    get:
+      summary: Readiness (DB, storage, SMTP)
+      tags: [Ops]
+      responses:
+        '200':
+          description: Listo para tráfico
+        '503':
+          description: Dependencia no lista
+  /api/cobranza/importar/async:
+    post:
+      summary: Encolar importación de cobranza
+      tags: [Importaciones]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema:
+            type: string
+            minLength: 8
+            maxLength: 64
+            pattern: '^[a-zA-Z0-9_-]+$'
+          description: Evita jobs duplicados en reintentos (único por usuario).
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [archivo, idmandante]
+              properties:
+                archivo:
+                  type: string
+                  format: binary
+                tipo:
+                  type: string
+                  enum: [CARTERA, GESTIONES, PAGOS, PROMESAS, CONTACTOS, COMPLETO]
+                idmandante:
+                  type: integer
+                idcampana:
+                  type: integer
+                fechaCorte:
+                  type: string
+                  format: date-time
+                nombreHoja:
+                  type: string
+                idplantillaImp:
+                  type: integer
+      responses:
+        '200':
+          description: Job encolado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  async:
+                    type: boolean
+                  job:
+                    type: object
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '429':
+          description: Rate limit
+  /api/cobranza/importar/jobs/{id}:
+    get:
+      summary: Estado de job de importación
+      tags: [Importaciones]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Resumen del job
+        '404':
+          $ref: '#/components/responses/Error'
+  /api/openapi:
+    get:
+      summary: Este documento OpenAPI (JSON)
+      tags: [Developer]
+      responses:
+        '200':
+          description: OpenAPI 3
+components:
+  responses:
+    Error:
+      description: Error estable (success=false, error, code)
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [success, error, code]
+            properties:
+              success:
+                type: boolean
+                enum: [false]
+              error:
+                type: string
+              code:
+                type: string
+              detalles:
+                type: object
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: flowpay_token
+tags:
+  - name: Ops
+  - name: Importaciones
+  - name: Developer

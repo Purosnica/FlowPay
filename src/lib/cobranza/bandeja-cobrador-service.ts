@@ -28,7 +28,7 @@ import {
 
 } from './priorizacion-cartera-service';
 
-import { BANDEJA_PRIORIDAD_CANDIDATE_LIMIT } from './performance-limits';
+import { BANDEJA_PRIORIDAD_CANDIDATE_LIMIT, obtenerLimiteCandidatosBandeja } from './performance-limits';
 
 
 
@@ -368,6 +368,8 @@ export async function listarBandejaCobrador(
 
     );
 
+    const candidateLimit = await obtenerLimiteCandidatosBandeja(filters.idmandante);
+
     const todos = await prisma.tbl_prestamo.findMany({
 
       where,
@@ -376,7 +378,7 @@ export async function listarBandejaCobrador(
 
       orderBy: { diasMora: 'desc' },
 
-      take: BANDEJA_PRIORIDAD_CANDIDATE_LIMIT,
+      take: candidateLimit || BANDEJA_PRIORIDAD_CANDIDATE_LIMIT,
 
     });
 

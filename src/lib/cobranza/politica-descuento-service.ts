@@ -9,9 +9,16 @@ export interface PoliticaTramo {
 
 export function mapPoliticas(
   rows: tbl_politica_descuento[],
+  enFecha: Date = new Date(),
 ): PoliticaTramo[] {
   return rows
-    .filter((r) => r.estado && !r.deletedAt)
+    .filter(
+      (r) =>
+        r.estado &&
+        !r.deletedAt &&
+        r.vigenteDesde <= enFecha &&
+        (r.vigenteHasta == null || r.vigenteHasta >= enFecha),
+    )
     .map((r) => ({
       tramoMoraMin: r.tramoMoraMin,
       tramoMoraMax: r.tramoMoraMax,

@@ -124,5 +124,10 @@ export const RATE_LIMIT_CONFIG = {
     maxRequests: 200,
     windowMs: 60 * 1000, // 1 minuto
   },
+  /** Por usuario + operationName (más estricto que el bucket global). */
+  GRAPHQL_OPERATION: {
+    maxRequests: 60,
+    windowMs: 60 * 1000,
+  },
 } as const;
 

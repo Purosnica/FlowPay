@@ -18,6 +18,22 @@ export const CreateMandanteInputSchema = z.object({
 
 export const UpdateMandanteInputSchema = CreateMandanteInputSchema.partial().extend({
   idmandante: z.number().int().positive(),
+  webhookUrl: z
+    .union([
+      z
+        .string()
+        .url('webhookUrl debe ser una URL válida')
+        .refine((u) => u.startsWith('https://'), 'webhookUrl debe usar HTTPS'),
+      z.null(),
+    ])
+    .optional(),
+  webhookSecret: z
+    .union([
+      z.string().min(16, 'webhookSecret mínimo 16 caracteres').max(128),
+      z.null(),
+    ])
+    .optional(),
+  webhookActivo: z.boolean().optional(),
 });
 
 export const CreateCampanaInputSchema = z.object({
@@ -48,6 +64,9 @@ export const UpdateMandanteInput = builder.inputRef("UpdateMandanteInput").imple
     regulador: t.string({ required: false }),
     descuentoMaximo: t.float({ required: false }),
     estado: t.boolean({ required: false }),
+    webhookUrl: t.string({ required: false }),
+    webhookSecret: t.string({ required: false }),
+    webhookActivo: t.boolean({ required: false }),
   }),
 });
 
@@ -68,6 +87,9 @@ export const Mandante = definePrismaObject("tbl_mandante", {
     regulador: t.exposeString("regulador", { nullable: true }),
     descuentoMaximo: exposeDecimal(t, "descuentoMaximo"),
     estado: t.exposeBoolean("estado"),
+    webhookUrl: t.exposeString("webhookUrl", { nullable: true }),
+    webhookActivo: t.exposeBoolean("webhookActivo"),
+    // webhookSecret: nunca exponer en lectura
     createdAt: t.expose("createdAt", { type: "DateTime" }),
     updatedAt: t.expose("updatedAt", { type: "DateTime" }),
   }),

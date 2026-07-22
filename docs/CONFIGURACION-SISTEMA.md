@@ -44,6 +44,9 @@ Parámetros operativos y de entorno que gobiernan la cobranza.
 | `SESSION_IDLE_SECONDS` | 1800 | Idle máximo sin actividad (JWT `lastActivityAt`) |
 | `GRAPHQL_MAX_DEPTH` | 12 | Límite profundidad GraphQL |
 | `GRAPHQL_MAX_FIELDS` | 250 | Límite campos GraphQL |
+| `GRAPHQL_MAX_COST` | 1000 | Costo ponderado (listas × pageSize) |
+| `GRAPHQL_LIST_COST_DEFAULT` | 10 | Multiplicador lista sin literal |
+| `GRAPHQL_PERSISTED_ONLY` | prod=true | Allowlist operationName en prod |
 
 ### SMTP (opcional)
 

@@ -11,6 +11,7 @@ import { requerirPermiso } from '@/lib/permissions/permission-service';
 import { PERMISO } from '@/lib/permissions/permiso-codes';
 import { requerirAccesoMandante } from '@/lib/cobranza/mandante-scope';
 import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
+import { registrarAuditoria } from '@/lib/cobranza/auditoria-service';
 
 builder.mutationField('createComisionCobro', (t) =>
   t.prismaField({
@@ -80,11 +81,51 @@ builder.mutationField('updateComisionCobro', (t) =>
         );
       }
 
-      return ctx.prisma.tbl_comision_cobro.update({
-        ...(query as Record<string, unknown>),
-        where: { idcomision },
-        data: updateData,
-      }) as never;
+      const cambiaTramo =
+        updateData.tramoMoraMin !== undefined ||
+        updateData.tramoMoraMax !== undefined ||
+        updateData.porcentaje !== undefined;
+
+      if (!cambiaTramo) {
+        return ctx.prisma.tbl_comision_cobro.update({
+          ...(query as Record<string, unknown>),
+          where: { idcomision },
+          data: updateData,
+        }) as never;
+      }
+
+      const ahora = new Date();
+      const creada = await ctx.prisma.$transaction(async (tx) => {
+        await tx.tbl_comision_cobro.update({
+          where: { idcomision },
+          data: {
+            vigenteHasta: ahora,
+            deletedAt: ahora,
+            estado: false,
+          },
+        });
+        return tx.tbl_comision_cobro.create({
+          ...(query as Record<string, unknown>),
+          data: {
+            idmandante: existente.idmandante,
+            tramoMoraMin: tramoMin,
+            tramoMoraMax: tramoMax,
+            porcentaje: updateData.porcentaje ?? existente.porcentaje,
+            estado: updateData.estado ?? true,
+            vigenteDesde: ahora,
+          },
+        });
+      });
+
+      await registrarAuditoria(ctx.prisma, {
+        idusuario: ctx.usuario?.idusuario,
+        entidad: 'tbl_comision_cobro',
+        entidadId: creada.idcomision,
+        accion: 'VERSIONAR',
+        detalle: JSON.stringify({ reemplaza: idcomision }),
+      });
+
+      return creada as never;
     },
   }),
 );

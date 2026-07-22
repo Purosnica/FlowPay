@@ -9,6 +9,8 @@ interface AsyncPanelProps {
   error?: Error | null;
   isEmpty?: boolean;
   emptyMessage?: string;
+  /** CTA accionable cuando está vacío (I038 / I045). */
+  emptyAction?: ReactNode;
   loadingMessage?: string;
   errorMessage?: string;
   children: ReactNode;
@@ -19,13 +21,19 @@ export function AsyncPanel({
   error = null,
   isEmpty = false,
   emptyMessage = 'Sin datos para mostrar.',
+  emptyAction,
   loadingMessage = 'Cargando...',
   errorMessage = 'No se pudo cargar la información.',
   children,
 }: AsyncPanelProps) {
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2 py-6 text-sm text-gray-500">
+      <div
+        className="flex items-center gap-2 py-6 text-sm text-gray-500"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+      >
         <LoadingSpinner size="sm" />
         {loadingMessage}
       </div>
@@ -41,7 +49,7 @@ export function AsyncPanel({
   }
 
   if (isEmpty) {
-    return <EmptyState message={emptyMessage} />;
+    return <EmptyState message={emptyMessage} action={emptyAction} />;
   }
 
   return <>{children}</>;

@@ -91,8 +91,8 @@ export const GET_CAMPANAS = `
 `;
 
 export const GET_PRESTAMOS = `
-  query GetPrestamos($page: Int, $pageSize: Int, $filters: PrestamoFiltersInput) {
-    prestamos(page: $page, pageSize: $pageSize, filters: $filters) {
+  query GetPrestamos($page: Int, $pageSize: Int, $cursor: String, $filters: PrestamoFiltersInput) {
+    prestamos(page: $page, pageSize: $pageSize, cursor: $cursor, filters: $filters) {
       prestamos {
         ${PRESTAMO_LIST_FIELDS}
       }
@@ -100,6 +100,8 @@ export const GET_PRESTAMOS = `
       page
       pageSize
       totalPages
+      nextCursor
+      hasNextPage
     }
   }
 `;

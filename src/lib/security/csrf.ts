@@ -80,9 +80,8 @@ export function validarCsrfHeader(request: Request): boolean {
     request.headers.get('cookie'),
     CSRF_COOKIE,
   );
-  // Bootstrap (p. ej. login antes de cookie): Origin/Referer + header custom.
   if (!cookieToken) {
-    return true;
+    return false;
   }
 
   const headerToken = request.headers.get(CSRF_TOKEN_HEADER);

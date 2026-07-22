@@ -4,8 +4,12 @@ import { useCallback, useId, useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { AsyncPanel } from '@/components/ui/async-panel';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { BulkImpactPreview } from '@/components/cobranza/bulk-impact-preview';
 import { MandanteSelect } from '@/components/cobranza/mandante-select';
 import { PaginatedDataTable } from '@/components/cobranza/paginated-data-table';
+import { PermissionGate } from '@/components/auth/permission-gate';
+import { PERMISO } from '@/lib/permissions/permiso-codes';
 import { usePagination } from '@/hooks/use-pagination';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { useGraphQLMutation } from '@/hooks/use-graphql-mutation';
@@ -32,8 +36,13 @@ export function AsignacionManualPanel() {
   const [idgestor, setIdgestor] = useState<number | ''>('');
   const [motivo, setMotivo] = useState('');
   const [seleccionados, setSeleccionados] = useState<Set<number>>(new Set());
+  /** Metadatos de selección (sobreviven al cambio de página). */
+  const [seleccionMeta, setSeleccionMeta] = useState<
+    Map<number, { saldoTotal: number; moneda: string; idgestor?: number }>
+  >(new Map());
   const [error, setError] = useState<string | null>(null);
   const [exito, setExito] = useState<string | null>(null);
+  const [confirmarAsignacion, setConfirmarAsignacion] = useState(false);
   const buscarId = useId();
   const listaId = useId();
   const cobradorId = useId();
@@ -99,6 +108,7 @@ export function AsignacionManualPanel() {
     onSuccess: (data) => {
       const asignados = data.asignarGestorMasivo;
       setSeleccionados(new Set());
+      setSeleccionMeta(new Map());
       setError(null);
       setExito(`${asignados} préstamo(s) asignado(s) correctamente.`);
       void refetchPrestamos();
@@ -173,17 +183,45 @@ export function AsignacionManualPanel() {
   const todosPaginaSeleccionados =
     pageIds.length > 0 && pageIds.every((id) => seleccionados.has(id));
 
-  const togglePrestamo = useCallback((idprestamo: number) => {
-    setSeleccionados((prev) => {
-      const next = new Set(prev);
-      if (next.has(idprestamo)) {
-        next.delete(idprestamo);
-      } else {
-        next.add(idprestamo);
-      }
-      return next;
-    });
-  }, []);
+  const syncMeta = useCallback(
+    (ids: Set<number>, fuente: Prestamo[]) => {
+      setSeleccionMeta((prev) => {
+        const next = new Map(prev);
+        for (const id of [...next.keys()]) {
+          if (!ids.has(id)) {
+            next.delete(id);
+          }
+        }
+        for (const p of fuente) {
+          if (ids.has(p.idprestamo)) {
+            next.set(p.idprestamo, {
+              saldoTotal: p.saldoTotal,
+              moneda: p.moneda,
+              idgestor: p.gestor?.idusuario,
+            });
+          }
+        }
+        return next;
+      });
+    },
+    [],
+  );
+
+  const togglePrestamo = useCallback(
+    (prestamo: Prestamo) => {
+      setSeleccionados((prev) => {
+        const next = new Set(prev);
+        if (next.has(prestamo.idprestamo)) {
+          next.delete(prestamo.idprestamo);
+        } else {
+          next.add(prestamo.idprestamo);
+        }
+        syncMeta(next, [prestamo]);
+        return next;
+      });
+    },
+    [syncMeta],
+  );
 
   const togglePagina = useCallback(() => {
     setSeleccionados((prev) => {
@@ -195,9 +233,10 @@ export function AsignacionManualPanel() {
       } else {
         pageIds.forEach((id) => next.add(id));
       }
+      syncMeta(next, listaPrestamos);
       return next;
     });
-  }, [pageIds]);
+  }, [pageIds, listaPrestamos, syncMeta]);
 
   const columns = useMemo<ColumnDef<Prestamo>[]>(
     () => [
@@ -216,7 +255,7 @@ export function AsignacionManualPanel() {
           <input
             type="checkbox"
             checked={seleccionados.has(row.original.idprestamo)}
-            onChange={() => togglePrestamo(row.original.idprestamo)}
+            onChange={() => togglePrestamo(row.original)}
             aria-label={`Seleccionar préstamo ${row.original.noPrestamo}`}
             onClick={(e) => e.stopPropagation()}
           />
@@ -288,6 +327,7 @@ export function AsignacionManualPanel() {
     setIdmandante(value);
     setIdgestor('');
     setSeleccionados(new Set());
+    setSeleccionMeta(new Map());
     setListaPegada('');
     setError(null);
     setExito(null);
@@ -307,12 +347,23 @@ export function AsignacionManualPanel() {
       setError('Seleccione al menos un préstamo.');
       return;
     }
+    setError(null);
+    setConfirmarAsignacion(true);
+  };
+
+  const ejecutarAsignacion = () => {
+    if (typeof idgestor !== 'number') {
+      return;
+    }
     setExito(null);
-    asignarMutation.mutate({
-      idprestamos: [...seleccionados],
-      idgestor,
-      motivo: motivo.trim() || undefined,
-    });
+    asignarMutation.mutate(
+      {
+        idprestamos: [...seleccionados],
+        idgestor,
+        motivo: motivo.trim() || undefined,
+      },
+      { onSuccess: () => setConfirmarAsignacion(false) },
+    );
   };
 
   const handleAsignarLista = () => {
@@ -347,6 +398,27 @@ export function AsignacionManualPanel() {
     typeof idgestor === 'number' &&
     referenciasPegadas.length > 0 &&
     !asignando;
+
+  const impactoSeleccion = useMemo(() => {
+    const metas = [...seleccionMeta.values()];
+    const saldoTotal = metas.reduce((acc, m) => acc + m.saldoTotal, 0);
+    const gestoresPrevios = new Set(
+      metas
+        .map((m) => m.idgestor)
+        .filter((id): id is number => typeof id === 'number'),
+    );
+    return {
+      cantidad: seleccionados.size,
+      saldoTotal,
+      moneda: metas[0]?.moneda ?? 'NIO',
+      gestoresAfectados:
+        gestoresPrevios.size + (typeof idgestor === 'number' ? 1 : 0),
+      etiquetaEntidad: 'préstamos',
+    };
+  }, [seleccionMeta, seleccionados, idgestor]);
+
+  const nombreGestor =
+    gestores.find((g) => g.idusuario === idgestor)?.nombre ?? 'cobrador';
 
   return (
     <div className="space-y-6">
@@ -488,18 +560,23 @@ export function AsignacionManualPanel() {
               </div>
 
               <div className="flex flex-wrap items-center gap-2 border-t border-stroke pt-4 dark:border-dark-3">
-                <Button
-                  onClick={handleAsignar}
-                  disabled={!puedeAsignarSeleccion}
-                >
-                  {asignarMutation.isPending
-                    ? 'Asignando...'
-                    : `Asignar selección (${seleccionados.size})`}
-                </Button>
+                <PermissionGate permiso={PERMISO.CARTERA_WRITE}>
+                  <Button
+                    onClick={handleAsignar}
+                    disabled={!puedeAsignarSeleccion}
+                  >
+                    {asignarMutation.isPending
+                      ? 'Asignando...'
+                      : `Asignar selección (${seleccionados.size})`}
+                  </Button>
+                </PermissionGate>
                 {seleccionados.size > 0 && (
                   <Button
                     variant="outline"
-                    onClick={() => setSeleccionados(new Set())}
+                    onClick={() => {
+                      setSeleccionados(new Set());
+                      setSeleccionMeta(new Map());
+                    }}
                   >
                     Limpiar selección
                   </Button>
@@ -508,6 +585,12 @@ export function AsignacionManualPanel() {
                   O marque préstamos en la tabla de abajo.
                 </span>
               </div>
+              {seleccionados.size > 0 && typeof idgestor === 'number' ? (
+                <BulkImpactPreview
+                  stats={impactoSeleccion}
+                  accionResumen={`Se asignarán a ${nombreGestor}.`}
+                />
+              ) : null}
             </div>
           </AsyncPanel>
 
@@ -542,6 +625,22 @@ export function AsignacionManualPanel() {
           </div>
         </>
       )}
+
+      <ConfirmDialog
+        isOpen={confirmarAsignacion}
+        onClose={() => setConfirmarAsignacion(false)}
+        title="Confirmar asignación masiva"
+        description={`Se reasignarán ${seleccionados.size} préstamo(s) a ${nombreGestor}.`}
+        confirmLabel="Confirmar asignación"
+        variant="warning"
+        isLoading={asignarMutation.isPending}
+        onConfirm={ejecutarAsignacion}
+      >
+        <BulkImpactPreview
+          stats={impactoSeleccion}
+          accionResumen={`Destino: ${nombreGestor}.`}
+        />
+      </ConfirmDialog>
     </div>
   );
 }

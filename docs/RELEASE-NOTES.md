@@ -1,5 +1,18 @@
 # Release Notes — FlowPay
 
+## v1.2.6 — API hardening I051–I060 (2026-07-21)
+
+- CI/security audit: introspection gated a `NODE_ENV=production` (G-2b)
+- GraphQL costo ponderado por listas (`GRAPHQL_MAX_COST`) además de depth/fields
+- Persisted operations allowlist en prod (`GRAPHQL_PERSISTED_ONLY`, `npm run graphql:persisted`)
+- Webhooks HMAC a mandantes (`pago.creado`, `importacion.completada`)
+- Rate limit GraphQL por usuario + `operationName`
+- OpenAPI + portal developer (`docs/API-DEVELOPER.md`, `GET /api/openapi`)
+- Cursor pagination en `prestamos` (`cursor` / `nextCursor` / `hasNextPage`)
+- Política de deprecación GraphQL (`docs/GRAPHQL-DEPRECATION.md`)
+- `Idempotency-Key` en imports REST
+- Contrato de errores REST estable sin leak interno en 5xx
+
 ## v1.2.5 — MFA TOTP + hardening (2026-07-21)
 
 - MFA TOTP para ADMIN/GERENTE (setup en Perfil, paso en login, secreto cifrado AES-GCM)

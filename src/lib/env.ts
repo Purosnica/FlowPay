@@ -51,6 +51,10 @@ const envSchema = z.object({
   NEXT_PUBLIC_SENTRY_DSN: z
     .union([z.string().url(), z.literal('')])
     .optional(),
+
+  /** Redis Upstash opcional para cache KPI (I105). */
+  UPSTASH_REDIS_REST_URL: z.union([z.string().url(), z.literal('')]).optional(),
+  UPSTASH_REDIS_REST_TOKEN: z.union([z.string().min(1), z.literal('')]).optional(),
 });
 
 function getEnv() {
@@ -77,6 +81,8 @@ function getEnv() {
       SMTP_FROM_NAME: process.env.SMTP_FROM_NAME,
       SENTRY_DSN: process.env.SENTRY_DSN,
       NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
+      UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
+      UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

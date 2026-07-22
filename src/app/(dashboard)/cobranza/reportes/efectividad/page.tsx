@@ -191,6 +191,7 @@ export default function ReporteEfectividadPage() {
               <ReporteTableSection
                 title="Desempeño por cobrador"
                 description="Gestiones, efectividad y recuperación ordenables por columna"
+                reporteId="efectividad-por-gestor"
                 columns={columns}
                 data={reporte.porGestor}
                 emptyMessage="Sin actividad de cobradores en el periodo."

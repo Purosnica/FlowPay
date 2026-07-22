@@ -27,10 +27,14 @@ type LoginFormValues = LoginInput;
 
 export default function LoginPage() {
   const router = useRouter();
-  const { usuario, loading: authLoading, login, verifyMfa } = useAuth();
+  const { usuario, loading: authLoading, login, verifyMfa, mfaSetupRequired } =
+    useAuth();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mfaStep, setMfaStep] = useState(false);
+
+  const destinoPostLogin = (setupRequired?: boolean): string =>
+    setupRequired ? '/perfil?mfa=required' : '/dashboard';
 
   const {
     register,
@@ -51,9 +55,9 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!authLoading && usuario) {
-      router.push('/dashboard');
+      router.push(destinoPostLogin(mfaSetupRequired));
     }
-  }, [usuario, authLoading, router]);
+  }, [usuario, authLoading, router, mfaSetupRequired]);
 
   const onSubmit = async (data: LoginFormValues) => {
     setError(null);
@@ -66,7 +70,9 @@ export default function LoginPage() {
         return;
       }
       if (result.success) {
-        router.push('/dashboard');
+        const setup =
+          'mfaSetupRequired' in result ? result.mfaSetupRequired : false;
+        router.push(destinoPostLogin(setup));
       } else {
         setError(
           'error' in result
@@ -87,7 +93,9 @@ export default function LoginPage() {
     try {
       const result = await verifyMfa(data.codigo);
       if (result.success && !('mfaRequired' in result && result.mfaRequired)) {
-        router.push('/dashboard');
+        const setup =
+          'mfaSetupRequired' in result ? result.mfaSetupRequired : false;
+        router.push(destinoPostLogin(setup));
       } else {
         setError(
           'error' in result

@@ -251,13 +251,26 @@ export const PrestamoPage = builder.objectRef<{
   page: number;
   pageSize: number;
   totalPages: number;
+  nextCursor: string | null;
+  hasNextPage: boolean;
 }>("PrestamoPage").implement({
   fields: (t) => ({
     prestamos: t.field({ type: [Prestamo], resolve: (p) => p.prestamos }),
     total: t.exposeInt("total"),
-    page: t.exposeInt("page"),
+    page: t.exposeInt("page", {
+      deprecationReason:
+        'Preferir cursor/nextCursor para listados grandes. Retiro previsto: 2026-12-01. Ver docs/GRAPHQL-DEPRECATION.md',
+    }),
     pageSize: t.exposeInt("pageSize"),
-    totalPages: t.exposeInt("totalPages"),
+    totalPages: t.exposeInt("totalPages", {
+      deprecationReason:
+        'Preferir hasNextPage + nextCursor. Retiro previsto: 2026-12-01.',
+    }),
+    nextCursor: t.string({
+      nullable: true,
+      resolve: (p) => p.nextCursor,
+    }),
+    hasNextPage: t.boolean({ resolve: (p) => p.hasNextPage }),
   }),
 });
 

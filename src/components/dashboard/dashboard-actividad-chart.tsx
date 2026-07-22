@@ -1,9 +1,7 @@
 'use client';
 
-import dynamic from 'next/dynamic';
 import type { ApexOptions } from 'apexcharts';
-
-const Chart = dynamic(() => import('react-apexcharts'), { ssr: false });
+import { LazyApexChart as Chart } from '@/components/charts/lazy-apex-chart';
 
 interface DashboardActividadChartProps {
   gestionesMes: number;

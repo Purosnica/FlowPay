@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import type { ColumnDef } from '@tanstack/react-table';
 import { keepPreviousData } from '@tanstack/react-query';
 import { PaginatedDataTable } from '@/components/cobranza/paginated-data-table';
@@ -10,6 +10,7 @@ import { BandejaFiltersPanel } from '@/components/cobranza/bandeja-filters';
 import { EnviarCobroPanel } from '@/components/cobranza/enviar-cobro-panel';
 import { PromesasVencidasPanel } from '@/components/cobranza/promesas-vencidas-panel';
 import { GestionRapidaModal } from '@/components/cobranza/gestion-rapida-modal';
+import { OperacionHotkeysHelp } from '@/components/cobranza/operacion-hotkeys-help';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { PageHeader } from '@/components/ui/page-header';
@@ -18,7 +19,9 @@ import { PermissionGate } from '@/components/auth/permission-gate';
 import { PERMISO } from '@/lib/permissions/permiso-codes';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
+import { useHotkeys } from '@/hooks/use-hotkeys';
 import { usePagination } from '@/hooks/use-pagination';
+import { usePuede } from '@/hooks/use-permisos';
 import {
   GET_BANDEJA_COBRADOR,
   GET_PROMESAS_VENCIDAS,
@@ -29,9 +32,18 @@ import {
   type BandejaGraphQLItem,
   type Prestamo,
   type PromesaVencida,
- formatearMoneda, nombreCompletoCliente } from '@/types/cobranza';
+  formatearMoneda,
+  nombreCompletoCliente,
+} from '@/types/cobranza';
 
 import { obtenerPresetBandejaPorId } from '@/lib/cobranza/bandeja-presets';
+
+const ATAJOS_BANDEJA = [
+  { keys: 'G', descripcion: 'Gestión rápida del primer caso de la página' },
+  { keys: 'N', descripcion: 'Abrir detalle del primer caso' },
+  { keys: 'M', descripcion: 'Ir a Mi día' },
+  { keys: '?', descripcion: 'Mostrar esta ayuda' },
+];
 
 function filtrosDesdeUrl(searchParams: URLSearchParams): BandejaFilters {
   const presetId = searchParams.get('preset');
@@ -130,7 +142,9 @@ function bandejaItemToPrestamo(item: BandejaGraphQLItem): Prestamo {
 }
 
 function BandejaPageContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
+  const puedeGestion = usePuede(PERMISO.GESTION_WRITE);
   const [enviarPrestamo, setEnviarPrestamo] = useState<BandejaGraphQLItem | null>(
     null,
   );
@@ -265,10 +279,16 @@ function BandejaPageContent() {
             <PermissionGate permiso={PERMISO.GESTION_WRITE}>
               <Button
                 size="sm"
+                data-ux-id="bandeja-gestion-rapida"
                 onClick={() => setGestionRapida(row.original)}
               >
                 Gestión rápida
               </Button>
+              <Link href={`/cobranza/prestamos/${row.original.idprestamo}`}>
+                <Button size="sm" variant="outline" data-ux-id="bandeja-recuperar">
+                  Recuperar
+                </Button>
+              </Link>
               <Button
                 size="sm"
                 variant="outline"
@@ -278,7 +298,7 @@ function BandejaPageContent() {
               </Button>
             </PermissionGate>
             <Link href={`/cobranza/prestamos/${row.original.idprestamo}`}>
-              <Button size="sm" variant="outline">
+              <Button size="sm" variant="ghost">
                 Detalle
               </Button>
             </Link>
@@ -290,12 +310,44 @@ function BandejaPageContent() {
   );
 
   const promesas = promesasData?.promesasVencidas ?? [];
+  const primerItem = bandejaData?.prestamos?.[0];
+
+  const hotkeys = useMemo(
+    () => [
+      {
+        key: 'g',
+        enabled: puedeGestion && Boolean(primerItem),
+        handler: () => {
+          if (primerItem) {
+            setGestionRapida(primerItem);
+          }
+        },
+      },
+      {
+        key: 'n',
+        enabled: Boolean(primerItem),
+        handler: () => {
+          if (primerItem) {
+            router.push(`/cobranza/prestamos/${primerItem.idprestamo}`);
+          }
+        },
+      },
+      {
+        key: 'm',
+        handler: () => router.push('/cobranza/mi-dia'),
+      },
+    ],
+    [puedeGestion, primerItem, router],
+  );
+
+  useHotkeys(hotkeys);
 
   return (
-    <div className="space-y-6">
+    <div className="field-layout space-y-6">
+      <OperacionHotkeysHelp atajos={ATAJOS_BANDEJA} />
       <PageHeader
         title="Mi bandeja"
-        description="Préstamos asignados a usted con mora activa. Use los filtros para priorizar su gestión."
+        description="Préstamos asignados con mora activa. Atajos: G gestión · N detalle · M Mi día · ? ayuda."
       />
 
       {promesas.length > 0 && (
@@ -324,7 +376,9 @@ function BandejaPageContent() {
       />
 
       {error && (
-        <p className="text-sm text-red-600">Error al cargar la bandeja.</p>
+        <p className="text-sm text-red-600" role="alert">
+          Error al cargar la bandeja.
+        </p>
       )}
       <PaginatedDataTable
         data={bandejaData?.prestamos ?? []}
@@ -332,6 +386,11 @@ function BandejaPageContent() {
         pagination={bandejaData}
         isLoading={isLoading || (isFetching && !bandejaData)}
         emptyMessage="No tiene préstamos asignados que coincidan con los filtros."
+        emptyAction={
+          <Link href="/cobranza/mi-dia">
+            <Button size="sm">Ir a Mi día</Button>
+          </Link>
+        }
         onPageChange={handlePageChange}
         onPageSizeChange={handlePageSizeChange}
         itemLabel="préstamos"

@@ -28,7 +28,13 @@ import {
   buildPaginationMeta,
   resolvePagination,
 } from "../../helpers/graphql-helpers";
+import {
+  buildCursorPageMeta,
+  resolveCursorPagination,
+  decodeCursor,
+} from "@/lib/pagination/cursor-pagination";
 import { TIMELINE_PRESTAMO_LIMITE_MAX } from "@/lib/cobranza/performance-limits";
+import { GraphQLValidationError } from "@/lib/errors/graphql-errors";
 
 builder.queryField("prestamo", (t) =>
   t.prismaField({
@@ -61,14 +67,11 @@ builder.queryField("prestamos", (t) =>
     args: {
       page: t.arg.int({ required: false, defaultValue: 1 }),
       pageSize: t.arg.int({ required: false, defaultValue: 20 }),
+      cursor: t.arg.string({ required: false }),
       filters: t.arg({ type: PrestamoFiltersInput, required: false }),
     },
     resolve: async (_parent, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.CARTERA_READ);
-      const { page, pageSize, skip } = resolvePagination(
-        args.page,
-        args.pageSize,
-      );
       const filters = PrestamoFiltersSchema.parse(args.filters ?? {});
       const idusuario = ctx.usuario?.idusuario;
       const mandanteFilter = await filtroMandante(idusuario);
@@ -101,6 +104,58 @@ builder.queryField("prestamos", (t) =>
         await requerirAccesoMandante(ctx.usuario?.idusuario, filters.idmandante);
       }
 
+      const useCursor = Boolean(args.cursor?.trim());
+
+      if (useCursor) {
+        const afterId = decodeCursor(args.cursor);
+        if (afterId == null) {
+          throw new GraphQLValidationError('Cursor de paginación inválido.');
+        }
+        const { take } = resolveCursorPagination(args.cursor, args.pageSize);
+        const cursorWhere: Prisma.tbl_prestamoWhereInput = {
+          ...where,
+          idprestamo: { gt: afterId },
+        };
+        const rows = await ctx.prisma.tbl_prestamo.findMany({
+          where: cursorWhere,
+          take: take + 1,
+          orderBy: { idprestamo: "asc" },
+          include: {
+            cliente: {
+              select: {
+                idcliente: true,
+                primer_nombres: true,
+                segundo_nombres: true,
+                primer_apellido: true,
+                segundo_apellido: true,
+                numerodocumento: true,
+              },
+            },
+            mandante: {
+              select: { idmandante: true, nombre: true, codigo: true },
+            },
+            gestor: { select: { idusuario: true, nombre: true } },
+          },
+        });
+        const { items, meta } = buildCursorPageMeta(
+          rows,
+          take,
+          (p) => p.idprestamo,
+        );
+        const total = await ctx.prisma.tbl_prestamo.count({ where });
+        return {
+          prestamos: items,
+          ...buildPaginationMeta(total, 1, take),
+          nextCursor: meta.nextCursor,
+          hasNextPage: meta.hasNextPage,
+        };
+      }
+
+      const { page, pageSize, skip } = resolvePagination(
+        args.page,
+        args.pageSize,
+      );
+
       const [prestamos, total] = await Promise.all([
         ctx.prisma.tbl_prestamo.findMany({
           where,
@@ -125,7 +180,12 @@ builder.queryField("prestamos", (t) =>
         ctx.prisma.tbl_prestamo.count({ where }),
       ]);
 
-      return { prestamos, ...buildPaginationMeta(total, page, pageSize) };
+      return {
+        prestamos,
+        ...buildPaginationMeta(total, page, pageSize),
+        nextCursor: null,
+        hasNextPage: page * pageSize < total,
+      };
     },
   }),
 );

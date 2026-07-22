@@ -21,9 +21,16 @@ export interface ResultadoComisionCobrador {
 
 export function mapComisiones(
   rows: tbl_comision_cobro[],
+  enFecha: Date = new Date(),
 ): ComisionTramo[] {
   return rows
-    .filter((r) => r.estado && !r.deletedAt)
+    .filter(
+      (r) =>
+        r.estado &&
+        !r.deletedAt &&
+        r.vigenteDesde <= enFecha &&
+        (r.vigenteHasta == null || r.vigenteHasta >= enFecha),
+    )
     .map((r) => ({
       tramoMoraMin: r.tramoMoraMin,
       tramoMoraMax: r.tramoMoraMax,

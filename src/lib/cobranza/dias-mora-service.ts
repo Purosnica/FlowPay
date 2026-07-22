@@ -187,6 +187,13 @@ export async function sincronizarMoraPrestamo(
   return { anterior, nuevo, actualizado };
 }
 
+import { logger } from '@/lib/utils/logger';
+import {
+  resumirPerfilMora,
+  type MoraBatchProfile,
+  type MoraRecalculoProfile,
+} from './mora-recalculo-profile';
+
 const BATCH_RECALCULO = 500;
 const CONCURRENCIA_RECALCULO = 10;
 
@@ -211,13 +218,21 @@ async function sincronizarLoteMora(
 /**
  * Recalcula mora de todos los préstamos activos con saldo.
  * Invocado por el cron diario de operaciones de cobranza.
+ * Incluye profiling por lote para carteras grandes (I114).
  */
 export async function procesarRecalculoMoraCartera(
   idmandante?: number,
-): Promise<{ evaluados: number; actualizados: number }> {
+): Promise<{
+  evaluados: number;
+  actualizados: number;
+  profiling: MoraRecalculoProfile;
+}> {
+  const samples: MoraBatchProfile[] = [];
+  const started = Date.now();
   let evaluados = 0;
   let actualizados = 0;
   let cursor: number | undefined;
+  let batchIndex = 0;
 
   for (;;) {
     const prestamos = await prisma.tbl_prestamo.findMany({
@@ -238,9 +253,29 @@ export async function procesarRecalculoMoraCartera(
     }
 
     const ids = prestamos.map((p) => p.idprestamo);
+    const batchStarted = Date.now();
     const lote = await sincronizarLoteMora(ids);
+    const durationMs = Date.now() - batchStarted;
+
+    samples.push({
+      batchIndex,
+      size: lote.evaluados,
+      durationMs,
+      actualizados: lote.actualizados,
+    });
+
+    if (durationMs > 15_000) {
+      logger.warn('Lote mora lento', {
+        batchIndex,
+        size: lote.evaluados,
+        durationMs,
+        idmandante: idmandante ?? null,
+      });
+    }
+
     evaluados += lote.evaluados;
     actualizados += lote.actualizados;
+    batchIndex += 1;
 
     cursor = prestamos[prestamos.length - 1]?.idprestamo;
     if (prestamos.length < BATCH_RECALCULO) {
@@ -248,5 +283,15 @@ export async function procesarRecalculoMoraCartera(
     }
   }
 
-  return { evaluados, actualizados };
+  const profiling = resumirPerfilMora(samples, Date.now() - started);
+  logger.info('Recálculo mora completado', {
+    evaluados,
+    actualizados,
+    batches: profiling.batches,
+    totalMs: profiling.totalMs,
+    p95BatchMs: profiling.p95BatchMs,
+    maxBatchMs: profiling.maxBatchMs,
+  });
+
+  return { evaluados, actualizados, profiling };
 }

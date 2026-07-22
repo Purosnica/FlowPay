@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { useOnboardingCobrador } from '@/hooks/use-onboarding';
+import { useOnboardingPorRol } from '@/hooks/use-onboarding';
+import { useRolCodigo } from '@/hooks/use-rol';
 
 function CheckIcon({ done }: { done: boolean }) {
   if (done) {
@@ -37,31 +38,35 @@ export function OnboardingGuide({
   idusuario,
   habilitado,
 }: OnboardingGuideProps) {
+  const rolCodigo = useRolCodigo();
   const {
     visible,
     pasos,
     pasosCompletados,
     completados,
     totalPasos,
+    progresoPct,
     marcarPaso,
     omitir,
-  } = useOnboardingCobrador(idusuario, habilitado);
+  } = useOnboardingPorRol(idusuario, rolCodigo, habilitado);
 
   if (!visible) {
     return null;
   }
 
-  const progreso = Math.round((completados / totalPasos) * 100);
-
   return (
-    <section className="rounded-lg border border-primary/30 bg-primary/5 p-6 dark:border-primary/40">
+    <section
+      className="rounded-lg border border-primary/30 bg-primary/5 p-6 dark:border-primary/40"
+      aria-label="Guía de inicio"
+    >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-dark dark:text-white">
+          <h2 className="font-display text-lg font-semibold text-dark dark:text-white">
             Guía de inicio
           </h2>
           <p className="mt-1 text-sm text-gray-500">
-            Da tus primeros pasos en FlowPay. Completa esta guía a tu ritmo.
+            Completa estos pasos según tu rol. El progreso se guarda en este
+            dispositivo.
           </p>
         </div>
         <Button variant="ghost" size="sm" onClick={omitir}>
@@ -74,12 +79,19 @@ export function OnboardingGuide({
           <span>
             {completados} de {totalPasos} completados
           </span>
-          <span>{progreso}%</span>
+          <span>{progresoPct}%</span>
         </div>
-        <div className="h-2 w-full overflow-hidden rounded-full bg-stroke dark:bg-dark-3">
+        <div
+          className="h-2 w-full overflow-hidden rounded-full bg-stroke dark:bg-dark-3"
+          role="progressbar"
+          aria-valuenow={progresoPct}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label="Progreso de onboarding"
+        >
           <div
             className="h-full rounded-full bg-primary transition-all"
-            style={{ width: `${progreso}%` }}
+            style={{ width: `${progresoPct}%` }}
           />
         </div>
       </div>

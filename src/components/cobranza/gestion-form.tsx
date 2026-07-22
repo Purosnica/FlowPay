@@ -18,6 +18,10 @@ import {
   enlaceWhatsApp,
   type PlantillaMensajeContext,
 } from '@/lib/cobranza/plantilla-mensaje-utils';
+import {
+  LEY_787,
+  scriptConfirmacionVerbal,
+} from '@/lib/compliance/ley-787-microcopy';
 import type { CodigoAccion, CodigoResultado, PlantillaMensaje } from '@/types/cobranza';
 
 export interface GestionFormData {
@@ -47,6 +51,8 @@ interface GestionFormProps {
   onSubmit: (data: GestionFormData) => void;
   onCancel?: () => void;
   isLoading?: boolean;
+  /** Bloquea el submit (p. ej. fuera de horario Ley 787). */
+  submitDisabled?: boolean;
 }
 
 export function GestionForm({
@@ -61,6 +67,7 @@ export function GestionForm({
   onSubmit,
   onCancel,
   isLoading,
+  submitDisabled = false,
 }: GestionFormProps) {
   const [form, setForm] = useState<GestionFormData>({
     contactoTercero: false,
@@ -68,6 +75,8 @@ export function GestionForm({
     telefonoContacto: celularCliente ?? '',
   });
   const [capturandoGps, setCapturandoGps] = useState(false);
+  const [mostrarMas, setMostrarMas] = useState(!modoRapido);
+  const [scriptVisible, setScriptVisible] = useState(modoRapido);
 
   useEffect(() => {
     if (initialNota) {
@@ -128,9 +137,13 @@ export function GestionForm({
         telefono: celularCliente ?? '',
       };
 
+  const scriptVerbal = scriptConfirmacionVerbal({
+    nombre: nombreCliente,
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.nota.trim()) {
+    if (submitDisabled || !form.nota.trim()) {
       return;
     }
     onSubmit(form);
@@ -155,8 +168,51 @@ export function GestionForm({
     );
   };
 
+  /** Tipificar en 1 clic: selecciona resultado y deja listo el submit (I176). */
+  const tipificarRapido = (resultado: CodigoResultado) => {
+    setForm((prev) => ({
+      ...prev,
+      idcodresultado: resultado.idcodresultado,
+      nota:
+        prev.nota.trim() ||
+        `${resultado.codigo} — ${resultado.descripcion}`,
+    }));
+  };
+
+  const resultadosRapidos = resultados.slice(0, 6);
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-4"
+      data-ux-id="gestion-form"
+    >
+      {/* I184 — Script confirmación verbal */}
+      <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-900 dark:bg-blue-950/30">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm font-semibold text-blue-950 dark:text-blue-100">
+            {LEY_787.scriptVerbalTitulo}
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            data-ux-id="gestion-script-toggle"
+            onClick={() => setScriptVisible((v) => !v)}
+          >
+            {scriptVisible ? 'Ocultar' : 'Ver script'}
+          </Button>
+        </div>
+        <p className="mt-1 text-xs text-blue-900/80 dark:text-blue-200/80">
+          {LEY_787.scriptVerbalHint}
+        </p>
+        {scriptVisible && (
+          <p className="mt-2 whitespace-pre-wrap text-sm text-blue-950 dark:text-blue-50">
+            {scriptVerbal}
+          </p>
+        )}
+      </div>
+
       {plantillas.length > 0 && !modoRapido && (
         <div>
           <label className="mb-1 block text-sm font-medium">
@@ -172,7 +228,10 @@ export function GestionForm({
                   size="sm"
                   variant="outline"
                   onClick={() => {
-                    const texto = aplicarVariablesPlantilla(p.contenido, varsPlantilla);
+                    const texto = aplicarVariablesPlantilla(
+                      p.contenido,
+                      varsPlantilla,
+                    );
                     setForm({ ...form, nota: texto });
                   }}
                 >
@@ -189,6 +248,33 @@ export function GestionForm({
                 WhatsApp
               </a>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* I176 — Tipificación en ≤3 clics */}
+      {modoRapido && resultadosRapidos.length > 0 && (
+        <div>
+          <label className="mb-1 block text-sm font-medium">
+            Tipificar (1 clic)
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {resultadosRapidos.map((r) => (
+              <Button
+                key={r.idcodresultado}
+                type="button"
+                size="sm"
+                variant={
+                  form.idcodresultado === r.idcodresultado
+                    ? 'primary'
+                    : 'outline'
+                }
+                data-ux-id={`tipificar-rapido-${r.codigo}`}
+                onClick={() => tipificarRapido(r)}
+              >
+                {r.codigo}
+              </Button>
+            ))}
           </div>
         </div>
       )}
@@ -240,107 +326,131 @@ export function GestionForm({
           </select>
         </div>
 
-        <div>
-          <label className="mb-1 block text-sm font-medium">Teléfono contacto</label>
-          <input
-            type="text"
-            value={form.telefonoContacto ?? ''}
-            onChange={(e) =>
-              setForm({ ...form, telefonoContacto: e.target.value })
-            }
-            className="w-full rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2 dark:text-white"
-          />
+        {(mostrarMas || !modoRapido) && (
+          <>
+            <div>
+              <label className="mb-1 block text-sm font-medium">
+                Teléfono contacto
+              </label>
+              <input
+                type="text"
+                value={form.telefonoContacto ?? ''}
+                onChange={(e) =>
+                  setForm({ ...form, telefonoContacto: e.target.value })
+                }
+                className="w-full rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2 dark:text-white"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium">
+                Monto promesa
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.montoPromesa ?? ''}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    montoPromesa: e.target.value
+                      ? Number(e.target.value)
+                      : undefined,
+                  })
+                }
+                className="w-full rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2 dark:text-white"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium">
+                Fecha promesa
+              </label>
+              <input
+                type="date"
+                value={form.fechaPromesa ?? ''}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    fechaPromesa: e.target.value || undefined,
+                  })
+                }
+                className="w-full rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2 dark:text-white"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium">
+                Próxima gestión
+              </label>
+              <input
+                type="date"
+                value={form.fechaProximaGestion ?? ''}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    fechaProximaGestion: e.target.value || undefined,
+                  })
+                }
+                className="w-full rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2 dark:text-white"
+              />
+            </div>
+          </>
+        )}
+
+        <div className="flex flex-col gap-1 pt-2 md:col-span-2">
+          <div className="flex items-center gap-2">
+            <input
+              id="contactoTercero"
+              type="checkbox"
+              checked={form.contactoTercero}
+              onChange={(e) =>
+                setForm({ ...form, contactoTercero: e.target.checked })
+              }
+            />
+            <label htmlFor="contactoTercero" className="text-sm">
+              {LEY_787.contactoTerceroLabel}
+            </label>
+          </div>
+          <p className="text-xs text-gray-500">{LEY_787.contactoTerceroHint}</p>
         </div>
 
-        <div>
-          <label className="mb-1 block text-sm font-medium">Monto promesa</label>
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value={form.montoPromesa ?? ''}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                montoPromesa: e.target.value
-                  ? Number(e.target.value)
-                  : undefined,
-              })
-            }
-            className="w-full rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2 dark:text-white"
-          />
-        </div>
-
-        <div>
-          <label className="mb-1 block text-sm font-medium">Fecha promesa</label>
-          <input
-            type="date"
-            value={form.fechaPromesa ?? ''}
-            onChange={(e) =>
-              setForm({ ...form, fechaPromesa: e.target.value || undefined })
-            }
-            className="w-full rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2 dark:text-white"
-          />
-        </div>
-
-        <div>
-          <label className="mb-1 block text-sm font-medium">
-            Próxima gestión
-          </label>
-          <input
-            type="date"
-            value={form.fechaProximaGestion ?? ''}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                fechaProximaGestion: e.target.value || undefined,
-              })
-            }
-            className="w-full rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2 dark:text-white"
-          />
-        </div>
-
-        <div className="flex items-center gap-2 pt-6">
-          <input
-            id="contactoTercero"
-            type="checkbox"
-            checked={form.contactoTercero}
-            onChange={(e) =>
-              setForm({ ...form, contactoTercero: e.target.checked })
-            }
-          />
-          <label htmlFor="contactoTercero" className="text-sm">
-            Contacto a tercero (Ley 787)
-          </label>
-        </div>
-
-        <div className="flex flex-col gap-1 pt-4">
-          {!modoRapido && (
-            <>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={capturandoGps}
-                onClick={capturarUbicacion}
-              >
-                {capturandoGps ? 'Obteniendo GPS...' : 'Capturar ubicación'}
-              </Button>
-              {form.latitud != null && form.longitud != null && (
-                <span className="text-xs text-gray-500">
-                  {form.latitud.toFixed(5)}, {form.longitud.toFixed(5)}
-                </span>
-              )}
-            </>
-          )}
-        </div>
+        {!modoRapido && (
+          <div className="flex flex-col gap-1 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={capturandoGps}
+              onClick={capturarUbicacion}
+            >
+              {capturandoGps ? 'Obteniendo GPS...' : 'Capturar ubicación'}
+            </Button>
+            {form.latitud != null && form.longitud != null && (
+              <span className="text-xs text-gray-500">
+                {form.latitud.toFixed(5)}, {form.longitud.toFixed(5)}
+              </span>
+            )}
+          </div>
+        )}
       </div>
+
+      {modoRapido && (
+        <button
+          type="button"
+          className="text-xs text-primary hover:underline"
+          onClick={() => setMostrarMas((v) => !v)}
+        >
+          {mostrarMas ? 'Ocultar campos extra' : 'Más opciones (promesa, fechas)'}
+        </button>
+      )}
 
       <div>
         <label className="mb-1 block text-sm font-medium">Nota *</label>
         <textarea
           required
-          rows={3}
+          rows={modoRapido ? 2 : 3}
           value={form.nota}
           onChange={(e) => setForm({ ...form, nota: e.target.value })}
           className="w-full rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2 dark:text-white"
@@ -350,10 +460,11 @@ export function GestionForm({
       {form.contactoTercero && (
         <div>
           <label className="mb-1 block text-sm font-medium">
-            Justificación (requerida para tercero)
+            {LEY_787.contactoTerceroJustificacionLabel}
           </label>
           <textarea
             rows={2}
+            required
             value={form.comentario ?? ''}
             onChange={(e) =>
               setForm({ ...form, comentario: e.target.value })
@@ -370,7 +481,11 @@ export function GestionForm({
           </Button>
         )}
         <PermissionGate permiso={PERMISO.GESTION_WRITE}>
-          <Button type="submit" disabled={isLoading}>
+          <Button
+            type="submit"
+            disabled={isLoading || submitDisabled}
+            data-ux-id="gestion-submit"
+          >
             {isLoading ? 'Guardando...' : 'Registrar gestión'}
           </Button>
         </PermissionGate>

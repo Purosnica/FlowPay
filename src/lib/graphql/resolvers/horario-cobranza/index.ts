@@ -9,6 +9,20 @@ import { validarHorarioCobranza } from '@/lib/cobranza/horario-cobranza-service'
 import { ValidacionHorarioType } from '../contrato-mandante/types';
 import { createPageType } from '../../helpers/create-page-type';
 import { resolvePaginatedPrismaQuery } from '../../helpers/paginated-prisma-resolver';
+import { z } from 'zod';
+
+const UpdateHorarioCobranzaSchema = z.object({
+  idhorario: z.number().int().positive(),
+  horaInicio: z
+    .string()
+    .regex(/^\d{2}:\d{2}$/)
+    .optional(),
+  horaFin: z
+    .string()
+    .regex(/^\d{2}:\d{2}$/)
+    .optional(),
+  permitido: z.boolean().optional(),
+});
 
 export const HorarioCobranza = definePrismaObject(
   'tbl_horario_cobranza',
@@ -93,8 +107,9 @@ builder.mutationField('updateHorarioCobranza', (t) =>
     },
     resolve: async (query, _parent, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.MANDANTE_WRITE);
+      const parsed = UpdateHorarioCobranzaSchema.parse(args);
       const horario = await ctx.prisma.tbl_horario_cobranza.findUnique({
-        where: { idhorario: args.idhorario },
+        where: { idhorario: parsed.idhorario },
       });
       if (!horario) {
         throw new GraphQLValidationError('Horario no encontrado.');
@@ -107,11 +122,11 @@ builder.mutationField('updateHorarioCobranza', (t) =>
       }
       return ctx.prisma.tbl_horario_cobranza.update({
         ...(query as Record<string, unknown>),
-        where: { idhorario: args.idhorario },
+        where: { idhorario: parsed.idhorario },
         data: {
-          horaInicio: args.horaInicio ?? undefined,
-          horaFin: args.horaFin ?? undefined,
-          permitido: args.permitido ?? undefined,
+          horaInicio: parsed.horaInicio ?? undefined,
+          horaFin: parsed.horaFin ?? undefined,
+          permitido: parsed.permitido ?? undefined,
         },
       }) as never;
     },

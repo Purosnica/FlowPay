@@ -39,6 +39,10 @@ export interface JWTPayload {
   lastActivityAt?: number;
   /** Epoch seconds de la última carga de permisos desde BD. */
   permisosAt?: number;
+  /**
+   * true = ADMIN/GERENTE sin MFA activo; sesión limitada a setup MFA.
+   */
+  mfaSetupRequired?: boolean;
   iat?: number;
 }
 

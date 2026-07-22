@@ -9,6 +9,10 @@ import {
   cifrarSecretoMfa,
   descifrarSecretoMfa,
 } from '@/lib/auth/mfa-crypto';
+import {
+  calcularMfaSetupRequired,
+  rolRequiereMfa,
+} from '@/lib/auth/mfa-policy';
 
 process.env.JWT_SECRET =
   process.env.JWT_SECRET || 'test-secret-mfa-unit-32chars-min!!';
@@ -30,6 +34,16 @@ function testCifradoSecreto(): void {
   assert.equal(descifrarSecretoMfa(enc), plain);
 }
 
+function testPoliticaMfa(): void {
+  assert.equal(rolRequiereMfa('ADMIN'), true);
+  assert.equal(rolRequiereMfa('GERENTE'), true);
+  assert.equal(rolRequiereMfa('COBRADOR'), false);
+  assert.equal(calcularMfaSetupRequired('ADMIN', false), true);
+  assert.equal(calcularMfaSetupRequired('ADMIN', true), false);
+  assert.equal(calcularMfaSetupRequired('COBRADOR', false), false);
+}
+
 testTotpRoundtrip();
 testCifradoSecreto();
+testPoliticaMfa();
 console.warn('mfa unit: OK');

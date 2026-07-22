@@ -1,0 +1,26 @@
+{
+  "name": "FlowPay Cobrador",
+  "short_name": "FlowPay",
+  "description": "Cobranza operativa offline-first para cobradores de campo",
+  "start_url": "/cobranza/mi-dia",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#020D1A",
+  "theme_color": "#5750F1",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "/images/logo/logo-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/images/logo/logo-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

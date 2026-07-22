@@ -2,10 +2,12 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Modal } from '@/components/ui/modal';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { AsyncPanel } from '@/components/ui/async-panel';
 import { PageHeader } from '@/components/ui/page-header';
 import { MandanteSelect } from '@/components/cobranza/mandante-select';
+import { PermissionGate } from '@/components/auth/permission-gate';
+import { PERMISO } from '@/lib/permissions/permiso-codes';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { useGraphQLMutation } from '@/hooks/use-graphql-mutation';
 import {
@@ -93,9 +95,14 @@ export default function HistorialCargasPage() {
         description="Registro de importaciones de cartera y comparación entre cargas"
         actions={
           typeof idmandante === 'number' ? (
-            <Button variant="outline" onClick={() => setMostrarRevertir(true)}>
-              Revertir última carga
-            </Button>
+            <PermissionGate permiso={PERMISO.CARTERA_WRITE}>
+              <Button
+                variant="outline"
+                onClick={() => setMostrarRevertir(true)}
+              >
+                Revertir última carga
+              </Button>
+            </PermissionGate>
           ) : undefined
         }
       />
@@ -237,33 +244,33 @@ export default function HistorialCargasPage() {
         </div>
       )}
 
-      <Modal
+      <ConfirmDialog
         isOpen={mostrarRevertir}
         onClose={() => setMostrarRevertir(false)}
         title="Revertir última carga"
+        description="Se restaurará la cartera vigente anterior. Esta acción queda auditada."
+        confirmLabel={
+          revertirMutation.isPending ? 'Revirtiendo...' : 'Confirmar reversión'
+        }
+        variant="danger"
+        isLoading={revertirMutation.isPending}
+        disabled={!motivoReversion.trim()}
+        onConfirm={handleRevertir}
       >
-        <p className="mb-4 text-sm text-gray-6">
-          Se restaurará la cartera vigente anterior. Esta acción queda auditada.
-        </p>
+        <label className="mb-1 block text-sm font-medium" htmlFor="motivo-rev">
+          Motivo de la reversión *
+        </label>
         <textarea
+          id="motivo-rev"
           value={motivoReversion}
           onChange={(e) => setMotivoReversion(e.target.value)}
           placeholder="Motivo de la reversión *"
           rows={3}
+          required
+          aria-required
           className="w-full rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2 dark:text-white"
         />
-        <div className="mt-4 flex justify-end gap-2">
-          <Button variant="outline" onClick={() => setMostrarRevertir(false)}>
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleRevertir}
-            disabled={revertirMutation.isPending || !motivoReversion.trim()}
-          >
-            {revertirMutation.isPending ? 'Revirtiendo...' : 'Confirmar reversión'}
-          </Button>
-        </div>
-      </Modal>
+      </ConfirmDialog>
     </div>
   );
 }

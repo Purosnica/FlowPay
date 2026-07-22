@@ -28,6 +28,8 @@ import {
   formatearMoneda,
 } from '@/types/cobranza';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/auth-context';
+import { TourCentroInteligencia } from '@/components/cobranza/tour-centro-inteligencia';
 
 const INSIGHT_DRILL_LINKS: Record<string, string> = {
   promesas: '/cobranza/bandeja?soloPromesaVencida=1',
@@ -110,6 +112,7 @@ function buildOpsMetrics(
 
 export default function CentroInteligenciaPage() {
   const [idmandante, setIdmandante] = useState<number | ''>('');
+  const { usuario } = useAuth();
 
   const mandanteId = idmandante === '' ? undefined : idmandante;
 
@@ -167,6 +170,7 @@ export default function CentroInteligenciaPage() {
 
   return (
     <div className="space-y-8">
+      <TourCentroInteligencia idusuario={usuario?.idusuario ?? null} />
       <PageHeader
         title="Centro de Inteligencia"
         description="Decisiones basadas en datos: salud de cartera, alertas e insights operativos."
@@ -244,23 +248,29 @@ export default function CentroInteligenciaPage() {
             </div>
           </div>
 
-          <div>
+          <div data-tour-id="ci-metrics">
             <h2 className="mb-3 text-lg font-semibold text-dark dark:text-white">
               Indicadores operativos
             </h2>
             <DashboardMetricStrip metrics={buildOpsMetrics(centro, kpis)} />
           </div>
 
-          <AlertasOperativasPanel
-            promesasVencidas={centro.promesasVencidas}
-            acuerdosEnRiesgo={centro.acuerdosEnRiesgo}
-            reclamosFueraSla={centro.reclamosFueraSla}
-          />
+          <div data-tour-id="ci-alertas">
+            <AlertasOperativasPanel
+              promesasVencidas={centro.promesasVencidas}
+              acuerdosEnRiesgo={centro.acuerdosEnRiesgo}
+              reclamosFueraSla={centro.reclamosFueraSla}
+            />
+          </div>
 
-          {forecast && <ForecastPanel forecast={forecast} />}
+          {forecast && (
+            <div data-tour-id="ci-forecast">
+              <ForecastPanel forecast={forecast} />
+            </div>
+          )}
 
           <div className="grid gap-6 lg:grid-cols-2">
-            <div>
+            <div data-tour-id="ci-insights">
               <h2 className="mb-3 text-lg font-semibold text-dark dark:text-white">
                 Insights
               </h2>
@@ -318,10 +328,12 @@ export default function CentroInteligenciaPage() {
               </div>
             </div>
 
-            <TendenciaRecuperacionChart
-              tendencia={tendencia}
-              titulo="Tendencia de recuperación (6 meses)"
-            />
+            <div data-tour-id="ci-tendencia">
+              <TendenciaRecuperacionChart
+                tendencia={tendencia}
+                titulo="Tendencia de recuperación (6 meses)"
+              />
+            </div>
           </div>
 
           {rollRate && rollRate.buckets.length > 0 && (

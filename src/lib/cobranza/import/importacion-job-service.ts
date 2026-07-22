@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { requerirAccesoMandante } from '@/lib/cobranza/mandante-scope';
 import { importarCobranza ,type  TipoImportacionCobranza } from '@/lib/cobranza/import/import-orchestrator';
@@ -12,6 +13,8 @@ import {
   obtenerImportMaxJobsPerRun,
   obtenerImportStuckMinutes,
 } from '@/lib/scalability/scalability-config';
+import { isShuttingDown } from '@/lib/scalability/graceful-shutdown';
+import { encolarWebhookMandante } from '@/lib/cobranza/webhook-mandante-service';
 
 const STORAGE_DIR = path.join(os.tmpdir(), 'flowpay-imports');
 const FINALIZAR_JOB_REINTENTOS = 3;
@@ -22,8 +25,10 @@ export type EstadoImportacionJob =
   | 'PENDIENTE'
   | 'PROCESANDO'
   | 'COMPLETADO'
-  | 'ERROR';
+  | 'ERROR'
+  | 'DEAD_LETTER';
 
+const MAX_INTENTOS_ANTES_DLQ = 3;
 export interface CrearImportacionJobInput {
   idmandante: number;
   idusuario: number;
@@ -34,6 +39,8 @@ export interface CrearImportacionJobInput {
   fechaCorte?: Date;
   nombreHoja?: string;
   idplantillaImp?: number;
+  /** Header Idempotency-Key (I059). */
+  idempotencyKey?: string;
 }
 
 export interface ImportacionJobResumen {
@@ -67,20 +74,55 @@ export async function crearImportacionJob(
   await requerirAccesoMandante(input.idusuario, input.idmandante);
   await asegurarDirectorioImports();
 
-  const job = await prisma.tbl_importacion_job.create({
-    data: {
-      idmandante: input.idmandante,
-      idcampana: input.idcampana ?? null,
-      idusuario: input.idusuario,
-      tipo: input.tipo,
-      estado: 'PENDIENTE',
-      nombreArchivo: input.nombreArchivo,
-      rutaArchivo: '',
-      fechaCorte: input.fechaCorte ?? null,
-      nombreHoja: input.nombreHoja ?? null,
-      idplantillaImp: input.idplantillaImp ?? null,
-    },
-  });
+  const key =
+    input.idempotencyKey && input.idempotencyKey.trim().length > 0
+      ? input.idempotencyKey.trim().slice(0, 64)
+      : null;
+
+  if (key) {
+    const existente = await prisma.tbl_importacion_job.findFirst({
+      where: {
+        idusuario: input.idusuario,
+        idempotencyKey: key,
+      },
+    });
+    if (existente) {
+      return mapJob(existente);
+    }
+  }
+
+  let job;
+  try {
+    job = await prisma.tbl_importacion_job.create({
+      data: {
+        idmandante: input.idmandante,
+        idcampana: input.idcampana ?? null,
+        idusuario: input.idusuario,
+        tipo: input.tipo,
+        estado: 'PENDIENTE',
+        nombreArchivo: input.nombreArchivo,
+        rutaArchivo: '',
+        fechaCorte: input.fechaCorte ?? null,
+        nombreHoja: input.nombreHoja ?? null,
+        idplantillaImp: input.idplantillaImp ?? null,
+        idempotencyKey: key,
+      },
+    });
+  } catch (err) {
+    if (
+      key &&
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      err.code === 'P2002'
+    ) {
+      const race = await prisma.tbl_importacion_job.findFirst({
+        where: { idusuario: input.idusuario, idempotencyKey: key },
+      });
+      if (race) {
+        return mapJob(race);
+      }
+    }
+    throw err;
+  }
 
   const rutaRelativa = path.join(
     String(job.idjob),
@@ -150,23 +192,24 @@ export async function recuperarImportacionesAtascadas(): Promise<number> {
     },
   });
 
-  // PAGOS/GESTIONES/COMPLETO/etc.: no reintentar automáticamente.
-  const marcadosError = await prisma.tbl_importacion_job.updateMany({
+  // PAGOS/GESTIONES/COMPLETO/etc.: dead-letter (no reintento auto).
+  const marcadosDlq = await prisma.tbl_importacion_job.updateMany({
     where: {
       estado: 'PROCESANDO',
       iniciadoEn: { lt: limite },
       tipo: { not: 'CARTERA' },
     },
     data: {
-      estado: 'ERROR',
+      estado: 'DEAD_LETTER',
+      deadLetterAt: new Date(),
       error:
-        'Job interrumpido. No se reintentó automáticamente para evitar ' +
-        'duplicados o completar a medias. Revise e importe de nuevo si aplica.',
+        'Job interrumpido. Enviado a dead-letter para evitar ' +
+        'duplicados. Use reencolarImportacionDeadLetter si aplica.',
       finalizadoEn: new Date(),
     },
   });
 
-  return reconciliados + reencolados.count + marcadosError.count;
+  return reconciliados + reencolados.count + marcadosDlq.count;
 }
 
 /**
@@ -226,7 +269,13 @@ export async function reconciliarImportacionesAtascadas(): Promise<number> {
       },
     };
 
-    await marcarJobCompletado(job.idjob, resultado, job.idusuario);
+    await marcarJobCompletado(
+      job.idjob,
+      resultado,
+      job.idusuario,
+      job.idmandante,
+      job.tipo,
+    );
     reconciliados++;
   }
 
@@ -283,16 +332,16 @@ export async function procesarImportacionesPendientes(
     return { procesados: 0, errores: 0 };
   }
 
-  const pendientes = await prisma.tbl_importacion_job.findMany({
-    where: { estado: 'PENDIENTE' },
-    orderBy: { createdAt: 'asc' },
-    take: cupo,
-  });
+  // I117: sharding por mandante — round-robin justo entre mandantes con cola.
+  const pendientes = await seleccionarJobsPendientesSharded(cupo);
 
   let procesados = 0;
   let errores = 0;
 
   for (const job of pendientes) {
+    if (isShuttingDown()) {
+      break;
+    }
     const ok = await procesarUnJob(job.idjob);
     if (ok) {
       procesados++;
@@ -304,6 +353,60 @@ export async function procesarImportacionesPendientes(
   return { procesados, errores };
 }
 
+/**
+ * Selecciona jobs PENDIENTE repartiendo cupo entre mandantes (1 job por
+ * mandante por ronda) para evitar que un mandante monopolice IMPORT_MAX_CONCURRENT.
+ */
+async function seleccionarJobsPendientesSharded(
+  cupo: number,
+): Promise<Array<{ idjob: number }>> {
+  const ocupados = await prisma.tbl_importacion_job.findMany({
+    where: { estado: 'PROCESANDO' },
+    select: { idmandante: true },
+    distinct: ['idmandante'],
+  });
+  const mandantesOcupados = new Set(ocupados.map((o) => o.idmandante));
+
+  const candidatos = await prisma.tbl_importacion_job.findMany({
+    where: {
+      estado: 'PENDIENTE',
+      ...(mandantesOcupados.size > 0
+        ? { idmandante: { notIn: [...mandantesOcupados] } }
+        : {}),
+    },
+    orderBy: { createdAt: 'asc' },
+    select: { idjob: true, idmandante: true },
+    take: Math.max(cupo * 10, 50),
+  });
+
+  if (candidatos.length === 0) {
+    return [];
+  }
+
+  const porMandante = new Map<number, Array<{ idjob: number }>>();
+  for (const job of candidatos) {
+    const lista = porMandante.get(job.idmandante) ?? [];
+    lista.push({ idjob: job.idjob });
+    porMandante.set(job.idmandante, lista);
+  }
+
+  const colas = [...porMandante.values()];
+  const seleccionados: Array<{ idjob: number }> = [];
+  let idx = 0;
+  while (seleccionados.length < cupo && colas.some((c) => c.length > 0)) {
+    const cola = colas[idx % colas.length];
+    if (cola && cola.length > 0) {
+      const next = cola.shift();
+      if (next) {
+        seleccionados.push(next);
+      }
+    }
+    idx++;
+  }
+
+  return seleccionados;
+}
+
 async function procesarUnJob(idjob: number): Promise<boolean> {
   const job = await prisma.tbl_importacion_job.update({
     where: { idjob, estado: 'PENDIENTE' },
@@ -311,6 +414,7 @@ async function procesarUnJob(idjob: number): Promise<boolean> {
       estado: 'PROCESANDO',
       iniciadoEn: new Date(),
       progresoPct: 5,
+      intentos: { increment: 1 },
     },
   }).catch(() => null);
 
@@ -346,7 +450,7 @@ async function procesarUnJob(idjob: number): Promise<boolean> {
       onProgreso: actualizarProgreso,
     });
 
-    await marcarJobCompletado(idjob, resultado, job.idusuario);
+    await marcarJobCompletado(idjob, resultado, job.idusuario, job.idmandante, job.tipo);
     return true;
   } catch (err) {
     const mensaje = err instanceof Error ? err.message : 'Error desconocido';
@@ -359,6 +463,8 @@ async function marcarJobCompletado(
   idjob: number,
   resultado: ResultadoImportacionCompleta,
   idusuario: number,
+  idmandante: number,
+  tipo: string,
 ): Promise<void> {
   const resultadoJson = JSON.stringify(resultado);
   const filasTotales =
@@ -389,6 +495,16 @@ async function marcarJobCompletado(
         accion: 'COMPLETADO',
         detalle: resultadoJson.slice(0, 2000),
       });
+
+      encolarWebhookMandante({
+        idmandante,
+        event: 'importacion.completada',
+        data: {
+          idjob,
+          tipo,
+          filasTotales,
+        },
+      });
       return;
     } catch {
       if (intento < FINALIZAR_JOB_REINTENTOS - 1) {
@@ -403,15 +519,38 @@ async function marcarJobCompletado(
 }
 
 async function marcarJobError(idjob: number, mensaje: string): Promise<void> {
+  const actual = await prisma.tbl_importacion_job.findUnique({
+    where: { idjob },
+    select: { intentos: true, tipo: true },
+  });
+  const intentos = actual?.intentos ?? 1;
+  const aDeadLetter =
+    intentos >= MAX_INTENTOS_ANTES_DLQ || actual?.tipo !== 'CARTERA';
+
   for (let intento = 0; intento < FINALIZAR_JOB_REINTENTOS; intento++) {
     try {
       await prisma.tbl_importacion_job.update({
         where: { idjob },
-        data: {
-          estado: 'ERROR',
-          error: mensaje.slice(0, 2000),
-          finalizadoEn: new Date(),
-        },
+        data: aDeadLetter
+          ? {
+              estado: 'DEAD_LETTER',
+              deadLetterAt: new Date(),
+              error: mensaje.slice(0, 2000),
+              finalizadoEn: new Date(),
+            }
+          : actual?.tipo === 'CARTERA'
+            ? {
+                estado: 'PENDIENTE',
+                error: mensaje.slice(0, 2000),
+                progresoPct: 0,
+                iniciadoEn: null,
+                finalizadoEn: null,
+              }
+            : {
+                estado: 'ERROR',
+                error: mensaje.slice(0, 2000),
+                finalizadoEn: new Date(),
+              },
       });
       return;
     } catch {
@@ -420,6 +559,42 @@ async function marcarJobError(idjob: number, mensaje: string): Promise<void> {
       }
     }
   }
+}
+
+/**
+ * Reencola un job en dead-letter (solo CARTERA por seguridad anti-duplicados).
+ */
+export async function reencolarImportacionDeadLetter(
+  idjob: number,
+  idusuario: number,
+): Promise<void> {
+  const job = await prisma.tbl_importacion_job.findUnique({ where: { idjob } });
+  if (!job || job.estado !== 'DEAD_LETTER') {
+    throw new Error('Job no está en dead-letter.');
+  }
+  await requerirAccesoMandante(idusuario, job.idmandante);
+  if (job.tipo !== 'CARTERA') {
+    throw new Error(
+      'Solo jobs CARTERA pueden reencolarse desde dead-letter automáticamente.',
+    );
+  }
+  await prisma.tbl_importacion_job.update({
+    where: { idjob },
+    data: {
+      estado: 'PENDIENTE',
+      deadLetterAt: null,
+      error: null,
+      progresoPct: 0,
+      iniciadoEn: null,
+      finalizadoEn: null,
+    },
+  });
+  await registrarAuditoria(prisma, {
+    idusuario,
+    entidad: 'tbl_importacion_job',
+    entidadId: idjob,
+    accion: 'REENCOLAR_DLQ',
+  });
 }
 
 function esperar(ms: number): Promise<void> {

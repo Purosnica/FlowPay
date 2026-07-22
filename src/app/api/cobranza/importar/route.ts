@@ -1,5 +1,4 @@
-import { NextResponse ,type  NextRequest } from 'next/server';
-
+import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { requirePermission } from '@/lib/middleware/auth';
 import { PERMISO } from '@/lib/permissions/permiso-codes';
@@ -16,9 +15,22 @@ import {
   mensajeArchivoExcedeLimite,
   mensajeFormatoImportacionNoSoportado,
 } from '@/lib/cobranza/upload-limits';
+import {
+  crearImportacionJob,
+  dispararProcesamientoImportaciones,
+} from '@/lib/cobranza/import/importacion-job-service';
+import {
+  parseIdempotencyKeyHeader,
+  mensajeIdempotencyKeyInvalida,
+} from '@/lib/api/idempotency-key';
+import { handleApiError } from '@/lib/api/error-handler';
 
-/** Importaciones grandes (700+ filas) pueden tardar varios minutos. */
+/**
+ * I115: el path sync solo admite preview o forceSync=1.
+ * Importaciones reales se delegan al job async (evita xlsx CPU-bound en request).
+ */
 export const maxDuration = 300;
+
 const TIPOS: TipoImportacionCobranza[] = [
   'CARTERA',
   'GESTIONES',
@@ -48,17 +60,42 @@ const ImportFormSchema = z.object({
     .enum(['true', 'false'])
     .optional()
     .transform((v) => v === 'true'),
+  forceSync: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((v) => v === 'true'),
 });
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const usuario = await requirePermission(req, PERMISO.CARTERA_WRITE);
+
+    const rawIdem = req.headers.get('idempotency-key');
+    let idempotencyKey: string | undefined;
+    if (rawIdem != null && rawIdem.trim() !== '') {
+      idempotencyKey = parseIdempotencyKeyHeader(rawIdem);
+      if (!idempotencyKey) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: mensajeIdempotencyKeyInvalida(),
+            code: 'VALIDACION_ERROR',
+          },
+          { status: 400 },
+        );
+      }
+    }
+
     const formData = await req.formData();
     const archivo = formData.get('archivo');
 
     if (!(archivo instanceof File)) {
       return NextResponse.json(
-        { success: false, error: 'Debe enviar un archivo Excel o CSV.' },
+        {
+          success: false,
+          error: 'Debe enviar un archivo Excel o CSV.',
+          code: 'VALIDACION_ERROR',
+        },
         { status: 400 },
       );
     }
@@ -91,6 +128,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       nombreHoja: formData.get('nombreHoja') ?? undefined,
       idplantillaImp: formData.get('idplantillaImp') ?? undefined,
       preview: formData.get('preview') ?? undefined,
+      forceSync: formData.get('forceSync') ?? undefined,
     });
 
     if (!parsed.success) {
@@ -100,8 +138,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const { tipo, idmandante, idcampana, fechaCorte, nombreHoja, idplantillaImp, preview } =
-      parsed.data;
+    const {
+      tipo,
+      idmandante,
+      idcampana,
+      fechaCorte,
+      nombreHoja,
+      idplantillaImp,
+      preview,
+      forceSync,
+    } = parsed.data;
 
     if (!TIPOS.includes(tipo)) {
       return NextResponse.json(
@@ -110,7 +156,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    if ((tipo === 'CARTERA' || tipo === 'COMPLETO') && (!idcampana || !fechaCorte)) {
+    if (
+      (tipo === 'CARTERA' || tipo === 'COMPLETO') &&
+      (!idcampana || !fechaCorte)
+    ) {
       return NextResponse.json(
         {
           success: false,
@@ -142,7 +191,35 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         nombreHoja: nombreHoja ?? 'data',
         idplantillaImp,
       });
-      return NextResponse.json({ success: true, preview: true, data: vistaPrevia });
+      return NextResponse.json({
+        success: true,
+        preview: true,
+        data: vistaPrevia,
+      });
+    }
+
+    // I115: delegar a job async salvo forceSync explícito.
+    if (!forceSync) {
+      const job = await crearImportacionJob({
+        idmandante,
+        idusuario: usuario.idusuario,
+        tipo,
+        nombreArchivo: archivo.name,
+        buffer,
+        idcampana,
+        fechaCorte,
+        nombreHoja,
+        idplantillaImp,
+        idempotencyKey,
+      });
+      dispararProcesamientoImportaciones(req.nextUrl.origin);
+      return NextResponse.json({
+        success: true,
+        async: true,
+        data: job,
+        message:
+          'Importación encolada. Use /api/cobranza/importar/async o consulte el job.',
+      });
     }
 
     const resultado = await importarCobranza({
@@ -181,13 +258,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     return NextResponse.json({ success: true, data: resultado });
   } catch (error) {
-    const mensaje =
-      error instanceof Error ? error.message : 'Error al importar';
-    const status = mensaje.includes('No autenticado')
-      ? 401
-      : /permiso|Permiso|acceso denegado/i.test(mensaje)
-        ? 403
-        : 400;
-    return NextResponse.json({ success: false, error: mensaje }, { status });
+    return handleApiError(error);
   }
 }

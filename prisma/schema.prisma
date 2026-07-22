@@ -30,6 +30,7 @@ model tbl_pais {
 
   departamentos tbl_departamento[]
   clientes      tbl_cliente[]
+  feriados      tbl_dia_feriado[]
 
   @@map("tbl_pais")
 }
@@ -150,6 +151,7 @@ model tbl_cliente {
   // Información adicional
   observaciones String?  @db.Text
   estado        Boolean  @default(true)
+  deletedAt     DateTime?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -172,6 +174,7 @@ model tbl_cliente {
   @@index([email])
   @@index([idtipodocumento])
   @@index([idpais])
+  @@index([deletedAt])
   @@map("tbl_cliente")
 }
 
@@ -202,9 +205,10 @@ model tbl_usuario {
   email             String    @unique
   telefono          String?
   porcentajeComision Decimal  @default(0) @db.Decimal(5, 2) // % sobre ingreso empresa
-  passwordHash      String? // Hash de contraseña con salt
-  salt         String? // Salt para hash de contraseña
-  password     String? // Hash simple (para migración de datos existentes)
+  passwordHash      String? // bcrypt (preferido)
+  salt         String? // Solo legado SHA-256; vacío con bcrypt
+  /// @deprecated Solo lectura para migración; no escribir. Vaciar tras migrate-passwords-bcrypt.
+  password     String? // Hash simple legacy
   mfaEnabled   Boolean  @default(false)
   mfaSecret    String?  // Secreto TOTP cifrado (AES-GCM)
   mfaEnabledAt DateTime?
@@ -228,6 +232,7 @@ model tbl_usuario {
   pagosRegistrados             tbl_pago[]
   cargasCartera                tbl_carga_cartera[]
   importacionJobs              tbl_importacion_job[]
+  exportacionJobs              tbl_exportacion_job[]
   asignacionesRealizadas       tbl_prestamo_asignacion_historial[] @relation("usuario_asignacion")
   asignacionesGestorAnterior   tbl_prestamo_asignacion_historial[] @relation("gestor_anterior")
   asignacionesGestorNuevo      tbl_prestamo_asignacion_historial[] @relation("gestor_nuevo")
@@ -397,6 +402,11 @@ model tbl_mandante {
   regulador       String? // CONAMI / SIBOIF / NINGUNO (define reglas de compliance)
   descuentoMaximo Decimal   @default(100) @db.Decimal(5, 2) // % máximo autorizado en acuerdos
   estado          Boolean   @default(true)
+  /** URL HTTPS del receptor de webhooks (I054). */
+  webhookUrl      String?   @db.VarChar(500)
+  /** Secreto HMAC; no exponer en GraphQL de lectura. */
+  webhookSecret   String?   @db.VarChar(128)
+  webhookActivo   Boolean   @default(false)
   deletedAt  DateTime?
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
@@ -419,6 +429,9 @@ model tbl_mandante {
   cargasCartera         tbl_carga_cartera[]
   importacionJobs       tbl_importacion_job[]
   secuenciasContacto    tbl_secuencia_contacto[]
+  resumenesDiarios      tbl_resumen_diario_cobranza[]
+  exportacionJobs       tbl_exportacion_job[]
+  refinanciamientos     tbl_refinanciamiento[]
 
   @@index([deletedAt])
   @@map("tbl_mandante")
@@ -448,6 +461,8 @@ model tbl_comision_cobro {
   tramoMoraMax Int?
   porcentaje   Decimal   @db.Decimal(5, 2) // % recuperación para la empresa
   estado       Boolean   @default(true)
+  vigenteDesde DateTime  @default(now())
+  vigenteHasta DateTime?
   deletedAt    DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -455,6 +470,7 @@ model tbl_comision_cobro {
   mandante tbl_mandante @relation(fields: [idmandante], references: [idmandante])
 
   @@index([idmandante])
+  @@index([idmandante, vigenteDesde, vigenteHasta])
   @@map("tbl_comision_cobro")
 }
 
@@ -527,6 +543,9 @@ model tbl_prestamo {
 
   reportableCentralRiesgo Boolean @default(true) // false si hay acuerdo vigente
 
+  /// Lock optimista para updates concurrentes (I019).
+  version Int @default(0)
+
   deletedAt DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -549,6 +568,9 @@ model tbl_prestamo {
   documentos            tbl_documento[]
   historialAsignaciones tbl_prestamo_asignacion_historial[]
   historialEstados      tbl_prestamo_estado_historial[]
+  cuotas                tbl_prestamo_cuota[]
+  refinanciamientosOrigen tbl_refinanciamiento[] @relation("RefinanciamientoOrigen")
+  refinanciamientosNuevo  tbl_refinanciamiento[] @relation("RefinanciamientoNuevo")
 
   @@unique([idmandante, noPrestamo])
   @@index([idmandante, estado])
@@ -558,6 +580,52 @@ model tbl_prestamo {
   @@index([idmandante, diasMora, deletedAt])
   @@index([idcampana])
   @@map("tbl_prestamo")
+}
+
+/// Cuotas del crédito importado (distintas de tbl_acuerdo_cuota) — I031.
+model tbl_prestamo_cuota {
+  idcuota          Int       @id @default(autoincrement())
+  idprestamo       Int
+  numero           Int
+  fechaVencimiento DateTime
+  monto            Decimal   @db.Decimal(14, 2)
+  saldo            Decimal   @db.Decimal(14, 2)
+  estado           String    @default("PENDIENTE") // PENDIENTE / PAGADA / VENCIDA / ANULADA
+  deletedAt        DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  prestamo tbl_prestamo @relation(fields: [idprestamo], references: [idprestamo], onDelete: Cascade)
+
+  @@unique([idprestamo, numero])
+  @@index([idprestamo, estado])
+  @@index([fechaVencimiento, estado])
+  @@map("tbl_prestamo_cuota")
+}
+
+/// Refinanciamiento: cierra origen y opcionalmente vincula préstamo nuevo — I030.
+model tbl_refinanciamiento {
+  idrefinanciamiento Int       @id @default(autoincrement())
+  idmandante         Int
+  idprestamoOrigen   Int
+  idprestamoNuevo    Int?
+  montoRefinanciado  Decimal   @db.Decimal(14, 2)
+  fecha              DateTime  @default(now())
+  estado             String    @default("APLICADO") // BORRADOR / APLICADO / ANULADO
+  motivo             String?   @db.Text
+  idusuario          Int?
+  deletedAt          DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  mandante       tbl_mandante @relation(fields: [idmandante], references: [idmandante])
+  prestamoOrigen tbl_prestamo @relation("RefinanciamientoOrigen", fields: [idprestamoOrigen], references: [idprestamo])
+  prestamoNuevo  tbl_prestamo? @relation("RefinanciamientoNuevo", fields: [idprestamoNuevo], references: [idprestamo])
+
+  @@index([idmandante])
+  @@index([idprestamoOrigen])
+  @@index([estado, deletedAt])
+  @@map("tbl_refinanciamiento")
 }
 
 model tbl_prestamo_corte {
@@ -771,6 +839,8 @@ model tbl_politica_descuento {
   tramoMoraMax Int?
   porcentaje   Decimal   @db.Decimal(5, 2)
   estado       Boolean   @default(true)
+  vigenteDesde DateTime  @default(now())
+  vigenteHasta DateTime?
   deletedAt    DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -778,6 +848,7 @@ model tbl_politica_descuento {
   mandante tbl_mandante @relation(fields: [idmandante], references: [idmandante])
 
   @@index([idmandante])
+  @@index([idmandante, vigenteDesde, vigenteHasta])
   @@map("tbl_politica_descuento")
 }
 
@@ -797,6 +868,8 @@ model tbl_acuerdo {
   pagoMinimo     Decimal?  @db.Decimal(14, 2) // cuota / 2
   fechaInicio    DateTime
   estado         String // VIGENTE / CUMPLIDO / ROTO
+  /// Lock optimista (I019).
+  version        Int       @default(0)
   deletedAt      DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -824,7 +897,8 @@ model tbl_pago {
   monto      Decimal   @db.Decimal(14, 2)
   moneda     String    @default("NIO")
   tipoCambio Decimal?  @db.Decimal(10, 4)
-  medio      String? // EFECTIVO / TRANSFERENCIA / etc.
+  /// Catálogo: EFECTIVO | TRANSFERENCIA | DEPOSITO | CHEQUE | TARJETA | OTRO (Zod MEDIOS_PAGO).
+  medio      String? @db.VarChar(32)
   /// Clave de idempotencia del cliente (reintentos no duplican pago).
   idempotencyKey String? @db.VarChar(64)
   aplicado   Boolean   @default(false) // conciliación con siguiente corte
@@ -955,9 +1029,14 @@ model tbl_dia_feriado {
   idferiado   Int      @id @default(autoincrement())
   fecha       DateTime
   descripcion String
+  /// null = feriado global; con idpais = calendario del país (I029).
+  idpais      Int?
   createdAt   DateTime @default(now())
 
+  pais tbl_pais? @relation(fields: [idpais], references: [idpais])
+
   @@index([fecha])
+  @@index([idpais, fecha])
   @@map("tbl_dia_feriado")
 }
 
@@ -1060,8 +1139,12 @@ model tbl_importacion_job {
   progresoPct     Int       @default(0)
   filasProcesadas Int       @default(0)
   filasTotales    Int       @default(0)
+  intentos        Int       @default(0)
+  deadLetterAt    DateTime?
   resultado       String?   @db.Text
   error           String?   @db.Text
+  /** Idempotency-Key HTTP (I059); único por usuario. */
+  idempotencyKey  String?   @db.VarChar(64)
   iniciadoEn      DateTime?
   finalizadoEn    DateTime?
   createdAt       DateTime  @default(now())
@@ -1071,8 +1154,10 @@ model tbl_importacion_job {
   campana  tbl_campana?  @relation(fields: [idcampana], references: [idcampana])
   usuario  tbl_usuario   @relation(fields: [idusuario], references: [idusuario])
 
+  @@unique([idusuario, idempotencyKey])
   @@index([estado, createdAt])
   @@index([idmandante])
+  @@index([estado, deadLetterAt])
   @@map("tbl_importacion_job")
 }
 
@@ -1199,12 +1284,17 @@ model tbl_notificacion {
   entidadId      Int?
   leida          Boolean   @default(false)
   leidaEn        DateTime?
+  /// Outbox email: null = sin email; PENDIENTE | ENVIADO | FALLIDO (I033).
+  emailEstado    String?
+  emailIntentos  Int       @default(0)
+  emailError     String?   @db.Text
   createdAt      DateTime  @default(now())
 
   usuario tbl_usuario @relation(fields: [idusuario], references: [idusuario], onDelete: Cascade)
 
   @@index([idusuario, leida, createdAt])
   @@index([idusuario, createdAt])
+  @@index([emailEstado, createdAt])
   @@map("tbl_notificacion")
 }
 
@@ -1222,4 +1312,64 @@ model tbl_usuario_mandante {
   @@index([idmandante])
   @@index([idusuario])
   @@map("tbl_usuario_mandante")
+}
+
+// ============================================
+// RENDIMIENTO · RESUMEN DIARIO MATERIALIZADO
+// ============================================
+
+model tbl_resumen_diario_cobranza {
+  idresumen               Int      @id @default(autoincrement())
+  idmandante              Int
+  fecha                   DateTime @db.Date
+  totalPrestamos          Int      @default(0)
+  prestamosEnMora         Int      @default(0)
+  saldoCartera            Decimal  @default(0) @db.Decimal(18, 2)
+  saldoMora               Decimal  @default(0) @db.Decimal(18, 2)
+  gestionesDia            Int      @default(0)
+  pagosDia                Int      @default(0)
+  montoRecuperadoDia      Decimal  @default(0) @db.Decimal(18, 2)
+  promesasVencidas        Int      @default(0)
+  acuerdosEnRiesgo        Int      @default(0)
+  reclamosFueraSla        Int      @default(0)
+  recuperacionMesActual   Decimal  @default(0) @db.Decimal(18, 2)
+  recuperacionMesAnterior Decimal  @default(0) @db.Decimal(18, 2)
+  calculatedAt            DateTime @default(now())
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  mandante tbl_mandante @relation(fields: [idmandante], references: [idmandante])
+
+  @@unique([idmandante, fecha])
+  @@index([fecha])
+  @@map("tbl_resumen_diario_cobranza")
+}
+
+// ============================================
+// RENDIMIENTO · EXPORTS ASYNC (>10k filas)
+// ============================================
+
+model tbl_exportacion_job {
+  idexport     Int       @id @default(autoincrement())
+  idmandante   Int?
+  idusuario    Int
+  tipo         String
+  estado       String    @default("PENDIENTE")
+  parametros   String?   @db.Text
+  filasEstimadas Int     @default(0)
+  progresoPct  Int       @default(0)
+  rutaArchivo  String?
+  nombreArchivo String?
+  error        String?   @db.Text
+  iniciadoEn   DateTime?
+  finalizadoEn DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  mandante tbl_mandante? @relation(fields: [idmandante], references: [idmandante])
+  usuario  tbl_usuario   @relation(fields: [idusuario], references: [idusuario])
+
+  @@index([estado, createdAt])
+  @@index([idusuario, createdAt])
+  @@map("tbl_exportacion_job")
 }

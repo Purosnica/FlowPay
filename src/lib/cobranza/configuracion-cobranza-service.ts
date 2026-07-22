@@ -13,6 +13,10 @@ export const CLAVE_META_RECUPERACION_SEMANA = 'cobranza.meta_recuperacion_semana
 export const CLAVE_META_RECUPERACION_MES = 'cobranza.meta_recuperacion_mes';
 export const CLAVE_CRON_ALERTA_EMAIL_ACTIVA =
   'cobranza.cron_alerta_email_activa';
+export const CLAVE_BANDEJA_CANDIDATE_LIMIT =
+  'cobranza.bandeja_prioridad_candidate_limit';
+export const CLAVE_MI_DIA_CANDIDATE_LIMIT =
+  'cobranza.mi_dia_prioridad_candidate_limit';
 
 const DEFAULTS: Record<string, string> = {
   [CLAVE_PAGO_AUTO_APLICAR]: 'true',
@@ -26,6 +30,8 @@ const DEFAULTS: Record<string, string> = {
   [CLAVE_META_RECUPERACION_SEMANA]: '50000',
   [CLAVE_META_RECUPERACION_MES]: '200000',
   [CLAVE_CRON_ALERTA_EMAIL_ACTIVA]: 'true',
+  [CLAVE_BANDEJA_CANDIDATE_LIMIT]: '500',
+  [CLAVE_MI_DIA_CANDIDATE_LIMIT]: '200',
 };
 
 export async function obtenerConfigCobranza(clave: string): Promise<string> {

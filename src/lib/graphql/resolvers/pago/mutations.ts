@@ -21,6 +21,7 @@ import { decimalToNumber } from '@/lib/cobranza/decimal-utils';
 import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
 import { validarPagoAnticipado } from '@/lib/cobranza/pago-validacion-service';
 import { rutaComprobantePago } from '@/lib/logic/comprobante-pago-logic';
+import { encolarWebhookMandante } from '@/lib/cobranza/webhook-mandante-service';
 
 builder.mutationField('createPago', (t) =>
   t.prismaField({
@@ -183,6 +184,18 @@ builder.mutationField('createPago', (t) =>
       });
 
       await emitirNotificacionPago(pago.idpago);
+
+      encolarWebhookMandante({
+        idmandante: prestamo.idmandante,
+        event: 'pago.creado',
+        data: {
+          idpago: pago.idpago,
+          idprestamo: pago.idprestamo,
+          monto: decimalToNumber(pago.monto),
+          moneda: pago.moneda,
+          aplicado: pago.aplicado,
+        },
+      });
 
       return ctx.prisma.tbl_pago.findUniqueOrThrow({
         ...(query as Record<string, unknown>),

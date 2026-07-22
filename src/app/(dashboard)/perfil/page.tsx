@@ -15,12 +15,14 @@ import type { PerfilFormData, UsuarioPerfil } from '@/types/perfil';
 
 export default function PerfilPage() {
   const queryClient = useQueryClient();
-  const { refreshUser } = useAuth();
+  const { refreshUser, mfaSetupRequired } = useAuth();
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const { data, isLoading, error } = useGraphQLQuery<{ miPerfil: UsuarioPerfil }>(
     GET_MI_PERFIL,
+    undefined,
+    { enabled: !mfaSetupRequired },
   );
 
   const updateMutation = useGraphQLMutation(ACTUALIZAR_MI_PERFIL, {
@@ -53,6 +55,24 @@ export default function PerfilPage() {
 
     updateMutation.mutate({ input });
   };
+
+  if (mfaSetupRequired) {
+    return (
+      <div>
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-dark dark:text-white">
+            Activar MFA
+          </h1>
+          <p className="mt-1 text-sm text-gray-6 dark:text-dark-6">
+            Debe configurar autenticación en dos pasos antes de continuar.
+          </p>
+        </div>
+        <div className="max-w-3xl">
+          <MfaSetupPanel />
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

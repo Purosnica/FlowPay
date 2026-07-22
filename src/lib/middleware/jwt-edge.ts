@@ -36,6 +36,7 @@ export async function verifyTokenEdge(
           : typeof payload.iat === 'number'
             ? payload.iat
             : undefined,
+      mfaSetupRequired: payload.mfaSetupRequired === true,
       iat: typeof payload.iat === 'number' ? payload.iat : undefined,
     };
   } catch {

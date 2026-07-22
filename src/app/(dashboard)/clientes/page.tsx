@@ -3,8 +3,8 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { DeleteRowButton } from "@/components/ui/row-action-buttons";
 import { Modal } from "@/components/ui/modal";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ClienteTable } from "@/components/clientes/cliente-table";
 import { TablePagination } from "@/components/cobranza/data-table";
 import { usePagination } from "@/hooks/use-pagination";
@@ -276,41 +276,21 @@ export default function ClientesPage() {
       </Modal>
 
       {/* Modal de confirmación de eliminación */}
-      <Modal
+      <ConfirmDialog
         isOpen={isDeleteModalOpen}
         onClose={() => {
           setIsDeleteModalOpen(false);
           setClienteToDelete(null);
         }}
-        title="Confirmar Eliminación"
-        size="sm"
-      >
-        <div className="space-y-4">
-          <p className="text-dark dark:text-white">
-            ¿Estás seguro de que deseas eliminar este cliente? Esta acción no se
-            puede deshacer.
-          </p>
-          <div className="flex justify-end gap-4">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsDeleteModalOpen(false);
-                setClienteToDelete(null);
-              }}
-            >
-              Cancelar
-            </Button>
-            <DeleteRowButton
-              size="md"
-              label={
-                deleteMutation.isPending ? "Eliminando..." : "Eliminar"
-              }
-              onClick={handleConfirmDelete}
-              disabled={deleteMutation.isPending}
-            />
-          </div>
-        </div>
-      </Modal>
+        title="Confirmar eliminación"
+        description="¿Está seguro de que desea eliminar este cliente? Esta acción no se puede deshacer."
+        confirmLabel={
+          deleteMutation.isPending ? "Eliminando..." : "Eliminar"
+        }
+        variant="danger"
+        isLoading={deleteMutation.isPending}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }

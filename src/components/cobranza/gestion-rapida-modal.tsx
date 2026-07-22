@@ -7,6 +7,7 @@ import {
   GestionForm,
   type GestionFormData,
 } from '@/components/cobranza/gestion-form';
+import { HorarioAlerta } from '@/components/cobranza/horario-alerta';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { useGraphQLMutation } from '@/hooks/use-graphql-mutation';
 import {
@@ -15,10 +16,15 @@ import {
   GET_CASOS_PRIORITARIOS_MI_DIA,
   GET_PRESTAMO,
   GET_RESUMEN_MI_DIA,
+  VERIFICAR_HORARIO_COBRANZA,
 } from '@/lib/graphql/queries/cobranza.queries';
 import { buildPlantillaContextFromPrestamo } from '@/lib/cobranza/plantilla-mensaje-utils';
-import { type BandejaGraphQLItem, type Prestamo , nombreCompletoCliente } from '@/types/cobranza';
-
+import { trackGestionCreated } from '@/lib/analytics/product-analytics';
+import {
+  type BandejaGraphQLItem,
+  type Prestamo,
+  nombreCompletoCliente,
+} from '@/types/cobranza';
 
 interface GestionRapidaModalProps {
   prestamo?: BandejaGraphQLItem | null;
@@ -60,8 +66,23 @@ export function GestionRapidaModal({
   const prestamo =
     prestamoProp ?? (data?.prestamo ? toBandejaItem(data.prestamo) : null);
 
+  const idmandanteHorario =
+    prestamo?.idmandante ?? prestamoProp?.idmandante ?? undefined;
+
+  const { data: horarioData } = useGraphQLQuery<{
+    verificarHorarioCobranza: { permitido: boolean; motivo?: string | null };
+  }>(
+    VERIFICAR_HORARIO_COBRANZA,
+    { idmandante: idmandanteHorario ?? null },
+    { enabled: !!resolvedId },
+  );
+
+  const horarioBloqueado =
+    horarioData?.verificarHorarioCobranza.permitido === false;
+
   const mutation = useGraphQLMutation(CREATE_GESTION, {
     onSuccess: () => {
+      trackGestionCreated();
       void queryClient.invalidateQueries({ queryKey: [GET_BANDEJA_COBRADOR] });
       void queryClient.invalidateQueries({ queryKey: [GET_RESUMEN_MI_DIA] });
       void queryClient.invalidateQueries({
@@ -73,7 +94,7 @@ export function GestionRapidaModal({
   });
 
   const handleSubmit = (form: GestionFormData) => {
-    if (!prestamo) {
+    if (!prestamo || horarioBloqueado) {
       return;
     }
     mutation.mutate({
@@ -147,9 +168,17 @@ export function GestionRapidaModal({
       >
         {prestamo && plantillaContext && (
           <>
-            <p className="mb-4 text-sm text-gray-500">
+            <p className="mb-3 text-sm text-gray-500">
               {nombreCliente} · {prestamo.diasMora} días mora
             </p>
+            {horarioData?.verificarHorarioCobranza && (
+              <div className="mb-4">
+                <HorarioAlerta
+                  permitido={horarioData.verificarHorarioCobranza.permitido}
+                  motivo={horarioData.verificarHorarioCobranza.motivo}
+                />
+              </div>
+            )}
             <GestionForm
               modoRapido
               idmandante={prestamo.idmandante}
@@ -159,6 +188,7 @@ export function GestionRapidaModal({
               saldoTotal={prestamo.saldoTotal}
               celularCliente={prestamo.cliente?.celular}
               isLoading={mutation.isPending}
+              submitDisabled={horarioBloqueado}
               onCancel={onClose}
               onSubmit={handleSubmit}
             />

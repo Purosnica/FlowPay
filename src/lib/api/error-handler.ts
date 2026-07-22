@@ -1,8 +1,6 @@
 /**
- * MANEJO GLOBAL DE ERRORES PARA API ROUTES
- * 
- * Este módulo proporciona funciones para manejar errores de manera consistente
- * y retornar respuestas apropiadas al frontend
+ * Contrato estable de errores API (I060).
+ * Sin stack traces ni mensajes internos en 5xx.
  */
 
 import { NextResponse } from 'next/server';
@@ -14,9 +12,11 @@ import { logger } from '@/lib/utils/logger';
 export interface ApiErrorResponse {
   success: false;
   error: string;
-  code?: string;
+  code: string;
   detalles?: Record<string, unknown>;
 }
+
+const SAFE_5XX_MESSAGE = 'Error interno del servidor';
 
 /**
  * Maneja errores y retorna respuesta apropiada
@@ -31,21 +31,24 @@ export function handleApiError(error: unknown): NextResponse<ApiErrorResponse> {
     );
   }
 
-  // Error de servicio personalizado
   if (error instanceof ServicioError) {
     const statusCode = getStatusCodeForErrorCode(error.code);
+    const isServer = statusCode >= 500;
     return NextResponse.json(
       {
         success: false,
-        error: error.message,
+        error: isServer ? SAFE_5XX_MESSAGE : error.message,
         code: error.code,
-        detalles: error.detalles,
+        ...(isServer
+          ? {}
+          : error.detalles
+            ? { detalles: sanitizeDetalles(error.detalles) }
+            : {}),
       },
       { status: statusCode },
     );
   }
 
-  // Error de validación Zod
   if (error instanceof ZodError) {
     const firstIssue = error.issues[0];
     return NextResponse.json(
@@ -61,12 +64,10 @@ export function handleApiError(error: unknown): NextResponse<ApiErrorResponse> {
     );
   }
 
-  // Error de Prisma
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     return handlePrismaError(error);
   }
 
-  // Error de validación de Prisma
   if (error instanceof Prisma.PrismaClientValidationError) {
     return NextResponse.json(
       {
@@ -78,94 +79,105 @@ export function handleApiError(error: unknown): NextResponse<ApiErrorResponse> {
     );
   }
 
-  // Error de autenticación (mensaje contiene "No autenticado" o "Token")
-  const errorMessage =
-    error instanceof Error ? error.message : "Error desconocido";
-  
   if (
     error instanceof Error &&
-    (error.message.includes("No autenticado") ||
-      error.message.includes("Token") ||
-      error.message.includes("autenticado"))
+    (error.message.includes('No autenticado') ||
+      error.message.includes('Token') ||
+      error.message.includes('autenticado'))
   ) {
     return NextResponse.json(
       {
         success: false,
-        error: errorMessage,
-        code: "UNAUTHORIZED",
+        error: 'No autenticado',
+        code: 'UNAUTHORIZED',
       },
-      { status: 401 }
+      { status: 401 },
     );
   }
 
-  // Error genérico: no filtrar detalles internos al cliente
   return NextResponse.json(
     {
       success: false,
-      error: 'Error interno del servidor',
+      error: SAFE_5XX_MESSAGE,
       code: 'INTERNAL_ERROR',
     },
     { status: 500 },
   );
 }
 
-/**
- * Maneja errores específicos de Prisma
- */
+function sanitizeDetalles(
+  detalles: Record<string, unknown>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(detalles)) {
+    if (
+      key.toLowerCase().includes('stack') ||
+      key.toLowerCase().includes('sql') ||
+      key.toLowerCase().includes('password')
+    ) {
+      continue;
+    }
+    if (
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean' ||
+      value === null
+    ) {
+      out[key] = value;
+    } else if (Array.isArray(value) && value.every((v) => typeof v === 'string')) {
+      out[key] = value;
+    }
+  }
+  return out;
+}
+
 function handlePrismaError(
-  error: Prisma.PrismaClientKnownRequestError
+  error: Prisma.PrismaClientKnownRequestError,
 ): NextResponse<ApiErrorResponse> {
   switch (error.code) {
-    case "P2002":
-      // Unique constraint violation
+    case 'P2002':
       return NextResponse.json(
         {
           success: false,
-          error: "Ya existe un registro con estos datos",
-          code: "DUPLICADO_ERROR",
+          error: 'Ya existe un registro con estos datos',
+          code: 'DUPLICADO_ERROR',
           detalles: { campo: error.meta?.target },
         },
-        { status: 409 }
+        { status: 409 },
       );
 
-    case "P2025":
-      // Record not found
+    case 'P2025':
       return NextResponse.json(
         {
           success: false,
-          error: "Registro no encontrado",
-          code: "NO_ENCONTRADO",
+          error: 'Registro no encontrado',
+          code: 'NO_ENCONTRADO',
         },
-        { status: 404 }
+        { status: 404 },
       );
 
-    case "P2003":
-      // Foreign key constraint violation
+    case 'P2003':
       return NextResponse.json(
         {
           success: false,
-          error: "Error de integridad referencial",
-          code: "INTEGRIDAD_ERROR",
+          error: 'Error de integridad referencial',
+          code: 'INTEGRIDAD_ERROR',
         },
-        { status: 400 }
+        { status: 400 },
       );
 
     default:
       return NextResponse.json(
         {
           success: false,
-          error: "Error de base de datos",
-          code: "DATABASE_ERROR",
-          detalles: { code: error.code },
+          error: 'Error de base de datos',
+          code: 'DATABASE_ERROR',
         },
-        { status: 500 }
+        { status: 500 },
       );
   }
 }
 
-/**
- * Obtiene el código de estado HTTP apropiado para un código de error
- */
 function getStatusCodeForErrorCode(code: ErrorCode): number {
   switch (code) {
     case ErrorCode.VALIDACION_ERROR:
@@ -199,10 +211,7 @@ function getStatusCodeForErrorCode(code: ErrorCode): number {
  * Wrapper para manejar errores en handlers de API
  */
 export function withErrorHandler<T>(
-  handler: () => Promise<NextResponse<T>>
+  handler: () => Promise<NextResponse<T>>,
 ): Promise<NextResponse<T | ApiErrorResponse>> {
   return handler().catch(handleApiError);
 }
-
-
-

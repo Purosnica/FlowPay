@@ -23,13 +23,14 @@ interface Usuario {
 }
 
 type LoginResult =
-  | { success: true; mfaRequired?: false }
+  | { success: true; mfaRequired?: false; mfaSetupRequired?: boolean }
   | { success: true; mfaRequired: true }
   | { success: false; error?: string };
 
 interface AuthContextType {
   usuario: Usuario | null;
   permisos: string[];
+  mfaSetupRequired: boolean;
   loading: boolean;
   login: (email: string, password: string) => Promise<LoginResult>;
   verifyMfa: (codigo: string) => Promise<LoginResult>;
@@ -42,6 +43,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [permisos, setPermisos] = useState<string[]>([]);
+  const [mfaSetupRequired, setMfaSetupRequired] = useState(false);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -66,6 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!response.ok) {
         setUsuario(null);
         setPermisos([]);
+        setMfaSetupRequired(false);
         return;
       }
 
@@ -73,18 +76,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         success: boolean;
         usuario?: Usuario;
         permisos?: string[];
+        mfaSetupRequired?: boolean;
       };
 
       if (data.success && data.usuario) {
         setUsuario(data.usuario);
         setPermisos(data.permisos ?? []);
+        setMfaSetupRequired(Boolean(data.mfaSetupRequired));
       } else {
         setUsuario(null);
         setPermisos([]);
+        setMfaSetupRequired(false);
       }
     } catch {
       setUsuario(null);
       setPermisos([]);
+      setMfaSetupRequired(false);
     } finally {
       window.clearTimeout(timeoutId);
       setLoading(false);
@@ -118,6 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = (await response.json()) as {
         success: boolean;
         mfaRequired?: boolean;
+        mfaSetupRequired?: boolean;
         usuario?: Usuario;
         permisos?: string[];
         error?: string;
@@ -130,8 +138,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (data.success && data.usuario) {
         setPermisos(data.permisos ?? []);
         setUsuario(data.usuario);
+        setMfaSetupRequired(Boolean(data.mfaSetupRequired));
         await checkAuth();
-        return { success: true };
+        return {
+          success: true,
+          mfaSetupRequired: Boolean(data.mfaSetupRequired),
+        };
       }
 
       return {
@@ -161,14 +173,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         success: boolean;
         usuario?: Usuario;
         permisos?: string[];
+        mfaSetupRequired?: boolean;
         error?: string;
       };
 
       if (data.success && data.usuario) {
         setPermisos(data.permisos ?? []);
         setUsuario(data.usuario);
+        setMfaSetupRequired(Boolean(data.mfaSetupRequired));
         await checkAuth();
-        return { success: true };
+        return {
+          success: true,
+          mfaSetupRequired: Boolean(data.mfaSetupRequired),
+        };
       }
 
       return {
@@ -194,6 +211,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setUsuario(null);
       setPermisos([]);
+      setMfaSetupRequired(false);
       router.push('/login');
     }
   };
@@ -219,6 +237,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         usuario,
         permisos,
+        mfaSetupRequired,
         loading,
         login,
         verifyMfa,

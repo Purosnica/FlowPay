@@ -104,13 +104,15 @@ Procesos operativos manuales y automáticos.
 | `importaciones_pendientes` | Importaciones pendientes | 60 | — |
 | `auditoria_retencion` | Retención auditoría | 70 | — |
 | `digest_email_supervisores` | Digest email supervisores | 80 | SMTP configurado |
+| `notificacion_email_outbox` | Outbox email notificaciones | 85 | SMTP + `emailEstado=PENDIENTE` |
 
 **Alerta de fallo:** si el master termina en `ERROR` / `PARCIAL` / `TIMEOUT`, se envía email a ADMIN/GERENTE (config `cobranza.cron_alerta_email_activa`, default `true`, requiere SMTP).
 
 **Importaciones (cola):** `/api/cron/procesar-importaciones` —
-schedule Vercel `0 7 * * *` (diario 07:00). Además, el job diario
+schedule Vercel `0 7 * * *` (diario 07:00 UTC, ver `vercel.json`). Además, el job diario
 `importaciones_pendientes` (dentro de `operaciones_cobranza`) y el procesamiento
 on-demand tras subir archivo cubren la cola. No depende de un cron cada 5 min.
+Jobs atascados no-CARTERA o con reintentos agotados pasan a `DEAD_LETTER`.
 
 Fuente: `cron-registry.ts`
 
@@ -147,6 +149,8 @@ flowchart TD
   A --> F[reclamos_sla]
   A --> G[importaciones_pendientes]
   A --> H[auditoria_retencion]
+  A --> I[digest_email_supervisores]
+  A --> J[notificacion_email_outbox]
 ```
 
 ---

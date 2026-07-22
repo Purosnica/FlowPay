@@ -42,14 +42,16 @@ check(
   'P0-1',
   'Bandeja limita candidatos antes de prioridad',
   bandeja.includes('BANDEJA_PRIORIDAD_CANDIDATE_LIMIT') &&
-    bandeja.includes('take: BANDEJA_PRIORIDAD_CANDIDATE_LIMIT'),
+    (bandeja.includes('take: BANDEJA_PRIORIDAD_CANDIDATE_LIMIT') ||
+      bandeja.includes('candidateLimit')),
 );
 
 check(
   'P0-2',
   'Mi día limita candidatos antes de prioridad',
   miDia.includes('MI_DIA_PRIORIDAD_CANDIDATE_LIMIT') &&
-    miDia.includes('take: MI_DIA_PRIORIDAD_CANDIDATE_LIMIT'),
+    (miDia.includes('take: MI_DIA_PRIORIDAD_CANDIDATE_LIMIT') ||
+      miDia.includes('candidateLimit')),
 );
 
 check(
@@ -140,6 +142,74 @@ check(
 );
 
 check('POS-1', 'performance-limits.ts existe', limits.includes('export const'));
+
+// I105–I119
+const kpiCache = fs.existsSync('src/lib/cache/kpi-cache.ts')
+  ? read('src/lib/cache/kpi-cache.ts')
+  : '';
+const dashboardSvc = read('src/lib/cobranza/dashboard-service.ts');
+const nextCfg = read('next.config.mjs');
+const gqlRoute = read('src/app/api/graphql/route.ts');
+const lazyChart = fs.existsSync('src/components/charts/lazy-apex-chart.tsx');
+const dataTableNow = read('src/components/cobranza/data-table.tsx');
+const importJob = read('src/lib/cobranza/import/importacion-job-service.ts');
+const instrumentation = fs.existsSync('src/instrumentation.ts');
+const resumenSvc = fs.existsSync('src/lib/cobranza/resumen-diario-service.ts');
+const exportJob = fs.existsSync('src/lib/cobranza/exportacion-job-service.ts');
+const tipifApi = fs.existsSync('src/app/api/catalogos/tipificaciones/route.ts');
+const moraProfile = fs.existsSync('src/lib/cobranza/mora-recalculo-profile.ts');
+const metricsPlugin = fs.existsSync(
+  'src/lib/graphql/plugins/operation-metrics.ts',
+);
+
+check(
+  'I105',
+  'Cache KPI dashboard (Redis/memoria)',
+  kpiCache.includes('KPI_CACHE_TTL_SECONDS') &&
+    dashboardSvc.includes('conCacheKpi'),
+);
+check(
+  'I106',
+  'Resumen diario materializado',
+  resumenSvc && schema.includes('tbl_resumen_diario_cobranza'),
+);
+check(
+  'I107',
+  'CDN cache headers assets estáticos',
+  nextCfg.includes('/_next/static') && nextCfg.includes('immutable'),
+);
+check(
+  'I108',
+  'Compresión GraphQL grandes',
+  gqlRoute.includes('quizásComprimirGraphqlResponse'),
+);
+check('I109', 'Lazy ApexCharts compartido', lazyChart);
+check(
+  'I110',
+  'Virtualizar tablas TanStack',
+  dataTableNow.includes('useVirtualizer'),
+);
+check(
+  'I112',
+  'Límites candidatos configurables mandante',
+  limits.includes('obtenerLimiteCandidatosBandeja') &&
+    limits.includes('obtenerLimiteCandidatosMiDia'),
+);
+check('I113', 'Exports async >10k', exportJob);
+check('I114', 'Profiling mora recalculo', moraProfile);
+check(
+  'I115',
+  'Import sync delega a async',
+  read('src/app/api/cobranza/importar/route.ts').includes('crearImportacionJob'),
+);
+check('I116', 'ETag catálogos tipificaciones', tipifApi);
+check(
+  'I117',
+  'Import shard por mandante',
+  importJob.includes('seleccionarJobsPendientesSharded'),
+);
+check('I118', 'p95 GraphQL por operación', metricsPlugin);
+check('I119', 'Prisma connection warming', instrumentation);
 
 console.log('=== PERFORMANCE AUDIT ===');
 const failed = checks.filter((c) => !c.ok);

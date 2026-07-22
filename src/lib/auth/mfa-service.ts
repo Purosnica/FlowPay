@@ -9,6 +9,7 @@ import {
   cifrarSecretoMfa,
   descifrarSecretoMfa,
 } from '@/lib/auth/mfa-crypto';
+import { rolRequiereMfa } from '@/lib/auth/mfa-policy';
 
 const ISSUER = 'FlowPay';
 
@@ -119,10 +120,19 @@ export async function desactivarMfa(
 ): Promise<void> {
   const usuario = await prisma.tbl_usuario.findFirst({
     where: { idusuario, activo: true, deletedAt: null },
-    select: { mfaSecret: true, mfaEnabled: true },
+    select: {
+      mfaSecret: true,
+      mfaEnabled: true,
+      rol: { select: { codigo: true } },
+    },
   });
   if (!usuario?.mfaEnabled || !usuario.mfaSecret) {
     throw new Error('MFA no está activo.');
+  }
+  if (rolRequiereMfa(usuario.rol?.codigo)) {
+    throw new Error(
+      'MFA es obligatorio para ADMIN y GERENTE; no se puede desactivar.',
+    );
   }
 
   const secret = descifrarSecretoMfa(usuario.mfaSecret);

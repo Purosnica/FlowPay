@@ -1,10 +1,8 @@
 'use client';
 
-import dynamic from 'next/dynamic';
 import type { ApexOptions } from 'apexcharts';
+import { LazyApexChart as Chart } from '@/components/charts/lazy-apex-chart';
 import { formatearMoneda, type AgingTramoReporte } from '@/types/cobranza';
-
-const Chart = dynamic(() => import('react-apexcharts'), { ssr: false });
 
 /** Colores por severidad de mora (temprano → severo). */
 const TRAMO_COLORS = [

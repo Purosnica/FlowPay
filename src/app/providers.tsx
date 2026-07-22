@@ -5,6 +5,9 @@ import { ThemeProvider } from "next-themes";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { AuthProvider } from "@/contexts/auth-context";
+import { FocusModeProvider } from "@/contexts/focus-mode-context";
+import { PrivacySafeClickTracker } from "@/components/analytics/privacy-safe-click-tracker";
+import { OpsThemePreference } from "@/components/pwa/ops-theme-preference";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -37,9 +40,19 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="light" attribute="class">
+      <ThemeProvider
+        defaultTheme="light"
+        attribute="class"
+        enableSystem={false}
+      >
         <AuthProvider>
-          <SidebarProvider>{children}</SidebarProvider>
+          <OpsThemePreference />
+          <FocusModeProvider>
+            <SidebarProvider>
+              <PrivacySafeClickTracker />
+              {children}
+            </SidebarProvider>
+          </FocusModeProvider>
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>

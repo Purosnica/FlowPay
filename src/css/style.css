@@ -6,9 +6,48 @@
   body {
     @apply bg-gray-2 text-dark-5 dark:bg-[#020D1A] dark:text-dark-6;
   }
+
+  /* Tipografía de marca (I043): display para títulos hero/página */
+  .font-display {
+    font-family: 'Satoshi', ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: -0.02em;
+  }
+
+  /*
+   * Dark mode operativo call center (I050):
+   * mayor contraste en filas/tablas, menos glare en fondos.
+   */
+  .dark.theme-ops,
+  html.dark {
+    --ops-surface: #0b1220;
+    --ops-row: #111827;
+    --ops-row-alt: #0f172a;
+    --ops-border: #1f2937;
+  }
+
+  html.dark body {
+    background-color: #020d1a;
+  }
+
+  html.dark .ops-table-row:nth-child(even) {
+    background-color: rgba(15, 23, 42, 0.55);
+  }
 }
 
 @layer utilities {
+  /* Layout tablet campo (I044) */
+  .field-touch-target {
+    @apply min-h-11 min-w-11;
+  }
+
+  .field-sticky-actions {
+    @apply sticky bottom-0 z-20 -mx-4 border-t border-stroke bg-white/95 px-4 py-3 backdrop-blur dark:border-dark-3 dark:bg-gray-dark/95 md:static md:mx-0 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none;
+  }
+
+  .field-layout {
+    @apply mx-auto w-full max-w-3xl space-y-4 md:max-w-none;
+  }
+
   /* Chrome, Safari and Opera */
   .no-scrollbar::-webkit-scrollbar {
     display: none;

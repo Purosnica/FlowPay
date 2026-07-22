@@ -155,6 +155,34 @@ export async function requerirAccesoMandante(
 }
 
 /**
+ * Scope para operaciones batch (mora/castigo): mandante concreto o toda la
+ * cartera solo si es ADMIN. Evita IDOR cross-mandante.
+ */
+export async function requerirScopeOperacionCartera(
+  idusuario: number | null | undefined,
+  idmandante: number | null | undefined,
+): Promise<number | undefined> {
+  if (!idusuario) {
+    throw new GraphQLPermissionError(
+      'Debes estar autenticado para acceder a este recurso.',
+    );
+  }
+
+  if (idmandante != null) {
+    await requerirAccesoMandante(idusuario, idmandante);
+    return idmandante;
+  }
+
+  if (!(await esAdmin(idusuario))) {
+    throw new GraphQLPermissionError(
+      'Debe indicar un mandante o ser administrador para operar sobre toda la cartera.',
+    );
+  }
+
+  return undefined;
+}
+
+/**
  * Verifica acceso a un cliente vía sus préstamos y mandantes asignados.
  */
 export async function requerirAccesoCliente(

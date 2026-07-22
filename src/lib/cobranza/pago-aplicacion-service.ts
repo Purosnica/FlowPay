@@ -13,6 +13,7 @@ import {
   revertirCuotasPorPago,
 } from './acuerdo-cuota-service';
 import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
+import { incrementarVersionPrestamo } from './optimistic-lock';
 
 type Tx = Prisma.TransactionClient;
 
@@ -41,6 +42,7 @@ export async function aplicarPagoAlPrestamo(
       saldoTotal: true,
       diasMora: true,
       deletedAt: true,
+      version: true,
     },
   });
 
@@ -54,6 +56,8 @@ export async function aplicarPagoAlPrestamo(
       `El monto (${monto}) excede el saldo del préstamo (${saldoActual}).`,
     );
   }
+
+  await incrementarVersionPrestamo(tx, params.idprestamo, prestamo.version);
 
   // Decremento atómico: evita lost updates en pagos concurrentes.
   const afectados = await tx.$executeRaw`

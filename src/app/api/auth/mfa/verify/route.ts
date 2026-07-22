@@ -93,6 +93,7 @@ export async function POST(req: NextRequest) {
       success: true,
       usuario: result.usuario,
       permisos: result.permisos ?? [],
+      mfaSetupRequired: Boolean(result.mfaSetupRequired),
     });
 
     response.cookies.set('auth-token', result.token, {

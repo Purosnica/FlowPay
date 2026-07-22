@@ -281,7 +281,7 @@ function DashboardPageContent() {
 
       <OnboardingGuide
         idusuario={usuario?.idusuario ?? null}
-        habilitado={esCobrador && puedeCartera}
+        habilitado={Boolean(usuario)}
       />
 
       {cargandoDatos && (

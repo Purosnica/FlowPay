@@ -6,6 +6,10 @@ import {
   rangoPeriodoActual,
 } from './periodo-utils';
 import type { KpiCobranzaCore } from '@/types/cobranza';
+import {
+  claveCacheKpisCore,
+  conCacheKpi,
+} from '@/lib/cache/kpi-cache';
 
 export type { KpiCobranzaCore };
 
@@ -18,93 +22,97 @@ export async function obtenerKpisCobranzaCore(
   }
 
   const mandanteFilter = idmandante ?? (await filtroMandante(idusuario));
-  const rangoMes = filtroFechaEnPeriodo(rangoPeriodoActual());
+  const cacheKey = claveCacheKpisCore(idusuario, mandanteFilter);
 
-  const [
-    aggCartera,
-    aggMora,
-    aggRecuperacion,
-    gestionesMes,
-    promesasAbiertas,
-    acuerdosVigentes,
-    gestionesConContacto,
-  ] = await Promise.all([
-    prisma.tbl_prestamo.aggregate({
-      where: {
-        deletedAt: null,
-        idmandante: mandanteFilter,
-        saldoTotal: { gt: 0 },
-      },
-      _sum: { saldoTotal: true },
-    }),
-    prisma.tbl_prestamo.aggregate({
-      where: {
-        deletedAt: null,
-        idmandante: mandanteFilter,
-        saldoTotal: { gt: 0 },
-        diasMora: { gt: 0 },
-      },
-      _sum: { saldoTotal: true },
-    }),
-    prisma.tbl_pago.aggregate({
-      where: {
-        deletedAt: null,
-        aplicado: true,
-        idmandante: mandanteFilter,
-        fechaPago: rangoMes,
-      },
-      _sum: { monto: true },
-    }),
-    prisma.tbl_gestion.count({
-      where: {
-        deletedAt: null,
-        idmandante: mandanteFilter,
-        fechaGestion: rangoMes,
-      },
-    }),
-    prisma.tbl_gestion.count({
-      where: {
-        deletedAt: null,
-        idmandante: mandanteFilter,
-        fechaPromesa: { gte: new Date() },
-      },
-    }),
-    prisma.tbl_acuerdo.count({
-      where: {
-        deletedAt: null,
-        idmandante: mandanteFilter,
-        estado: 'VIGENTE',
-      },
-    }),
-    prisma.tbl_gestion.count({
-      where: {
-        deletedAt: null,
-        idmandante: mandanteFilter,
-        fechaGestion: rangoMes,
-        codresult: {
-          tipoGestion: { in: ['EFECTIVA', 'EFECTIVA CON TERCERO'] },
+  return conCacheKpi(cacheKey, async () => {
+    const rangoMes = filtroFechaEnPeriodo(rangoPeriodoActual());
+
+    const [
+      aggCartera,
+      aggMora,
+      aggRecuperacion,
+      gestionesMes,
+      promesasAbiertas,
+      acuerdosVigentes,
+      gestionesConContacto,
+    ] = await Promise.all([
+      prisma.tbl_prestamo.aggregate({
+        where: {
+          deletedAt: null,
+          idmandante: mandanteFilter,
+          saldoTotal: { gt: 0 },
         },
-      },
-    }),
-  ]);
+        _sum: { saldoTotal: true },
+      }),
+      prisma.tbl_prestamo.aggregate({
+        where: {
+          deletedAt: null,
+          idmandante: mandanteFilter,
+          saldoTotal: { gt: 0 },
+          diasMora: { gt: 0 },
+        },
+        _sum: { saldoTotal: true },
+      }),
+      prisma.tbl_pago.aggregate({
+        where: {
+          deletedAt: null,
+          aplicado: true,
+          idmandante: mandanteFilter,
+          fechaPago: rangoMes,
+        },
+        _sum: { monto: true },
+      }),
+      prisma.tbl_gestion.count({
+        where: {
+          deletedAt: null,
+          idmandante: mandanteFilter,
+          fechaGestion: rangoMes,
+        },
+      }),
+      prisma.tbl_gestion.count({
+        where: {
+          deletedAt: null,
+          idmandante: mandanteFilter,
+          fechaPromesa: { gte: new Date() },
+        },
+      }),
+      prisma.tbl_acuerdo.count({
+        where: {
+          deletedAt: null,
+          idmandante: mandanteFilter,
+          estado: 'VIGENTE',
+        },
+      }),
+      prisma.tbl_gestion.count({
+        where: {
+          deletedAt: null,
+          idmandante: mandanteFilter,
+          fechaGestion: rangoMes,
+          codresult: {
+            tipoGestion: { in: ['EFECTIVA', 'EFECTIVA CON TERCERO'] },
+          },
+        },
+      }),
+    ]);
 
-  const carteraTotal = roundMoney(decimalToNumber(aggCartera._sum.saldoTotal));
-  const carteraEnMora = roundMoney(decimalToNumber(aggMora._sum.saldoTotal));
-  const carteraEnMoraPct =
-    carteraTotal > 0 ? roundMoney((carteraEnMora / carteraTotal) * 100) : 0;
-  const tasaContactoPct =
-    gestionesMes > 0
-      ? roundMoney((gestionesConContacto / gestionesMes) * 100)
-      : 0;
+    const carteraTotal = roundMoney(decimalToNumber(aggCartera._sum.saldoTotal));
+    const carteraEnMora = roundMoney(decimalToNumber(aggMora._sum.saldoTotal));
+    const carteraEnMoraPct =
+      carteraTotal > 0 ? roundMoney((carteraEnMora / carteraTotal) * 100) : 0;
+    const tasaContactoPct =
+      gestionesMes > 0
+        ? roundMoney((gestionesConContacto / gestionesMes) * 100)
+        : 0;
 
-  return {
-    carteraTotal,
-    carteraEnMora,
-    carteraEnMoraPct,
-    recuperacionMes: roundMoney(decimalToNumber(aggRecuperacion._sum.monto)),
-    gestionesMes,
-    tasaContactoPct,
-    promesasAbiertas,
-    acuerdosVigentes,
-  };
+    return {
+      carteraTotal,
+      carteraEnMora,
+      carteraEnMoraPct,
+      recuperacionMes: roundMoney(decimalToNumber(aggRecuperacion._sum.monto)),
+      gestionesMes,
+      tasaContactoPct,
+      promesasAbiertas,
+      acuerdosVigentes,
+    };
+  });
 }

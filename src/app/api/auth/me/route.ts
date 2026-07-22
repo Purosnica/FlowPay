@@ -19,6 +19,7 @@ import {
   verifyToken,
 } from '@/lib/auth/jwt';
 import { getUserById } from '@/lib/auth/auth-service';
+import { obtenerMfaSetupRequired } from '@/lib/auth/mfa-session';
 import {
   CSRF_COOKIE,
   csrfCookieOptions,
@@ -107,6 +108,7 @@ export async function GET(req: NextRequest) {
     const ahora = Math.floor(Date.now() / 1000);
     const permisos = await obtenerPermisosUsuario(usuario.idusuario);
     const usuarioCompleto = await getUserById(usuario.idusuario);
+    const mfaSetupRequired = await obtenerMfaSetupRequired(usuario.idusuario);
 
     const tokenNuevo = generateToken(
       {
@@ -118,6 +120,7 @@ export async function GET(req: NextRequest) {
         sessionStartedAt,
         lastActivityAt: ahora,
         permisosAt: ahora,
+        mfaSetupRequired,
       },
       remaining,
     );
@@ -129,6 +132,7 @@ export async function GET(req: NextRequest) {
         rolCodigo: usuarioCompleto?.rol?.codigo ?? '',
       },
       permisos,
+      mfaSetupRequired,
       session: {
         remainingSeconds: remaining,
         idleSeconds: SESSION_IDLE_SECONDS,

@@ -59,26 +59,37 @@ Variables:
 - `IMPORT_MAX_JOBS_PER_RUN`  
 
 El worker toma un número limitado de jobs por tick.  
-Jobs en `PROCESANDO` demasiado tiempo (~30 min) pueden volver a `PENDIENTE` (ver catálogo de reglas).
+Jobs en `PROCESANDO` demasiado tiempo (~30 min) pueden volver a `PENDIENTE` (CARTERA)
+o a `DEAD_LETTER` (otros tipos / reintentos agotados).
 
 ---
 
-## 5. Rate limit de login
+## 5. Lock optimista (préstamo / acuerdo)
+
+Columnas `version` en `tbl_prestamo` y `tbl_acuerdo`.  
+Al aplicar pago se incrementa la versión del préstamo (`optimistic-lock.ts`)
+además del `UPDATE` atómico de saldo. Si otra transacción ya cambió la
+versión, la operación falla con mensaje de concurrencia.
+
+---
+
+## 6. Rate limit de login
 
 En producción el rate limit de intentos de login puede ser distribuido (`tbl_rate_limit`) para coherencia multi-instancia.
 
 ---
 
-## 6. Buenas prácticas
+## 7. Buenas prácticas
 
 1. No deshabilitar locks en producción.  
 2. Mantener `CRON_SECRET` fuerte y único por entorno.  
 3. Ante “operación en curso”, reintentar unos segundos después.  
 4. Monitorear ejecuciones en `/configuracion/cron`.  
+5. Registrar handlers de apagado en scripts largos (`graceful-shutdown.ts`).
 
 ---
 
-## 7. Relacionados
+## 8. Relacionados
 
 - [TRANSACCIONES-PRISMA.md](./TRANSACCIONES-PRISMA.md)  
 - [CATALOGO-PROCESOS.md](./catalogos/CATALOGO-PROCESOS.md)  

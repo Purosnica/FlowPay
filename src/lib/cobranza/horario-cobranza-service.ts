@@ -18,18 +18,29 @@ function obtenerMinutosActuales(fecha: Date): number {
   return fecha.getHours() * 60 + fecha.getMinutes();
 }
 
-async function obtenerFeriadoDelDia(fecha: Date) {
+async function obtenerFeriadoDelDia(
+  fecha: Date,
+  idpais?: number | null,
+) {
+  const inicio = new Date(
+    Date.UTC(fecha.getFullYear(), fecha.getMonth(), fecha.getDate()),
+  );
+  const fin = new Date(
+    Date.UTC(fecha.getFullYear(), fecha.getMonth(), fecha.getDate() + 1),
+  );
+  const rango = { gte: inicio, lt: fin };
+
+  if (idpais != null) {
+    const delPais = await prisma.tbl_dia_feriado.findFirst({
+      where: { fecha: rango, idpais },
+    });
+    if (delPais) {
+      return delPais;
+    }
+  }
+
   return prisma.tbl_dia_feriado.findFirst({
-    where: {
-      fecha: {
-        gte: new Date(
-          Date.UTC(fecha.getFullYear(), fecha.getMonth(), fecha.getDate()),
-        ),
-        lt: new Date(
-          Date.UTC(fecha.getFullYear(), fecha.getMonth(), fecha.getDate() + 1),
-        ),
-      },
-    },
+    where: { fecha: rango, idpais: null },
   });
 }
 
@@ -39,8 +50,9 @@ async function obtenerFeriadoDelDia(fecha: Date) {
 export async function validarHorarioCobranza(
   fecha: Date,
   idmandante?: number | null,
+  idpais?: number | null,
 ): Promise<ValidacionHorario> {
-  const feriado = await obtenerFeriadoDelDia(fecha);
+  const feriado = await obtenerFeriadoDelDia(fecha, idpais);
 
   if (feriado) {
     return {

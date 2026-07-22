@@ -80,6 +80,7 @@ builder.queryField("buscarGlobal", (t) =>
       const clientes = await ctx.prisma.tbl_cliente.findMany({
         where: {
           estado: true,
+          deletedAt: null,
           ...(scopeCliente ?? {}),
           OR: [
             { primer_nombres: { contains: searchQuery } },

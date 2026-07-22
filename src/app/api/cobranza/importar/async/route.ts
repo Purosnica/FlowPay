@@ -11,6 +11,11 @@ import {
   mensajeArchivoExcedeLimite,
   mensajeFormatoImportacionNoSoportado,
 } from '@/lib/cobranza/upload-limits';
+import {
+  parseIdempotencyKeyHeader,
+  mensajeIdempotencyKeyInvalida,
+} from '@/lib/api/idempotency-key';
+import { handleApiError } from '@/lib/api/error-handler';
 
 export const maxDuration = 60;
 
@@ -28,26 +33,47 @@ const AsyncImportSchema = z.object({
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const usuario = await requirePermission(req, PERMISO.CARTERA_WRITE);
+
+    const rawIdem = req.headers.get('idempotency-key');
+    let idempotencyKey: string | undefined;
+    if (rawIdem != null && rawIdem.trim() !== '') {
+      idempotencyKey = parseIdempotencyKeyHeader(rawIdem);
+      if (!idempotencyKey) {
+        return NextResponse.json(
+          { success: false, error: mensajeIdempotencyKeyInvalida(), code: 'VALIDACION_ERROR' },
+          { status: 400 },
+        );
+      }
+    }
+
     const formData = await req.formData();
     const archivo = formData.get('archivo');
 
     if (!(archivo instanceof File)) {
       return NextResponse.json(
-        { success: false, error: 'Debe enviar un archivo.' },
+        { success: false, error: 'Debe enviar un archivo.', code: 'VALIDACION_ERROR' },
         { status: 400 },
       );
     }
 
     if (archivo.size > MAX_IMPORT_FILE_BYTES) {
       return NextResponse.json(
-        { success: false, error: mensajeArchivoExcedeLimite(MAX_IMPORT_FILE_BYTES) },
+        {
+          success: false,
+          error: mensajeArchivoExcedeLimite(MAX_IMPORT_FILE_BYTES),
+          code: 'VALIDACION_ERROR',
+        },
         { status: 400 },
       );
     }
 
     if (!esExtensionImportacionValida(archivo.name)) {
       return NextResponse.json(
-        { success: false, error: mensajeFormatoImportacionNoSoportado() },
+        {
+          success: false,
+          error: mensajeFormatoImportacionNoSoportado(),
+          code: 'VALIDACION_ERROR',
+        },
         { status: 400 },
       );
     }
@@ -63,7 +89,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: 'Parámetros inválidos.' },
+        { success: false, error: 'Parámetros inválidos.', code: 'VALIDACION_ERROR' },
         { status: 400 },
       );
     }
@@ -79,6 +105,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         {
           success: false,
           error: 'Cartera y completo requieren campaña y fecha de corte.',
+          code: 'VALIDACION_ERROR',
         },
         { status: 400 },
       );
@@ -95,6 +122,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       fechaCorte,
       nombreHoja,
       idplantillaImp,
+      idempotencyKey,
     });
 
     dispararProcesamientoImportaciones(req.nextUrl.origin);
@@ -107,9 +135,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         'Importación encolada. Se procesará en segundo plano; consulte el estado del job.',
     });
   } catch (error) {
-    const mensaje =
-      error instanceof Error ? error.message : 'Error al encolar importación';
-    const status = mensaje.includes('No autenticado') ? 401 : 400;
-    return NextResponse.json({ success: false, error: mensaje }, { status });
+    return handleApiError(error);
   }
 }

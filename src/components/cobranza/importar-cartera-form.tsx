@@ -510,6 +510,48 @@ export function ImportarCarteraForm({ onSuccess }: ImportarCarteraFormProps) {
             </div>
           )}
 
+          {vistaPrevia.errores.length > 0 && (
+            <div
+              className="mt-4 rounded-lg border border-red-300 bg-red-50 p-3 dark:border-red-800 dark:bg-red-900/20"
+              role="alert"
+              data-ux-id="import-errores-inline"
+            >
+              <p className="font-medium text-red-900 dark:text-red-100">
+                Errores de validación por fila (
+                {vistaPrevia.errores.length})
+              </p>
+              <div className="mt-2 max-h-56 overflow-y-auto rounded border border-red-200 dark:border-red-900">
+                <table className="w-full text-left text-sm">
+                  <thead className="sticky top-0 bg-red-100 dark:bg-red-950">
+                    <tr>
+                      <th className="px-2 py-1.5 font-semibold text-red-950 dark:text-red-50">
+                        Fila
+                      </th>
+                      <th className="px-2 py-1.5 font-semibold text-red-950 dark:text-red-50">
+                        Error
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {vistaPrevia.errores.map((err, idx) => (
+                      <tr
+                        key={`${err.fila}-${idx}`}
+                        className="border-t border-red-200 dark:border-red-900"
+                      >
+                        <td className="px-2 py-1.5 tabular-nums font-medium text-red-900 dark:text-red-100">
+                          {err.fila}
+                        </td>
+                        <td className="px-2 py-1.5 text-red-800 dark:text-red-200">
+                          {err.mensaje}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           {vistaPrevia.desgloseFilas.length > 0 && (
             <ImportDesglosePreviewTable
               filas={vistaPrevia.desgloseFilas}

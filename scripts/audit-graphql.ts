@@ -136,6 +136,40 @@ console.log('  Paginar usuariosActivos (usuariosMandante: límite 200 aplicado)'
 console.log('  prismaField + selection-aware includes en listas pesadas');
 console.log('  Scope deudor-contacto por mandante');
 
+console.log('\n=== I111 N+1 RE-AUDIT ===');
+const reclamoGql = fs.readFileSync(
+  'src/lib/graphql/resolvers/reclamo/index.ts',
+  'utf8',
+);
+const acuerdoQ = fs.readFileSync(
+  'src/lib/graphql/resolvers/acuerdo/queries.ts',
+  'utf8',
+);
+const batchLoader = fs.existsSync('src/lib/graphql/batch-loader.ts');
+const n1Checks = [
+  {
+    id: 'I111-1',
+    ok: reclamoGql.includes('include: { cliente: true, prestamo: true }'),
+    label: 'reclamos lista con include cliente+prestamo',
+  },
+  {
+    id: 'I111-2',
+    ok: acuerdoQ.includes('include:') && acuerdoQ.includes('cuotas'),
+    label: 'acuerdos con include cuotas (anti N+1)',
+  },
+  {
+    id: 'I111-3',
+    ok: batchLoader,
+    label: 'batch-loader util disponible',
+  },
+];
+for (const c of n1Checks) {
+  console.log(`[${c.ok ? 'PASS' : 'FAIL'}] ${c.id}: ${c.label}`);
+}
+if (n1Checks.some((c) => !c.ok)) {
+  process.exitCode = 1;
+}
+
 const schemaPrisma = fs.readFileSync('prisma/schema.prisma', 'utf8');
 const builderTs = fs.readFileSync('src/lib/graphql/builder.ts', 'utf8');
 const prismaObjectHelper = fs.existsSync(

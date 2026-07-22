@@ -66,7 +66,7 @@ export const updateClienteMutation = builder.mutationField(
         );
 
         const existente = await ctx.prisma.tbl_cliente.findFirst({
-          where: { idcliente, estado: true },
+          where: { idcliente, estado: true, deletedAt: null },
         });
         if (!existente) {
           throw new GraphQLValidationError("Cliente no encontrado.");
@@ -122,7 +122,7 @@ export const deleteClienteMutation = builder.mutationField(
         await authClienteEscritura(ctx);
 
         const existente = await ctx.prisma.tbl_cliente.findFirst({
-          where: { idcliente: args.id, estado: true },
+          where: { idcliente: args.id, estado: true, deletedAt: null },
         });
         if (!existente) {
           throw new GraphQLValidationError("Cliente no encontrado.");
@@ -132,7 +132,7 @@ export const deleteClienteMutation = builder.mutationField(
 
         const cliente = await ctx.prisma.tbl_cliente.update({
           where: { idcliente: args.id },
-          data: { estado: false },
+          data: { estado: false, deletedAt: new Date() },
           include: {
             tipodocumento: true,
             genero: true,

@@ -7,6 +7,10 @@ import {
   rangoPeriodoActual,
 } from './periodo-utils';
 import type { DashboardResumenCobranza } from '@/types/cobranza';
+import {
+  claveCacheResumenDashboard,
+  conCacheKpi,
+} from '@/lib/cache/kpi-cache';
 
 export type { DashboardResumenCobranza };
 
@@ -14,15 +18,26 @@ export async function obtenerResumenDashboard(
   idusuario: number,
 ): Promise<DashboardResumenCobranza> {
   const mandanteFilter = await filtroMandante(idusuario);
-  const rangoMes = filtroFechaEnPeriodo(rangoPeriodoActual());
+  const cacheKey = claveCacheResumenDashboard(idusuario, mandanteFilter);
 
-  const prestamoWhere = {
-    deletedAt: null,
-    idmandante: mandanteFilter,
-  };
+  return conCacheKpi(cacheKey, async () => {
+    const rangoMes = filtroFechaEnPeriodo(rangoPeriodoActual());
 
-  const [totalPrestamos, prestamosEnMora, aggSaldo, gestionesMes, pagosMes, pagosConciliadosMes, reclamosAbiertos, promesasVencidas] =
-    await Promise.all([
+    const prestamoWhere = {
+      deletedAt: null,
+      idmandante: mandanteFilter,
+    };
+
+    const [
+      totalPrestamos,
+      prestamosEnMora,
+      aggSaldo,
+      gestionesMes,
+      pagosMes,
+      pagosConciliadosMes,
+      reclamosAbiertos,
+      promesasVencidas,
+    ] = await Promise.all([
       prisma.tbl_prestamo.count({ where: prestamoWhere }),
       prisma.tbl_prestamo.count({
         where: { ...prestamoWhere, diasMora: { gt: 0 } },
@@ -63,14 +78,15 @@ export async function obtenerResumenDashboard(
       contarPromesasVencidas(idusuario, true),
     ]);
 
-  return {
-    totalPrestamos,
-    prestamosEnMora,
-    saldoCartera: decimalToNumber(aggSaldo._sum.saldoTotal),
-    gestionesMes,
-    pagosMes,
-    pagosConciliadosMes,
-    reclamosAbiertos,
-    promesasVencidas,
-  };
+    return {
+      totalPrestamos,
+      prestamosEnMora,
+      saldoCartera: decimalToNumber(aggSaldo._sum.saldoTotal),
+      gestionesMes,
+      pagosMes,
+      pagosConciliadosMes,
+      reclamosAbiertos,
+      promesasVencidas,
+    };
+  });
 }

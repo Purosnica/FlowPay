@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { csrfHeaders } from '@/lib/security/csrf';
+import { useAuth } from '@/contexts/auth-context';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 type MfaStatus = {
   enabled: boolean;
@@ -13,6 +15,9 @@ type MfaStatus = {
 };
 
 export function MfaSetupPanel() {
+  const { refreshUser, mfaSetupRequired } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [status, setStatus] = useState<MfaStatus | null>(null);
   const [secret, setSecret] = useState<string | null>(null);
   const [otpauthUrl, setOtpauthUrl] = useState<string | null>(null);
@@ -20,6 +25,12 @@ export function MfaSetupPanel() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const forzarSetup =
+    mfaSetupRequired ||
+    (searchParams.get('mfa') === 'required' &&
+      status !== null &&
+      !status.enabled);
 
   const loadStatus = useCallback(async () => {
     const res = await fetch('/api/auth/mfa/status', {
@@ -110,40 +121,10 @@ export function MfaSetupPanel() {
       setCodigo('');
       setSuccess('MFA activado correctamente.');
       await loadStatus();
+      await refreshUser();
+      router.replace('/dashboard');
     } catch {
       setError('Error de red al activar MFA');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const desactivar = async () => {
-    setError(null);
-    setSuccess(null);
-    setLoading(true);
-    try {
-      const res = await fetch('/api/auth/mfa/disable', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          ...csrfHeaders(),
-        },
-        body: JSON.stringify({ codigo }),
-      });
-      const data = (await res.json()) as {
-        success: boolean;
-        error?: string;
-      };
-      if (!data.success) {
-        setError(data.error || 'No se pudo desactivar');
-        return;
-      }
-      setCodigo('');
-      setSuccess('MFA desactivado.');
-      await loadStatus();
-    } catch {
-      setError('Error de red al desactivar MFA');
     } finally {
       setLoading(false);
     }
@@ -158,6 +139,15 @@ export function MfaSetupPanel() {
         Disponible para ADMIN y GERENTE. Use una app tipo Google Authenticator
         o Authy.
       </p>
+
+      {forzarSetup && !status.enabled ? (
+        <Alert variant="danger" className="mt-4">
+          <AlertDescription>
+            MFA es obligatorio para su rol. Active autenticación en dos pasos
+            para continuar usando FlowPay.
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       {error ? (
         <Alert variant="danger" className="mt-4">
@@ -225,24 +215,9 @@ export function MfaSetupPanel() {
       ) : null}
 
       {status.enabled ? (
-        <div className="mt-4 space-y-3">
-          <Input
-            label="Código para desactivar"
-            value={codigo}
-            onChange={(e) => setCodigo(e.target.value)}
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            maxLength={6}
-          />
-          <Button
-            type="button"
-            variant="outline"
-            disabled={loading || codigo.length !== 6}
-            onClick={() => void desactivar()}
-          >
-            Desactivar MFA
-          </Button>
-        </div>
+        <p className="mt-4 text-sm text-gray-6 dark:text-dark-6">
+          MFA obligatorio para ADMIN/GERENTE: no se puede desactivar.
+        </p>
       ) : null}
     </div>
   );

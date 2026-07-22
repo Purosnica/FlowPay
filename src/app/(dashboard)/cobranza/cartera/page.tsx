@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -9,9 +9,12 @@ import { ViewRowButton } from '@/components/ui/row-action-buttons';
 import { PermissionGate } from '@/components/auth/permission-gate';
 import { PERMISO } from '@/lib/permissions/permiso-codes';
 import { usePagination } from '@/hooks/use-pagination';
+import { useCarteraFiltersPersist } from '@/hooks/use-cartera-filters-persist';
+import { useAuth } from '@/contexts/auth-context';
 import { PaginatedDataTable } from '@/components/cobranza/paginated-data-table';
 import { CarteraFilters } from '@/components/cobranza/cartera-filters';
 import { PageHeader } from '@/components/ui/page-header';
+import { AsyncPanel } from '@/components/ui/async-panel';
 import { SearchParamsBoundary } from '@/components/ui/search-params-boundary';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { GET_PRESTAMOS } from '@/lib/graphql/queries/cobranza.queries';
@@ -52,14 +55,22 @@ function filtrosDesdeUrl(searchParams: URLSearchParams): PrestamoFilters {
 function CarteraPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { usuario } = useAuth();
   const {
     queryVars,
     handlePageChange,
     handlePageSizeChange,
     resetPage,
   } = usePagination({ initialPageSize: 20 });
-  const [filters, setFilters] = useState<PrestamoFilters>(() =>
-    filtrosDesdeUrl(searchParams),
+
+  const inicialUrl = useMemo(
+    () => filtrosDesdeUrl(searchParams),
+    [searchParams],
+  );
+
+  const { filters, setFilters, resetFilters } = useCarteraFiltersPersist(
+    usuario?.idusuario ?? null,
+    inicialUrl,
   );
 
   const { data, isLoading, error } = useGraphQLQuery<{
@@ -147,19 +158,44 @@ function CarteraPageContent() {
     [],
   );
 
+  const emptyAction = (
+    <div className="flex flex-wrap justify-center gap-2">
+      <PermissionGate permiso={PERMISO.CARTERA_WRITE}>
+        <Link href="/cobranza/importar">
+          <Button size="sm" data-ux-id="cartera-empty-importar">
+            Importar cartera
+          </Button>
+        </Link>
+        <Link href="/cobranza/asignacion">
+          <Button
+            size="sm"
+            variant="outline"
+            data-ux-id="cartera-empty-asignar"
+          >
+            Asignar cartera
+          </Button>
+        </Link>
+      </PermissionGate>
+    </div>
+  );
+
   return (
-    <div className="space-y-6">
+    <div className="field-layout space-y-6">
       <PageHeader
         title="Cartera de Cobranza"
-        description="Consulta y seguimiento de préstamos por mandante"
+        description="Consulta y seguimiento de préstamos por mandante. Los filtros se recuerdan por usuario."
         actions={
           <div className="flex flex-wrap gap-2">
             <PermissionGate permiso={PERMISO.CARTERA_WRITE}>
               <Link href="/cobranza/asignacion">
-                <Button variant="outline">Asignar cartera</Button>
+                <Button variant="outline" className="field-touch-target">
+                  Asignar cartera
+                </Button>
               </Link>
               <Link href="/cobranza/importar">
-                <Button variant="outline">Importar cartera</Button>
+                <Button variant="outline" className="field-touch-target">
+                  Importar cartera
+                </Button>
               </Link>
             </PermissionGate>
           </div>
@@ -173,36 +209,41 @@ function CarteraPageContent() {
           resetPage();
         }}
         onReset={() => {
-          setFilters({});
+          resetFilters();
           resetPage();
         }}
       />
 
       <div className="rounded-lg bg-white p-6 shadow-1 dark:bg-gray-dark">
-        {error && (
-          <div className="mb-4 rounded-lg bg-red-50 p-4 text-red-800 dark:bg-red-900/20 dark:text-red-200">
-            {error.message}
-          </div>
-        )}
-
-        <PaginatedDataTable
-          data={listaPrestamos}
-          columns={columns}
-          pagination={prestamosData}
+        <AsyncPanel
           isLoading={isLoading}
-          emptyMessage="No hay préstamos en cartera. Importe un archivo Excel."
-          onRowClick={(p) => router.push(`/cobranza/prestamos/${p.idprestamo}`)}
-          onPageChange={handlePageChange}
-          onPageSizeChange={handlePageSizeChange}
-          itemLabel="préstamos"
-          rowActions={(p) => (
-            <ViewRowButton
-              onClick={() =>
-                router.push(`/cobranza/prestamos/${p.idprestamo}`)
-              }
-            />
-          )}
-        />
+          error={error}
+          isEmpty={!isLoading && !error && listaPrestamos.length === 0}
+          emptyMessage="No hay préstamos en cartera con estos filtros."
+          emptyAction={emptyAction}
+        >
+          <PaginatedDataTable
+            data={listaPrestamos}
+            columns={columns}
+            pagination={prestamosData}
+            isLoading={false}
+            emptyMessage="No hay préstamos en cartera. Importe un archivo Excel."
+            emptyAction={emptyAction}
+            onRowClick={(p) =>
+              router.push(`/cobranza/prestamos/${p.idprestamo}`)
+            }
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+            itemLabel="préstamos"
+            rowActions={(p) => (
+              <ViewRowButton
+                onClick={() =>
+                  router.push(`/cobranza/prestamos/${p.idprestamo}`)
+                }
+              />
+            )}
+          />
+        </AsyncPanel>
       </div>
     </div>
   );
