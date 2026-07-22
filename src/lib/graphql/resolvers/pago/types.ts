@@ -50,6 +50,46 @@ export const CreatePagoInput = builder.inputRef('CreatePagoInput').implement({
   }),
 });
 
+export const UpdatePagoInputSchema = z
+  .object({
+    idpago: z.number().int().positive(),
+    fechaPago: z
+      .union([z.date(), z.string()])
+      .transform((v) => (typeof v === 'string' ? new Date(v) : v))
+      .optional(),
+    monto: z.number().positive().optional(),
+    moneda: z.enum(['NIO', 'USD']).optional(),
+    tipoCambio: z.number().positive().optional(),
+    medio: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .pipe(z.enum(MEDIOS_PAGO))
+      .optional(),
+  })
+  .refine(
+    (data) =>
+      data.fechaPago !== undefined ||
+      data.monto !== undefined ||
+      data.moneda !== undefined ||
+      data.tipoCambio !== undefined ||
+      data.medio !== undefined,
+    { message: 'Debe indicar al menos un campo a actualizar.' },
+  );
+
+export type UpdatePagoInput = z.infer<typeof UpdatePagoInputSchema>;
+
+export const UpdatePagoInput = builder.inputRef('UpdatePagoInput').implement({
+  fields: (t) => ({
+    idpago: t.int({ required: true }),
+    fechaPago: t.field({ type: 'DateTime', required: false }),
+    monto: t.float({ required: false }),
+    moneda: t.string({ required: false }),
+    tipoCambio: t.float({ required: false }),
+    medio: t.string({ required: false }),
+  }),
+});
+
 export const Pago = definePrismaObject('tbl_pago', {
   fields: (t) => ({
     idpago: t.exposeInt('idpago'),

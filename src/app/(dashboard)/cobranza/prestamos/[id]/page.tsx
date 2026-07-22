@@ -48,6 +48,7 @@ import {
   CREATE_GESTION,
   CREATE_ACUERDO,
   CREATE_PAGO,
+  UPDATE_PAGO,
   MARCAR_PAGO_APLICADO,
   ACTUALIZAR_ESTADO_ACUERDO,
   VERIFICAR_HORARIO_COBRANZA,
@@ -77,6 +78,7 @@ export default function PrestamoDetailPage({ params }: PageProps) {
   const [notaPrefill, setNotaPrefill] = useState('');
   const [ultimoPagoId, setUltimoPagoId] = useState<number | null>(null);
   const [pagoFormKey, setPagoFormKey] = useState(0);
+  const [pagoEditando, setPagoEditando] = useState<Pago | null>(null);
   const [acuerdoRotoId, setAcuerdoRotoId] = useState<number | null>(null);
   const [masSeccion, setMasSeccion] = useState<
     'contactos' | 'cortes' | 'timeline' | 'estados' | 'fiadores' | 'documentos'
@@ -167,6 +169,13 @@ export default function PrestamoDetailPage({ params }: PageProps) {
     },
   });
 
+  const updatePagoMutation = useGraphQLMutation(UPDATE_PAGO, {
+    onSuccess: () => {
+      invalidate();
+      setPagoEditando(null);
+    },
+  });
+
   const aplicadoMutation = useGraphQLMutation(MARCAR_PAGO_APLICADO, {
     onSuccess: invalidate,
   });
@@ -204,6 +213,17 @@ export default function PrestamoDetailPage({ params }: PageProps) {
               Comprobante
             </Button>
           </Link>
+          {!row.original.aplicado && (
+            <PermissionGate permiso={PERMISO.PAGO_WRITE}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setPagoEditando(row.original)}
+              >
+                Editar
+              </Button>
+            </PermissionGate>
+          )}
           <PermissionGate permiso={PERMISO.PAGO_APPLY}>
             <Button
               size="sm"
@@ -715,6 +735,46 @@ export default function PrestamoDetailPage({ params }: PageProps) {
           }}
         />
       )}
+
+      <Modal
+        isOpen={pagoEditando != null}
+        onClose={() => setPagoEditando(null)}
+        title="Corregir pago"
+        size="lg"
+      >
+        {pagoEditando ? (
+          <>
+            <p className="mb-4 text-sm text-gray-500 dark:text-dark-6">
+              Solo se pueden editar pagos pendientes de conciliar. Si ya está
+              conciliado, desmárquelo primero.
+            </p>
+            <PagoForm
+              key={pagoEditando.idpago}
+              initialValues={{
+                monto: pagoEditando.monto,
+                fechaPago: pagoEditando.fechaPago,
+                moneda:
+                  pagoEditando.moneda === 'USD' ? 'USD' : 'NIO',
+                medio: pagoEditando.medio,
+              }}
+              submitLabel="Guardar cambios"
+              ocultarMontosRapidos
+              isLoading={updatePagoMutation.isPending}
+              onSubmit={(data) =>
+                updatePagoMutation.mutate({
+                  input: {
+                    idpago: pagoEditando.idpago,
+                    monto: data.monto,
+                    fechaPago: data.fechaPago,
+                    moneda: data.moneda,
+                    medio: data.medio,
+                  },
+                })
+              }
+            />
+          </>
+        ) : null}
+      </Modal>
 
       <ConfirmDialog
         isOpen={acuerdoRotoId != null}

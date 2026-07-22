@@ -1,6 +1,12 @@
 import { builder, type GraphQLContext } from '../../builder';
 
-import { Pago, CreatePagoInput, CreatePagoInputSchema } from './types';
+import {
+  Pago,
+  CreatePagoInput,
+  CreatePagoInputSchema,
+  UpdatePagoInput,
+  UpdatePagoInputSchema,
+} from './types';
 import { requerirPermiso, tienePermiso } from '@/lib/permissions/permission-service';
 import { PERMISO } from '@/lib/permissions/permiso-codes';
 import { requerirAccesoMandante } from '@/lib/cobranza/mandante-scope';
@@ -219,6 +225,107 @@ builder.mutationField('createPago', (t) =>
       return ctx.prisma.tbl_pago.findUniqueOrThrow({
         ...(query as Record<string, unknown>),
         where: { idpago: pago.idpago },
+      }) as never;
+    },
+  }),
+);
+
+builder.mutationField('updatePago', (t) =>
+  t.prismaField({
+    type: Pago,
+    args: { input: t.arg({ type: UpdatePagoInput, required: true }) },
+    resolve: async (query, _parent, args, ctx: GraphQLContext) => {
+      await requerirPermiso(ctx.usuario?.idusuario, PERMISO.PAGO_WRITE);
+      const { idpago, ...campos } = UpdatePagoInputSchema.parse(args.input);
+
+      const pago = await ctx.prisma.tbl_pago.findUnique({
+        where: { idpago },
+        include: {
+          liquidacionDetalles: {
+            select: {
+              iddetalle: true,
+              liquidacion: { select: { estado: true } },
+            },
+          },
+        },
+      });
+      if (!pago || pago.deletedAt) {
+        throw new GraphQLValidationError('Pago no encontrado.');
+      }
+      await requerirAccesoMandante(ctx.usuario?.idusuario, pago.idmandante);
+      await requerirAccesoPrestamoCobrador(
+        ctx.usuario?.idusuario,
+        pago.idprestamo,
+      );
+
+      if (pago.aplicado) {
+        throw new GraphQLValidationError(
+          'No se puede editar un pago conciliado. Desmárquelo primero.',
+        );
+      }
+
+      const enLiquidacionInmutable = pago.liquidacionDetalles.some(
+        (d) =>
+          d.liquidacion.estado === 'EMITIDA' ||
+          d.liquidacion.estado === 'PAGADA',
+      );
+      if (enLiquidacionInmutable) {
+        throw new GraphQLValidationError(
+          'No se puede editar un pago incluido en una liquidación emitida o pagada.',
+        );
+      }
+
+      const fechaPago = campos.fechaPago ?? pago.fechaPago;
+      const monto =
+        campos.monto ?? decimalToNumber(pago.monto);
+
+      await ctx.prisma.$transaction(async (tx) => {
+        await validarPagoAnticipado(tx, {
+          idprestamo: pago.idprestamo,
+          monto,
+          fechaPago,
+        });
+
+        await tx.tbl_pago.update({
+          where: { idpago },
+          data: {
+            ...(campos.fechaPago !== undefined
+              ? { fechaPago: campos.fechaPago }
+              : {}),
+            ...(campos.monto !== undefined ? { monto: campos.monto } : {}),
+            ...(campos.moneda !== undefined ? { moneda: campos.moneda } : {}),
+            ...(campos.tipoCambio !== undefined
+              ? { tipoCambio: campos.tipoCambio }
+              : {}),
+            ...(campos.medio !== undefined ? { medio: campos.medio } : {}),
+          },
+        });
+
+        await registrarAuditoria(tx, {
+          idusuario: ctx.usuario?.idusuario,
+          entidad: 'tbl_pago',
+          entidadId: idpago,
+          accion: 'UPDATE',
+          detalle: JSON.stringify({
+            idprestamo: pago.idprestamo,
+            antes: {
+              fechaPago: pago.fechaPago,
+              monto: decimalToNumber(pago.monto),
+              moneda: pago.moneda,
+              medio: pago.medio,
+              tipoCambio:
+                pago.tipoCambio != null
+                  ? decimalToNumber(pago.tipoCambio)
+                  : null,
+            },
+            despues: campos,
+          }),
+        });
+      });
+
+      return ctx.prisma.tbl_pago.findUniqueOrThrow({
+        ...(query as Record<string, unknown>),
+        where: { idpago },
       }) as never;
     },
   }),

@@ -16,10 +16,23 @@ export interface PagoFormData {
   idempotencyKey: string;
 }
 
+export interface PagoFormInitialValues {
+  monto: number;
+  fechaPago: string;
+  moneda: 'NIO' | 'USD';
+  medio?: string | null;
+}
+
 interface PagoFormProps {
   monedaDefault?: 'NIO' | 'USD';
   /** Medio por defecto (ej. EFECTIVO en campo). */
   medioDefault?: string;
+  /** Valores iniciales (modo edición). */
+  initialValues?: PagoFormInitialValues;
+  /** Etiqueta del botón de envío. */
+  submitLabel?: string;
+  /** Oculta chips de monto rápido (útil en edición). */
+  ocultarMontosRapidos?: boolean;
   saldoTotal?: number | null;
   montoCuota?: number | null;
   montoPromesa?: number | null;
@@ -27,9 +40,27 @@ interface PagoFormProps {
   isLoading?: boolean;
 }
 
+function fechaInputValue(fecha: string): string {
+  const match = /^(\d{4}-\d{2}-\d{2})/.exec(fecha);
+  if (match) {
+    return match[1];
+  }
+  const d = new Date(fecha);
+  if (Number.isNaN(d.getTime())) {
+    return new Date().toISOString().slice(0, 10);
+  }
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 export function PagoForm({
   monedaDefault = 'NIO',
   medioDefault = '',
+  initialValues,
+  submitLabel = 'Registrar pago',
+  ocultarMontosRapidos = false,
   saldoTotal,
   montoCuota,
   montoPromesa,
@@ -40,19 +71,29 @@ export function PagoForm({
   const fechaId = useId();
   const monedaId = useId();
   const medioId = useId();
-  const [monto, setMonto] = useState('');
-  const [fechaPago, setFechaPago] = useState(
-    new Date().toISOString().slice(0, 10),
+  const [monto, setMonto] = useState(
+    initialValues ? String(initialValues.monto) : '',
   );
-  const [moneda, setMoneda] = useState<'NIO' | 'USD'>(monedaDefault);
-  const [medio, setMedio] = useState(medioDefault);
+  const [fechaPago, setFechaPago] = useState(
+    initialValues
+      ? fechaInputValue(initialValues.fechaPago)
+      : new Date().toISOString().slice(0, 10),
+  );
+  const [moneda, setMoneda] = useState<'NIO' | 'USD'>(
+    initialValues?.moneda ?? monedaDefault,
+  );
+  const [medio, setMedio] = useState(
+    initialValues?.medio ?? medioDefault,
+  );
   const [idempotencyKey] = useState(() => crearIdempotencyKey('pago'));
 
-  const chips: MontoRapidoChip[] = construirMontosRapidos({
-    saldoTotal,
-    montoCuota,
-    montoPromesa,
-  });
+  const chips: MontoRapidoChip[] = ocultarMontosRapidos
+    ? []
+    : construirMontosRapidos({
+        saldoTotal,
+        montoCuota,
+        montoPromesa,
+      });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -157,7 +198,7 @@ export function PagoForm({
       </div>
       <div className="field-sticky-actions">
         <Button type="submit" disabled={isLoading} className="field-touch-target">
-          {isLoading ? 'Registrando...' : 'Registrar pago'}
+          {isLoading ? 'Guardando...' : submitLabel}
         </Button>
       </div>
     </form>

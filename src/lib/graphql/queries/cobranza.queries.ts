@@ -677,6 +677,20 @@ export const CREATE_PAGO = `
   }
 `;
 
+export const UPDATE_PAGO = `
+  mutation UpdatePago($input: UpdatePagoInput!) {
+    updatePago(input: $input) {
+      idpago
+      monto
+      fechaPago
+      moneda
+      medio
+      aplicado
+      reciboUrl
+    }
+  }
+`;
+
 export const CREATE_MANDANTE = `
   mutation CreateMandante($input: CreateMandanteInput!) {
     createMandante(input: $input) {
