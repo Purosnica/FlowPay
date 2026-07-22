@@ -1,5 +1,3 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import path from 'node:path';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { requerirAccesoMandante } from '@/lib/cobranza/mandante-scope';
@@ -14,9 +12,13 @@ import {
 } from '@/lib/scalability/scalability-config';
 import { isShuttingDown } from '@/lib/scalability/graceful-shutdown';
 import { encolarWebhookMandante } from '@/lib/cobranza/webhook-mandante-service';
-import { resolverStorageRoot } from '@/lib/cobranza/storage-root';
+import {
+  eliminarArchivoImportacionFs,
+  guardarArchivoImportacion,
+  leerArchivoImportacion,
+} from '@/lib/cobranza/import-file-store';
+import { debeLiberarContenidoArchivo } from '@/lib/logic/import-file-storage-logic';
 
-const STORAGE_DIR = path.join(resolverStorageRoot(), 'imports');
 const FINALIZAR_JOB_REINTENTOS = 3;
 const FINALIZAR_JOB_ESPERA_MS = 2_000;
 const RECONCILIAR_GRACIA_MS = 5 * 60_000;
@@ -60,19 +62,10 @@ export interface ImportacionJobResumen {
   finalizadoEn: Date | null;
 }
 
-async function asegurarDirectorioImports(): Promise<void> {
-  await mkdir(STORAGE_DIR, { recursive: true });
-}
-
-function sanitizarNombreArchivo(nombre: string): string {
-  return nombre.replace(/[^a-zA-Z0-9._-]/g, '_');
-}
-
 export async function crearImportacionJob(
   input: CrearImportacionJobInput,
 ): Promise<ImportacionJobResumen> {
   await requerirAccesoMandante(input.idusuario, input.idmandante);
-  await asegurarDirectorioImports();
 
   const key =
     input.idempotencyKey && input.idempotencyKey.trim().length > 0
@@ -124,17 +117,18 @@ export async function crearImportacionJob(
     throw err;
   }
 
-  const rutaRelativa = path.join(
-    String(job.idjob),
-    sanitizarNombreArchivo(input.nombreArchivo),
-  );
-  const rutaAbsoluta = path.join(STORAGE_DIR, rutaRelativa);
-  await mkdir(path.dirname(rutaAbsoluta), { recursive: true });
-  await writeFile(rutaAbsoluta, input.buffer);
+  const guardado = await guardarArchivoImportacion({
+    idjob: job.idjob,
+    nombreArchivo: input.nombreArchivo,
+    buffer: input.buffer,
+  });
 
   const actualizado = await prisma.tbl_importacion_job.update({
     where: { idjob: job.idjob },
-    data: { rutaArchivo: rutaRelativa },
+    data: {
+      rutaArchivo: guardado.rutaArchivo,
+      contenidoArchivo: guardado.contenidoArchivo,
+    },
   });
 
   return mapJob(actualizado);
@@ -432,8 +426,10 @@ async function procesarUnJob(idjob: number): Promise<boolean> {
   };
 
   try {
-    const rutaAbsoluta = path.join(STORAGE_DIR, job.rutaArchivo);
-    const buffer = await readFile(rutaAbsoluta);
+    const buffer = await leerArchivoImportacion({
+      rutaArchivo: job.rutaArchivo,
+      contenidoArchivo: job.contenidoArchivo,
+    });
 
     await actualizarProgreso(15);
 
@@ -485,8 +481,19 @@ async function marcarJobCompletado(
           resultado: resultadoJson.slice(0, 65000),
           error: null,
           finalizadoEn: new Date(),
+          ...(debeLiberarContenidoArchivo('COMPLETADO')
+            ? { contenidoArchivo: null }
+            : {}),
         },
       });
+
+      const jobRuta = await prisma.tbl_importacion_job.findUnique({
+        where: { idjob },
+        select: { rutaArchivo: true },
+      });
+      if (jobRuta?.rutaArchivo) {
+        await eliminarArchivoImportacionFs(jobRuta.rutaArchivo);
+      }
 
       await registrarAuditoria(prisma, {
         idusuario,
@@ -544,11 +551,17 @@ async function marcarJobCompletado(
 async function marcarJobError(idjob: number, mensaje: string): Promise<void> {
   const actual = await prisma.tbl_importacion_job.findUnique({
     where: { idjob },
-    select: { intentos: true, tipo: true },
+    select: { intentos: true, tipo: true, rutaArchivo: true },
   });
   const intentos = actual?.intentos ?? 1;
   const aDeadLetter =
     intentos >= MAX_INTENTOS_ANTES_DLQ || actual?.tipo !== 'CARTERA';
+
+  const estadoFinal = aDeadLetter
+    ? 'DEAD_LETTER'
+    : actual?.tipo === 'CARTERA'
+      ? 'PENDIENTE'
+      : 'ERROR';
 
   for (let intento = 0; intento < FINALIZAR_JOB_REINTENTOS; intento++) {
     try {
@@ -573,8 +586,15 @@ async function marcarJobError(idjob: number, mensaje: string): Promise<void> {
                 estado: 'ERROR',
                 error: mensaje.slice(0, 2000),
                 finalizadoEn: new Date(),
+                ...(debeLiberarContenidoArchivo('ERROR')
+                  ? { contenidoArchivo: null }
+                  : {}),
               },
       });
+
+      if (debeLiberarContenidoArchivo(estadoFinal) && actual?.rutaArchivo) {
+        await eliminarArchivoImportacionFs(actual.rutaArchivo);
+      }
       return;
     } catch {
       if (intento < FINALIZAR_JOB_REINTENTOS - 1) {

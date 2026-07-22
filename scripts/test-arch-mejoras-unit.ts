@@ -23,6 +23,12 @@ import {
   TENANT_ISOLATION_POLICY,
 } from '@/lib/tenancy/tenant-isolation';
 import { FEATURE_FLAG } from '@/lib/feature-flags/feature-flag-service';
+import {
+  construirRutaImportacionDb,
+  debeLiberarContenidoArchivo,
+  esRutaImportacionDb,
+  resolverImportFileStorageMode,
+} from '@/lib/logic/import-file-storage-logic';
 
 function testCircuitBreaker(): void {
   resetCircuitBreakerRegistryForTests();
@@ -84,11 +90,31 @@ function testTenancyYFlags(): void {
   assert.equal(FEATURE_FLAG.PWA_OFFLINE_GESTIONES, 'pwa_offline_gestiones');
 }
 
+function testImportFileStorageLogic(): void {
+  assert.equal(
+    resolverImportFileStorageMode({ VERCEL: '1' }),
+    'db',
+  );
+  assert.equal(
+    resolverImportFileStorageMode({ FLOWPAY_IMPORT_STORAGE: 'db' }),
+    'db',
+  );
+  assert.equal(resolverImportFileStorageMode({}), 'fs');
+  assert.equal(debeLiberarContenidoArchivo('COMPLETADO'), true);
+  assert.equal(debeLiberarContenidoArchivo('ERROR'), true);
+  assert.equal(debeLiberarContenidoArchivo('DEAD_LETTER'), false);
+  assert.equal(debeLiberarContenidoArchivo('PENDIENTE'), false);
+  assert.equal(construirRutaImportacionDb(4), 'db:4');
+  assert.equal(esRutaImportacionDb('db:4'), true);
+  assert.equal(esRutaImportacionDb('4/archivo.xlsb'), false);
+}
+
 function main(): void {
   testCircuitBreaker();
   testPlantillaVersion();
   testQueueBackpressure();
   testTenancyYFlags();
+  testImportFileStorageLogic();
   console.warn('arch-mejoras unit helpers: OK');
 }
 

@@ -1175,6 +1175,8 @@ model tbl_importacion_job {
   estado          String    @default("PENDIENTE")
   nombreArchivo   String
   rutaArchivo     String
+  /** Payload temporal del archivo (Vercel / multi-instancia). Se libera al finalizar. */
+  contenidoArchivo Bytes?
   fechaCorte      DateTime?
   nombreHoja      String?
   idplantillaImp  Int?
