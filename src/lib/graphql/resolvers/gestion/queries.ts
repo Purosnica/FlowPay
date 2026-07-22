@@ -11,6 +11,11 @@ import {
   buildPaginationMeta,
   resolvePagination,
 } from "../../helpers/graphql-helpers";
+import {
+  finDiaEnZona,
+  inicioDiaEnZona,
+  parseFechaCalendarioNegocio,
+} from "@/lib/utils/timezone";
 
 builder.queryField("gestiones", (t) =>
   t.field({
@@ -70,19 +75,16 @@ function rangoFechaGestion(
   const rango: { gte?: Date; lt?: Date } = {};
 
   if (fechaDesde) {
-    const desde = new Date(fechaDesde);
-    if (!Number.isNaN(desde.getTime())) {
-      desde.setHours(0, 0, 0, 0);
+    const desde = parseFechaCalendarioNegocio(fechaDesde);
+    if (desde) {
       rango.gte = desde;
     }
   }
 
   if (fechaHasta) {
-    const hastaExclusive = new Date(fechaHasta);
-    if (!Number.isNaN(hastaExclusive.getTime())) {
-      hastaExclusive.setHours(0, 0, 0, 0);
-      hastaExclusive.setDate(hastaExclusive.getDate() + 1);
-      rango.lt = hastaExclusive;
+    const hasta = parseFechaCalendarioNegocio(fechaHasta);
+    if (hasta) {
+      rango.lt = finDiaEnZona(hasta);
     }
   }
 
@@ -122,10 +124,8 @@ builder.queryField("misGestionesHoy", (t) =>
             fechaGestion: rangoFecha,
           }
         : (() => {
-            const hoy = new Date();
-            hoy.setHours(0, 0, 0, 0);
-            const manana = new Date(hoy);
-            manana.setDate(manana.getDate() + 1);
+            const hoy = inicioDiaEnZona();
+            const manana = finDiaEnZona();
             return {
               idgestor: ctx.usuario.idusuario,
               deletedAt: null,

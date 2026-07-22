@@ -10,10 +10,15 @@ import { PageHeader } from '@/components/ui/page-header';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { usePagination } from '@/hooks/use-pagination';
 import { GET_GESTIONES_HOY } from '@/lib/graphql/queries/cobranza.queries';
+import {
+  formatFechaHoraNegocio,
+  partesEnZona,
+} from '@/lib/utils/timezone';
 import type { GestionHoy } from '@/types/cobranza';
 
 function fechaHoyIso(): string {
-  return new Date().toISOString().slice(0, 10);
+  const p = partesEnZona(new Date());
+  return `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`;
 }
 
 export default function GestionesHoyPage() {
@@ -84,7 +89,7 @@ export default function GestionesHoyPage() {
         accessorKey: 'fechaGestion',
         header: 'Fecha',
         cell: ({ row }) =>
-          new Date(row.original.fechaGestion).toLocaleString('es-NI'),
+          formatFechaHoraNegocio(row.original.fechaGestion),
       },
     ],
     [],

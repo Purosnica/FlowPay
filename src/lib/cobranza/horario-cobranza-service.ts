@@ -1,33 +1,35 @@
 /**
  * Motor de horarios legales de cobranza (Nicaragua).
  * Valida si una gestión puede registrarse según día, hora y feriados.
+ * Día/hora se evalúan en America/Managua (Vercel corre en UTC).
  */
 
 import { prisma } from '@/lib/prisma';
+import {
+  diaSemanaIsoEnZona,
+  minutosDelDiaEnZona,
+  partesEnZona,
+  TZ_NEGOCIO,
+} from '@/lib/utils/timezone';
 
 import type { ValidacionHorario } from '@/types/cobranza';
 
 export type { ValidacionHorario };
 
 function parseHora(hora: string): number {
-  const [h, m] = hora.split(":").map(Number);
+  const [h, m] = hora.split(':').map(Number);
   return h * 60 + (m ?? 0);
-}
-
-function obtenerMinutosActuales(fecha: Date): number {
-  return fecha.getHours() * 60 + fecha.getMinutes();
 }
 
 async function obtenerFeriadoDelDia(
   fecha: Date,
   idpais?: number | null,
 ) {
-  const inicio = new Date(
-    Date.UTC(fecha.getFullYear(), fecha.getMonth(), fecha.getDate()),
-  );
-  const fin = new Date(
-    Date.UTC(fecha.getFullYear(), fecha.getMonth(), fecha.getDate() + 1),
-  );
+  // Feriados se guardan como medianoche UTC del día calendario.
+  // Usamos el día calendario en Managua, no el del runtime (UTC en Vercel).
+  const p = partesEnZona(fecha, TZ_NEGOCIO);
+  const inicio = new Date(Date.UTC(p.year, p.month - 1, p.day));
+  const fin = new Date(Date.UTC(p.year, p.month - 1, p.day + 1));
   const rango = { gte: inicio, lt: fin };
 
   if (idpais != null) {
@@ -61,7 +63,7 @@ export async function validarHorarioCobranza(
     };
   }
 
-  const diaSemana = fecha.getDay() === 0 ? 7 : fecha.getDay();
+  const diaSemana = diaSemanaIsoEnZona(fecha, TZ_NEGOCIO);
 
   const horarioMandante = idmandante
     ? await prisma.tbl_horario_cobranza.findFirst({
@@ -78,11 +80,12 @@ export async function validarHorarioCobranza(
   if (!horario || !horario.permitido) {
     return {
       permitido: false,
-      motivo: 'Día no habilitado para gestiones de cobranza (domingo o día bloqueado).',
+      motivo:
+        'Día no habilitado para gestiones de cobranza (domingo o día bloqueado).',
     };
   }
 
-  const minutosActual = obtenerMinutosActuales(fecha);
+  const minutosActual = minutosDelDiaEnZona(fecha, TZ_NEGOCIO);
   const inicio = parseHora(horario.horaInicio);
   const fin = parseHora(horario.horaFin);
 

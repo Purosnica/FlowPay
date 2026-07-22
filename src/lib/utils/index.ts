@@ -15,7 +15,8 @@ export function cn(...inputs: ClassValue[]): string {
 }
 
 // Utilidades de fechas
-export * from "./date";
+export * from './date';
+export * from './timezone';
 
 // Utilidades de números
 export * from "./number";

@@ -8,6 +8,7 @@ import {
   filtroFechaEnPeriodo,
   rangoPeriodoActual,
 } from './periodo-utils';
+import { inicioDiaEnZona } from '@/lib/utils/timezone';
 import type { DashboardSupervisorResumen } from '@/types/cobranza';
 
 export type { DashboardSupervisorResumen };
@@ -18,13 +19,13 @@ export async function obtenerDashboardSupervisor(
   const equipoIds = await obtenerIdsEquipo(idusuario);
   const mandanteFilter = await filtroMandante(idusuario);
 
-  const inicioHoy = new Date();
-  inicioHoy.setHours(0, 0, 0, 0);
-  const inicioAyer = new Date(inicioHoy);
-  inicioAyer.setDate(inicioAyer.getDate() - 1);
+  const inicioHoy = inicioDiaEnZona();
+  const inicioAyer = inicioDiaEnZona(
+    new Date(inicioHoy.getTime() - 12 * 60 * 60 * 1000),
+  );
   const rangoMes = filtroFechaEnPeriodo(rangoPeriodoActual());
   const hace7d = new Date(inicioHoy);
-  hace7d.setDate(hace7d.getDate() - 7);
+  hace7d.setUTCDate(hace7d.getUTCDate() - 7);
 
   const [
     gestionesHoy,

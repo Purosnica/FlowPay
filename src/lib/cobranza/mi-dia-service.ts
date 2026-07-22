@@ -11,6 +11,7 @@ import {
 } from './priorizacion-cartera-service';
 import { cargarContextosPrioridad } from './bandeja-cobrador-service';
 import { MI_DIA_PRIORIDAD_CANDIDATE_LIMIT, obtenerLimiteCandidatosMiDia } from './performance-limits';
+import { finDiaEnZona, inicioDiaEnZona } from '@/lib/utils/timezone';
 import type { MiDiaCaso, MiDiaResumen } from '@/types/cobranza';
 
 export type { MiDiaCaso, MiDiaResumen };
@@ -95,10 +96,8 @@ export async function obtenerCasosPrioritariosMiDia(
 export async function obtenerResumenMiDia(
   idusuario: number,
 ): Promise<MiDiaResumen> {
-  const inicioDia = new Date();
-  inicioDia.setHours(0, 0, 0, 0);
-  const finDia = new Date(inicioDia);
-  finDia.setDate(finDia.getDate() + 1);
+  const inicioDia = inicioDiaEnZona();
+  const finDia = finDiaEnZona();
 
   const casosPrioritariosList = await obtenerCasosPrioritariosMiDia(
     idusuario,

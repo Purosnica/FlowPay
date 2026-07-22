@@ -38,6 +38,7 @@ import {
 import { PaginatedDataTable } from '@/components/cobranza/paginated-data-table';
 import { usePagination } from '@/hooks/use-pagination';
 import { useScopedPagination } from '@/hooks/use-scoped-pagination';
+import { formatFechaNegocio } from '@/lib/utils/timezone';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { useGraphQLMutation } from '@/hooks/use-graphql-mutation';
 import {
@@ -289,8 +290,7 @@ export default function PrestamoDetailPage({ params }: PageProps) {
     {
       accessorKey: 'fechaGestion',
       header: 'Fecha',
-      cell: ({ row }) =>
-        new Date(row.original.fechaGestion).toLocaleDateString('es-NI'),
+      cell: ({ row }) => formatFechaNegocio(row.original.fechaGestion),
     },
     {
       accessorKey: 'codaccion.codigo',

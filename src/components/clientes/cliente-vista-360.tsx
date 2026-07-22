@@ -23,6 +23,7 @@ import { LEY_787 } from '@/lib/compliance/ley-787-microcopy';
 import { rutaComprobantePago } from '@/lib/logic/comprobante-pago-logic';
 import { formatearMoneda } from '@/types/cobranza';
 import type { ClienteVista360 } from '@/types/cliente';
+import { formatFechaHoraNegocio } from '@/lib/utils/timezone';
 
 interface ClienteVista360ViewProps {
   data: ClienteVista360;
@@ -201,7 +202,7 @@ export function ClienteVista360View({ data }: ClienteVista360ViewProps) {
                         </span>
                       </p>
                       <p className="mt-0.5 text-xs text-gray-5">
-                        {new Date(g.fechaGestion).toLocaleString('es-NI')} ·{' '}
+                        {formatFechaHoraNegocio(g.fechaGestion)} ·{' '}
                         {g.gestor ?? '—'}
                       </p>
                     </div>

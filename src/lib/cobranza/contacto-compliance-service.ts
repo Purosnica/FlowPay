@@ -4,6 +4,7 @@ import {
   CLAVE_MAX_CONTACTOS_DIA,
   obtenerConfigNumerica,
 } from './configuracion-cobranza-service';
+import { inicioDiaEnZona } from '@/lib/utils/timezone';
 
 export interface ValidacionContactoResult {
   permitido: boolean;
@@ -55,8 +56,7 @@ export async function validarContactoParaGestion(params: {
   }
 
   const maxContactos = await obtenerConfigNumerica(CLAVE_MAX_CONTACTOS_DIA);
-  const inicioDia = new Date();
-  inicioDia.setHours(0, 0, 0, 0);
+  const inicioDia = inicioDiaEnZona();
 
   const gestionesHoy = await prisma.tbl_gestion.count({
     where: {

@@ -10,6 +10,7 @@ import {
   filtroFechaEnPeriodo,
   rangoPeriodoActual,
 } from './periodo-utils';
+import { inicioDiaEnZona } from '@/lib/utils/timezone';
 
 export type { DashboardGerenteResumen };
 
@@ -22,8 +23,7 @@ export async function obtenerDashboardGerente(
   }
 
   const mandanteFilter = await filtroMandante(idusuario);
-  const inicioHoy = new Date();
-  inicioHoy.setHours(0, 0, 0, 0);
+  const inicioHoy = inicioDiaEnZona();
   const rangoMes = filtroFechaEnPeriodo(rangoPeriodoActual());
 
   const esAdminUsuario = await esAdmin(idusuario);
