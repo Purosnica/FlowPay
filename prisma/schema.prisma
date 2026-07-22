@@ -240,6 +240,7 @@ model tbl_usuario {
   notificaciones               tbl_notificacion[]
   liquidacionesCreadas         tbl_liquidacion[] @relation("LiquidacionCreacion")
   liquidacionesEmitidas        tbl_liquidacion[] @relation("LiquidacionEmision")
+  enviosSms                    tbl_envio_sms[]
 
   @@index([idrol])
   @@index([idsupervisor])
@@ -439,6 +440,7 @@ model tbl_mandante {
   exportacionJobs       tbl_exportacion_job[]
   refinanciamientos     tbl_refinanciamiento[]
   agencias              tbl_agencia[]
+  enviosSms             tbl_envio_sms[]
 
   @@index([deletedAt])
   @@map("tbl_mandante")
@@ -580,6 +582,7 @@ model tbl_prestamo {
   liquidacionDetalles   tbl_liquidacion_detalle[]
   refinanciamientosOrigen tbl_refinanciamiento[] @relation("RefinanciamientoOrigen")
   refinanciamientosNuevo  tbl_refinanciamiento[] @relation("RefinanciamientoNuevo")
+  enviosSms               tbl_envio_sms[]
 
   @@unique([idmandante, noPrestamo])
   @@unique([idmandante, codigoUnico])
@@ -1157,6 +1160,7 @@ model tbl_plantilla_mensaje {
 
   mandante tbl_mandante @relation(fields: [idmandante], references: [idmandante])
   pasosSecuencia tbl_secuencia_contacto_paso[]
+  enviosSms      tbl_envio_sms[]
 
   @@index([idmandante])
   @@map("tbl_plantilla_mensaje")
@@ -1452,4 +1456,48 @@ model tbl_domain_event {
   @@index([estado, createdAt])
   @@index([tipo, createdAt])
   @@map("tbl_domain_event")
+}
+
+/// Cola y log de SMS enviados vía SMSGateway Android.
+model tbl_envio_sms {
+  idsms          Int       @id @default(autoincrement())
+  dispositivoId  Int       @default(1)
+  idprestamo     Int
+  idmandante     Int
+  idusuario      Int
+  idplantilla    Int?
+  telefono       String    @db.VarChar(32)
+  mensaje        String    @db.Text
+  /// PENDIENTE | ENVIANDO | ENTREGADO | REBOTADO
+  estado         String    @default("PENDIENTE") @db.VarChar(20)
+  errorDetalle   String?   @db.Text
+  campanaNombre  String?   @db.VarChar(120)
+  claimedAt      DateTime?
+  enviadoAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  prestamo  tbl_prestamo          @relation(fields: [idprestamo], references: [idprestamo])
+  mandante  tbl_mandante          @relation(fields: [idmandante], references: [idmandante])
+  usuario   tbl_usuario           @relation(fields: [idusuario], references: [idusuario])
+  plantilla tbl_plantilla_mensaje? @relation(fields: [idplantilla], references: [idplantilla])
+
+  @@index([dispositivoId, estado, createdAt])
+  @@index([idprestamo])
+  @@index([idmandante])
+  @@index([estado, claimedAt])
+  @@map("tbl_envio_sms")
+}
+
+/// SMS entrantes reportados por SMSGateway Android.
+model tbl_sms_recibido {
+  idrecibido    Int      @id @default(autoincrement())
+  dispositivoId Int      @default(1)
+  telefono      String   @db.VarChar(32)
+  mensaje       String   @db.Text
+  createdAt     DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([telefono])
+  @@map("tbl_sms_recibido")
 }

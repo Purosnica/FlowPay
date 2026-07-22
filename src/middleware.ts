@@ -68,6 +68,19 @@ function rutaPermitidaConMfaSetup(pathname: string): boolean {
 // Cron: autenticación propia vía CRON_SECRET en el handler
 const cronApiPrefix = '/api/cron/';
 
+// SMSGateway Android: autenticación propia vía SMS_GATEWAY_TOKEN
+const smsGatewayApiPrefixes = [
+  '/api/dispositivos/',
+  '/api/sms/',
+  '/api/dashboard/stats',
+];
+
+function esRutaSmsGateway(pathname: string): boolean {
+  return smsGatewayApiPrefixes.some(
+    (prefix) => pathname === prefix || pathname.startsWith(prefix),
+  );
+}
+
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 function requiereCsrf(pathname: string, method: string): boolean {
@@ -75,6 +88,9 @@ function requiereCsrf(pathname: string, method: string): boolean {
     return false;
   }
   if (pathname.startsWith(cronApiPrefix)) {
+    return false;
+  }
+  if (esRutaSmsGateway(pathname)) {
     return false;
   }
   if (pathname.startsWith('/api/auth/login')) {
@@ -137,6 +153,11 @@ export async function middleware(request: NextRequest) {
 
   // Cron operativo: auth Bearer CRON_SECRET en el route handler
   if (pathname.startsWith(cronApiPrefix)) {
+    return responderConSeguridad(request, NextResponse.next());
+  }
+
+  // SMSGateway Android: auth Bearer SMS_GATEWAY_TOKEN en el route handler
+  if (esRutaSmsGateway(pathname)) {
     return responderConSeguridad(request, NextResponse.next());
   }
 

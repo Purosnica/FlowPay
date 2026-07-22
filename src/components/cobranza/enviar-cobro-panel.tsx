@@ -10,7 +10,6 @@ import {
   aplicarVariablesPlantilla,
   construirAsuntoCobroPlantilla,
   construirVariablesPlantilla,
-  enlaceSms,
   enlaceWhatsApp,
   PLANTILLA_VARIABLES_AYUDA,
   type PlantillaMensajeContext,
@@ -47,6 +46,9 @@ export function EnviarCobroPanel({
   const [enviandoEmail, setEnviandoEmail] = useState(false);
   const [emailStatus, setEmailStatus] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [enviandoSms, setEnviandoSms] = useState(false);
+  const [smsStatus, setSmsStatus] = useState<string | null>(null);
+  const [smsError, setSmsError] = useState<string | null>(null);
 
   const { data: plantillasData, isLoading } = useGraphQLQuery<{
     plantillasMensaje: {
@@ -123,6 +125,8 @@ export function EnviarCobroPanel({
     );
     setEmailStatus(null);
     setEmailError(null);
+    setSmsStatus(null);
+    setSmsError(null);
   };
 
   const copiarMensaje = async () => {
@@ -132,6 +136,48 @@ export function EnviarCobroPanel({
     await navigator.clipboard.writeText(mensajePreview);
     setCopiado(true);
     setTimeout(() => setCopiado(false), 2000);
+  };
+
+  const enviarPorSms = async () => {
+    if (!telefono.trim() || !mensajePreview.trim()) {
+      return;
+    }
+    setEnviandoSms(true);
+    setSmsStatus(null);
+    setSmsError(null);
+    try {
+      const res = await fetch('/api/cobranza/enviar-sms', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...csrfHeaders(),
+        },
+        body: JSON.stringify({
+          telefono: telefono.trim(),
+          mensaje: mensajePreview,
+          idprestamo,
+          idplantilla:
+            typeof idplantillaSel === 'number' ? idplantillaSel : undefined,
+        }),
+      });
+      const json = (await res.json()) as {
+        success: boolean;
+        error?: string;
+      };
+      if (!res.ok || !json.success) {
+        throw new Error(json.error ?? 'No se pudo encolar el SMS');
+      }
+      setSmsStatus(
+        'SMS encolado; el gateway lo enviará en breve.',
+      );
+    } catch (err) {
+      setSmsError(
+        err instanceof Error ? err.message : 'Error al encolar SMS',
+      );
+    } finally {
+      setEnviandoSms(false);
+    }
   };
 
   const enviarPorEmail = async () => {
@@ -300,12 +346,17 @@ export function EnviarCobroPanel({
             >
               WhatsApp
             </a>
-            <a
-              href={enlaceSms(telefono, mensajePreview)}
-              className="inline-flex items-center rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-dark-2"
-            >
-              SMS
-            </a>
+            <PermissionGate permiso={PERMISO.GESTION_WRITE}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={enviandoSms}
+                onClick={() => void enviarPorSms()}
+              >
+                {enviandoSms ? 'Encolando...' : 'SMS'}
+              </Button>
+            </PermissionGate>
           </>
         )}
         {emailDeudor && mensajePreview && (
@@ -344,6 +395,14 @@ export function EnviarCobroPanel({
       )}
       {emailError && (
         <p className="text-xs text-red-600 dark:text-red-400">{emailError}</p>
+      )}
+      {smsStatus && (
+        <p className="text-xs text-green-700 dark:text-green-400">
+          {smsStatus}
+        </p>
+      )}
+      {smsError && (
+        <p className="text-xs text-red-600 dark:text-red-400">{smsError}</p>
       )}
 
       {!telefono && !emailDeudor && (
