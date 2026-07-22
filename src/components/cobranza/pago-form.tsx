@@ -7,6 +7,9 @@ import {
   construirMontosRapidos,
   type MontoRapidoChip,
 } from '@/lib/logic/pago-montos-rapidos-logic';
+import {
+  esMedioPagoValido,
+} from '@/lib/logic/pago-medios-logic';
 
 export interface PagoFormData {
   monto: number;
@@ -17,7 +20,7 @@ export interface PagoFormData {
 }
 
 export interface PagoFormInitialValues {
-  monto: number;
+  monto: number | string;
   fechaPago: string;
   moneda: 'NIO' | 'USD';
   medio?: string | null;
@@ -33,6 +36,8 @@ interface PagoFormProps {
   submitLabel?: string;
   /** Oculta chips de monto rápido (útil en edición). */
   ocultarMontosRapidos?: boolean;
+  /** Error de mutación a mostrar bajo el formulario. */
+  errorMessage?: string | null;
   saldoTotal?: number | null;
   montoCuota?: number | null;
   montoPromesa?: number | null;
@@ -55,12 +60,24 @@ function fechaInputValue(fecha: string): string {
   return `${y}-${m}-${day}`;
 }
 
+function normalizarMedioInicial(
+  medio: string | null | undefined,
+  fallback: string,
+): string {
+  if (!medio) {
+    return fallback;
+  }
+  const normalized = medio.trim().toUpperCase();
+  return esMedioPagoValido(normalized) ? normalized : fallback;
+}
+
 export function PagoForm({
   monedaDefault = 'NIO',
   medioDefault = '',
   initialValues,
   submitLabel = 'Registrar pago',
   ocultarMontosRapidos = false,
+  errorMessage,
   saldoTotal,
   montoCuota,
   montoPromesa,
@@ -72,7 +89,7 @@ export function PagoForm({
   const monedaId = useId();
   const medioId = useId();
   const [monto, setMonto] = useState(
-    initialValues ? String(initialValues.monto) : '',
+    initialValues != null ? String(initialValues.monto) : '',
   );
   const [fechaPago, setFechaPago] = useState(
     initialValues
@@ -82,10 +99,11 @@ export function PagoForm({
   const [moneda, setMoneda] = useState<'NIO' | 'USD'>(
     initialValues?.moneda ?? monedaDefault,
   );
-  const [medio, setMedio] = useState(
-    initialValues?.medio ?? medioDefault,
+  const [medio, setMedio] = useState(() =>
+    normalizarMedioInicial(initialValues?.medio, medioDefault),
   );
   const [idempotencyKey] = useState(() => crearIdempotencyKey('pago'));
+  const [localError, setLocalError] = useState<string | null>(null);
 
   const chips: MontoRapidoChip[] = ocultarMontosRapidos
     ? []
@@ -97,18 +115,31 @@ export function PagoForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setLocalError(null);
     const m = Number(monto);
-    if (!m || m <= 0) {
+    if (!Number.isFinite(m) || m <= 0) {
+      setLocalError('Ingrese un monto válido mayor a cero.');
+      return;
+    }
+    if (!fechaPago) {
+      setLocalError('Ingrese la fecha del pago.');
+      return;
+    }
+    const fecha = new Date(`${fechaPago}T12:00:00`);
+    if (Number.isNaN(fecha.getTime())) {
+      setLocalError('La fecha del pago no es válida.');
       return;
     }
     onSubmit({
       monto: m,
-      fechaPago: new Date(fechaPago).toISOString(),
+      fechaPago: fecha.toISOString(),
       moneda,
       medio: medio || undefined,
       idempotencyKey,
     });
   };
+
+  const displayError = localError ?? errorMessage ?? null;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4" noValidate>
@@ -196,6 +227,11 @@ export function PagoForm({
           </select>
         </div>
       </div>
+      {displayError ? (
+        <p className="text-sm text-red" role="alert">
+          {displayError}
+        </p>
+      ) : null}
       <div className="field-sticky-actions">
         <Button type="submit" disabled={isLoading} className="field-touch-target">
           {isLoading ? 'Guardando...' : submitLabel}

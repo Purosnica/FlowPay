@@ -801,17 +801,21 @@ export default function PrestamoDetailPage({ params }: PageProps) {
               submitLabel="Guardar cambios"
               ocultarMontosRapidos
               isLoading={updatePagoMutation.isPending}
-              onSubmit={(data) =>
+              errorMessage={
+                updatePagoMutation.error?.message ?? null
+              }
+              onSubmit={(data) => {
+                updatePagoMutation.reset();
                 updatePagoMutation.mutate({
                   input: {
                     idpago: pagoEditando.idpago,
                     monto: data.monto,
                     fechaPago: data.fechaPago,
                     moneda: data.moneda,
-                    medio: data.medio,
+                    ...(data.medio ? { medio: data.medio } : {}),
                   },
-                })
-              }
+                });
+              }}
             />
           </>
         ) : null}

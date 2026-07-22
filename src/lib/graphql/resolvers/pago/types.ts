@@ -3,15 +3,9 @@ import { builder, type GraphQLContext } from '../../builder';
 import { z } from 'zod';
 import { exposeDecimal } from '../../helpers/graphql-helpers';
 import { resolverEstadoPago } from '@/lib/logic/pago-estado-logic';
+import { MEDIOS_PAGO } from '@/lib/logic/pago-medios-logic';
 
-export const MEDIOS_PAGO = [
-  'EFECTIVO',
-  'TRANSFERENCIA',
-  'DEPOSITO',
-  'CHEQUE',
-  'TARJETA',
-  'OTRO',
-] as const;
+export { MEDIOS_PAGO } from '@/lib/logic/pago-medios-logic';
 
 export const CreatePagoInputSchema = z.object({
   idprestamo: z.number().int().positive(),
@@ -57,16 +51,28 @@ export const UpdatePagoInputSchema = z
     fechaPago: z
       .union([z.date(), z.string()])
       .transform((v) => (typeof v === 'string' ? new Date(v) : v))
-      .optional(),
-    monto: z.number().positive().optional(),
-    moneda: z.enum(['NIO', 'USD']).optional(),
-    tipoCambio: z.number().positive().optional(),
-    medio: z
-      .string()
-      .trim()
-      .toUpperCase()
-      .pipe(z.enum(MEDIOS_PAGO))
-      .optional(),
+      .nullish()
+      .transform((v) => v ?? undefined),
+    monto: z.coerce.number().positive().nullish().transform((v) => v ?? undefined),
+    moneda: z
+      .enum(['NIO', 'USD'])
+      .nullish()
+      .transform((v) => v ?? undefined),
+    tipoCambio: z
+      .coerce.number()
+      .positive()
+      .nullish()
+      .transform((v) => v ?? undefined),
+    medio: z.preprocess((v) => {
+      if (v === null || v === undefined || v === '') {
+        return undefined;
+      }
+      if (typeof v !== 'string') {
+        return v;
+      }
+      const normalized = v.trim().toUpperCase();
+      return normalized === '' ? undefined : normalized;
+    }, z.enum(MEDIOS_PAGO).optional()),
   })
   .refine(
     (data) =>
