@@ -17,11 +17,16 @@ import {
   type LoginInput,
   type MfaCodigoInput,
 } from '@/lib/validators/auth';
+import {
+  guardarLoginEmailPrefs,
+  leerLoginEmailPrefs,
+} from '@/lib/ux/login-prefs';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { EyeIcon, EyeOffIcon } from '@/assets/icons';
 
 type LoginFormValues = LoginInput;
 
@@ -32,6 +37,8 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mfaStep, setMfaStep] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberEmail, setRememberEmail] = useState(false);
 
   const destinoPostLogin = (setupRequired?: boolean): string =>
     setupRequired ? '/perfil?mfa=required' : '/dashboard';
@@ -39,6 +46,7 @@ export default function LoginPage() {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -54,6 +62,14 @@ export default function LoginPage() {
   });
 
   useEffect(() => {
+    const prefs = leerLoginEmailPrefs();
+    setRememberEmail(prefs.remember);
+    if (prefs.remember && prefs.email) {
+      setValue('email', prefs.email);
+    }
+  }, [setValue]);
+
+  useEffect(() => {
     if (!authLoading && usuario) {
       router.push(destinoPostLogin(mfaSetupRequired));
     }
@@ -62,6 +78,7 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormValues) => {
     setError(null);
     setIsSubmitting(true);
+    guardarLoginEmailPrefs(rememberEmail, data.email);
 
     try {
       const result = await login(data.email, data.password);
@@ -188,12 +205,40 @@ export default function LoginPage() {
 
               <Input
                 label="Contraseña"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 placeholder="••••••••"
                 {...register('password')}
                 error={errors.password?.message}
                 autoComplete="current-password"
+                endAdornment={
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="rounded p-1 text-gray-500 hover:text-dark focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:text-gray-400 dark:hover:text-white"
+                    aria-label={
+                      showPassword
+                        ? 'Ocultar contraseña'
+                        : 'Mostrar contraseña'
+                    }
+                  >
+                    {showPassword ? (
+                      <EyeOffIcon className="h-4 w-4" />
+                    ) : (
+                      <EyeIcon className="h-4 w-4" />
+                    )}
+                  </button>
+                }
               />
+
+              <label className="flex items-center gap-2 text-sm text-dark dark:text-white">
+                <input
+                  type="checkbox"
+                  checked={rememberEmail}
+                  onChange={(e) => setRememberEmail(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                Recordar email
+              </label>
 
               <Button
                 type="submit"

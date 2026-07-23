@@ -1,13 +1,22 @@
 import { cn } from "@/lib/utils";
-import { forwardRef, useId, type InputHTMLAttributes } from "react";
+import {
+  forwardRef,
+  useId,
+  type InputHTMLAttributes,
+  type ReactNode,
+} from "react";
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
+  endAdornment?: ReactNode;
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, label, error, type = "text", id, ...props }, ref) => {
+  (
+    { className, label, error, type = "text", id, endAdornment, ...props },
+    ref,
+  ) => {
     const autoId = useId();
     const inputId = id ?? autoId;
 
@@ -21,17 +30,26 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             {label}
           </label>
         )}
-        <input
-          id={inputId}
-          type={type}
-          className={cn(
-            "w-full rounded-lg border border-stroke bg-transparent px-3 py-1.5 text-sm text-dark outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 focus-visible:shadow-none dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:focus:border-primary",
-            error && "border-red-500 focus:border-red-500 focus:ring-red-500/20",
-            className
-          )}
-          ref={ref}
-          {...props}
-        />
+        <div className="relative">
+          <input
+            id={inputId}
+            type={type}
+            className={cn(
+              "w-full rounded-lg border border-stroke bg-transparent px-3 py-1.5 text-sm text-dark outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 focus-visible:shadow-none dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:focus:border-primary",
+              endAdornment && "pr-10",
+              error &&
+                "border-red-500 focus:border-red-500 focus:ring-red-500/20",
+              className,
+            )}
+            ref={ref}
+            {...props}
+          />
+          {endAdornment ? (
+            <div className="absolute inset-y-0 right-0 flex items-center pr-2">
+              {endAdornment}
+            </div>
+          ) : null}
+        </div>
         {error && (
           <div className="mt-1 flex items-center gap-1 text-xs text-red-600 dark:text-red-400">
             <svg
@@ -51,7 +69,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         )}
       </div>
     );
-  }
+  },
 );
 
 Input.displayName = "Input";

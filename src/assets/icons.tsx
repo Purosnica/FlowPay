@@ -439,3 +439,24 @@ export function EyeIcon(props: IconProps) {
     </svg>
   );
 }
+
+export function EyeOffIcon(props: IconProps) {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 18 18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <path d="M3 3l12 12" />
+      <path d="M7.4 7.5A2.4 2.4 0 0 0 10.5 10.6" />
+      <path d="M5.1 5.3C3.7 6.2 2.6 7.5 2 9c1.2 3 4.2 5.1 7 5.1 1.2 0 2.4-.4 3.4-1" />
+      <path d="M12.5 11.7c1.2-.8 2.2-1.9 2.9-3.1-.9-2.2-3.3-4.3-6.4-4.3-.9 0-1.8.2-2.6.5" />
+    </svg>
+  );
+}
