@@ -111,6 +111,33 @@ export interface PrestamoFilters {
   sinAsignar?: boolean;
 }
 
+/** Input para registro manual de préstamo (PTMO) por mandante. */
+export interface CreatePrestamoInput {
+  idmandante: number;
+  idcampana?: number;
+  idcliente: number;
+  noPrestamo: string;
+  codigoUnico: string;
+  noCuenta?: string;
+  plazoMeses?: number;
+  fechaPrestamo?: string;
+  fechaVencimiento?: string;
+  estado?: string;
+  moneda?: 'NIO' | 'USD';
+  tipoCambio?: number;
+  saldoTotal?: number;
+  montoPrestamo?: number;
+  diasMora?: number;
+  interes?: number;
+  interesMoratorio?: number;
+  comisionCav?: number;
+  comisionInsitu?: number;
+  mantenimientoValor?: number;
+  gestionCobranza?: number;
+  seguroSvsd?: number;
+  cargosAdmin?: number;
+}
+
 export type BandejaOrdenarPor = 'prioridad' | 'saldo_desc' | 'saldo_asc';
 
 export interface BandejaFilters {
@@ -1303,4 +1330,50 @@ export interface ReporteSupervisorEquipo {
   promedioEfectividad: number;
   totalRecuperado: number;
   ranking: ReporteSupervisorEquipoItem[];
+}
+
+/** Obligación activa de un cliente con un mandante. */
+export interface ReporteClienteObligacionItem {
+  idprestamo: number;
+  noPrestamo: string;
+  idmandante: number;
+  mandanteCodigo: string;
+  mandanteNombre: string;
+  estado: string;
+  saldoTotal: number;
+  diasMora: number;
+  moneda: string;
+}
+
+/** Resumen de deuda del cliente por mandante. */
+export interface ReporteClienteMandanteResumen {
+  idmandante: number;
+  mandanteCodigo: string;
+  mandanteNombre: string;
+  cantidadPrestamos: number;
+  saldoTotal: number;
+  maxDiasMora: number;
+}
+
+/** Cliente con obligaciones y conteo de mandantes con deuda (N). */
+export interface ReporteClienteObligacionesCliente {
+  idcliente: number;
+  nombreCliente: string;
+  numerodocumento: string;
+  cantidadMandantesConDeuda: number;
+  cantidadPrestamos: number;
+  saldoTotal: number;
+  maxDiasMora: number;
+  mandantes: ReporteClienteMandanteResumen[];
+  obligaciones: ReporteClienteObligacionItem[];
+}
+
+/** Reporte de clientes con obligaciones por mandante. */
+export interface ReporteClienteObligaciones {
+  minMandantes: number;
+  totalClientes: number;
+  totalSaldo: number;
+  totalPrestamos: number;
+  clientesMultiMandante: number;
+  clientes: ReporteClienteObligacionesCliente[];
 }

@@ -87,6 +87,10 @@ export const ROUTE_PERMISSION_RULES: RoutePermissionRule[] = [
     permisos: permisosDeReporte(REPORTE_KEY.concentracionRiesgo),
   },
   {
+    prefix: '/cobranza/reportes/cliente-obligaciones',
+    permisos: permisosDeReporte(REPORTE_KEY.clienteObligaciones),
+  },
+  {
     prefix: '/cobranza/reportes/cuotas-vencidas',
     permisos: permisosDeReporte(REPORTE_KEY.cuotasVencidas),
   },

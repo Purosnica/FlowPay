@@ -106,6 +106,22 @@ export const GET_PRESTAMOS = `
   }
 `;
 
+export const CREATE_PRESTAMO = `
+  mutation CreatePrestamo($input: CreatePrestamoInput!) {
+    createPrestamo(input: $input) {
+      idprestamo
+      idmandante
+      noPrestamo
+      codigoUnico
+      estado
+      moneda
+      diasMora
+      saldoTotal
+      montoPrestamo
+    }
+  }
+`;
+
 export const GET_PRESTAMO = `
   query GetPrestamo($id: Int!) {
     prestamo(id: $id) {
@@ -2781,6 +2797,54 @@ export const GET_REPORTE_SUPERVISOR_EQUIPO = `
     reporteSupervisorEquipo(idmandante: $idmandante, periodo: $periodo) {
       idmandante mandanteCodigo mandanteNombre periodo totalCobradores promedioRecuperado promedioEfectividad totalRecuperado
       ranking { idgestor nombre gestiones gestionesEfectivas efectividadPct montoRecuperado brechaVsPromedioRecuperado brechaVsPromedioEfectividad }
+    }
+  }
+`;
+
+export const GET_REPORTE_CLIENTE_OBLIGACIONES = `
+  query GetReporteClienteObligaciones(
+    $minMandantes: Int
+    $search: String
+    $idcliente: Int
+  ) {
+    reporteClienteObligaciones(
+      minMandantes: $minMandantes
+      search: $search
+      idcliente: $idcliente
+    ) {
+      minMandantes
+      totalClientes
+      totalSaldo
+      totalPrestamos
+      clientesMultiMandante
+      clientes {
+        idcliente
+        nombreCliente
+        numerodocumento
+        cantidadMandantesConDeuda
+        cantidadPrestamos
+        saldoTotal
+        maxDiasMora
+        mandantes {
+          idmandante
+          mandanteCodigo
+          mandanteNombre
+          cantidadPrestamos
+          saldoTotal
+          maxDiasMora
+        }
+        obligaciones {
+          idprestamo
+          noPrestamo
+          idmandante
+          mandanteCodigo
+          mandanteNombre
+          estado
+          saldoTotal
+          diasMora
+          moneda
+        }
+      }
     }
   }
 `;

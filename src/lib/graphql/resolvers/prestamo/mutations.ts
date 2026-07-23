@@ -14,6 +14,7 @@ import {
   ESTADOS_PRESTAMO,
   transicionarEstadoPrestamo,
 } from "@/lib/cobranza/estado-prestamo-service";
+import { registrarPrestamoManual } from "@/lib/cobranza/registrar-prestamo-service";
 import { parseReferenciasPrestamo } from "@/lib/cobranza/parse-referencias-prestamo";
 import { IdPositiveSchema } from "@/lib/validators/graphql-args";
 import { z } from "zod";
@@ -63,9 +64,15 @@ builder.mutationField("createPrestamo", (t) =>
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.CARTERA_WRITE);
       const data = CreatePrestamoInputSchema.parse(args.input);
       await requerirAccesoMandante(ctx.usuario?.idusuario, data.idmandante);
-      return ctx.prisma.tbl_prestamo.create({
+      const idprestamo = await ctx.prisma.$transaction(async (tx) => {
+        return registrarPrestamoManual(tx, {
+          input: data,
+          idusuario: ctx.usuario?.idusuario,
+        });
+      });
+      return ctx.prisma.tbl_prestamo.findUniqueOrThrow({
         ...(query as Record<string, unknown>),
-        data,
+        where: { idprestamo },
       }) as never;
     },
   }),

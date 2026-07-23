@@ -11,6 +11,7 @@ import {
   ReporteGananciasType,
 } from './types-reportes-control';
 import {
+  ReporteClienteObligacionesType,
   ReporteComisionesVsProyeccionType,
   ReporteConcentracionRiesgoType,
   ReporteCumplimientoMetasType,
@@ -49,6 +50,7 @@ import { obtenerReporteRecontactos } from '@/lib/cobranza/reporte-recontactos-se
 import { obtenerReporteReclamosSla } from '@/lib/cobranza/reporte-reclamos-sla-service';
 import { obtenerReporteMigracionMora } from '@/lib/cobranza/reporte-migracion-mora-service';
 import { obtenerReporteConcentracionRiesgo } from '@/lib/cobranza/reporte-concentracion-riesgo-service';
+import { obtenerReporteClienteObligaciones } from '@/lib/cobranza/reporte-cliente-obligaciones-service';
 import { obtenerReporteCuotasVencidas } from '@/lib/cobranza/reporte-cuotas-vencidas-service';
 import { obtenerReporteCumplimientoMetas } from '@/lib/cobranza/reporte-cumplimiento-metas-service';
 import { obtenerReporteSupervisorEquipo } from '@/lib/cobranza/reporte-supervisor-equipo-service';
@@ -608,6 +610,36 @@ builder.queryField('reporteSupervisorEquipo', (t) =>
             args.periodo,
           ),
         'Error al generar supervisor vs equipo.',
+      );
+    },
+  }),
+);
+
+builder.queryField('reporteClienteObligaciones', (t) =>
+  t.field({
+    type: ReporteClienteObligacionesType,
+    args: {
+      minMandantes: t.arg.int({ required: false }),
+      search: t.arg.string({ required: false }),
+      idcliente: t.arg.int({ required: false }),
+    },
+    resolve: async (_parent, args, ctx: GraphQLContext) => {
+      await requerirReporte(
+        ctx.usuario?.idusuario,
+        REPORTE_KEY.clienteObligaciones,
+      );
+      const idusuario = ctx.usuario?.idusuario;
+      if (!idusuario) {
+        throw new GraphQLValidationError('Usuario no autenticado.');
+      }
+      return resolverReporte(
+        () =>
+          obtenerReporteClienteObligaciones(idusuario, {
+            minMandantes: args.minMandantes,
+            search: args.search,
+            idcliente: args.idcliente,
+          }),
+        'Error al generar reporte de obligaciones de cliente.',
       );
     },
   }),

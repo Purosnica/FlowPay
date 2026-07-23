@@ -1,5 +1,6 @@
 import { builder } from '../../builder';
 import type {
+  ReporteClienteObligaciones,
   ReporteComisionesVsProyeccion,
   ReporteConcentracionRiesgo,
   ReporteCumplimientoMetas,
@@ -439,6 +440,79 @@ export const ReporteSupervisorEquipoType = builder
       ranking: t.field({
         type: [ReporteSupervisorEquipoItemType],
         resolve: (p) => p.ranking,
+      }),
+    }),
+  });
+
+const ReporteClienteObligacionItemType = builder
+  .objectRef<ReporteClienteObligaciones['clientes'][number]['obligaciones'][number]>(
+    'ReporteClienteObligacionItem',
+  )
+  .implement({
+    fields: (t) => ({
+      idprestamo: t.exposeInt('idprestamo'),
+      noPrestamo: t.exposeString('noPrestamo'),
+      idmandante: t.exposeInt('idmandante'),
+      mandanteCodigo: t.exposeString('mandanteCodigo'),
+      mandanteNombre: t.exposeString('mandanteNombre'),
+      estado: t.exposeString('estado'),
+      saldoTotal: t.exposeFloat('saldoTotal'),
+      diasMora: t.exposeInt('diasMora'),
+      moneda: t.exposeString('moneda'),
+    }),
+  });
+
+const ReporteClienteMandanteResumenType = builder
+  .objectRef<ReporteClienteObligaciones['clientes'][number]['mandantes'][number]>(
+    'ReporteClienteMandanteResumen',
+  )
+  .implement({
+    fields: (t) => ({
+      idmandante: t.exposeInt('idmandante'),
+      mandanteCodigo: t.exposeString('mandanteCodigo'),
+      mandanteNombre: t.exposeString('mandanteNombre'),
+      cantidadPrestamos: t.exposeInt('cantidadPrestamos'),
+      saldoTotal: t.exposeFloat('saldoTotal'),
+      maxDiasMora: t.exposeInt('maxDiasMora'),
+    }),
+  });
+
+const ReporteClienteObligacionesClienteType = builder
+  .objectRef<ReporteClienteObligaciones['clientes'][number]>(
+    'ReporteClienteObligacionesCliente',
+  )
+  .implement({
+    fields: (t) => ({
+      idcliente: t.exposeInt('idcliente'),
+      nombreCliente: t.exposeString('nombreCliente'),
+      numerodocumento: t.exposeString('numerodocumento'),
+      cantidadMandantesConDeuda: t.exposeInt('cantidadMandantesConDeuda'),
+      cantidadPrestamos: t.exposeInt('cantidadPrestamos'),
+      saldoTotal: t.exposeFloat('saldoTotal'),
+      maxDiasMora: t.exposeInt('maxDiasMora'),
+      mandantes: t.field({
+        type: [ReporteClienteMandanteResumenType],
+        resolve: (p) => p.mandantes,
+      }),
+      obligaciones: t.field({
+        type: [ReporteClienteObligacionItemType],
+        resolve: (p) => p.obligaciones,
+      }),
+    }),
+  });
+
+export const ReporteClienteObligacionesType = builder
+  .objectRef<ReporteClienteObligaciones>('ReporteClienteObligaciones')
+  .implement({
+    fields: (t) => ({
+      minMandantes: t.exposeInt('minMandantes'),
+      totalClientes: t.exposeInt('totalClientes'),
+      totalSaldo: t.exposeFloat('totalSaldo'),
+      totalPrestamos: t.exposeInt('totalPrestamos'),
+      clientesMultiMandante: t.exposeInt('clientesMultiMandante'),
+      clientes: t.field({
+        type: [ReporteClienteObligacionesClienteType],
+        resolve: (p) => p.clientes,
       }),
     }),
   });

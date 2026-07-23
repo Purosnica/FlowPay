@@ -6,26 +6,75 @@ import type { tbl_prestamo } from "@prisma/client";
 
 export const CreatePrestamoInputSchema = z.object({
   idmandante: z.number().int().positive(),
-  idcampana: z.number().int().positive().optional(),
+  idcampana: z
+    .number()
+    .int()
+    .positive()
+    .nullish()
+    .transform((v) => v ?? undefined),
   idcliente: z.number().int().positive(),
-  noPrestamo: z.string().min(1),
-  codigoUnico: z.string().min(1),
-  noCuenta: z.string().optional(),
-  idtipocredito: z.number().int().positive().optional(),
-  idmodelopago: z.number().int().positive().optional(),
-  idruta: z.number().int().positive().optional(),
-  idagencia: z.number().int().positive().optional(),
-  idgestorAsignado: z.number().int().positive().optional(),
-  plazoMeses: z.number().int().positive().optional(),
-  fechaPrestamo: z.union([z.date(), z.string()]).optional().transform((v) =>
-    v ? (typeof v === "string" ? new Date(v) : v) : undefined,
-  ),
-  fechaVencimiento: z.union([z.date(), z.string()]).optional().transform((v) =>
-    v ? (typeof v === "string" ? new Date(v) : v) : undefined,
-  ),
-  estado: z.string().default("Vigente"),
-  moneda: z.enum(["NIO", "USD"]).default("NIO"),
-  tipoCambio: z.number().positive().optional(),
+  noPrestamo: z.string().trim().min(1, 'El No. préstamo es obligatorio'),
+  codigoUnico: z.string().trim().min(1, 'El código único es obligatorio'),
+  noCuenta: z
+    .string()
+    .trim()
+    .nullish()
+    .transform((v) => (v && v.length > 0 ? v : undefined)),
+  idtipocredito: z
+    .number()
+    .int()
+    .positive()
+    .nullish()
+    .transform((v) => v ?? undefined),
+  idmodelopago: z
+    .number()
+    .int()
+    .positive()
+    .nullish()
+    .transform((v) => v ?? undefined),
+  idruta: z
+    .number()
+    .int()
+    .positive()
+    .nullish()
+    .transform((v) => v ?? undefined),
+  idagencia: z
+    .number()
+    .int()
+    .positive()
+    .nullish()
+    .transform((v) => v ?? undefined),
+  idgestorAsignado: z
+    .number()
+    .int()
+    .positive()
+    .nullish()
+    .transform((v) => v ?? undefined),
+  plazoMeses: z
+    .number()
+    .int()
+    .positive()
+    .nullish()
+    .transform((v) => v ?? undefined),
+  fechaPrestamo: z
+    .union([z.date(), z.string()])
+    .nullish()
+    .transform((v) =>
+      v ? (typeof v === 'string' ? new Date(v) : v) : undefined,
+    ),
+  fechaVencimiento: z
+    .union([z.date(), z.string()])
+    .nullish()
+    .transform((v) =>
+      v ? (typeof v === 'string' ? new Date(v) : v) : undefined,
+    ),
+  estado: z.string().default('Vigente'),
+  moneda: z.enum(['NIO', 'USD']).default('NIO'),
+  tipoCambio: z
+    .number()
+    .positive()
+    .nullish()
+    .transform((v) => v ?? undefined),
   saldoTotal: z.number().nonnegative().default(0),
   montoPrestamo: z.number().nonnegative().default(0),
   diasMora: z.number().int().nonnegative().default(0),
@@ -38,6 +87,8 @@ export const CreatePrestamoInputSchema = z.object({
   seguroSvsd: z.number().nonnegative().default(0),
   cargosAdmin: z.number().nonnegative().default(0),
 });
+
+export type CreatePrestamoInputData = z.infer<typeof CreatePrestamoInputSchema>;
 
 export const BandejaFiltersSchema = z.object({
   idmandante: z.number().int().positive().optional(),

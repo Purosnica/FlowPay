@@ -1,4 +1,5 @@
 import type {
+  ReporteClienteObligaciones,
   ReporteComisionesVsProyeccion,
   ReporteConcentracionRiesgo,
   ReporteCumplimientoMetas,
@@ -609,5 +610,101 @@ export function exportReporteSupervisorEquipoXlsx(
       },
     ],
     `reporte-supervisor-equipo-${reporte.periodo}`,
+  );
+}
+
+export function exportReporteClienteObligacionesXlsx(
+  reporte: ReporteClienteObligaciones,
+): void {
+  downloadWorkbook(
+    [
+      {
+        name: 'Resumen',
+        title: 'Cliente obligaciones por mandante',
+        meta: [
+          { label: 'Mín. mandantes (N)', value: reporte.minMandantes },
+          { label: 'Clientes', value: reporte.totalClientes },
+          {
+            label: 'Multi-mandante (≥2)',
+            value: reporte.clientesMultiMandante,
+          },
+          { label: 'Préstamos', value: reporte.totalPrestamos },
+          { label: 'Saldo total', value: reporte.totalSaldo },
+        ],
+      },
+      {
+        name: 'Clientes',
+        title: 'Clientes con obligaciones',
+        columns: [
+          { header: 'Documento', width: 16 },
+          { header: 'Cliente', width: 32 },
+          { header: 'Mandantes con deuda', width: 16, numFmt: XLSX_FMT.integer },
+          { header: 'Préstamos', width: 12, numFmt: XLSX_FMT.integer },
+          { header: 'Saldo', width: 14, numFmt: XLSX_FMT.money },
+          { header: 'Máx. días mora', width: 14, numFmt: XLSX_FMT.integer },
+          { header: 'Mandantes', width: 40 },
+        ],
+        rows: reporte.clientes.map((c) => [
+          c.numerodocumento,
+          c.nombreCliente,
+          c.cantidadMandantesConDeuda,
+          c.cantidadPrestamos,
+          c.saldoTotal,
+          c.maxDiasMora,
+          c.mandantes.map((m) => m.mandanteNombre).join(', '),
+        ]),
+      },
+      {
+        name: 'Por mandante',
+        title: 'Deuda por cliente y mandante',
+        columns: [
+          { header: 'Documento', width: 16 },
+          { header: 'Cliente', width: 32 },
+          { header: 'Mandante', width: 24 },
+          { header: 'Código', width: 12 },
+          { header: 'Préstamos', width: 12, numFmt: XLSX_FMT.integer },
+          { header: 'Saldo', width: 14, numFmt: XLSX_FMT.money },
+          { header: 'Máx. días mora', width: 14, numFmt: XLSX_FMT.integer },
+        ],
+        rows: reporte.clientes.flatMap((c) =>
+          c.mandantes.map((m) => [
+            c.numerodocumento,
+            c.nombreCliente,
+            m.mandanteNombre,
+            m.mandanteCodigo,
+            m.cantidadPrestamos,
+            m.saldoTotal,
+            m.maxDiasMora,
+          ]),
+        ),
+      },
+      {
+        name: 'Obligaciones',
+        title: 'Detalle de obligaciones',
+        columns: [
+          { header: 'Documento', width: 16 },
+          { header: 'Cliente', width: 32 },
+          { header: 'Préstamo', width: 14 },
+          { header: 'Mandante', width: 24 },
+          { header: 'Estado', width: 12 },
+          { header: 'Saldo', width: 14, numFmt: XLSX_FMT.money },
+          { header: 'Días mora', width: 12, numFmt: XLSX_FMT.integer },
+          { header: 'Moneda', width: 10 },
+        ],
+        rows: reporte.clientes.flatMap((c) =>
+          c.obligaciones.map((o) => [
+            c.numerodocumento,
+            c.nombreCliente,
+            o.noPrestamo,
+            o.mandanteNombre,
+            o.estado,
+            o.saldoTotal,
+            o.diasMora,
+            o.moneda,
+          ]),
+        ),
+      },
+    ],
+    `reporte-cliente-obligaciones-n${reporte.minMandantes}`,
   );
 }

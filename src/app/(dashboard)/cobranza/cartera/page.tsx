@@ -1,10 +1,12 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
+import { Modal } from '@/components/ui/modal';
 import { ViewRowButton } from '@/components/ui/row-action-buttons';
 import { PermissionGate } from '@/components/auth/permission-gate';
 import { PERMISO } from '@/lib/permissions/permiso-codes';
@@ -13,12 +15,18 @@ import { useCarteraFiltersPersist } from '@/hooks/use-cartera-filters-persist';
 import { useAuth } from '@/contexts/auth-context';
 import { PaginatedDataTable } from '@/components/cobranza/paginated-data-table';
 import { CarteraFilters } from '@/components/cobranza/cartera-filters';
+import { PrestamoForm } from '@/components/cobranza/prestamo-form';
 import { PageHeader } from '@/components/ui/page-header';
 import { AsyncPanel } from '@/components/ui/async-panel';
 import { SearchParamsBoundary } from '@/components/ui/search-params-boundary';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
-import { GET_PRESTAMOS } from '@/lib/graphql/queries/cobranza.queries';
+import { useGraphQLMutation } from '@/hooks/use-graphql-mutation';
 import {
+  CREATE_PRESTAMO,
+  GET_PRESTAMOS,
+} from '@/lib/graphql/queries/cobranza.queries';
+import {
+  type CreatePrestamoInput,
   type Prestamo,
   type PrestamoFilters,
   formatearMoneda,
@@ -55,7 +63,9 @@ function filtrosDesdeUrl(searchParams: URLSearchParams): PrestamoFilters {
 function CarteraPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const { usuario } = useAuth();
+  const [isRegistrarOpen, setIsRegistrarOpen] = useState(false);
   const {
     queryVars,
     handlePageChange,
@@ -84,6 +94,17 @@ function CarteraPageContent() {
   }>(GET_PRESTAMOS, {
     ...queryVars,
     filters: Object.keys(filters).length > 0 ? filters : undefined,
+  });
+
+  const createMutation = useGraphQLMutation<
+    { createPrestamo: { idprestamo: number } },
+    { input: CreatePrestamoInput }
+  >(CREATE_PRESTAMO, {
+    onSuccess: (result) => {
+      void queryClient.invalidateQueries({ queryKey: [GET_PRESTAMOS] });
+      setIsRegistrarOpen(false);
+      router.push(`/cobranza/prestamos/${result.createPrestamo.idprestamo}`);
+    },
   });
 
   const prestamosData = data?.prestamos;
@@ -158,11 +179,24 @@ function CarteraPageContent() {
     [],
   );
 
+  const openRegistrar = () => setIsRegistrarOpen(true);
+
   const emptyAction = (
     <div className="flex flex-wrap justify-center gap-2">
       <PermissionGate permiso={PERMISO.CARTERA_WRITE}>
+        <Button
+          size="sm"
+          data-ux-id="cartera-empty-registrar"
+          onClick={openRegistrar}
+        >
+          Registrar préstamo
+        </Button>
         <Link href="/cobranza/importar">
-          <Button size="sm" data-ux-id="cartera-empty-importar">
+          <Button
+            size="sm"
+            variant="outline"
+            data-ux-id="cartera-empty-importar"
+          >
             Importar cartera
           </Button>
         </Link>
@@ -187,6 +221,13 @@ function CarteraPageContent() {
         actions={
           <div className="flex flex-wrap gap-2">
             <PermissionGate permiso={PERMISO.CARTERA_WRITE}>
+              <Button
+                className="field-touch-target"
+                data-ux-id="cartera-registrar"
+                onClick={openRegistrar}
+              >
+                Registrar préstamo
+              </Button>
               <Link href="/cobranza/asignacion">
                 <Button variant="outline" className="field-touch-target">
                   Asignar cartera
@@ -227,7 +268,7 @@ function CarteraPageContent() {
             columns={columns}
             pagination={prestamosData}
             isLoading={false}
-            emptyMessage="No hay préstamos en cartera. Importe un archivo Excel."
+            emptyMessage="No hay préstamos en cartera. Registre uno o importe un archivo Excel."
             emptyAction={emptyAction}
             onRowClick={(p) =>
               router.push(`/cobranza/prestamos/${p.idprestamo}`)
@@ -245,6 +286,32 @@ function CarteraPageContent() {
           />
         </AsyncPanel>
       </div>
+
+      <Modal
+        isOpen={isRegistrarOpen}
+        onClose={() => {
+          if (!createMutation.isPending) {
+            setIsRegistrarOpen(false);
+            createMutation.reset();
+          }
+        }}
+        title="Registrar préstamo"
+        size="lg"
+        closeOnClickOutside={!createMutation.isPending}
+      >
+        <PrestamoForm
+          initialIdmandante={filters.idmandante}
+          isLoading={createMutation.isPending}
+          errorMessage={createMutation.error?.message ?? null}
+          onCancel={() => {
+            setIsRegistrarOpen(false);
+            createMutation.reset();
+          }}
+          onSubmit={(input) => {
+            createMutation.mutate({ input });
+          }}
+        />
+      </Modal>
     </div>
   );
 }
