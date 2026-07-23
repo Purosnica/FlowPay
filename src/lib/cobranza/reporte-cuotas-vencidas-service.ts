@@ -1,26 +1,14 @@
 import { prisma } from '@/lib/prisma';
+import {
+  CLIENTE_NOMBRE_SELECT,
+  formatNombreClienteDisplay,
+} from '@/lib/logic/cliente-tipo-persona-logic';
 import { requerirAccesoMandante } from './mandante-scope';
 import { decimalToNumber, roundMoney } from './decimal-utils';
 import type {
   ReporteCuotaVencidaItem,
   ReporteCuotasVencidas,
 } from '@/types/cobranza';
-
-function nombreCliente(row: {
-  primer_nombres: string;
-  segundo_nombres: string | null;
-  primer_apellido: string;
-  segundo_apellido: string | null;
-}): string {
-  return [
-    row.primer_nombres,
-    row.segundo_nombres,
-    row.primer_apellido,
-    row.segundo_apellido,
-  ]
-    .filter(Boolean)
-    .join(' ');
-}
 
 /**
  * Cuotas de acuerdos en estado VENCIDA.
@@ -59,12 +47,7 @@ export async function obtenerReporteCuotasVencidas(
             select: {
               noPrestamo: true,
               cliente: {
-                select: {
-                  primer_nombres: true,
-                  segundo_nombres: true,
-                  primer_apellido: true,
-                  segundo_apellido: true,
-                },
+                select: { ...CLIENTE_NOMBRE_SELECT },
               },
               gestor: { select: { nombre: true } },
             },
@@ -90,7 +73,7 @@ export async function obtenerReporteCuotasVencidas(
       idacuerdo: c.acuerdo.idacuerdo,
       noPrestamo: c.acuerdo.prestamo.noPrestamo,
       nombreCliente: c.acuerdo.prestamo.cliente
-        ? nombreCliente(c.acuerdo.prestamo.cliente)
+        ? formatNombreClienteDisplay(c.acuerdo.prestamo.cliente)
         : '—',
       nombreGestor:
         c.acuerdo.gestion?.gestor?.nombre ??

@@ -23,6 +23,7 @@ import {
   GET_PRESTAMOS_POR_CLIENTE,
 } from '@/lib/graphql/queries/cobranza.queries';
 import type { Prestamo, Reclamo } from '@/types/cobranza';
+import { formatNombreClienteDisplay } from '@/lib/logic/cliente-tipo-persona-logic';
 
 export default function ReclamosPage() {
   const {
@@ -89,7 +90,7 @@ export default function ReclamosPage() {
         header: 'Cliente',
         cell: ({ row }) =>
           row.original.cliente
-            ? `${row.original.cliente.primer_nombres} ${row.original.cliente.primer_apellido}`
+            ? formatNombreClienteDisplay(row.original.cliente)
             : '-',
       },
       {

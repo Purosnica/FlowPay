@@ -1,4 +1,9 @@
 import { prisma } from '@/lib/prisma';
+import {
+  CLIENTE_NOMBRE_SELECT,
+  formatNombreClienteDisplay,
+} from '@/lib/logic/cliente-tipo-persona-logic';
+import { resolverEstadoPromesa } from '@/lib/logic/promesa-estado-logic';
 import { requerirAccesoMandante } from './mandante-scope';
 import { decimalToNumber, roundMoney } from './decimal-utils';
 import { parsePeriodo } from './periodo-utils';
@@ -6,23 +11,6 @@ import type {
   ReportePromesaPagoItem,
   ReportePromesasPago,
 } from '@/types/cobranza';
-import { resolverEstadoPromesa } from '@/lib/logic/promesa-estado-logic';
-
-function nombreCliente(row: {
-  primer_nombres: string;
-  segundo_nombres: string | null;
-  primer_apellido: string;
-  segundo_apellido: string | null;
-}): string {
-  return [
-    row.primer_nombres,
-    row.segundo_nombres,
-    row.primer_apellido,
-    row.segundo_apellido,
-  ]
-    .filter(Boolean)
-    .join(' ');
-}
 
 /**
  * Promesas de pago del periodo: cumplidas / vencidas / pendientes.
@@ -59,12 +47,7 @@ export async function obtenerReportePromesasPago(
         select: {
           noPrestamo: true,
           cliente: {
-            select: {
-              primer_nombres: true,
-              segundo_nombres: true,
-              primer_apellido: true,
-              segundo_apellido: true,
-            },
+            select: { ...CLIENTE_NOMBRE_SELECT },
           },
         },
       },
@@ -98,7 +81,7 @@ export async function obtenerReportePromesasPago(
       idgestion: g.idgestion,
       noPrestamo: g.prestamo.noPrestamo,
       nombreCliente: g.prestamo.cliente
-        ? nombreCliente(g.prestamo.cliente)
+        ? formatNombreClienteDisplay(g.prestamo.cliente)
         : '—',
       nombreGestor: g.gestor.nombre,
       montoPromesa: decimalToNumber(g.montoPromesa),

@@ -9,6 +9,7 @@ import {
   type Prestamo,
   type PrestamoCliente,
 } from '@/types/cobranza';
+import { formatNombreClienteDisplay } from '@/lib/logic/cliente-tipo-persona-logic';
 
 export const PLANTILLA_VARIABLES_AYUDA = [
   '{{nombre}}',
@@ -48,6 +49,8 @@ export type PlantillaMensajeContext = {
     | 'segundo_nombres'
     | 'primer_apellido'
     | 'segundo_apellido'
+    | 'razon_social'
+    | 'nombre_comercial'
     | 'numerodocumento'
     | 'celular'
     | 'telefono'
@@ -106,14 +109,7 @@ function formatNombreCliente(
   if (!cliente) {
     return '';
   }
-  return [
-    cliente.primer_nombres,
-    cliente.segundo_nombres,
-    cliente.primer_apellido,
-    cliente.segundo_apellido,
-  ]
-    .filter(Boolean)
-    .join(' ');
+  return formatNombreClienteDisplay(cliente);
 }
 
 export function construirVariablesPlantilla(

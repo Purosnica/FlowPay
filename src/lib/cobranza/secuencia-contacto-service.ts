@@ -1,6 +1,10 @@
 import { prisma } from '@/lib/prisma';
 import { filtroMandante, requerirAccesoMandante } from '@/lib/cobranza/mandante-scope';
 import { decimalToNumber } from '@/lib/cobranza/decimal-utils';
+import {
+  CLIENTE_NOMBRE_SELECT,
+  formatNombreClienteDisplay,
+} from '@/lib/logic/cliente-tipo-persona-logic';
 import type { AgendaSecuenciaItem } from '@/types/cobranza';
 import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
 
@@ -204,8 +208,7 @@ export async function obtenerAgendaSecuenciaHoy(
     include: {
       cliente: {
         select: {
-          primer_nombres: true,
-          primer_apellido: true,
+          ...CLIENTE_NOMBRE_SELECT,
           celular: true,
           telefono: true,
           email: true,
@@ -266,12 +269,7 @@ export async function obtenerAgendaSecuenciaHoy(
         continue;
       }
       for (const paso of pasosHoy) {
-        const nombreCliente = [
-          prestamo.cliente.primer_nombres,
-          prestamo.cliente.primer_apellido,
-        ]
-          .filter(Boolean)
-          .join(' ');
+        const nombreCliente = formatNombreClienteDisplay(prestamo.cliente);
         const telefono =
           prestamo.cliente.celular?.trim() ||
           prestamo.cliente.telefono?.trim() ||

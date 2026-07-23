@@ -1,3 +1,5 @@
+import { formatNombreClienteDisplay } from '@/lib/logic/cliente-tipo-persona-logic';
+
 export interface Mandante {
   idmandante: number;
   codigo: string;
@@ -21,8 +23,10 @@ export interface PrestamoCliente {
   idcliente: number;
   primer_nombres: string;
   segundo_nombres: string | null;
-  primer_apellido: string;
+  primer_apellido: string | null;
   segundo_apellido: string | null;
+  razon_social?: string | null;
+  nombre_comercial?: string | null;
   numerodocumento: string;
   celular: string | null;
   telefono: string | null;
@@ -187,7 +191,9 @@ export interface Gestion {
     saldoTotal: number;
     cliente: {
       primer_nombres: string;
-      primer_apellido: string;
+      primer_apellido: string | null;
+      razon_social?: string | null;
+      nombre_comercial?: string | null;
       numerodocumento: string;
     };
   };
@@ -443,7 +449,9 @@ export interface HorarioCobranza {
 
 export interface ReclamoCliente {
   primer_nombres: string;
-  primer_apellido: string;
+  primer_apellido: string | null;
+  razon_social?: string | null;
+  nombre_comercial?: string | null;
   numerodocumento: string;
 }
 
@@ -681,14 +689,7 @@ export interface BandejaGraphQLItem {
 }
 
 export function nombreCompletoCliente(cliente: PrestamoCliente): string {
-  return [
-    cliente.primer_nombres,
-    cliente.segundo_nombres,
-    cliente.primer_apellido,
-    cliente.segundo_apellido,
-  ]
-    .filter(Boolean)
-    .join(' ');
+  return formatNombreClienteDisplay(cliente);
 }
 
 export function formatearMoneda(monto: number, moneda = 'NIO'): string {

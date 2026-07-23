@@ -1,39 +1,15 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
+import {
+  CLIENTE_NOMBRE_SELECT,
+  formatNombreClienteDisplay,
+} from '@/lib/logic/cliente-tipo-persona-logic';
 import { ROL } from '@/lib/permissions/role-codes';
 import { decimalToNumber } from './decimal-utils';
 import { crearNotificacion } from './notificacion-service';
 import { TIPO_NOTIFICACION } from '@/types/notificacion';
 
 type DbClient = Prisma.TransactionClient | typeof prisma;
-
-const CLIENTE_SELECT = {
-  primer_nombres: true,
-  segundo_nombres: true,
-  primer_apellido: true,
-  segundo_apellido: true,
-} as const;
-
-function nombreCliente(
-  cliente: {
-    primer_nombres: string;
-    segundo_nombres: string | null;
-    primer_apellido: string;
-    segundo_apellido: string | null;
-  } | null,
-): string {
-  if (!cliente) {
-    return '—';
-  }
-  return [
-    cliente.primer_nombres,
-    cliente.segundo_nombres,
-    cliente.primer_apellido,
-    cliente.segundo_apellido,
-  ]
-    .filter(Boolean)
-    .join(' ');
-}
 
 async function obtenerSupervisorCobrador(
   idusuarioCobrador: number,
@@ -79,7 +55,7 @@ export async function emitirNotificacionAsignacion(
         idprestamo: true,
         noPrestamo: true,
         mandante: { select: { nombre: true } },
-        cliente: { select: CLIENTE_SELECT },
+        cliente: { select: CLIENTE_NOMBRE_SELECT },
       },
     });
 
@@ -87,7 +63,9 @@ export async function emitirNotificacionAsignacion(
       return;
     }
 
-    const deudor = nombreCliente(prestamo.cliente);
+    const deudor = prestamo.cliente
+      ? formatNombreClienteDisplay(prestamo.cliente) || '—'
+      : '—';
     await crearNotificacion(
       {
         idusuario: idgestorDestino,
@@ -130,7 +108,7 @@ export async function emitirNotificacionGestion(
         select: {
           idprestamo: true,
           noPrestamo: true,
-          cliente: { select: CLIENTE_SELECT },
+          cliente: { select: CLIENTE_NOMBRE_SELECT },
         },
       },
     },
@@ -145,7 +123,9 @@ export async function emitirNotificacionGestion(
     return;
   }
 
-  const deudor = nombreCliente(gestion.prestamo.cliente);
+  const deudor = gestion.prestamo.cliente
+    ? formatNombreClienteDisplay(gestion.prestamo.cliente) || '—'
+    : '—';
   const base = `${gestion.mandante.nombre} · ${gestion.prestamo.noPrestamo} · ${deudor}`;
   const cobrador = gestion.gestor.nombre;
 
@@ -193,7 +173,7 @@ export async function emitirNotificacionPago(
         select: {
           idprestamo: true,
           noPrestamo: true,
-          cliente: { select: CLIENTE_SELECT },
+          cliente: { select: CLIENTE_NOMBRE_SELECT },
         },
       },
     },
@@ -208,7 +188,9 @@ export async function emitirNotificacionPago(
     return;
   }
 
-  const deudor = nombreCliente(pago.prestamo.cliente);
+  const deudor = pago.prestamo.cliente
+    ? formatNombreClienteDisplay(pago.prestamo.cliente) || '—'
+    : '—';
   const monto = decimalToNumber(pago.monto);
   const cobrador = pago.gestor?.nombre ?? 'Cobrador';
 
@@ -244,7 +226,7 @@ export async function emitirNotificacionAcuerdo(
         select: {
           idprestamo: true,
           noPrestamo: true,
-          cliente: { select: CLIENTE_SELECT },
+          cliente: { select: CLIENTE_NOMBRE_SELECT },
         },
       },
     },
@@ -259,7 +241,9 @@ export async function emitirNotificacionAcuerdo(
     select: { nombre: true },
   });
 
-  const deudor = nombreCliente(acuerdo.prestamo.cliente);
+  const deudor = acuerdo.prestamo.cliente
+    ? formatNombreClienteDisplay(acuerdo.prestamo.cliente) || '—'
+    : '—';
   const cobrador = creador?.nombre ?? 'Cobrador';
 
   await crearNotificacion(

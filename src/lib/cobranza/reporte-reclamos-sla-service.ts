@@ -1,26 +1,14 @@
 import { prisma } from '@/lib/prisma';
+import {
+  CLIENTE_NOMBRE_SELECT,
+  formatNombreClienteDisplay,
+} from '@/lib/logic/cliente-tipo-persona-logic';
 import { requerirAccesoMandante } from './mandante-scope';
 import { roundMoney } from './decimal-utils';
 import type {
   ReporteReclamoSlaItem,
   ReporteReclamosSla,
 } from '@/types/cobranza';
-
-function nombreCliente(row: {
-  primer_nombres: string;
-  segundo_nombres: string | null;
-  primer_apellido: string;
-  segundo_apellido: string | null;
-}): string {
-  return [
-    row.primer_nombres,
-    row.segundo_nombres,
-    row.primer_apellido,
-    row.segundo_apellido,
-  ]
-    .filter(Boolean)
-    .join(' ');
-}
 
 /**
  * Reclamos del mandante con control de SLA (fechaLimite).
@@ -44,12 +32,7 @@ export async function obtenerReporteReclamosSla(
     where: { idmandante, deletedAt: null },
     include: {
       cliente: {
-        select: {
-          primer_nombres: true,
-          segundo_nombres: true,
-          primer_apellido: true,
-          segundo_apellido: true,
-        },
+        select: { ...CLIENTE_NOMBRE_SELECT },
       },
       prestamo: { select: { noPrestamo: true } },
     },
@@ -78,7 +61,7 @@ export async function obtenerReporteReclamosSla(
       fueraSla,
       diasFueraSla,
       noPrestamo: r.prestamo?.noPrestamo ?? null,
-      nombreCliente: nombreCliente(r.cliente),
+      nombreCliente: formatNombreClienteDisplay(r.cliente),
     };
   });
 

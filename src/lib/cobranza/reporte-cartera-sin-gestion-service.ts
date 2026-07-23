@@ -1,4 +1,8 @@
 import { prisma } from '@/lib/prisma';
+import {
+  CLIENTE_NOMBRE_SELECT,
+  formatNombreClienteDisplay,
+} from '@/lib/logic/cliente-tipo-persona-logic';
 import { requerirAccesoMandante } from './mandante-scope';
 import { decimalToNumber, roundMoney } from './decimal-utils';
 import type {
@@ -6,22 +10,6 @@ import type {
   ReporteCarteraSinGestionItem,
   ReporteCarteraSinGestionResumenTramo,
 } from '@/types/cobranza';
-
-function nombreCliente(row: {
-  primer_nombres: string;
-  segundo_nombres: string | null;
-  primer_apellido: string;
-  segundo_apellido: string | null;
-}): string {
-  return [
-    row.primer_nombres,
-    row.segundo_nombres,
-    row.primer_apellido,
-    row.segundo_apellido,
-  ]
-    .filter(Boolean)
-    .join(' ');
-}
 
 const UMBRALES = [7, 15, 30] as const;
 
@@ -82,12 +70,7 @@ export async function obtenerReporteCarteraSinGestion(
       diasMora: true,
       saldoTotal: true,
       cliente: {
-        select: {
-          primer_nombres: true,
-          segundo_nombres: true,
-          primer_apellido: true,
-          segundo_apellido: true,
-        },
+        select: { ...CLIENTE_NOMBRE_SELECT },
       },
       gestor: { select: { nombre: true } },
       gestiones: {
@@ -105,7 +88,9 @@ export async function obtenerReporteCarteraSinGestion(
     return {
       idprestamo: p.idprestamo,
       noPrestamo: p.noPrestamo,
-      nombreCliente: p.cliente ? nombreCliente(p.cliente) : '—',
+      nombreCliente: p.cliente
+        ? formatNombreClienteDisplay(p.cliente)
+        : '—',
       nombreGestor: p.gestor?.nombre ?? null,
       diasMora: p.diasMora,
       saldoTotal: decimalToNumber(p.saldoTotal),

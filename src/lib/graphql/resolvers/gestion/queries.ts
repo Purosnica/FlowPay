@@ -153,6 +153,8 @@ builder.queryField("misGestionesHoy", (t) =>
                   select: {
                     primer_nombres: true,
                     primer_apellido: true,
+                    razon_social: true,
+                    nombre_comercial: true,
                     numerodocumento: true,
                   },
                 },

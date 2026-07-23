@@ -66,6 +66,8 @@ export async function obtenerComprobantePago(
               segundo_nombres: true,
               primer_apellido: true,
               segundo_apellido: true,
+              razon_social: true,
+              nombre_comercial: true,
               numerodocumento: true,
               celular: true,
               telefono: true,

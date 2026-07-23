@@ -15,6 +15,7 @@ import {
   partesEnZona,
 } from '@/lib/utils/timezone';
 import type { GestionHoy } from '@/types/cobranza';
+import { formatNombreClienteDisplay } from '@/lib/logic/cliente-tipo-persona-logic';
 
 function fechaHoyIso(): string {
   const p = partesEnZona(new Date());
@@ -68,9 +69,7 @@ export default function GestionesHoyPage() {
         header: 'Deudor',
         cell: ({ row }) => {
           const c = row.original.prestamo?.cliente;
-          return c
-            ? `${c.primer_nombres} ${c.primer_apellido}`
-            : '-';
+          return c ? formatNombreClienteDisplay(c) : '-';
         },
       },
       {

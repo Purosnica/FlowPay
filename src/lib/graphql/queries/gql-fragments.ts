@@ -21,6 +21,8 @@ export const PRESTAMO_CLIENTE_LIST_FIELDS = `
   segundo_nombres
   primer_apellido
   segundo_apellido
+  razon_social
+  nombre_comercial
   numerodocumento
 `;
 

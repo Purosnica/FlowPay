@@ -4,6 +4,10 @@
  */
 
 import { prisma } from '@/lib/prisma';
+import {
+  CLIENTE_NOMBRE_SELECT,
+  formatNombreClienteDisplay,
+} from '@/lib/logic/cliente-tipo-persona-logic';
 import { requerirAccesoMandante } from './mandante-scope';
 import { decimalToNumber, roundMoney } from './decimal-utils';
 import { parsePeriodo } from './periodo-utils';
@@ -52,22 +56,6 @@ const USO_CANAL_DEFAULT: Record<string, string> = {
   'Correo electrónico': 'Formalización de acuerdos',
   SMS: 'Recordatorios automáticos',
 };
-
-function nombreCliente(row: {
-  primer_nombres: string;
-  segundo_nombres: string | null;
-  primer_apellido: string;
-  segundo_apellido: string | null;
-}): string {
-  return [
-    row.primer_nombres,
-    row.segundo_nombres,
-    row.primer_apellido,
-    row.segundo_apellido,
-  ]
-    .filter(Boolean)
-    .join(' ');
-}
 
 function formatearFechaCorta(d: Date | null | undefined): string {
   if (!d) {
@@ -174,10 +162,7 @@ export async function obtenerInformeGerencial(
             agencia: { select: { nombre: true } },
             cliente: {
               select: {
-                primer_nombres: true,
-                segundo_nombres: true,
-                primer_apellido: true,
-                segundo_apellido: true,
+                ...CLIENTE_NOMBRE_SELECT,
                 ciudad: true,
                 departamento: { select: { descripcion: true } },
               },
@@ -203,12 +188,7 @@ export async function obtenerInformeGerencial(
           select: {
             saldoTotal: true,
             cliente: {
-              select: {
-                primer_nombres: true,
-                segundo_nombres: true,
-                primer_apellido: true,
-                segundo_apellido: true,
-              },
+              select: { ...CLIENTE_NOMBRE_SELECT },
             },
           },
         },
@@ -295,7 +275,7 @@ export async function obtenerInformeGerencial(
       const fechaPrimerPago = primera?.fechaVencimiento ?? a.fechaInicio;
       return {
         numero: idx + 1,
-        cliente: nombreCliente(a.prestamo.cliente),
+        cliente: formatNombreClienteDisplay(a.prestamo.cliente),
         saldoTotal: roundMoney(decimalToNumber(a.prestamo.saldoTotal)),
         tipoArreglo: tipoArregloDesdeCuotas(
           a.numeroCuotas,
@@ -326,7 +306,7 @@ export async function obtenerInformeGerencial(
       p.prestamo.cliente.ciudad ??
       '—';
     return {
-      cliente: nombreCliente(p.prestamo.cliente),
+      cliente: formatNombreClienteDisplay(p.prestamo.cliente),
       noPrestamo: p.prestamo.noPrestamo,
       codigoUnico: p.prestamo.codigoUnico,
       montoOriginal: roundMoney(decimalToNumber(p.prestamo.montoPrestamo)),

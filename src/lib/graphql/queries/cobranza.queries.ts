@@ -153,6 +153,8 @@ export const GET_PRESTAMO = `
         segundo_nombres
         primer_apellido
         segundo_apellido
+        razon_social
+        nombre_comercial
         numerodocumento
         celular
         telefono
@@ -232,6 +234,8 @@ export const GET_GESTIONES_HOY = `
           cliente {
             primer_nombres
             primer_apellido
+            razon_social
+            nombre_comercial
             numerodocumento
           }
         }
@@ -1315,6 +1319,8 @@ export const GET_RECLAMOS = `
         cliente {
           primer_nombres
           primer_apellido
+          razon_social
+          nombre_comercial
           numerodocumento
         }
         prestamo {

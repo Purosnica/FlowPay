@@ -1,26 +1,14 @@
 import { prisma } from '@/lib/prisma';
+import {
+  CLIENTE_NOMBRE_SELECT,
+  formatNombreClienteDisplay,
+} from '@/lib/logic/cliente-tipo-persona-logic';
 import { requerirAccesoMandante } from './mandante-scope';
 import { decimalToNumber, roundMoney } from './decimal-utils';
 import type {
   ReporteConcentracionItem,
   ReporteConcentracionRiesgo,
 } from '@/types/cobranza';
-
-function nombreCliente(row: {
-  primer_nombres: string;
-  segundo_nombres: string | null;
-  primer_apellido: string;
-  segundo_apellido: string | null;
-}): string {
-  return [
-    row.primer_nombres,
-    row.segundo_nombres,
-    row.primer_apellido,
-    row.segundo_apellido,
-  ]
-    .filter(Boolean)
-    .join(' ');
-}
 
 /**
  * Top deudores y gestores por saldo en mora.
@@ -57,10 +45,7 @@ export async function obtenerReporteConcentracionRiesgo(
       cliente: {
         select: {
           idcliente: true,
-          primer_nombres: true,
-          segundo_nombres: true,
-          primer_apellido: true,
-          segundo_apellido: true,
+          ...CLIENTE_NOMBRE_SELECT,
         },
       },
       gestor: { select: { idusuario: true, nombre: true } },
@@ -83,7 +68,9 @@ export async function obtenerReporteConcentracionRiesgo(
   for (const p of prestamos) {
     const saldo = decimalToNumber(p.saldoTotal);
     const d = porDeudor.get(p.idcliente) ?? {
-      nombre: p.cliente ? nombreCliente(p.cliente) : `Cliente #${p.idcliente}`,
+      nombre: p.cliente
+        ? formatNombreClienteDisplay(p.cliente)
+        : `Cliente #${p.idcliente}`,
       cantidad: 0,
       saldo: 0,
     };

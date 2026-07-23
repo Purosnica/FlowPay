@@ -4,27 +4,15 @@ import { decimalToNumber } from './decimal-utils';
 import type { Prisma } from '@prisma/client';
 
 import type { PromesaVencida } from '@/types/cobranza';
+import {
+  CLIENTE_NOMBRE_SELECT,
+  formatNombreClienteDisplay,
+} from '@/lib/logic/cliente-tipo-persona-logic';
 import { ESTADO_PROMESA } from '@/lib/logic/promesa-estado-logic';
 
 export type PromesaVencidaGql = Omit<PromesaVencida, 'fechaPromesa'> & {
   fechaPromesa: Date;
 };
-
-function nombreCliente(row: {
-  primer_nombres: string;
-  segundo_nombres: string | null;
-  primer_apellido: string;
-  segundo_apellido: string | null;
-}): string {
-  return [
-    row.primer_nombres,
-    row.segundo_nombres,
-    row.primer_apellido,
-    row.segundo_apellido,
-  ]
-    .filter(Boolean)
-    .join(' ');
-}
 
 const wherePromesaVencidaBase = (
   mandanteFilter: Prisma.IntFilter | undefined,
@@ -84,12 +72,7 @@ export async function obtenerPromesasVencidas(
       prestamo: {
         include: {
           cliente: {
-            select: {
-              primer_nombres: true,
-              segundo_nombres: true,
-              primer_apellido: true,
-              segundo_apellido: true,
-            },
+            select: { ...CLIENTE_NOMBRE_SELECT },
           },
         },
       },
@@ -106,7 +89,7 @@ export async function obtenerPromesasVencidas(
       idprestamo: g.idprestamo,
       noPrestamo: g.prestamo.noPrestamo,
       nombreCliente: g.prestamo.cliente
-        ? nombreCliente(g.prestamo.cliente)
+        ? formatNombreClienteDisplay(g.prestamo.cliente)
         : '—',
       montoPromesa: decimalToNumber(g.montoPromesa),
       fechaPromesa,

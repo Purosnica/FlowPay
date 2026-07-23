@@ -21,6 +21,21 @@ export async function seedCatalogosCliente(): Promise<void> {
     console.log('  ✅ Tipo documento: Cédula de Identidad');
   }
 
+  const rucDoc = await prisma.tbl_tipodocumento.findFirst({
+    where: {
+      OR: [
+        { descripcion: { contains: 'RUC' } },
+        { descripcion: { contains: 'NIT' } },
+      ],
+    },
+  });
+  if (!rucDoc) {
+    await prisma.tbl_tipodocumento.create({
+      data: { descripcion: 'RUC / NIT', estado: true },
+    });
+    console.log('  ✅ Tipo documento: RUC / NIT');
+  }
+
   let tipoPersona = await prisma.tbl_tipopersona.findFirst({
     where: { descripcion: { contains: 'Natural' } },
   });

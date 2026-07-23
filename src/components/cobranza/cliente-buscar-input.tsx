@@ -3,11 +3,16 @@
 import { useEffect, useState } from 'react';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { GET_CLIENTES } from '@/lib/graphql/queries/cliente.queries';
+import { formatNombreClienteDisplay } from '@/lib/logic/cliente-tipo-persona-logic';
 
 export interface ClienteBusquedaItem {
   idcliente: number;
   primer_nombres: string;
-  primer_apellido: string;
+  segundo_nombres?: string | null;
+  primer_apellido: string | null;
+  segundo_apellido?: string | null;
+  razon_social?: string | null;
+  nombre_comercial?: string | null;
   numerodocumento: string;
   celular?: string | null;
 }
@@ -60,22 +65,23 @@ export function ClienteBuscarInput({
           {!isLoading && resultados.length === 0 && (
             <li className="px-3 py-2 text-sm text-gray-500">Sin resultados</li>
           )}
-          {resultados.map((c) => (
-            <li key={c.idcliente}>
-              <button
-                type="button"
-                className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-dark-2"
-                onClick={() => {
-                  onSelect(c);
-                  setQuery(
-                    `${c.primer_nombres} ${c.primer_apellido} (${c.numerodocumento})`,
-                  );
-                }}
-              >
-                {c.primer_nombres} {c.primer_apellido} — {c.numerodocumento}
-              </button>
-            </li>
-          ))}
+          {resultados.map((c) => {
+            const nombre = formatNombreClienteDisplay(c);
+            return (
+              <li key={c.idcliente}>
+                <button
+                  type="button"
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-dark-2"
+                  onClick={() => {
+                    onSelect(c);
+                    setQuery(`${nombre} (${c.numerodocumento})`);
+                  }}
+                >
+                  {nombre} — {c.numerodocumento}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

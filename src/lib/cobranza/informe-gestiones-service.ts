@@ -4,6 +4,10 @@
  */
 
 import { prisma } from '@/lib/prisma';
+import {
+  CLIENTE_NOMBRE_SELECT,
+  formatNombreClienteDisplay,
+} from '@/lib/logic/cliente-tipo-persona-logic';
 import { requerirAccesoMandante } from './mandante-scope';
 import { whereGestionPorRol } from './cobrador-scope';
 import { decimalToNumber } from './decimal-utils';
@@ -24,22 +28,6 @@ const MESES_ES_UPPER = [
   'NOVIEMBRE',
   'DICIEMBRE',
 ] as const;
-
-function nombreCliente(row: {
-  primer_nombres: string;
-  segundo_nombres: string | null;
-  primer_apellido: string;
-  segundo_apellido: string | null;
-}): string {
-  return [
-    row.primer_nombres,
-    row.segundo_nombres,
-    row.primer_apellido,
-    row.segundo_apellido,
-  ]
-    .filter(Boolean)
-    .join(' ');
-}
 
 function formatearFechaIso(d: Date | null | undefined): string {
   if (!d) {
@@ -95,12 +83,7 @@ export async function obtenerInformeGestiones(
           campana: { select: { nombre: true } },
           agencia: { select: { nombre: true } },
           cliente: {
-            select: {
-              primer_nombres: true,
-              segundo_nombres: true,
-              primer_apellido: true,
-              segundo_apellido: true,
-            },
+            select: { ...CLIENTE_NOMBRE_SELECT },
           },
         },
       },
@@ -157,7 +140,7 @@ export async function obtenerInformeGestiones(
     return {
       noPrestamo: g.prestamo.noPrestamo,
       codigoUnico: g.prestamo.codigoUnico,
-      nombreCliente: nombreCliente(g.prestamo.cliente),
+      nombreCliente: formatNombreClienteDisplay(g.prestamo.cliente),
       cantCtas: cantCtasMap.get(g.prestamo.idcliente) ?? 1,
       agencia,
       gestor: g.gestor.nombre,

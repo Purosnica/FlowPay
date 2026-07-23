@@ -28,6 +28,7 @@ import type {
   CreateClienteInput,
   UpdateClienteInput,
 } from "@/types/cliente";
+import { formatNombreClienteDisplay } from "@/lib/logic/cliente-tipo-persona-logic";
 import type { ColumnDef } from "@tanstack/react-table";
 
 export default function ClientesPage() {
@@ -94,8 +95,7 @@ export default function ClientesPage() {
         cell: (info) => info.getValue() as string,
       },
       {
-        accessorFn: (row) =>
-          `${row.primer_nombres} ${row.segundo_nombres || ""} ${row.primer_apellido} ${row.segundo_apellido || ""}`.trim(),
+        accessorFn: (row) => formatNombreClienteDisplay(row),
         header: "Nombre Completo",
         cell: (info) => info.getValue() as string,
       },

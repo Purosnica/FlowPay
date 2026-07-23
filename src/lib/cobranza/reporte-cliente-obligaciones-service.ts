@@ -1,5 +1,10 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
+import {
+  buildClienteSearchOr,
+  CLIENTE_NOMBRE_SELECT,
+  formatNombreClienteDisplay,
+} from '@/lib/logic/cliente-tipo-persona-logic';
 import { filtroMandante } from './mandante-scope';
 import { wherePrestamoPorRol } from './cobrador-scope';
 import { decimalToNumber, roundMoney } from './decimal-utils';
@@ -12,22 +17,6 @@ import type {
 
 const ESTADOS_SIN_DEUDA = ['Cancelado', 'Finalizado'] as const;
 const MAX_CLIENTES = 500;
-
-function nombreCliente(row: {
-  primer_nombres: string;
-  segundo_nombres: string | null;
-  primer_apellido: string;
-  segundo_apellido: string | null;
-}): string {
-  return [
-    row.primer_nombres,
-    row.segundo_nombres,
-    row.primer_apellido,
-    row.segundo_apellido,
-  ]
-    .filter(Boolean)
-    .join(' ');
-}
 
 export interface FiltrosReporteClienteObligaciones {
   /** Mínimo de mandantes con deuda activa (N). Default 1. */
@@ -70,13 +59,7 @@ export async function obtenerReporteClienteObligaciones(
   const search = filtros.search?.trim();
   if (search && !(filtros.idcliente != null && filtros.idcliente > 0)) {
     where.cliente = {
-      OR: [
-        { numerodocumento: { contains: search } },
-        { primer_nombres: { contains: search } },
-        { segundo_nombres: { contains: search } },
-        { primer_apellido: { contains: search } },
-        { segundo_apellido: { contains: search } },
-      ],
+      OR: buildClienteSearchOr(search),
     };
   }
 
@@ -94,10 +77,7 @@ export async function obtenerReporteClienteObligaciones(
       cliente: {
         select: {
           idcliente: true,
-          primer_nombres: true,
-          segundo_nombres: true,
-          primer_apellido: true,
-          segundo_apellido: true,
+          ...CLIENTE_NOMBRE_SELECT,
           numerodocumento: true,
         },
       },
@@ -138,7 +118,7 @@ export async function obtenerReporteClienteObligaciones(
     const acc: AccCliente = porCliente.get(p.idcliente) ?? {
       idcliente: p.idcliente,
       nombreCliente: p.cliente
-        ? nombreCliente(p.cliente)
+        ? formatNombreClienteDisplay(p.cliente)
         : `Cliente #${p.idcliente}`,
       numerodocumento: p.cliente?.numerodocumento ?? '',
       saldoTotal: 0,

@@ -48,6 +48,10 @@ const BANDEJA_INCLUDE = {
 
       segundo_apellido: true,
 
+      razon_social: true,
+
+      nombre_comercial: true,
+
       numerodocumento: true,
 
       celular: true,

@@ -4,8 +4,10 @@ export interface Cliente {
   idcliente: number;
   primer_nombres: string;
   segundo_nombres?: string | null;
-  primer_apellido: string;
+  primer_apellido?: string | null;
   segundo_apellido?: string | null;
+  razon_social?: string | null;
+  nombre_comercial?: string | null;
   fechanacimiento?: string | null;
   numerodocumento: string;
   fechavencimientodoc?: string | null;
@@ -16,6 +18,10 @@ export interface Cliente {
   celular?: string | null;
   email?: string | null;
   sitioweb?: string | null;
+  contacto_nombre?: string | null;
+  contacto_cargo?: string | null;
+  contacto_telefono?: string | null;
+  contacto_email?: string | null;
   espep: boolean;
   observaciones?: string | null;
   estado: boolean;
@@ -96,10 +102,12 @@ export interface ClienteFilters {
 }
 
 export interface CreateClienteInput {
-  primer_nombres: string;
+  primer_nombres?: string;
   segundo_nombres?: string;
-  primer_apellido: string;
+  primer_apellido?: string;
   segundo_apellido?: string;
+  razon_social?: string;
+  nombre_comercial?: string;
   fechanacimiento?: string;
   idtipodocumento?: number;
   numerodocumento: string;
@@ -117,6 +125,10 @@ export interface CreateClienteInput {
   celular?: string;
   email?: string;
   sitioweb?: string;
+  contacto_nombre?: string;
+  contacto_cargo?: string;
+  contacto_telefono?: string;
+  contacto_email?: string;
   espep?: boolean;
   observaciones?: string;
   estado?: boolean;
@@ -178,4 +190,3 @@ export interface ClienteVista360 {
     noContactar: boolean;
   }>;
 }
-

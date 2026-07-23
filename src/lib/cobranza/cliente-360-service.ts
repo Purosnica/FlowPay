@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { formatNombreClienteDisplay } from '@/lib/logic/cliente-tipo-persona-logic';
 import {
   filtroMandante,
   requerirAccesoCliente,
@@ -133,14 +134,7 @@ export async function obtenerVista360Cliente(
     }),
   ]);
 
-  const nombreCompleto = [
-    cliente.primer_nombres,
-    cliente.segundo_nombres,
-    cliente.primer_apellido,
-    cliente.segundo_apellido,
-  ]
-    .filter(Boolean)
-    .join(' ');
+  const nombreCompleto = formatNombreClienteDisplay(cliente);
 
   const saldoTotal = prestamos.reduce(
     (s, p) => s + decimalToNumber(p.saldoTotal),

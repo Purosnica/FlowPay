@@ -1,4 +1,8 @@
 import { prisma } from '@/lib/prisma';
+import {
+  CLIENTE_NOMBRE_SELECT,
+  formatNombreClienteDisplay,
+} from '@/lib/logic/cliente-tipo-persona-logic';
 import { filtroMandante } from './mandante-scope';
 import { obtenerIdsEquipo } from './equipo-scope';
 import { contarPromesasVencidas } from './promesas-vencidas-service';
@@ -65,7 +69,7 @@ export async function obtenerNotificacionesOperativas(
         orderBy: { fechaLimite: 'asc' },
         include: {
           cliente: {
-            select: { primer_nombres: true, primer_apellido: true },
+            select: { ...CLIENTE_NOMBRE_SELECT },
           },
         },
       }),
@@ -100,7 +104,7 @@ export async function obtenerNotificacionesOperativas(
   );
 
   for (const r of reclamosSla) {
-    const nombre = `${r.cliente.primer_nombres} ${r.cliente.primer_apellido}`.trim();
+    const nombre = formatNombreClienteDisplay(r.cliente) || 'Cliente';
     notificaciones.push({
       id: `reclamo-${r.idreclamo}`,
       tipo: 'RECLAMO_SLA',

@@ -1,4 +1,8 @@
 import { prisma } from '@/lib/prisma';
+import {
+  CLIENTE_NOMBRE_SELECT,
+  formatNombreClienteDisplay,
+} from '@/lib/logic/cliente-tipo-persona-logic';
 import { filtroMandante } from './mandante-scope';
 import { decimalToNumber } from './decimal-utils';
 import { contarPromesasVencidas } from './promesas-vencidas-service';
@@ -15,27 +19,6 @@ import { finDiaEnZona, inicioDiaEnZona } from '@/lib/utils/timezone';
 import type { MiDiaCaso, MiDiaResumen } from '@/types/cobranza';
 
 export type { MiDiaCaso, MiDiaResumen };
-
-function nombreCliente(
-  cliente: {
-    primer_nombres: string;
-    segundo_nombres: string | null;
-    primer_apellido: string;
-    segundo_apellido: string | null;
-  } | null,
-): string {
-  if (!cliente) {
-    return '—';
-  }
-  return [
-    cliente.primer_nombres,
-    cliente.segundo_nombres,
-    cliente.primer_apellido,
-    cliente.segundo_apellido,
-  ]
-    .filter(Boolean)
-    .join(' ');
-}
 
 export async function obtenerCasosPrioritariosMiDia(
   idusuario: number,
@@ -63,10 +46,7 @@ export async function obtenerCasosPrioritariosMiDia(
     include: {
       cliente: {
         select: {
-          primer_nombres: true,
-          segundo_nombres: true,
-          primer_apellido: true,
-          segundo_apellido: true,
+          ...CLIENTE_NOMBRE_SELECT,
           celular: true,
           telefono: true,
         },
@@ -84,7 +64,9 @@ export async function obtenerCasosPrioritariosMiDia(
   return ordenados.slice(0, limite).map((p) => ({
     idprestamo: p.idprestamo,
     noPrestamo: p.noPrestamo,
-    nombreCliente: nombreCliente(p.cliente),
+    nombreCliente: p.cliente
+      ? formatNombreClienteDisplay(p.cliente)
+      : '—',
     saldoTotal: decimalToNumber(p.saldoTotal),
     diasMora: p.diasMora,
     scorePrioridad: p.scorePrioridad,

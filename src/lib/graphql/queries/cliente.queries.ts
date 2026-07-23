@@ -8,6 +8,8 @@ export const GET_CLIENTE = `
       segundo_nombres
       primer_apellido
       segundo_apellido
+      razon_social
+      nombre_comercial
       fechanacimiento
       numerodocumento
       fechavencimientodoc
@@ -20,6 +22,10 @@ export const GET_CLIENTE = `
       sitioweb
       espep
       observaciones
+      contacto_nombre
+      contacto_cargo
+      contacto_telefono
+      contacto_email
       estado
       createdAt
       updatedAt
@@ -68,6 +74,8 @@ export const GET_CLIENTES = `
         segundo_nombres
         primer_apellido
         segundo_apellido
+        razon_social
+        nombre_comercial
         fechanacimiento
         numerodocumento
         fechavencimientodoc
@@ -80,6 +88,10 @@ export const GET_CLIENTES = `
         sitioweb
         espep
         observaciones
+        contacto_nombre
+        contacto_cargo
+        contacto_telefono
+        contacto_email
         estado
         createdAt
         updatedAt

@@ -116,12 +116,16 @@ model tbl_genero {
 model tbl_cliente {
   idcliente Int @id @default(autoincrement())
 
-  // Información personal
+  // Información personal (persona natural)
   primer_nombres   String
   segundo_nombres  String?
-  primer_apellido  String
+  primer_apellido  String?
   segundo_apellido String?
   fechanacimiento  DateTime?
+
+  // Persona jurídica
+  razon_social     String?
+  nombre_comercial String?
 
   // Documento de identidad
   idtipodocumento     Int
@@ -141,12 +145,18 @@ model tbl_cliente {
   ciudad         String?
   codigopostal   String?
 
-  // Contacto
+  // Contacto de la empresa / persona
   telefono String?
   celular  String?
   email    String? @unique
   sitioweb String?
   espep    Boolean @default(false)
+
+  // Contacto principal (persona jurídica)
+  contacto_nombre   String?
+  contacto_cargo    String?
+  contacto_telefono String?
+  contacto_email    String?
 
   // Información adicional
   observaciones String?  @db.Text

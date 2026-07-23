@@ -1,4 +1,8 @@
 import { prisma } from '@/lib/prisma';
+import {
+  CLIENTE_NOMBRE_SELECT,
+  formatNombreClienteDisplay,
+} from '@/lib/logic/cliente-tipo-persona-logic';
 import { requerirAccesoMandante } from './mandante-scope';
 import { decimalToNumber, roundMoney } from './decimal-utils';
 import { parsePeriodo } from './periodo-utils';
@@ -6,22 +10,6 @@ import type {
   ReporteRecontactoItem,
   ReporteRecontactos,
 } from '@/types/cobranza';
-
-function nombreCliente(row: {
-  primer_nombres: string;
-  segundo_nombres: string | null;
-  primer_apellido: string;
-  segundo_apellido: string | null;
-}): string {
-  return [
-    row.primer_nombres,
-    row.segundo_nombres,
-    row.primer_apellido,
-    row.segundo_apellido,
-  ]
-    .filter(Boolean)
-    .join(' ');
-}
 
 /**
  * Préstamos con muchas gestiones en el periodo y sin pago aplicado.
@@ -103,12 +91,7 @@ export async function obtenerReporteRecontactos(
       diasMora: true,
       saldoTotal: true,
       cliente: {
-        select: {
-          primer_nombres: true,
-          segundo_nombres: true,
-          primer_apellido: true,
-          segundo_apellido: true,
-        },
+        select: { ...CLIENTE_NOMBRE_SELECT },
       },
       gestor: { select: { nombre: true } },
     },
@@ -120,7 +103,9 @@ export async function obtenerReporteRecontactos(
       return {
         idprestamo: p.idprestamo,
         noPrestamo: p.noPrestamo,
-        nombreCliente: p.cliente ? nombreCliente(p.cliente) : '—',
+        nombreCliente: p.cliente
+          ? formatNombreClienteDisplay(p.cliente)
+          : '—',
         nombreGestor: p.gestor?.nombre ?? null,
         gestionesPeriodo: countMap.get(p.idprestamo) ?? 0,
         diasMora: p.diasMora,

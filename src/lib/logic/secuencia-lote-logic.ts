@@ -35,7 +35,7 @@ export function buildContextDesdeAgenda(
     cliente: {
       primer_nombres: item.nombreCliente,
       segundo_nombres: null,
-      primer_apellido: '',
+      primer_apellido: null,
       segundo_apellido: null,
       numerodocumento: '',
       celular: item.telefono,

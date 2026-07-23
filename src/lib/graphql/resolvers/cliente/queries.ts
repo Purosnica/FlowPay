@@ -9,6 +9,7 @@ import {
   requerirAccesoCliente,
 } from "@/lib/cobranza/mandante-scope";
 import { GraphQLValidationError } from "@/lib/errors/graphql-errors";
+import { buildClienteSearchOr } from "@/lib/logic/cliente-tipo-persona-logic";
 import {
   buildPaginationMeta,
   resolvePagination,
@@ -82,16 +83,7 @@ export const clientesQuery = builder.queryField("clientes", (t) =>
       };
 
       if (filtersData.search) {
-        where.OR = [
-          { primer_nombres: { contains: filtersData.search } },
-          { segundo_nombres: { contains: filtersData.search } },
-          { primer_apellido: { contains: filtersData.search } },
-          { segundo_apellido: { contains: filtersData.search } },
-          { numerodocumento: { contains: filtersData.search } },
-          { email: { contains: filtersData.search } },
-          { telefono: { contains: filtersData.search } },
-          { celular: { contains: filtersData.search } },
-        ];
+        where.OR = buildClienteSearchOr(filtersData.search);
       }
 
       if (filtersData.idtipodocumento) {
