@@ -156,9 +156,20 @@ export function GestionForm({
     nombre: nombreCliente,
   });
 
+  const notaVacia = !form.nota.trim();
+  const motivoSubmitBloqueado = submitDisabled
+    ? 'Fuera de horario de cobranza: no se puede registrar ahora.'
+    : notaVacia
+      ? 'Escriba una nota o tipifique un resultado para habilitar el registro.'
+      : null;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (submitDisabled || !form.nota.trim()) {
+    if (submitDisabled || notaVacia) {
+      setAvisoCamposExtra(
+        motivoSubmitBloqueado ??
+          'Complete la nota antes de registrar la gestión.',
+      );
       return;
     }
     const seleccionado = resultados.find(
@@ -411,14 +422,42 @@ export function GestionForm({
               <label className="mb-1 block text-sm font-medium">Resultado</label>
               <select
                 value={form.idcodresultado ?? ''}
-                onChange={(e) =>
+                onChange={(e) => {
+                  const id = e.target.value
+                    ? Number(e.target.value)
+                    : undefined;
+                  const seleccionado = resultados.find(
+                    (r) => r.idcodresultado === id,
+                  );
+                  const notaAuto = seleccionado
+                    ? `${seleccionado.codigo} — ${seleccionado.descripcion}`
+                    : '';
                   setForm({
                     ...form,
-                    idcodresultado: e.target.value
-                      ? Number(e.target.value)
-                      : undefined,
-                  })
-                }
+                    idcodresultado: id,
+                    nota:
+                      form.nota.trim() &&
+                      form.idcodresultado === id
+                        ? form.nota
+                        : notaAuto || form.nota,
+                  });
+                  if (seleccionado && resultadoRequierePromesa(seleccionado)) {
+                    setMostrarMas(true);
+                    setAvisoCamposExtra(
+                      'Promesa: complete monto y fecha, luego Registrar gestión.',
+                    );
+                  } else if (
+                    seleccionado &&
+                    resultadoRequiereProximaGestion(seleccionado)
+                  ) {
+                    setMostrarMas(true);
+                    setAvisoCamposExtra(
+                      'Agenda: indique próxima gestión, luego Registrar gestión.',
+                    );
+                  } else {
+                    setAvisoCamposExtra(null);
+                  }
+                }}
                 className="w-full rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2 dark:text-white"
               >
                 <option value="">Seleccione...</option>
@@ -587,17 +626,34 @@ export function GestionForm({
         </div>
       )}
 
+      {(avisoCamposExtra || motivoSubmitBloqueado) && (
+        <p
+          className="text-sm text-amber-700 dark:text-amber-300"
+          role="status"
+        >
+          {avisoCamposExtra ?? motivoSubmitBloqueado}
+        </p>
+      )}
+
       <div className="flex justify-end gap-3">
         {onCancel && (
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancelar
           </Button>
         )}
-        <PermissionGate permiso={PERMISO.GESTION_WRITE}>
+        <PermissionGate
+          permiso={PERMISO.GESTION_WRITE}
+          fallback={
+            <p className="text-sm text-red-600" role="alert">
+              No tiene permiso para registrar gestiones.
+            </p>
+          }
+        >
           <Button
             type="submit"
-            disabled={isLoading || submitDisabled || !form.nota.trim()}
+            disabled={isLoading || submitDisabled || notaVacia}
             data-ux-id="gestion-submit"
+            title={motivoSubmitBloqueado ?? undefined}
           >
             {isLoading ? 'Guardando...' : 'Registrar gestión'}
           </Button>

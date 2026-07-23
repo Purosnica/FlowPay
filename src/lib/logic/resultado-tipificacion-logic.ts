@@ -4,10 +4,12 @@
 
 import type { CodigoResultado } from '@/types/cobranza';
 
-function textoCatalogo(resultado: Pick<
+type ResultadoTipificacion = Pick<
   CodigoResultado,
   'codigo' | 'descripcion' | 'grupo' | 'tipoGestion'
->): string {
+>;
+
+function textoCatalogo(resultado: ResultadoTipificacion): string {
   return [
     resultado.codigo,
     resultado.descripcion,
@@ -19,26 +21,40 @@ function textoCatalogo(resultado: Pick<
 }
 
 /**
- * True si el resultado implica promesa (monto + fecha obligatorios).
+ * True si el resultado implica registrar una promesa nueva
+ * (monto + fecha obligatorios).
+ *
+ * No exige promesa en tipificaciones negativas: sin promesa,
+ * no cumplida, incumplida, etc.
  */
 export function resultadoRequierePromesa(
-  resultado: Pick<
-    CodigoResultado,
-    'codigo' | 'descripcion' | 'grupo' | 'tipoGestion'
-  >,
+  resultado: ResultadoTipificacion,
 ): boolean {
+  const codigo = resultado.codigo.trim().toUpperCase();
+  if (codigo === 'PRP' || codigo === 'CCD') {
+    return true;
+  }
+
   const t = textoCatalogo(resultado);
-  return t.includes('PROMESA');
+  if (!t.includes('PROMESA')) {
+    return false;
+  }
+
+  const esNegativa =
+    t.includes('SIN PROMESA') ||
+    t.includes('NO CUMPLIDA') ||
+    t.includes('INCUMPL') ||
+    t.includes('ROTA') ||
+    t.includes('VENCIDA');
+
+  return !esNegativa;
 }
 
 /**
  * True si el resultado implica agenda / próxima gestión.
  */
 export function resultadoRequiereProximaGestion(
-  resultado: Pick<
-    CodigoResultado,
-    'codigo' | 'descripcion' | 'grupo' | 'tipoGestion'
-  >,
+  resultado: ResultadoTipificacion,
 ): boolean {
   const t = textoCatalogo(resultado);
   return (

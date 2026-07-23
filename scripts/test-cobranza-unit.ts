@@ -696,6 +696,26 @@ function testUxColaYMontosRapidos(): void {
   };
   assert.equal(resultadoRequierePromesa(prom), true);
   assert.equal(resultadoRequierePromesa(nc), false);
+  assert.equal(
+    resultadoRequierePromesa({
+      idcodresultado: 3,
+      codigo: 'CSP',
+      descripcion: 'Contacto sin promesa',
+      grupo: 'LOCALIZADO',
+      tipoGestion: 'GESTION EFECTIVA',
+    }),
+    false,
+  );
+  assert.equal(
+    resultadoRequierePromesa({
+      idcodresultado: 4,
+      codigo: 'PRP',
+      descripcion: 'Promesa de pago',
+      grupo: 'LOCALIZADO',
+      tipoGestion: 'GESTION EFECTIVA',
+    }),
+    true,
+  );
   assert.equal(resultadoRequiereProximaGestion(nc), false);
   assert.ok(
     mensajeAvanceOperativo({
