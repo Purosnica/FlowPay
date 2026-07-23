@@ -32,7 +32,7 @@ import { EyeIcon, EyeOffIcon } from '@/assets/icons';
 type LoginFormValues = LoginInput;
 
 const mdFilledBtn =
-  'h-12 rounded-full text-sm font-medium tracking-[0.02em] shadow-md shadow-primary/25 hover:shadow-lg hover:shadow-primary/30 active:scale-[0.985]';
+  'h-11 rounded-full text-sm font-medium tracking-[0.02em] shadow-md shadow-primary/25 hover:shadow-lg hover:shadow-primary/30 active:scale-[0.985]';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -124,9 +124,11 @@ export default function LoginPage() {
             ? result.error || 'Código MFA inválido'
             : 'Código MFA inválido',
         );
+        mfaForm.reset({ codigo: '' });
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al verificar MFA');
+      mfaForm.reset({ codigo: '' });
     } finally {
       setIsSubmitting(false);
     }
@@ -145,7 +147,7 @@ export default function LoginPage() {
       {mfaStep ? (
         <form
           onSubmit={mfaForm.handleSubmit(onMfaSubmit)}
-          className="space-y-6"
+          className="space-y-4"
           key="mfa"
         >
           {error ? (
@@ -201,7 +203,7 @@ export default function LoginPage() {
       ) : (
         <form
           onSubmit={handleSubmit(onSubmit)}
-          className="space-y-5"
+          className="space-y-3.5"
           key="credentials"
         >
           {error ? (
@@ -215,7 +217,6 @@ export default function LoginPage() {
             type="email"
             autoComplete="email"
             error={errors.email?.message}
-            supportingText="Correo corporativo de tu organización"
             {...register('email')}
           />
 
@@ -272,7 +273,7 @@ export default function LoginPage() {
             </label>
           </div>
 
-          <div className="relative py-1">
+          <div className="relative py-0.5">
             <div className="absolute inset-x-0 top-1/2 h-px bg-[#E7E0EC]" />
             <span className="relative mx-auto flex w-fit bg-[#FFFBFE] px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#79747E]">
               Acceso

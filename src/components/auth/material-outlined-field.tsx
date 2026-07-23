@@ -51,7 +51,7 @@ export const MaterialOutlinedField = forwardRef<
             aria-invalid={Boolean(error)}
             aria-describedby={error || supportingText ? hintId : undefined}
             className={cn(
-              'peer h-14 w-full rounded-xl border bg-[#FFFBFE] px-4 text-base text-dark outline-none',
+              'peer h-12 w-full rounded-xl border bg-[#FFFBFE] px-3.5 text-[15px] text-dark outline-none',
               'transition-[border,box-shadow,background-color] duration-200',
               'placeholder:text-transparent',
               'hover:bg-primary/[0.02]',

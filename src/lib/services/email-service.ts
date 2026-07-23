@@ -5,7 +5,7 @@
 import nodemailer, { type Transporter } from 'nodemailer';
 import { z } from 'zod';
 import { env } from '@/lib/env';
-import { errorValidacion, ServicioError, ErrorCode } from '@/lib/services/error-types';
+import { errorValidacion } from '@/lib/services/error-types';
 import { withRetry } from '@/lib/utils/with-retry';
 import { getCircuitBreaker } from '@/lib/resilience/circuit-breaker';
 
@@ -55,8 +55,7 @@ export function smtpDisponible(): boolean {
 
 function getTransporter(): Transporter {
   if (!smtpConfigurado()) {
-    throw new ServicioError(
-      ErrorCode.VALIDACION_ERROR,
+    throw errorValidacion(
       'SMTP no configurado. Defina SMTP_HOST, SMTP_USER y SMTP_PASS en .env',
     );
   }
@@ -85,14 +84,47 @@ function textoAHtml(texto: string): string {
   return `<pre style="font-family:Arial,sans-serif;font-size:14px;white-space:pre-wrap;line-height:1.5;">${escapado}</pre>`;
 }
 
+/**
+ * Mensaje seguro para la UI (sin stack ni respuesta cruda de SMTP).
+ */
+function mensajeErrorSmtp(error: unknown): string {
+  if (!(error instanceof Error)) {
+    return 'No se pudo enviar el correo.';
+  }
+  const code =
+    'code' in error && typeof (error as { code?: unknown }).code === 'string'
+      ? (error as { code: string }).code
+      : '';
+  const msg = error.message;
+
+  if (
+    code === 'EAUTH' ||
+    msg.includes('Invalid login') ||
+    msg.includes('BadCredentials')
+  ) {
+    return (
+      'Credenciales SMTP rechazadas. Revise SMTP_USER y SMTP_PASS ' +
+      '(en Gmail/Google Workspace use una contraseña de aplicación).'
+    );
+  }
+  if (
+    code === 'ECONNECTION' ||
+    code === 'ETIMEDOUT' ||
+    code === 'ESOCKET' ||
+    code === 'EENVELOPE'
+  ) {
+    return 'No se pudo conectar al servidor SMTP. Revise SMTP_HOST y SMTP_PORT.';
+  }
+  return 'No se pudo enviar el correo. Verifique la configuración SMTP.';
+}
+
 export async function enviarEmailCobro(
   input: EnviarEmailCobroInput,
 ): Promise<EnviarEmailCobroResult> {
   const data = EnviarEmailCobroSchema.parse(input);
   if (!smtpBreaker.allowRequest()) {
-    throw new ServicioError(
-      ErrorCode.DATABASE_ERROR,
-      'SMTP temporalmente no disponible (circuit open).',
+    throw errorValidacion(
+      'SMTP temporalmente no disponible. Intente de nuevo en unos minutos.',
     );
   }
   const fromAddress = env.SMTP_FROM ?? env.SMTP_USER;
@@ -123,11 +155,7 @@ export async function enviarEmailCobro(
     };
   } catch (error) {
     smtpBreaker.recordFailure();
-    const mensaje =
-      error instanceof Error
-        ? error.message
-        : 'No se pudo enviar el correo de cobranza';
-    throw new ServicioError(ErrorCode.DATABASE_ERROR, mensaje);
+    throw errorValidacion(mensajeErrorSmtp(error));
   }
 }
 
@@ -153,9 +181,8 @@ export async function enviarEmailOperativo(
 ): Promise<EnviarEmailOperativoResult> {
   const data = EnviarEmailOperativoSchema.parse(input);
   if (!smtpBreaker.allowRequest()) {
-    throw new ServicioError(
-      ErrorCode.DATABASE_ERROR,
-      'SMTP temporalmente no disponible (circuit open).',
+    throw errorValidacion(
+      'SMTP temporalmente no disponible. Intente de nuevo en unos minutos.',
     );
   }
   const fromAddress = env.SMTP_FROM ?? env.SMTP_USER;
@@ -186,10 +213,6 @@ export async function enviarEmailOperativo(
     };
   } catch (error) {
     smtpBreaker.recordFailure();
-    const mensaje =
-      error instanceof Error
-        ? error.message
-        : 'No se pudo enviar el correo operativo';
-    throw new ServicioError(ErrorCode.DATABASE_ERROR, mensaje);
+    throw errorValidacion(mensajeErrorSmtp(error));
   }
 }

@@ -5,6 +5,7 @@
 'use client';
 
 import {
+  useEffect,
   useRef,
   type ClipboardEvent,
   type KeyboardEvent,
@@ -32,6 +33,7 @@ export function MfaCodigoInput({
   disabled = false,
 }: MfaCodigoInputProps) {
   const refs = useRef<Array<HTMLInputElement | null>>([]);
+  const prevValueRef = useRef(value);
   const digits = Array.from({ length: LENGTH }, (_, i) => value[i] ?? '');
   const filled = value.length;
 
@@ -42,6 +44,14 @@ export function MfaCodigoInput({
       el.select();
     }
   };
+
+  useEffect(() => {
+    const wasFilled = prevValueRef.current.length > 0;
+    prevValueRef.current = value;
+    if (wasFilled && value === '') {
+      focusAt(0);
+    }
+  }, [value]);
 
   const writeValue = (next: string) => {
     const cleaned = toDigits(next);
@@ -93,7 +103,7 @@ export function MfaCodigoInput({
 
   return (
     <div className="w-full">
-      <div className="mb-3 flex items-end justify-between gap-3">
+      <div className="mb-2 flex items-end justify-between gap-3">
         <p className="text-sm font-medium text-[#49454F]">Código MFA</p>
         <p className="text-xs tabular-nums text-[#79747E]">
           {filled}/{LENGTH}
@@ -101,7 +111,7 @@ export function MfaCodigoInput({
       </div>
 
       <div
-        className="mb-4 h-1 overflow-hidden rounded-full bg-primary/10"
+        className="mb-3 h-1 overflow-hidden rounded-full bg-primary/10"
         aria-hidden
       >
         <div
@@ -130,7 +140,7 @@ export function MfaCodigoInput({
               onKeyDown={(event) => handleKeyDown(index, event)}
               onPaste={handlePaste}
               className={cn(
-                'h-12 w-11 rounded-xl border text-center font-display text-xl font-semibold text-dark outline-none transition-all duration-200 sm:h-14 sm:w-12 sm:text-2xl',
+                'h-11 w-10 rounded-xl border text-center font-display text-lg font-semibold text-dark outline-none transition-all duration-200 sm:h-12 sm:w-11 sm:text-xl',
                 isFilled && !error && 'border-primary/50 bg-primary/[0.06]',
                 error
                   ? 'border-red bg-red/5 focus:border-red focus:shadow-[0_0_0_1px_theme(colors.red.DEFAULT)]'
@@ -141,9 +151,9 @@ export function MfaCodigoInput({
         })}
       </div>
       {error ? (
-        <p className="mt-2 text-xs text-red">{error}</p>
+        <p className="mt-1.5 text-xs text-red">{error}</p>
       ) : (
-        <p className="mt-2 text-xs text-[#79747E]">
+        <p className="mt-1.5 text-xs text-[#79747E]">
           También puedes pegar el código completo.
         </p>
       )}
