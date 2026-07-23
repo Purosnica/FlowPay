@@ -1,8 +1,17 @@
 'use client';
 
-import { useEffect, useId, useState, type FormEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { FormField } from '@/components/ui/form-field';
 import { MandanteSelect } from '@/components/cobranza/mandante-select';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { GET_CAMPANAS } from '@/lib/graphql/queries/cobranza.queries';
@@ -32,6 +41,9 @@ interface PrestamoFormProps {
   errorMessage?: string | null;
 }
 
+const FIELD_CONTROL_CLASS =
+  'field-touch-target w-full rounded-lg border border-stroke bg-transparent px-3 py-2 text-sm text-dark outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:focus:border-primary';
+
 function parseNumeroNoNegativo(value: string, fallback = 0): number {
   if (value.trim() === '') {
     return fallback;
@@ -43,6 +55,32 @@ function parseNumeroNoNegativo(value: string, fallback = 0): number {
   return n;
 }
 
+function Section({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="space-y-3 rounded-xl border border-stroke bg-gray-1/40 p-4 dark:border-dark-3 dark:bg-dark-2/40">
+      <div>
+        <h3 className="text-sm font-semibold text-dark dark:text-white">
+          {title}
+        </h3>
+        {description ? (
+          <p className="mt-0.5 text-xs text-gray-5 dark:text-dark-6">
+            {description}
+          </p>
+        ) : null}
+      </div>
+      {children}
+    </section>
+  );
+}
+
 export function PrestamoForm({
   initialIdmandante,
   onSubmit,
@@ -51,6 +89,7 @@ export function PrestamoForm({
   errorMessage,
 }: PrestamoFormProps) {
   const formId = useId();
+  const deudorHintId = useId();
   const [idmandante, setIdmandante] = useState<number | ''>(
     initialIdmandante ?? '',
   );
@@ -59,7 +98,6 @@ export function PrestamoForm({
   const [clienteLabel, setClienteLabel] = useState('');
   const [clienteQuery, setClienteQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
-  const [showClienteResults, setShowClienteResults] = useState(false);
   const [noPrestamo, setNoPrestamo] = useState('');
   const [codigoUnico, setCodigoUnico] = useState('');
   const [codigoManual, setCodigoManual] = useState(false);
@@ -74,6 +112,7 @@ export function PrestamoForm({
   const [fechaPrestamo, setFechaPrestamo] = useState('');
   const [fechaVencimiento, setFechaVencimiento] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -111,26 +150,54 @@ export function PrestamoForm({
   const campanas = campanasData?.campanas.campanas ?? [];
   const clientesEncontrados = busquedaData?.buscarGlobal.clientes ?? [];
 
+  const clienteOptions = useMemo(() => {
+    const fromSearch = clientesEncontrados.map((c) => ({
+      value: c.id,
+      label: c.nombre,
+      subtitle: c.codigo || c.subtitulo,
+    }));
+    if (
+      idcliente != null &&
+      clienteLabel &&
+      !fromSearch.some((o) => o.value === idcliente)
+    ) {
+      return [{ value: idcliente, label: clienteLabel }, ...fromSearch];
+    }
+    return fromSearch;
+  }, [clientesEncontrados, idcliente, clienteLabel]);
+
+  const handleClienteSearch = useCallback((q: string) => {
+    setClienteQuery(q);
+  }, []);
+
+  const campanaOptions = useMemo(
+    () => [
+      { value: 0, label: 'Sin campaña' },
+      ...campanas.map((c) => ({
+        value: c.idcampana,
+        label: `${c.nombre} (${c.estado})`,
+      })),
+    ],
+    [campanas],
+  );
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     setLocalError(null);
+    const nextErrors: Record<string, string> = {};
 
     if (idmandante === '') {
-      setLocalError('Seleccione el mandante.');
-      return;
+      nextErrors.mandante = 'Seleccione el mandante.';
     }
     if (idcliente == null) {
-      setLocalError('Seleccione el deudor (cliente).');
-      return;
+      nextErrors.deudor = 'Seleccione el deudor (cliente).';
     }
     if (!noPrestamo.trim()) {
-      setLocalError('El No. préstamo es obligatorio.');
-      return;
+      nextErrors.noPrestamo = 'El No. préstamo es obligatorio.';
     }
     const codigo = (codigoManual ? codigoUnico : noPrestamo).trim();
     if (!codigo) {
-      setLocalError('El código único es obligatorio.');
-      return;
+      nextErrors.codigoUnico = 'El código único es obligatorio.';
     }
 
     const saldo = parseNumeroNoNegativo(saldoTotal);
@@ -144,7 +211,17 @@ export function PrestamoForm({
         Number.isNaN(n),
       )
     ) {
-      setLocalError('Los montos y días de mora deben ser números válidos ≥ 0.');
+      nextErrors.financiero =
+        'Los montos y días de mora deben ser números válidos ≥ 0.';
+    }
+
+    setFieldErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) {
+      setLocalError('Revise los campos marcados.');
+      return;
+    }
+
+    if (idmandante === '' || idcliente == null) {
       return;
     }
 
@@ -180,8 +257,12 @@ export function PrestamoForm({
     onSubmit(input);
   };
 
-  const inputClass =
-    'w-full rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2 dark:text-white';
+  const displayError = localError ?? errorMessage ?? null;
+  const sinResultadosDeudor =
+    idcliente == null &&
+    debouncedQuery.length >= 2 &&
+    !loadingClientes &&
+    clientesEncontrados.length === 0;
 
   return (
     <form
@@ -189,281 +270,339 @@ export function PrestamoForm({
       onSubmit={handleSubmit}
       className="space-y-4"
       data-ux-id="prestamo-form"
+      noValidate
     >
-      <MandanteSelect
-        required
-        value={idmandante}
-        onChange={(value) => {
-          setIdmandante(value);
-          setIdcampana('');
-        }}
-      />
-
-      <div>
-        <label className="mb-1 block text-sm font-medium">Campaña</label>
-        <select
-          className={inputClass}
-          value={idcampana}
-          disabled={idmandante === '' || loadingCampanas}
-          onChange={(e) =>
-            setIdcampana(e.target.value ? Number(e.target.value) : '')
-          }
-        >
-          <option value="">Sin campaña</option>
-          {campanas.map((c) => (
-            <option key={c.idcampana} value={c.idcampana}>
-              {c.nombre} ({c.estado})
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div>
-        <label className="mb-1 block text-sm font-medium">Deudor *</label>
-        {idcliente != null ? (
-          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3">
-            <span className="flex-1">{clienteLabel}</span>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={isLoading}
-              onClick={() => {
-                setIdcliente(null);
-                setClienteLabel('');
-                setClienteQuery('');
-                setShowClienteResults(true);
+      <Section
+        title="Contexto"
+        description="Mandante, campaña y deudor titular del préstamo."
+      >
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div>
+            <MandanteSelect
+              required
+              value={idmandante}
+              onChange={(value) => {
+                setIdmandante(value);
+                setIdcampana('');
+                setFieldErrors((prev) => {
+                  const next = { ...prev };
+                  delete next.mandante;
+                  return next;
+                });
               }}
-            >
-              Cambiar
-            </Button>
-          </div>
-        ) : (
-          <div className="relative">
-            <input
-              className={inputClass}
-              placeholder="Buscar por cédula o nombre..."
-              value={clienteQuery}
-              disabled={idmandante === ''}
-              onChange={(e) => {
-                setClienteQuery(e.target.value);
-                setShowClienteResults(true);
-              }}
-              onFocus={() => setShowClienteResults(true)}
+              selectClassName={FIELD_CONTROL_CLASS}
             />
-            {showClienteResults && debouncedQuery.length >= 2 ? (
-              <ul className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-lg border border-stroke bg-white shadow-1 dark:border-dark-3 dark:bg-dark-2">
-                {loadingClientes ? (
-                  <li className="px-3 py-2 text-sm text-gray-500">
-                    Buscando...
-                  </li>
-                ) : clientesEncontrados.length === 0 ? (
-                  <li className="px-3 py-2 text-sm text-gray-500">
-                    Sin resultados.{' '}
-                    <Link
-                      href="/clientes"
-                      className="text-primary underline"
-                      target="_blank"
-                    >
-                      Crear deudor
-                    </Link>
-                  </li>
-                ) : (
-                  clientesEncontrados.map((c) => (
-                    <li key={c.id}>
-                      <button
-                        type="button"
-                        className="w-full px-3 py-2 text-left text-sm hover:bg-gray-2 dark:hover:bg-dark-3"
-                        onClick={() => {
-                          setIdcliente(c.id);
-                          setClienteLabel(
-                            `${c.nombre} · ${c.codigo || c.subtitulo}`,
-                          );
-                          setClienteQuery('');
-                          setShowClienteResults(false);
-                        }}
-                      >
-                        <span className="font-medium">{c.nombre}</span>
-                        <span className="mt-0.5 block text-xs text-gray-500">
-                          {c.codigo || c.subtitulo}
-                        </span>
-                      </button>
-                    </li>
-                  ))
-                )}
-              </ul>
+            {fieldErrors.mandante ? (
+              <p className="mt-1 text-xs text-red-600" role="alert">
+                {fieldErrors.mandante}
+              </p>
             ) : null}
           </div>
-        )}
-        <p className="mt-1 text-xs text-gray-500">
-          El deudor debe existir previamente.{' '}
-          <Link href="/clientes" className="text-primary underline">
-            Ir a clientes
-          </Link>
-        </p>
-      </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div>
-          <label className="mb-1 block text-sm font-medium">
-            No. préstamo *
-          </label>
-          <input
-            required
-            className={inputClass}
-            value={noPrestamo}
-            onChange={(e) => setNoPrestamo(e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium">
-            Código único *
-          </label>
-          <input
-            required
-            className={inputClass}
-            value={codigoUnico}
-            onChange={(e) => {
-              setCodigoManual(true);
-              setCodigoUnico(e.target.value);
+          <FormField
+            type="select"
+            label="Campaña"
+            hint={
+              idmandante === ''
+                ? 'Seleccione primero un mandante.'
+                : loadingCampanas
+                  ? 'Cargando campañas...'
+                  : undefined
+            }
+            inputProps={{
+              value: idcampana === '' ? 0 : idcampana,
+              disabled: idmandante === '' || loadingCampanas || isLoading,
+              options: campanaOptions,
+              className: 'field-touch-target',
+              onChange: (e) => {
+                const v = Number(e.target.value);
+                setIdcampana(v === 0 ? '' : v);
+              },
             }}
           />
-          <p className="mt-1 text-xs text-gray-500">
-            Por defecto igual al No. préstamo (único por mandante).
+
+          <div className="md:col-span-2">
+            <FormField
+              type="autocomplete"
+              label="Deudor"
+              required
+              error={fieldErrors.deudor}
+              hint={
+                idmandante === ''
+                  ? 'Seleccione primero un mandante.'
+                  : 'Busque por cédula o nombre. El deudor debe existir.'
+              }
+              inputProps={{
+                options: clienteOptions,
+                value: idcliente ?? undefined,
+                loading: loadingClientes,
+                disabled: idmandante === '' || isLoading,
+                placeholder: 'Buscar por cédula o nombre...',
+                className: 'field-touch-target',
+                onSearch: handleClienteSearch,
+                filterFn: () => true,
+                onChange: (value) => {
+                  if (value == null || value === '') {
+                    setIdcliente(null);
+                    setClienteLabel('');
+                    return;
+                  }
+                  const id = Number(value);
+                  const opt = clienteOptions.find((o) => o.value === id);
+                  setIdcliente(id);
+                  setClienteLabel(opt?.label ?? `Cliente #${id}`);
+                  setFieldErrors((prev) => {
+                    const next = { ...prev };
+                    delete next.deudor;
+                    return next;
+                  });
+                },
+              }}
+            />
+            <p id={deudorHintId} className="mt-1 text-xs text-gray-5">
+              {sinResultadosDeudor ? (
+                <>
+                  Sin resultados.{' '}
+                  <Link
+                    href="/clientes"
+                    className="font-medium text-primary hover:underline"
+                    target="_blank"
+                  >
+                    Crear deudor
+                  </Link>
+                </>
+              ) : (
+                <>
+                  ¿No está el deudor?{' '}
+                  <Link
+                    href="/clientes"
+                    className="font-medium text-primary hover:underline"
+                  >
+                    Ir a clientes
+                  </Link>
+                </>
+              )}
+            </p>
+          </div>
+        </div>
+      </Section>
+
+      <Section
+        title="Identificación"
+        description="Referencias del crédito en el mandante."
+      >
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <FormField
+            type="input"
+            label="No. préstamo"
+            required
+            error={fieldErrors.noPrestamo}
+            inputProps={{
+              value: noPrestamo,
+              className: 'field-touch-target',
+              disabled: isLoading,
+              onChange: (e) => {
+                setNoPrestamo(e.target.value);
+                setFieldErrors((prev) => {
+                  const next = { ...prev };
+                  delete next.noPrestamo;
+                  return next;
+                });
+              },
+            }}
+          />
+          <FormField
+            type="input"
+            label="Código único"
+            required
+            error={fieldErrors.codigoUnico}
+            hint="Por defecto igual al No. préstamo (único por mandante)."
+            inputProps={{
+              value: codigoUnico,
+              className: 'field-touch-target',
+              disabled: isLoading,
+              onChange: (e) => {
+                setCodigoManual(true);
+                setCodigoUnico(e.target.value);
+                setFieldErrors((prev) => {
+                  const next = { ...prev };
+                  delete next.codigoUnico;
+                  return next;
+                });
+              },
+            }}
+          />
+          <FormField
+            type="input"
+            label="No. cuenta"
+            inputProps={{
+              value: noCuenta,
+              className: 'field-touch-target',
+              disabled: isLoading,
+              onChange: (e) => setNoCuenta(e.target.value),
+            }}
+          />
+          <FormField
+            type="select"
+            label="Estado"
+            required
+            inputProps={{
+              value: estado,
+              className: 'field-touch-target',
+              disabled: isLoading,
+              options: ESTADOS_PRESTAMO.map((e) => ({
+                value: e,
+                label: e,
+              })),
+              onChange: (e) => setEstado(e.target.value),
+            }}
+          />
+        </div>
+      </Section>
+
+      <Section
+        title="Financiero"
+        description="Saldos e intereses importados o capturados manualmente."
+      >
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <FormField
+            type="select"
+            label="Moneda"
+            required
+            inputProps={{
+              value: moneda,
+              className: 'field-touch-target',
+              disabled: isLoading,
+              options: [
+                { value: 'NIO', label: 'NIO (Córdobas)' },
+                { value: 'USD', label: 'USD' },
+              ],
+              onChange: (e) => setMoneda(e.target.value as 'NIO' | 'USD'),
+            }}
+          />
+          <FormField
+            type="input"
+            label="Días mora"
+            inputProps={{
+              type: 'number',
+              min: 0,
+              step: 1,
+              value: diasMora,
+              className: 'field-touch-target',
+              disabled: isLoading,
+              onChange: (e) => setDiasMora(e.target.value),
+            }}
+          />
+          <FormField
+            type="input"
+            label="Saldo total"
+            required
+            inputProps={{
+              type: 'number',
+              min: 0,
+              step: '0.01',
+              value: saldoTotal,
+              className: 'field-touch-target',
+              disabled: isLoading,
+              onChange: (e) => setSaldoTotal(e.target.value),
+            }}
+          />
+          <FormField
+            type="input"
+            label="Monto préstamo"
+            inputProps={{
+              type: 'number',
+              min: 0,
+              step: '0.01',
+              value: montoPrestamo,
+              className: 'field-touch-target',
+              disabled: isLoading,
+              onChange: (e) => setMontoPrestamo(e.target.value),
+            }}
+          />
+          <FormField
+            type="input"
+            label="Interés"
+            inputProps={{
+              type: 'number',
+              min: 0,
+              step: '0.01',
+              value: interes,
+              className: 'field-touch-target',
+              disabled: isLoading,
+              onChange: (e) => setInteres(e.target.value),
+            }}
+          />
+          <FormField
+            type="input"
+            label="Interés moratorio"
+            inputProps={{
+              type: 'number',
+              min: 0,
+              step: '0.01',
+              value: interesMoratorio,
+              className: 'field-touch-target',
+              disabled: isLoading,
+              onChange: (e) => setInteresMoratorio(e.target.value),
+            }}
+          />
+        </div>
+        {fieldErrors.financiero ? (
+          <p className="text-xs text-red-600" role="alert">
+            {fieldErrors.financiero}
           </p>
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium">No. cuenta</label>
-          <input
-            className={inputClass}
-            value={noCuenta}
-            onChange={(e) => setNoCuenta(e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium">Estado *</label>
-          <select
-            className={inputClass}
-            value={estado}
-            onChange={(e) => setEstado(e.target.value)}
-          >
-            {ESTADOS_PRESTAMO.map((e) => (
-              <option key={e} value={e}>
-                {e}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium">Moneda *</label>
-          <select
-            className={inputClass}
-            value={moneda}
-            onChange={(e) => setMoneda(e.target.value as 'NIO' | 'USD')}
-          >
-            <option value="NIO">NIO</option>
-            <option value="USD">USD</option>
-          </select>
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium">Días mora</label>
-          <input
-            type="number"
-            min={0}
-            step={1}
-            className={inputClass}
-            value={diasMora}
-            onChange={(e) => setDiasMora(e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium">Saldo total *</label>
-          <input
-            type="number"
-            min={0}
-            step="0.01"
-            className={inputClass}
-            value={saldoTotal}
-            onChange={(e) => setSaldoTotal(e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium">
-            Monto préstamo
-          </label>
-          <input
-            type="number"
-            min={0}
-            step="0.01"
-            className={inputClass}
-            value={montoPrestamo}
-            onChange={(e) => setMontoPrestamo(e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium">Interés</label>
-          <input
-            type="number"
-            min={0}
-            step="0.01"
-            className={inputClass}
-            value={interes}
-            onChange={(e) => setInteres(e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium">
-            Interés moratorio
-          </label>
-          <input
-            type="number"
-            min={0}
-            step="0.01"
-            className={inputClass}
-            value={interesMoratorio}
-            onChange={(e) => setInteresMoratorio(e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium">
-            Fecha préstamo
-          </label>
-          <input
-            type="date"
-            className={inputClass}
-            value={fechaPrestamo}
-            onChange={(e) => setFechaPrestamo(e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium">
-            Fecha vencimiento
-          </label>
-          <input
-            type="date"
-            className={inputClass}
-            value={fechaVencimiento}
-            onChange={(e) => setFechaVencimiento(e.target.value)}
-          />
-        </div>
-      </div>
+        ) : null}
+      </Section>
 
-      {(localError || errorMessage) && (
-        <p className="text-sm text-red-600" role="alert">
-          {localError ?? errorMessage}
+      <Section title="Fechas" description="Opcionales; se usan en reportes y aging.">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <FormField
+            type="input"
+            label="Fecha préstamo"
+            inputProps={{
+              type: 'date',
+              value: fechaPrestamo,
+              className: 'field-touch-target',
+              disabled: isLoading,
+              onChange: (e) => setFechaPrestamo(e.target.value),
+            }}
+          />
+          <FormField
+            type="input"
+            label="Fecha vencimiento"
+            inputProps={{
+              type: 'date',
+              value: fechaVencimiento,
+              className: 'field-touch-target',
+              disabled: isLoading,
+              onChange: (e) => setFechaVencimiento(e.target.value),
+            }}
+          />
+        </div>
+      </Section>
+
+      {displayError ? (
+        <p className="text-sm text-red" role="alert">
+          {displayError}
         </p>
-      )}
+      ) : null}
 
-      <div className="flex justify-end gap-2 pt-2">
+      <div className="field-sticky-actions flex flex-wrap justify-end gap-2">
         <Button
           type="button"
           variant="outline"
+          className="field-touch-target"
           onClick={onCancel}
           disabled={isLoading}
         >
           Cancelar
         </Button>
-        <Button type="submit" disabled={isLoading} data-ux-id="prestamo-guardar">
+        <Button
+          type="submit"
+          className="field-touch-target"
+          disabled={isLoading}
+          data-ux-id="prestamo-guardar"
+        >
           {isLoading ? 'Guardando...' : 'Registrar préstamo'}
         </Button>
       </div>

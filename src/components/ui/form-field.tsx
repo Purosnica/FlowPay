@@ -118,7 +118,7 @@ export function FormField(props: FormFieldProps) {
           {hint}
         </p>
       )}
-      {error && (
+      {error && props.type !== 'input' && props.type !== 'select' ? (
         <div
           id={errorId}
           className="mt-1 flex items-center gap-1 text-xs text-red-600 dark:text-red-400"
@@ -138,7 +138,7 @@ export function FormField(props: FormFieldProps) {
           </svg>
           <span>{error}</span>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

@@ -119,7 +119,8 @@ export const PERMISOS_CATALOGO: PermisoDefinicion[] = [
   {
     codigo: PERMISO.CARTERA_WRITE,
     nombre: 'Gestionar Cartera',
-    descripcion: 'Importar cartera, asignar cobradores y modificar datos',
+    descripcion:
+      'Registrar préstamos, importar cartera, asignar cobradores y modificar datos',
     categoria: 'COBRANZA',
     tipo: 'operativo',
   },

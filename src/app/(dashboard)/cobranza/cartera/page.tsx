@@ -255,7 +255,7 @@ function CarteraPageContent() {
         }}
       />
 
-      <div className="rounded-lg bg-white p-6 shadow-1 dark:bg-gray-dark">
+      <div className="rounded-xl border border-stroke bg-white p-6 shadow-sm dark:border-dark-3 dark:bg-gray-dark">
         <AsyncPanel
           isLoading={isLoading}
           error={error}
@@ -296,7 +296,7 @@ function CarteraPageContent() {
           }
         }}
         title="Registrar préstamo"
-        size="lg"
+        size="xl"
         closeOnClickOutside={!createMutation.isPending}
       >
         <PrestamoForm

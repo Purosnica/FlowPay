@@ -362,6 +362,7 @@ export default function PrestamoDetailPage({ params }: PageProps) {
             <ContactoRapidoAcciones telefono={celularCliente} />
             <PermissionGate permiso={PERMISO.PAGO_WRITE}>
               <Button
+                className="field-touch-target"
                 data-ux-id="prestamo-registrar-pago"
                 onClick={() => setPagoRapidoOpen(true)}
               >
@@ -371,6 +372,7 @@ export default function PrestamoDetailPage({ params }: PageProps) {
             <PermissionGate permiso={PERMISO.GESTION_WRITE}>
               <Button
                 variant="outline"
+                className="field-touch-target"
                 data-ux-id="prestamo-tipificar"
                 onClick={() => setGestionModal(true)}
                 disabled={
@@ -383,21 +385,21 @@ export default function PrestamoDetailPage({ params }: PageProps) {
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <div className="rounded-lg bg-white p-3 shadow-1 dark:bg-gray-dark">
+          <div className="rounded-xl border border-stroke bg-white p-3 shadow-sm dark:border-dark-3 dark:bg-gray-dark">
             <p className="text-xs text-gray-6">Saldo total</p>
             <p className="text-base font-bold text-primary">
               {formatearMoneda(prestamo.saldoTotal, prestamo.moneda)}
             </p>
           </div>
-          <div className="rounded-lg bg-white p-3 shadow-1 dark:bg-gray-dark">
+          <div className="rounded-xl border border-stroke bg-white p-3 shadow-sm dark:border-dark-3 dark:bg-gray-dark">
             <p className="text-xs text-gray-6">Días mora</p>
             <p className="text-base font-bold">{prestamo.diasMora}</p>
           </div>
-          <div className="rounded-lg bg-white p-3 shadow-1 dark:bg-gray-dark">
+          <div className="rounded-xl border border-stroke bg-white p-3 shadow-sm dark:border-dark-3 dark:bg-gray-dark">
             <p className="text-xs text-gray-6">Estado</p>
             <p className="text-base font-bold">{prestamo.estado}</p>
           </div>
-          <div className="rounded-lg bg-white p-3 shadow-1 dark:bg-gray-dark">
+          <div className="rounded-xl border border-stroke bg-white p-3 shadow-sm dark:border-dark-3 dark:bg-gray-dark">
             <p className="text-xs text-gray-6">Int. moratorio</p>
             <p className="text-base font-bold">
               {formatearMoneda(prestamo.interesMoratorio, prestamo.moneda)}
@@ -429,8 +431,8 @@ export default function PrestamoDetailPage({ params }: PageProps) {
             idprestamo={idprestamo}
             moneda={prestamo.moneda}
           />
-        <div className="rounded-lg bg-white p-6 shadow-1 dark:bg-gray-dark">
-          <dl className="grid grid-cols-1 gap-4 md:grid-cols-2 text-sm">
+        <div className="rounded-xl border border-stroke bg-white p-6 shadow-sm dark:border-dark-3 dark:bg-gray-dark">
+          <dl className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
             <div>
               <dt className="text-gray-6">Mandante</dt>
               <dd>{prestamo.mandante?.nombre}</dd>
