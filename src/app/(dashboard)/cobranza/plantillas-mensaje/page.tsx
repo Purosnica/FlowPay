@@ -82,6 +82,7 @@ function PlantillasMensajePageContent() {
     etapa: '',
     contenido: '',
   });
+  const [formError, setFormError] = useState<string | null>(null);
 
   const {
     queryVars,
@@ -171,8 +172,14 @@ function PlantillasMensajePageContent() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!idmandante) {
+      setFormError('Seleccione un mandante antes de guardar.');
       return;
     }
+    if (!form.nombre.trim() || !form.contenido.trim()) {
+      setFormError('Nombre y contenido son obligatorios.');
+      return;
+    }
+    setFormError(null);
     if (selected) {
       updateMutation.mutate({
         input: {
@@ -194,6 +201,7 @@ function PlantillasMensajePageContent() {
 
   const openCreate = () => {
     setSelected(undefined);
+    setFormError(null);
     setForm({
       nombre: '',
       canal: 'WHATSAPP',
@@ -221,7 +229,15 @@ function PlantillasMensajePageContent() {
         description="Mensajes reutilizables por canal y etapa de cobranza."
         actions={
           <PermissionGate permiso={PERMISO.MANDANTE_WRITE}>
-            <Button disabled={!idmandante} onClick={openCreate}>
+            <Button
+              disabled={!idmandante}
+              title={
+                !idmandante
+                  ? 'Seleccione un mandante primero'
+                  : undefined
+              }
+              onClick={openCreate}
+            >
               + Nueva plantilla
             </Button>
           </PermissionGate>
@@ -282,6 +298,11 @@ function PlantillasMensajePageContent() {
         size="lg"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
+          {formError && (
+            <p className="text-sm text-red-600" role="alert">
+              {formError}
+            </p>
+          )}
           <div>
             <label className="mb-1 block text-sm font-medium text-dark dark:text-white">
               Nombre

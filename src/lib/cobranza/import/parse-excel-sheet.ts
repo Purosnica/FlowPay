@@ -67,9 +67,19 @@ export function parseExcelSheet(
 
   for (const [campo, config] of Object.entries(mapeo)) {
     const preferido = normalizeHeader(config.columna);
-    const idx = headerRow.findIndex(
-      (h) => h === preferido || h.includes(preferido) || preferido.includes(h),
-    );
+    let idx = headerRow.findIndex((h) => h === preferido);
+    if (idx < 0) {
+      const parciales = headerRow
+        .map((h, i) => ({ h, i }))
+        .filter(
+          ({ h }) =>
+            h.length > 0 &&
+            (h.includes(preferido) || preferido.includes(h)),
+        );
+      if (parciales.length === 1) {
+        idx = parciales[0]!.i;
+      }
+    }
     if (idx >= 0) {
       indices[campo] = idx;
       columnasDetectadas[campo] = String(matriz[0][idx] ?? '');

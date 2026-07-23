@@ -14,16 +14,11 @@ import {
   revertirLiquidacionPagada,
 } from '@/lib/contexts/liquidacion';
 import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
-import { mensajeClienteSeguro } from '@/lib/errors/client-safe-message';
+import { asGraphQLValidationError } from '@/lib/errors/client-safe-message';
 import { z } from 'zod';
 
 function wrapServiceError(err: unknown): never {
-  if (err instanceof GraphQLValidationError) {
-    throw err;
-  }
-  throw new GraphQLValidationError(
-    mensajeClienteSeguro(err, 'Operación fallida.'),
-  );
+  throw asGraphQLValidationError(err, 'Operación fallida.');
 }
 
 const GenerarLiquidacionSchema = z.object({

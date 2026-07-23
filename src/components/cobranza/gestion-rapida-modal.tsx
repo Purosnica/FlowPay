@@ -110,7 +110,10 @@ export function GestionRapidaModal({
   });
 
   const handleSubmit = (form: GestionFormData) => {
-    if (!prestamo || horarioBloqueado) {
+    if (!prestamo) {
+      return;
+    }
+    if (horarioBloqueado) {
       return;
     }
     if (!form.nota.trim()) {

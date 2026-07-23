@@ -15,6 +15,11 @@ import {
   obtenerImportacionJob,
 } from '@/lib/cobranza/import/importacion-job-service';
 import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
+import { asGraphQLValidationError } from '@/lib/errors/client-safe-message';
+
+function wrapServiceError(err: unknown): never {
+  throw asGraphQLValidationError(err, 'Operación de secuencia fallida.');
+}
 
 const PasoSecuenciaInput = builder.inputType('PasoSecuenciaInput', {
   fields: (t) => ({
@@ -295,7 +300,11 @@ builder.mutationField('createSecuenciaContacto', (t) =>
         throw new GraphQLValidationError('Usuario no autenticado.');
       }
       const data = CreateSecuenciaSchema.parse(args.input);
-      return crearSecuenciaContacto(idusuario, data);
+      try {
+        return await crearSecuenciaContacto(idusuario, data);
+      } catch (err) {
+        wrapServiceError(err);
+      }
     },
   }),
 );

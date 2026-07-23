@@ -36,3 +36,27 @@ export function mensajeClienteSeguro(
   }
   return fallback;
 }
+
+/**
+ * Convierte cualquier error en GraphQLValidationError con mensaje seguro.
+ */
+export function asGraphQLValidationError(
+  err: unknown,
+  fallback: string,
+): GraphQLValidationError {
+  if (err instanceof GraphQLValidationError) {
+    return err;
+  }
+  return new GraphQLValidationError(mensajeClienteSeguro(err, fallback));
+}
+
+/** True si el mensaje es seguro para mostrar al cliente. */
+export function esMensajeClienteSeguro(msg: string): boolean {
+  const t = msg.trim();
+  return (
+    t.length > 0 &&
+    t.length <= 180 &&
+    !LEAK_HINT.test(t) &&
+    !t.includes('\n')
+  );
+}

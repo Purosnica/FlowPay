@@ -15,6 +15,7 @@ import {
   actualizarUsuario,
   cambiarEstadoUsuario,
 } from '@/lib/logic/usuario-logic';
+import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
 
 builder.mutationField('createUsuario', (t) =>
   t.field({
@@ -25,7 +26,7 @@ builder.mutationField('createUsuario', (t) =>
       const data = CreateUsuarioInputSchema.parse(args.input);
       const idActor = ctx.usuario?.idusuario;
       if (!idActor) {
-        throw new Error('Usuario no autenticado');
+        throw new GraphQLValidationError('Usuario no autenticado.');
       }
       return crearUsuario(data, idActor);
     },

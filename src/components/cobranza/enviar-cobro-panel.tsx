@@ -139,7 +139,12 @@ export function EnviarCobroPanel({
   };
 
   const enviarPorSms = async () => {
-    if (!telefono.trim() || !mensajePreview.trim()) {
+    if (!telefono.trim()) {
+      setSmsError('Indique un teléfono autorizado del deudor.');
+      return;
+    }
+    if (!mensajePreview.trim()) {
+      setSmsError('Escriba o seleccione un mensaje antes de enviar.');
       return;
     }
     setEnviandoSms(true);
@@ -181,7 +186,12 @@ export function EnviarCobroPanel({
   };
 
   const enviarPorEmail = async () => {
-    if (!emailDeudor.trim() || !mensajePreview.trim()) {
+    if (!emailDeudor.trim()) {
+      setEmailError('El deudor no tiene correo registrado.');
+      return;
+    }
+    if (!mensajePreview.trim()) {
+      setEmailError('Escriba o seleccione un mensaje antes de enviar.');
       return;
     }
     setEnviandoEmail(true);

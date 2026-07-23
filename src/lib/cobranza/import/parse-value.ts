@@ -136,14 +136,31 @@ export function parseFecha(
 }
 
 export function parseMoneda(valor: unknown): 'NIO' | 'USD' | null {
-  const texto = parseTexto(valor)?.toUpperCase();
+  const texto = parseTexto(valor)?.toUpperCase().trim();
   if (!texto) {
     return null;
   }
-  if (texto.includes('USD') || texto.includes('DOLAR')) {
+  if (
+    texto === 'USD' ||
+    texto === 'DOLAR' ||
+    texto === 'DÓLAR' ||
+    texto === '$'
+  ) {
     return 'USD';
   }
-  if (texto.includes('NIO') || texto.includes('CORDOBA') || texto.includes('C$')) {
+  if (
+    texto === 'NIO' ||
+    texto === 'CORDOBA' ||
+    texto === 'CÓRDOBA' ||
+    texto === 'C$'
+  ) {
+    return 'NIO';
+  }
+  // Tokens cortos / con símbolo (p. ej. "USD 1.00" no aplica aquí; solo moneda).
+  if (/^(USD|DOLAR|DÓLAR)$/u.test(texto.replace(/\s+/g, ''))) {
+    return 'USD';
+  }
+  if (/^(NIO|CORDOBA|CÓRDOBA|C\$)$/u.test(texto.replace(/\s+/g, ''))) {
     return 'NIO';
   }
   return null;

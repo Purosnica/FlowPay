@@ -20,6 +20,15 @@ function textoCatalogo(resultado: ResultadoTipificacion): string {
     .toUpperCase();
 }
 
+/** Coincide palabra completa (evita APROXIMA, ROTACION, etc.). */
+function tienePalabra(texto: string, palabra: string): boolean {
+  const re = new RegExp(
+    `(^|[^\\p{L}\\p{N}])${palabra}([^\\p{L}\\p{N}]|$)`,
+    'iu',
+  );
+  return re.test(texto);
+}
+
 /**
  * True si el resultado implica registrar una promesa nueva
  * (monto + fecha obligatorios).
@@ -36,7 +45,7 @@ export function resultadoRequierePromesa(
   }
 
   const t = textoCatalogo(resultado);
-  if (!t.includes('PROMESA')) {
+  if (!tienePalabra(t, 'PROMESA')) {
     return false;
   }
 
@@ -44,8 +53,8 @@ export function resultadoRequierePromesa(
     t.includes('SIN PROMESA') ||
     t.includes('NO CUMPLIDA') ||
     t.includes('INCUMPL') ||
-    t.includes('ROTA') ||
-    t.includes('VENCIDA');
+    tienePalabra(t, 'ROTA') ||
+    tienePalabra(t, 'VENCIDA');
 
   return !esNegativa;
 }
@@ -60,8 +69,8 @@ export function resultadoRequiereProximaGestion(
   return (
     t.includes('REAGENDA') ||
     t.includes('REPROGRAM') ||
-    t.includes('CALLBACK') ||
-    t.includes('PROXIMA') ||
-    t.includes('PRÓXIMA')
+    tienePalabra(t, 'CALLBACK') ||
+    tienePalabra(t, 'PROXIMA') ||
+    tienePalabra(t, 'PRÓXIMA')
   );
 }

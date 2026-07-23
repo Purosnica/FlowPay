@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { filtroMandante, requerirAccesoMandante } from '@/lib/cobranza/mandante-scope';
 import { decimalToNumber } from '@/lib/cobranza/decimal-utils';
 import type { AgendaSecuenciaItem } from '@/types/cobranza';
+import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
 
 export type { AgendaSecuenciaItem };
 
@@ -49,11 +50,11 @@ export async function crearSecuenciaContacto(
     },
   });
   if (!campana) {
-    throw new Error('Campaña no encontrada.');
+    throw new GraphQLValidationError('Campaña no encontrada.');
   }
 
   if (params.pasos.length === 0) {
-    throw new Error('La secuencia debe tener al menos un paso.');
+    throw new GraphQLValidationError('La secuencia debe tener al menos un paso.');
   }
 
   const secuencia = await prisma.$transaction(async (tx) => {
@@ -82,7 +83,7 @@ export async function crearSecuenciaContacto(
 
   const detalle = await obtenerSecuenciaPorId(secuencia.idsecuencia, idusuario);
   if (!detalle) {
-    throw new Error('No se pudo cargar la secuencia creada.');
+    throw new GraphQLValidationError('No se pudo cargar la secuencia creada.');
   }
   return detalle;
 }

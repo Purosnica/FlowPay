@@ -14,6 +14,11 @@ import {
   GraphQLAuthenticationError,
   GraphQLValidationError,
 } from '@/lib/errors/graphql-errors';
+import {
+  esMensajeClienteSeguro,
+  mensajeClienteSeguro,
+} from '@/lib/errors/client-safe-message';
+import { ServicioError } from '@/lib/services/error-types';
 import { useRequireAuthPlugin } from '@/lib/graphql/plugins/require-auth-plugin';
 import {
   createMaxDepthRule,
@@ -128,32 +133,69 @@ const { handleRequest } = createYoga<NextRouteContext>({
                   };
                 }
 
-                if (error.extensions) {
+                if (originalError instanceof ServicioError) {
+                  const userMessage = mensajeClienteSeguro(
+                    originalError,
+                    'Operación no válida.',
+                  );
+                  return {
+                    ...error,
+                    message: userMessage,
+                    extensions: {
+                      code: ErrorCode.VALIDATION_ERROR,
+                      statusCode: 400,
+                      userMessage,
+                      timestamp: new Date().toISOString(),
+                    },
+                  };
+                }
+
+                if (error.extensions?.userMessage) {
                   return error;
                 }
 
-                if (error.message.includes('No tienes permiso')) {
+                const rawMsg = (originalError?.message ?? error.message).trim();
+                if (
+                  rawMsg === 'No tienes permiso' ||
+                  rawMsg.startsWith('No tienes permiso')
+                ) {
                   return {
                     ...error,
                     extensions: {
                       code: ErrorCode.FORBIDDEN,
                       statusCode: 403,
-                      userMessage: error.message,
+                      userMessage: rawMsg,
                       timestamp: new Date().toISOString(),
                     },
                   };
                 }
 
                 if (
-                  error.message.includes('Debes estar autenticado') ||
-                  error.message.includes('autenticado')
+                  rawMsg === 'Debes estar autenticado' ||
+                  rawMsg === 'Debes estar autenticado.' ||
+                  rawMsg === 'Usuario no autenticado' ||
+                  rawMsg === 'Usuario no autenticado.' ||
+                  rawMsg === 'No autenticado'
                 ) {
                   return {
                     ...error,
                     extensions: {
                       code: ErrorCode.UNAUTHORIZED,
                       statusCode: 401,
-                      userMessage: error.message,
+                      userMessage: rawMsg,
+                      timestamp: new Date().toISOString(),
+                    },
+                  };
+                }
+
+                if (esMensajeClienteSeguro(rawMsg)) {
+                  return {
+                    ...error,
+                    message: rawMsg,
+                    extensions: {
+                      code: ErrorCode.VALIDATION_ERROR,
+                      statusCode: 400,
+                      userMessage: rawMsg,
                       timestamp: new Date().toISOString(),
                     },
                   };

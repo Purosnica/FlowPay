@@ -9,8 +9,13 @@ import { ZodError } from 'zod';
 import { ServicioError, ErrorCode } from '@/lib/services/error-types';
 import {
   GraphQLPermissionError,
+  GraphQLAuthenticationError,
   GraphQLValidationError,
 } from '@/lib/errors/graphql-errors';
+import {
+  esMensajeClienteSeguro,
+  mensajeClienteSeguro,
+} from '@/lib/errors/client-safe-message';
 import { logger } from '@/lib/utils/logger';
 
 export interface ApiErrorResponse {
@@ -75,6 +80,17 @@ export function handleApiError(error: unknown): NextResponse<ApiErrorResponse> {
     );
   }
 
+  if (error instanceof GraphQLAuthenticationError) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: error.message,
+        code: 'UNAUTHORIZED',
+      },
+      { status: 401 },
+    );
+  }
+
   if (error instanceof ZodError) {
     const firstIssue = error.issues[0];
     return NextResponse.json(
@@ -105,20 +121,35 @@ export function handleApiError(error: unknown): NextResponse<ApiErrorResponse> {
     );
   }
 
-  if (
-    error instanceof Error &&
-    (error.message.includes('No autenticado') ||
-      error.message.includes('Token') ||
-      error.message.includes('autenticado'))
-  ) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'No autenticado',
-        code: 'UNAUTHORIZED',
-      },
-      { status: 401 },
-    );
+  if (error instanceof Error) {
+    const msg = error.message.trim();
+    if (
+      msg === 'No autenticado' ||
+      msg === 'Debes estar autenticado' ||
+      msg === 'Debes estar autenticado.' ||
+      msg === 'Usuario no autenticado' ||
+      msg === 'Usuario no autenticado.'
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'No autenticado',
+          code: 'UNAUTHORIZED',
+        },
+        { status: 401 },
+      );
+    }
+
+    if (esMensajeClienteSeguro(msg)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: mensajeClienteSeguro(error, msg),
+          code: 'VALIDACION_ERROR',
+        },
+        { status: 400 },
+      );
+    }
   }
 
   return NextResponse.json(

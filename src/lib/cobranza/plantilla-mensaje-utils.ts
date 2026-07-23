@@ -142,7 +142,11 @@ export function construirVariablesPlantilla(
   const telefono = cliente?.celular ?? cliente?.telefono ?? '';
   const email = cliente?.email ?? '';
   const mandante = mandanteNombre ?? '';
-  const mandanteLegal = mandante.toUpperCase().includes('CREDICOMPRAS')
+  const mandanteUpper = mandante.toUpperCase();
+  const esCredicompras =
+    mandanteUpper === 'CREDICOMPRAS' ||
+    /(^|[^A-Z0-9])CREDICOMPRAS([^A-Z0-9]|$)/.test(mandanteUpper);
+  const mandanteLegal = esCredicompras
     ? 'TICTAC S.A.'
     : mandante || 'TICTAC S.A.';
 

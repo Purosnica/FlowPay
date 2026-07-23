@@ -130,6 +130,7 @@ export function AsignacionAutomaticaPanel() {
 
   const handleEjecutar = () => {
     if (!idmandante || gestoresSeleccionados.size === 0) {
+      setError('Seleccione mandante y al menos un cobrador.');
       return;
     }
     ejecutarMutation.mutate({

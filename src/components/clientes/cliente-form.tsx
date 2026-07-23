@@ -352,6 +352,18 @@ export function ClienteForm({
           <h3 className="mb-3 text-base font-semibold text-dark dark:text-white">
             Información Adicional
           </h3>
+          {((generos?.generos?.length ?? 0) === 0 ||
+            (estadosCiviles?.estadosCiviles?.length ?? 0) === 0 ||
+            (ocupaciones?.ocupaciones?.length ?? 0) === 0 ||
+            (tiposPersona?.tiposPersona?.length ?? 0) === 0) && (
+            <p
+              className="mb-3 rounded border border-amber-200 bg-amber-50 p-2 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300"
+              role="status"
+            >
+              Hay catálogos vacíos (género, estado civil, ocupación o tipo de
+              persona). Ejecute el seed de catálogos cliente para cargarlos.
+            </p>
+          )}
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <Select
               label="Género"

@@ -5,6 +5,7 @@ import { registrarAuditoria } from '@/lib/cobranza/auditoria-service';
 import { emitirNotificacionAsignacion } from '@/lib/cobranza/notificacion-emision-service';
 import { decimalToNumber } from '@/lib/cobranza/decimal-utils';
 import { diasMoraEnTramo } from '@/lib/cobranza/tramos-mora';
+import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
 
 export type MetodoAsignacion =
   | 'POR_MORA'
@@ -203,7 +204,7 @@ export async function simularAsignacionCartera(
   await requerirAccesoMandante(idusuario, filtros.idmandante);
 
   if (idgestores.length === 0) {
-    throw new Error('Debe seleccionar al menos un cobrador.');
+    throw new GraphQLValidationError('Debe seleccionar al menos un cobrador.');
   }
 
   const prestamos = await obtenerPrestamosAsignables(filtros);
@@ -259,7 +260,7 @@ export async function asignarGestorConHistorial(
   });
 
   if (!prestamo || prestamo.deletedAt) {
-    throw new Error('Préstamo no encontrado.');
+    throw new GraphQLValidationError('Préstamo no encontrado.');
   }
 
   await requerirAccesoMandante(idusuario, prestamo.idmandante);
@@ -455,7 +456,7 @@ export async function ejecutarAsignacionCartera(
   await requerirAccesoMandante(idusuario, filtros.idmandante);
 
   if (idgestores.length === 0) {
-    throw new Error('Debe seleccionar al menos un cobrador.');
+    throw new GraphQLValidationError('Debe seleccionar al menos un cobrador.');
   }
 
   const prestamos = await obtenerPrestamosAsignables(filtros);
@@ -504,7 +505,7 @@ export async function cancelarPrestamo(
   });
 
   if (!prestamo || prestamo.deletedAt) {
-    throw new Error('Préstamo no encontrado.');
+    throw new GraphQLValidationError('Préstamo no encontrado.');
   }
 
   await requerirAccesoMandante(idusuario, prestamo.idmandante);
@@ -541,7 +542,7 @@ export async function toggleBloqueoAsignacion(
   });
 
   if (!prestamo || prestamo.deletedAt) {
-    throw new Error('Préstamo no encontrado.');
+    throw new GraphQLValidationError('Préstamo no encontrado.');
   }
 
   await requerirAccesoMandante(idusuario, prestamo.idmandante);
@@ -583,7 +584,7 @@ export async function listarHistorialAsignacion(
   });
 
   if (!prestamo) {
-    throw new Error('Préstamo no encontrado.');
+    throw new GraphQLValidationError('Préstamo no encontrado.');
   }
 
   await requerirAccesoMandante(idusuario, prestamo.idmandante);
@@ -632,10 +633,10 @@ export async function asignarGestorPorReferencias(
   await requerirAccesoMandante(idusuario, idmandante);
 
   if (referencias.length === 0) {
-    throw new Error('Debe indicar al menos una referencia de préstamo.');
+    throw new GraphQLValidationError('Debe indicar al menos una referencia de préstamo.');
   }
   if (referencias.length > MAX_REFERENCIAS_ASIGNACION) {
-    throw new Error(
+    throw new GraphQLValidationError(
       `Máximo ${MAX_REFERENCIAS_ASIGNACION} referencias por asignación.`,
     );
   }

@@ -12,6 +12,11 @@ import {
 } from '@/lib/contexts/cartera';
 import { requerirAccesoPrestamoCobrador } from '@/lib/cobranza/cobrador-scope';
 import { IdPositiveSchema } from '@/lib/validators/graphql-args';
+import { asGraphQLValidationError } from '@/lib/errors/client-safe-message';
+
+function wrapServiceError(err: unknown): never {
+  throw asGraphQLValidationError(err, 'Operación de asignación fallida.');
+}
 
 const MetodosAsignacion = [
   'POR_MORA',
@@ -144,12 +149,16 @@ builder.queryField('simularAsignacionCartera', (t) =>
     resolve: async (_parent, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.CARTERA_WRITE);
       const parsed = SimularAsignacionArgsSchema.parse(args);
-      return simularAsignacionCartera(
-        ctx.usuario?.idusuario ?? 0,
-        parsed.filtros,
-        parsed.idgestores,
-        parsed.metodo,
-      );
+      try {
+        return await simularAsignacionCartera(
+          ctx.usuario?.idusuario ?? 0,
+          parsed.filtros,
+          parsed.idgestores,
+          parsed.metodo,
+        );
+      } catch (err) {
+        wrapServiceError(err);
+      }
     },
   }),
 );
@@ -189,14 +198,18 @@ builder.mutationField('ejecutarAsignacionCartera', (t) =>
     resolve: async (_parent, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.CARTERA_WRITE);
       const parsed = EjecutarAsignacionArgsSchema.parse(args);
-      const result = await ejecutarAsignacionCartera(
-        ctx.usuario?.idusuario ?? 0,
-        parsed.filtros,
-        parsed.idgestores,
-        parsed.metodo,
-        parsed.motivo,
-      );
-      return result.asignados;
+      try {
+        const result = await ejecutarAsignacionCartera(
+          ctx.usuario?.idusuario ?? 0,
+          parsed.filtros,
+          parsed.idgestores,
+          parsed.metodo,
+          parsed.motivo,
+        );
+        return result.asignados;
+      } catch (err) {
+        wrapServiceError(err);
+      }
     },
   }),
 );
@@ -211,12 +224,16 @@ builder.mutationField('cancelarPrestamo', (t) =>
     resolve: async (_parent, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.CARTERA_WRITE);
       const { idprestamo, motivo } = CancelarPrestamoSchema.parse(args);
-      await cancelarPrestamo(
-        idprestamo,
-        ctx.usuario?.idusuario ?? 0,
-        motivo,
-      );
-      return true;
+      try {
+        await cancelarPrestamo(
+          idprestamo,
+          ctx.usuario?.idusuario ?? 0,
+          motivo,
+        );
+        return true;
+      } catch (err) {
+        wrapServiceError(err);
+      }
     },
   }),
 );
@@ -232,12 +249,16 @@ builder.mutationField('toggleBloqueoAsignacion', (t) =>
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.CARTERA_WRITE);
       const { idprestamo, bloqueado } =
         ToggleBloqueoAsignacionSchema.parse(args);
-      await toggleBloqueoAsignacion(
-        idprestamo,
-        ctx.usuario?.idusuario ?? 0,
-        bloqueado,
-      );
-      return true;
+      try {
+        await toggleBloqueoAsignacion(
+          idprestamo,
+          ctx.usuario?.idusuario ?? 0,
+          bloqueado,
+        );
+        return true;
+      } catch (err) {
+        wrapServiceError(err);
+      }
     },
   }),
 );

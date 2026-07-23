@@ -31,13 +31,22 @@ export function resolverGestorPorNombreCache(
     return null;
   }
   const normalizado = nombre.toLowerCase();
-  const match = cache.usuarios.find((u) => {
+
+  const exacto = cache.usuarios.find(
+    (u) => u.nombre.toLowerCase() === normalizado,
+  );
+  if (exacto) {
+    return exacto.idusuario;
+  }
+
+  const parciales = cache.usuarios.filter((u) => {
     const n = u.nombre.toLowerCase();
-    return (
-      n === normalizado || n.includes(normalizado) || normalizado.includes(n)
-    );
+    return n.includes(normalizado) || normalizado.includes(n);
   });
-  return match?.idusuario ?? null;
+  if (parciales.length === 1) {
+    return parciales[0]?.idusuario ?? null;
+  }
+  return null;
 }
 
 function slugCodigo(texto: string): string {

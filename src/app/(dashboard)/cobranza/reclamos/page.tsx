@@ -39,6 +39,7 @@ export default function ReclamosPage() {
   );
   const [idprestamo, setIdprestamo] = useState<number | ''>('');
   const [fechaLimite, setFechaLimite] = useState('');
+  const [formError, setFormError] = useState<string | null>(null);
 
   const { data, isLoading, refetch } = useGraphQLQuery<{
     reclamos: {
@@ -113,7 +114,18 @@ export default function ReclamosPage() {
         title="Reclamos (CONAMI)"
         actions={
           <PermissionGate permiso={PERMISO.GESTION_WRITE}>
-            <Button disabled={!idmandante} onClick={() => setModalOpen(true)}>
+            <Button
+              disabled={!idmandante}
+              title={
+                !idmandante
+                  ? 'Seleccione un mandante primero'
+                  : undefined
+              }
+              onClick={() => {
+                setFormError(null);
+                setModalOpen(true);
+              }}
+            >
               Nuevo reclamo
             </Button>
           </PermissionGate>
@@ -172,9 +184,23 @@ export default function ReclamosPage() {
           className="space-y-3"
           onSubmit={(e) => {
             e.preventDefault();
-            if (!idmandante || !clienteSel || !descripcion || !fechaLimite) {
+            if (!idmandante) {
+              setFormError('Seleccione un mandante.');
               return;
             }
+            if (!clienteSel) {
+              setFormError('Seleccione un cliente.');
+              return;
+            }
+            if (!descripcion.trim()) {
+              setFormError('Indique la descripción del reclamo.');
+              return;
+            }
+            if (!fechaLimite) {
+              setFormError('Indique la fecha límite (SLA).');
+              return;
+            }
+            setFormError(null);
             createMutation.mutate({
               input: {
                 idmandante,
@@ -186,6 +212,11 @@ export default function ReclamosPage() {
             });
           }}
         >
+          {formError && (
+            <p className="text-sm text-red-600" role="alert">
+              {formError}
+            </p>
+          )}
           <div>
             <label className="mb-1 block text-sm font-medium">Cliente</label>
             <ClienteBuscarInput onSelect={setClienteSel} />
