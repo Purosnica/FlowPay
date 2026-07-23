@@ -15,7 +15,7 @@ import {
   loginSchema,
   mfaCodigoSchema,
   type LoginInput,
-  type MfaCodigoInput,
+  type MfaCodigoInput as MfaCodigoFormValues,
 } from '@/lib/validators/auth';
 import {
   guardarLoginEmailPrefs,
@@ -57,7 +57,7 @@ export default function LoginPage() {
     },
   });
 
-  const mfaForm = useForm<MfaCodigoInput>({
+  const mfaForm = useForm<MfaCodigoFormValues>({
     resolver: zodResolver(mfaCodigoSchema),
     defaultValues: { codigo: '' },
   });
@@ -106,7 +106,7 @@ export default function LoginPage() {
     }
   };
 
-  const onMfaSubmit = async (data: MfaCodigoInput) => {
+  const onMfaSubmit = async (data: MfaCodigoFormValues) => {
     setError(null);
     setIsSubmitting(true);
     try {
