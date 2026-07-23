@@ -68,7 +68,7 @@ export function ComprobantePagoDocument({
         {/* Marca FlowPay */}
         <header className="text-center">
           <img
-            src="/images/logo/logo.svg"
+            src="/images/logo/logo-dark.svg"
             alt="FlowPay"
             className="mx-auto h-9 w-auto object-contain"
           />

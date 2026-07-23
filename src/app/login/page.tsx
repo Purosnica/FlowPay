@@ -9,7 +9,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   loginSchema,
@@ -22,11 +22,12 @@ import {
   leerLoginEmailPrefs,
 } from '@/lib/ux/login-prefs';
 import { LoginShell } from '@/components/auth/login-shell';
+import { MfaCodigoInput } from '@/components/auth/mfa-codigo-input';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { EyeIcon, EyeOffIcon, PasswordIcon } from '@/assets/icons';
+import { EyeIcon, EyeOffIcon } from '@/assets/icons';
 
 type LoginFormValues = LoginInput;
 
@@ -130,7 +131,7 @@ export default function LoginPage() {
 
   if (authLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-2 dark:bg-[#020D1A]">
+      <div className="flex min-h-screen items-center justify-center bg-[#f3f5f9]">
         <LoadingSpinner size="lg" />
       </div>
     );
@@ -141,43 +142,26 @@ export default function LoginPage() {
       {mfaStep ? (
         <form
           onSubmit={mfaForm.handleSubmit(onMfaSubmit)}
-          className="space-y-5 animate-in fade-in zoom-in-95 duration-300"
+          className="space-y-6"
           key="mfa"
         >
-          <div className="space-y-2 text-center sm:text-left">
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary sm:mx-0">
-              <PasswordIcon className="h-5 w-5" />
-            </div>
-            <h2 className="font-display text-2xl font-bold text-dark dark:text-white">
-              Código de verificación
-            </h2>
-            <p className="text-sm leading-relaxed text-gray-500 dark:text-gray-400">
-              Abre tu app de autenticación e ingresa el código de 6 dígitos.
-            </p>
-          </div>
-
           {error ? (
             <Alert variant="danger">
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           ) : null}
 
-          <Input
-            label="Código MFA"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            maxLength={6}
-            placeholder="000000"
-            className="text-center font-display text-2xl tracking-[0.45em] py-3"
-            {...mfaForm.register('codigo', {
-              onChange: (event) => {
-                const digits = event.target.value
-                  .replace(/\D/g, '')
-                  .slice(0, 6);
-                event.target.value = digits;
-              },
-            })}
-            error={mfaForm.formState.errors.codigo?.message}
+          <Controller
+            name="codigo"
+            control={mfaForm.control}
+            render={({ field, fieldState }) => (
+              <MfaCodigoInput
+                value={field.value}
+                onChange={field.onChange}
+                error={fieldState.error?.message ?? undefined}
+                disabled={isSubmitting}
+              />
+            )}
           />
 
           <Button
@@ -195,38 +179,28 @@ export default function LoginPage() {
                 Verificando...
               </>
             ) : (
-              'Verificar código'
+              'Verificar'
             )}
           </Button>
 
-          <Button
+          <button
             type="button"
-            variant="ghost"
-            className="w-full"
+            className="w-full text-sm font-medium text-[#5b6472] transition-colors hover:text-dark"
             onClick={() => {
               setMfaStep(false);
               setError(null);
               mfaForm.reset({ codigo: '' });
             }}
           >
-            Volver al inicio de sesión
-          </Button>
+            ← Volver
+          </button>
         </form>
       ) : (
         <form
           onSubmit={handleSubmit(onSubmit)}
-          className="space-y-5 animate-in fade-in duration-300"
+          className="space-y-5"
           key="credentials"
         >
-          <div className="space-y-1.5">
-            <h2 className="font-display text-2xl font-bold text-dark dark:text-white">
-              Iniciar sesión
-            </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Ingresa tus credenciales para continuar.
-            </p>
-          </div>
-
           {error ? (
             <Alert variant="danger">
               <AlertDescription>{error}</AlertDescription>
@@ -236,8 +210,8 @@ export default function LoginPage() {
           <Input
             label="Email"
             type="email"
-            placeholder="tu@email.com"
-            className="py-2.5"
+            placeholder="tu@empresa.com"
+            className="h-11 rounded-xl bg-white py-2.5"
             {...register('email')}
             error={errors.email?.message}
             autoComplete="email"
@@ -246,8 +220,8 @@ export default function LoginPage() {
           <Input
             label="Contraseña"
             type={showPassword ? 'text' : 'password'}
-            placeholder="••••••••"
-            className="py-2.5"
+            placeholder="Tu contraseña"
+            className="h-11 rounded-xl bg-white py-2.5"
             {...register('password')}
             error={errors.password?.message}
             autoComplete="current-password"
@@ -255,7 +229,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => setShowPassword((prev) => !prev)}
-                className="rounded p-1 text-gray-500 hover:text-dark focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:text-gray-400 dark:hover:text-white"
+                className="rounded-md p-1.5 text-[#5b6472] transition-colors hover:text-dark focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                 aria-label={
                   showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'
                 }
@@ -269,12 +243,12 @@ export default function LoginPage() {
             }
           />
 
-          <label className="flex items-center gap-2 text-sm text-dark dark:text-white">
+          <label className="flex items-center gap-2.5 text-sm text-[#3d4550]">
             <input
               type="checkbox"
               checked={rememberEmail}
               onChange={(e) => setRememberEmail(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary/30"
+              className="h-4 w-4 rounded border-stroke text-primary focus:ring-primary/30"
             />
             Recordar email
           </label>
@@ -282,7 +256,7 @@ export default function LoginPage() {
           <Button
             type="submit"
             size="lg"
-            className="w-full"
+            className="mt-1 w-full"
             disabled={isSubmitting}
           >
             {isSubmitting ? (
@@ -291,10 +265,10 @@ export default function LoginPage() {
                   size="sm"
                   className="mr-2 border-white border-t-white"
                 />
-                Iniciando sesión...
+                Entrando...
               </>
             ) : (
-              'Entrar'
+              'Continuar'
             )}
           </Button>
         </form>
