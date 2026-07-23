@@ -518,48 +518,143 @@ input[type="search"]::-webkit-search-cancel-button {
   background-image: linear-gradient(145deg, #eef 0%, #fff8fc 100%);
 }
 
-/* Atmósfera del login */
-@keyframes login-beam-drift {
+/* Login — Material Design 3 + identidad FlowPay */
+@keyframes md-login-drift {
   0%,
   100% {
     transform: translate(0, 0) scale(1);
   }
   50% {
-    transform: translate(24px, -18px) scale(1.05);
+    transform: translate(18px, -14px) scale(1.06);
   }
 }
 
-@keyframes login-accent-in {
-  from {
-    transform: scaleX(0);
-    opacity: 0;
+@keyframes md-login-flow-draw {
+  0% {
+    stroke-dashoffset: 1600;
   }
-  to {
-    transform: scaleX(1);
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes md-login-chip-pulse {
+  0%,
+  100% {
     opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.85);
   }
 }
 
-.login-wash {
+.md-login-surface {
   background:
-    radial-gradient(ellipse 80% 50% at 10% -10%, rgba(87, 80, 241, 0.12), transparent 55%),
-    radial-gradient(ellipse 60% 40% at 100% 100%, rgba(17, 25, 40, 0.06), transparent 50%),
-    linear-gradient(180deg, #f7f8fb 0%, #eef1f6 100%);
+    radial-gradient(
+      ellipse 80% 55% at 50% -15%,
+      rgba(87, 80, 241, 0.18),
+      transparent 58%
+    ),
+    radial-gradient(
+      ellipse 50% 40% at 100% 80%,
+      rgba(87, 80, 241, 0.08),
+      transparent 50%
+    ),
+    linear-gradient(165deg, #f7f2fb 0%, #efe8f6 48%, #e8eef8 100%);
 }
 
-.login-beam {
-  animation: login-beam-drift 16s ease-in-out infinite;
+.md-login-glow {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(48px);
+  animation: md-login-drift 18s ease-in-out infinite;
 }
 
-.login-beam-delayed {
-  animation: login-beam-drift 20s ease-in-out infinite reverse;
+.md-login-glow--a {
+  top: -8%;
+  left: -6%;
+  height: 18rem;
+  width: 18rem;
+  background: rgba(87, 80, 241, 0.22);
 }
 
-.login-grain {
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.045'/%3E%3C/svg%3E");
+.md-login-glow--b {
+  right: -4%;
+  bottom: 8%;
+  height: 16rem;
+  width: 16rem;
+  background: rgba(17, 25, 40, 0.08);
+  animation-duration: 22s;
+  animation-direction: reverse;
 }
 
-.login-accent {
-  transform-origin: left center;
-  animation: login-accent-in 0.55s ease-out both;
+.md-login-flow-path {
+  stroke-dasharray: 1600;
+  animation: md-login-flow-draw 4.5s ease-out both;
+}
+
+.md-login-flow-path--delayed {
+  animation-delay: 0.45s;
+  animation-duration: 5.5s;
+}
+
+.md-login-mark {
+  animation: md-login-drift 26s ease-in-out infinite;
+}
+
+.md-login-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 28px;
+  background: #fffbfe;
+  padding: 2rem 1.5rem 1.5rem;
+  box-shadow:
+    0 1px 2px rgba(87, 80, 241, 0.12),
+    0 8px 24px rgba(17, 25, 40, 0.12),
+    0 2px 6px 2px rgba(87, 80, 241, 0.06);
+  border: 1px solid rgba(87, 80, 241, 0.08);
+}
+
+.md-login-card-accent {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 4px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    #5750f1 35%,
+    #8b85f7 65%,
+    transparent 100%
+  );
+}
+
+.md-login-logo-halo {
+  background: linear-gradient(
+    145deg,
+    rgba(87, 80, 241, 0.1),
+    rgba(87, 80, 241, 0.02)
+  );
+  box-shadow: inset 0 0 0 1px rgba(87, 80, 241, 0.08);
+}
+
+.md-login-chip-dot {
+  animation: md-login-chip-pulse 2.2s ease-in-out infinite;
+}
+
+@media (min-width: 640px) {
+  .md-login-card {
+    padding: 2.5rem 2rem 1.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .md-login-glow,
+  .md-login-mark,
+  .md-login-flow-path,
+  .md-login-chip-dot {
+    animation: none !important;
+  }
 }

@@ -1,7 +1,7 @@
 /**
  * PÁGINA DE LOGIN
  *
- * Interfaz de inicio de sesión (+ paso MFA si aplica).
+ * Interfaz Material Design (+ paso MFA si aplica).
  */
 
 'use client';
@@ -23,13 +23,16 @@ import {
 } from '@/lib/ux/login-prefs';
 import { LoginShell } from '@/components/auth/login-shell';
 import { MfaCodigoInput } from '@/components/auth/mfa-codigo-input';
-import { Input } from '@/components/ui/input';
+import { MaterialOutlinedField } from '@/components/auth/material-outlined-field';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { EyeIcon, EyeOffIcon } from '@/assets/icons';
 
 type LoginFormValues = LoginInput;
+
+const mdFilledBtn =
+  'h-12 rounded-full text-sm font-medium tracking-[0.02em] shadow-md shadow-primary/25 hover:shadow-lg hover:shadow-primary/30 active:scale-[0.985]';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -131,7 +134,7 @@ export default function LoginPage() {
 
   if (authLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f3f5f9]">
+      <div className="md-login-surface flex min-h-screen items-center justify-center">
         <LoadingSpinner size="lg" />
       </div>
     );
@@ -146,7 +149,7 @@ export default function LoginPage() {
           key="mfa"
         >
           {error ? (
-            <Alert variant="danger">
+            <Alert variant="danger" className="rounded-[12px]">
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           ) : null}
@@ -166,8 +169,7 @@ export default function LoginPage() {
 
           <Button
             type="submit"
-            size="lg"
-            className="w-full"
+            className={`w-full ${mdFilledBtn}`}
             disabled={isSubmitting}
           >
             {isSubmitting ? (
@@ -183,17 +185,18 @@ export default function LoginPage() {
             )}
           </Button>
 
-          <button
+          <Button
             type="button"
-            className="w-full text-sm font-medium text-[#5b6472] transition-colors hover:text-dark"
+            variant="ghost"
+            className="h-10 w-full rounded-full text-sm font-medium text-primary hover:bg-primary/10"
             onClick={() => {
               setMfaStep(false);
               setError(null);
               mfaForm.reset({ codigo: '' });
             }}
           >
-            ← Volver
-          </button>
+            Volver
+          </Button>
         </form>
       ) : (
         <form
@@ -202,34 +205,31 @@ export default function LoginPage() {
           key="credentials"
         >
           {error ? (
-            <Alert variant="danger">
+            <Alert variant="danger" className="rounded-[12px]">
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           ) : null}
 
-          <Input
+          <MaterialOutlinedField
             label="Email"
             type="email"
-            placeholder="tu@empresa.com"
-            className="h-11 rounded-xl bg-white py-2.5"
-            {...register('email')}
-            error={errors.email?.message}
             autoComplete="email"
+            error={errors.email?.message}
+            supportingText="Correo corporativo de tu organización"
+            {...register('email')}
           />
 
-          <Input
+          <MaterialOutlinedField
             label="Contraseña"
             type={showPassword ? 'text' : 'password'}
-            placeholder="Tu contraseña"
-            className="h-11 rounded-xl bg-white py-2.5"
-            {...register('password')}
-            error={errors.password?.message}
             autoComplete="current-password"
+            error={errors.password?.message}
+            {...register('password')}
             endAdornment={
               <button
                 type="button"
                 onClick={() => setShowPassword((prev) => !prev)}
-                className="rounded-md p-1.5 text-[#5b6472] transition-colors hover:text-dark focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                className="rounded-full p-2.5 text-[#49454F] transition-colors hover:bg-primary/10 hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                 aria-label={
                   showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'
                 }
@@ -243,20 +243,45 @@ export default function LoginPage() {
             }
           />
 
-          <label className="flex items-center gap-2.5 text-sm text-[#3d4550]">
-            <input
-              type="checkbox"
-              checked={rememberEmail}
-              onChange={(e) => setRememberEmail(e.target.checked)}
-              className="h-4 w-4 rounded border-stroke text-primary focus:ring-primary/30"
-            />
-            Recordar email
-          </label>
+          <div className="flex items-center justify-between gap-3 px-1">
+            <label className="flex cursor-pointer items-center gap-3 py-1 text-sm text-[#1C1B1F]">
+              <span className="relative inline-flex h-5 w-5 items-center justify-center">
+                <input
+                  type="checkbox"
+                  checked={rememberEmail}
+                  onChange={(e) => setRememberEmail(e.target.checked)}
+                  className="peer sr-only"
+                />
+                <span className="h-[18px] w-[18px] rounded-[2px] border-2 border-[#79747E] transition-colors peer-checked:border-primary peer-checked:bg-primary peer-focus-visible:ring-2 peer-focus-visible:ring-primary/30" />
+                <svg
+                  className="pointer-events-none absolute h-3 w-3 text-white opacity-0 transition-opacity peer-checked:opacity-100"
+                  viewBox="0 0 12 12"
+                  fill="none"
+                  aria-hidden
+                >
+                  <path
+                    d="M2 6.2 4.8 9 10 3"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </span>
+              Recordar email
+            </label>
+          </div>
+
+          <div className="relative py-1">
+            <div className="absolute inset-x-0 top-1/2 h-px bg-[#E7E0EC]" />
+            <span className="relative mx-auto flex w-fit bg-[#FFFBFE] px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#79747E]">
+              Acceso
+            </span>
+          </div>
 
           <Button
             type="submit"
-            size="lg"
-            className="mt-1 w-full"
+            className={`w-full ${mdFilledBtn}`}
             disabled={isSubmitting}
           >
             {isSubmitting ? (
