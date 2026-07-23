@@ -135,8 +135,9 @@ export function GestionRapidaModal({
     };
 
     if (estaOffline()) {
-      encolarGestionOutbox(input);
-      finalizarExito();
+      void encolarGestionOutbox(input).then(() => {
+        finalizarExito();
+      });
       return;
     }
 

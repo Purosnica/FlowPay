@@ -209,6 +209,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // Continuar con logout local aunque falle el servidor
     } finally {
+      const { limpiarClaveOutboxSesion } = await import(
+        '@/lib/offline/outbox-crypto'
+      );
+      const { purgarGestionOutbox } = await import(
+        '@/lib/offline/gestion-outbox'
+      );
+      const { purgarPagoOutbox } = await import('@/lib/offline/pago-outbox');
+      limpiarClaveOutboxSesion();
+      await Promise.all([purgarGestionOutbox(), purgarPagoOutbox()]);
       setUsuario(null);
       setPermisos([]);
       setMfaSetupRequired(false);

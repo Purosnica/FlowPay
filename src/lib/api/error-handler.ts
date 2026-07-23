@@ -7,6 +7,10 @@ import { NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { ZodError } from 'zod';
 import { ServicioError, ErrorCode } from '@/lib/services/error-types';
+import {
+  GraphQLPermissionError,
+  GraphQLValidationError,
+} from '@/lib/errors/graphql-errors';
 import { logger } from '@/lib/utils/logger';
 
 export interface ApiErrorResponse {
@@ -46,6 +50,28 @@ export function handleApiError(error: unknown): NextResponse<ApiErrorResponse> {
             : {}),
       },
       { status: statusCode },
+    );
+  }
+
+  if (error instanceof GraphQLPermissionError) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: error.message,
+        code: 'PERMISO_DENEGADO',
+      },
+      { status: 403 },
+    );
+  }
+
+  if (error instanceof GraphQLValidationError) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: error.message,
+        code: 'VALIDACION_ERROR',
+      },
+      { status: 400 },
     );
   }
 

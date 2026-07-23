@@ -19,6 +19,7 @@
     "smoke:test": "tsx scripts/smoke-test-cobranza.ts",
     "smoke:test:live": "tsx scripts/smoke-test-cobranza.ts",
     "test:unit": "tsx scripts/test-cobranza-unit.ts && tsx scripts/test-dias-mora.ts && tsx scripts/test-cron-unit.ts && tsx scripts/test-session-health-unit.ts && tsx scripts/test-mfa-unit.ts && tsx scripts/test-backend-mejoras-unit.ts && tsx scripts/test-api-mejoras-unit.ts && tsx scripts/test-ux-mejoras-unit.ts && tsx scripts/test-offline-outbox-unit.ts && tsx scripts/test-arch-mejoras-unit.ts && tsx scripts/test-perf-mejoras-unit.ts",
+    "test:pago-integration": "tsx scripts/test-pago-integration.ts",
     "worker:cron": "tsx scripts/workers/worker-cron.ts",
     "worker:queue": "tsx scripts/workers/worker-queue.ts",
     "db:migrate-passwords-bcrypt": "tsx scripts/migrate-passwords-bcrypt.ts",

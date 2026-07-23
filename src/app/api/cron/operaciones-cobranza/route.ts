@@ -21,10 +21,9 @@ export async function GET(request: Request): Promise<NextResponse> {
       },
       { status },
     );
-  } catch (err) {
-    const mensaje = err instanceof Error ? err.message : 'Error en cron';
+  } catch {
     return NextResponse.json(
-      { ok: false, error: mensaje },
+      { ok: false, error: 'cron_failed' },
       { status: 500 },
     );
   }

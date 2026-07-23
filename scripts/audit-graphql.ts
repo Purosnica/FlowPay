@@ -34,7 +34,8 @@ const noAuthHints: string[] = [];
 const listWithoutPagination: string[] = [];
 
 const fieldRe = /(?:queryField|mutationField)\s*\(\s*['"]([^'"]+)['"]/g;
-const permRe = /requerirPermiso|auth[A-Z]\w+|requerirAccesoMandante/;
+const permRe =
+  /requerirPermiso|requerirReporte|requerirAccesoCliente|requerirScope|auth[A-Z]\w+|requerirAccesoMandante/;
 
 for (const file of resolverFiles) {
   const content = fs.readFileSync(file, 'utf8');

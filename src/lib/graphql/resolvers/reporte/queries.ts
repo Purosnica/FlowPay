@@ -53,6 +53,7 @@ import { obtenerReporteCuotasVencidas } from '@/lib/cobranza/reporte-cuotas-venc
 import { obtenerReporteCumplimientoMetas } from '@/lib/cobranza/reporte-cumplimiento-metas-service';
 import { obtenerReporteSupervisorEquipo } from '@/lib/cobranza/reporte-supervisor-equipo-service';
 import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
+import { mensajeClienteSeguro } from '@/lib/errors/client-safe-message';
 import { DashboardResumenType } from '../contrato-mandante/types';
 
 builder.queryField('reporteCobranza', (t) =>
@@ -75,7 +76,7 @@ builder.queryField('reporteCobranza', (t) =>
           args.periodo,
         );
       } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Error al generar reporte.';
+        const msg = mensajeClienteSeguro(err, 'Error al generar reporte.');
         throw new GraphQLValidationError(msg);
       }
     },
@@ -97,9 +98,9 @@ builder.queryField('reporteAgingCartera', (t) =>
       try {
         return await obtenerReporteAgingCartera(args.idmandante, idusuario);
       } catch (err) {
-        const msg =
-          err instanceof Error ? err.message : 'Error al generar aging.';
-        throw new GraphQLValidationError(msg);
+        throw new GraphQLValidationError(
+          mensajeClienteSeguro(err, 'Error al generar aging.'),
+        );
       }
     },
   }),
@@ -139,10 +140,7 @@ builder.queryField('informeGerencial', (t) =>
           args.periodo,
         );
       } catch (err) {
-        const msg =
-          err instanceof Error
-            ? err.message
-            : 'Error al generar informe gerencial.';
+        const msg = mensajeClienteSeguro(err, 'Error al generar informe gerencial.');
         throw new GraphQLValidationError(msg);
       }
     },
@@ -171,10 +169,7 @@ builder.queryField('informeGestiones', (t) =>
           args.idgestor,
         );
       } catch (err) {
-        const msg =
-          err instanceof Error
-            ? err.message
-            : 'Error al generar informe de gestiones.';
+        const msg = mensajeClienteSeguro(err, 'Error al generar informe de gestiones.');
         throw new GraphQLValidationError(msg);
       }
     },
@@ -201,10 +196,7 @@ builder.queryField('reporteGanancias', (t) =>
           args.periodo,
         );
       } catch (err) {
-        const msg =
-          err instanceof Error
-            ? err.message
-            : 'Error al generar reporte de ganancias.';
+        const msg = mensajeClienteSeguro(err, 'Error al generar reporte de ganancias.');
         throw new GraphQLValidationError(msg);
       }
     },
@@ -231,10 +223,7 @@ builder.queryField('reporteComisionesCobradores', (t) =>
           args.periodo,
         );
       } catch (err) {
-        const msg =
-          err instanceof Error
-            ? err.message
-            : 'Error al generar reporte de comisiones.';
+        const msg = mensajeClienteSeguro(err, 'Error al generar reporte de comisiones.');
         throw new GraphQLValidationError(msg);
       }
     },
@@ -261,10 +250,7 @@ builder.queryField('reporteEfectividad', (t) =>
           args.periodo,
         );
       } catch (err) {
-        const msg =
-          err instanceof Error
-            ? err.message
-            : 'Error al generar reporte de efectividad.';
+        const msg = mensajeClienteSeguro(err, 'Error al generar reporte de efectividad.');
         throw new GraphQLValidationError(msg);
       }
     },
@@ -291,10 +277,7 @@ builder.queryField('reporteCumplimientoAcuerdos', (t) =>
           args.periodo,
         );
       } catch (err) {
-        const msg =
-          err instanceof Error
-            ? err.message
-            : 'Error al generar reporte de cumplimiento.';
+        const msg = mensajeClienteSeguro(err, 'Error al generar reporte de cumplimiento.');
         throw new GraphQLValidationError(msg);
       }
     },
@@ -321,10 +304,7 @@ builder.queryField('reporteCarteraSinGestion', (t) =>
           args.diasSinGestion ?? 7,
         );
       } catch (err) {
-        const msg =
-          err instanceof Error
-            ? err.message
-            : 'Error al generar reporte de cartera sin gestión.';
+        const msg = mensajeClienteSeguro(err, 'Error al generar reporte de cartera sin gestión.');
         throw new GraphQLValidationError(msg);
       }
     },
@@ -336,8 +316,10 @@ function resolverReporte<T>(
   errorMsg: string,
 ): Promise<T> {
   return fn().catch((err: unknown) => {
-    const msg = err instanceof Error ? err.message : errorMsg;
-    throw new GraphQLValidationError(msg);
+    if (err instanceof GraphQLValidationError) {
+      throw err;
+    }
+    throw new GraphQLValidationError(mensajeClienteSeguro(err, errorMsg));
   });
 }
 

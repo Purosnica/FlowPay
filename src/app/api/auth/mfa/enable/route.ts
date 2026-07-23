@@ -16,6 +16,8 @@ import {
 } from '@/lib/auth/jwt';
 import { obtenerPermisosUsuario } from '@/lib/permissions/permission-service';
 import { obtenerMfaSetupRequired } from '@/lib/auth/mfa-session';
+import { mensajeClienteSeguro } from '@/lib/errors/client-safe-message';
+import { ZodError } from 'zod';
 
 function obtenerToken(req: NextRequest): string | null {
   return req.cookies.get('auth-token')?.value ?? null;
@@ -82,12 +84,15 @@ export async function POST(req: NextRequest) {
     });
     return response;
   } catch (error) {
-    if (error instanceof Error) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: 400 },
-      );
+    if (error instanceof ZodError) {
+      return handleApiError(error);
     }
-    return handleApiError(error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: mensajeClienteSeguro(error, 'No se pudo activar MFA.'),
+      },
+      { status: 400 },
+    );
   }
 }

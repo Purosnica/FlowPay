@@ -4,9 +4,9 @@
 
 import { type NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/middleware/auth';
-import { handleApiError } from '@/lib/api/error-handler';
 import { iniciarSetupMfa } from '@/lib/auth/mfa-service';
 import { validarCsrfHeader } from '@/lib/security/csrf';
+import { mensajeClienteSeguro } from '@/lib/errors/client-safe-message';
 
 export async function POST(req: NextRequest) {
   try {
@@ -32,12 +32,12 @@ export async function POST(req: NextRequest) {
       otpauthUrl: setup.otpauthUrl,
     });
   } catch (error) {
-    if (error instanceof Error) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: 400 },
-      );
-    }
-    return handleApiError(error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: mensajeClienteSeguro(error, 'No se pudo iniciar MFA.'),
+      },
+      { status: 400 },
+    );
   }
 }

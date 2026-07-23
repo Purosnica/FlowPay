@@ -16,8 +16,7 @@ export async function GET(request: Request): Promise<NextResponse> {
       obtenerImportMaxJobsPerRun(),
     );
     return NextResponse.json({ ok: true, ...resultado });
-  } catch (err) {
-    const mensaje = err instanceof Error ? err.message : 'Error en cron import';
-    return NextResponse.json({ ok: false, error: mensaje }, { status: 500 });
+  } catch {
+    return NextResponse.json({ ok: false, error: 'cron_import_failed' }, { status: 500 });
   }
 }

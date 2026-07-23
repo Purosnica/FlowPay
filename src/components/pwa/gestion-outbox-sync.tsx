@@ -10,6 +10,7 @@ import {
 } from '@/lib/graphql/queries/cobranza.queries';
 import {
   contarGestionOutbox,
+  hidratarGestionOutbox,
   listarGestionOutbox,
   marcarErrorGestionOutbox,
   removerGestionOutbox,
@@ -17,6 +18,7 @@ import {
 } from '@/lib/offline/gestion-outbox';
 import {
   contarPagoOutbox,
+  hidratarPagoOutbox,
   listarPagoOutbox,
   marcarErrorPagoOutbox,
   removerPagoOutbox,
@@ -47,9 +49,11 @@ export function GestionOutboxSync() {
     if (flushing.current) {
       return;
     }
+    await Promise.all([hidratarGestionOutbox(), hidratarPagoOutbox()]);
     const colaGes = listarGestionOutbox();
     const colaPago = listarPagoOutbox();
     if (colaGes.length === 0 && colaPago.length === 0) {
+      refrescar();
       return;
     }
     flushing.current = true;
@@ -61,25 +65,25 @@ export function GestionOutboxSync() {
       for (const item of colaGes) {
         try {
           await enviarGestion(item);
-          removerGestionOutbox(item.id);
+          await removerGestionOutbox(item.id);
           trackGestionCreated();
           enviados += 1;
         } catch (err) {
           const msg =
             err instanceof Error ? err.message : 'Fallo de sincronización';
-          marcarErrorGestionOutbox(item.id, msg);
+          await marcarErrorGestionOutbox(item.id, msg);
           ultimoMsg = msg;
         }
       }
       for (const item of colaPago) {
         try {
           await enviarPago(item);
-          removerPagoOutbox(item.id);
+          await removerPagoOutbox(item.id);
           enviados += 1;
         } catch (err) {
           const msg =
             err instanceof Error ? err.message : 'Fallo de sincronización';
-          marcarErrorPagoOutbox(item.id, msg);
+          await marcarErrorPagoOutbox(item.id, msg);
           ultimoMsg = msg;
         }
       }
@@ -97,7 +101,11 @@ export function GestionOutboxSync() {
   }, [queryClient, refrescar]);
 
   useEffect(() => {
-    refrescar();
+    void (async () => {
+      await Promise.all([hidratarGestionOutbox(), hidratarPagoOutbox()]);
+      refrescar();
+      void flush();
+    })();
     const onChange = () => {
       refrescar();
       void flush();
@@ -105,7 +113,6 @@ export function GestionOutboxSync() {
     window.addEventListener('online', onChange);
     window.addEventListener('flowpay:gestion-outbox', onChange);
     window.addEventListener('flowpay:pago-outbox', onChange);
-    void flush();
     return () => {
       window.removeEventListener('online', onChange);
       window.removeEventListener('flowpay:gestion-outbox', onChange);

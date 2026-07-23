@@ -115,8 +115,9 @@ export function PagoRapidaModal({
     };
 
     if (estaOffline()) {
-      encolarPagoOutbox(input);
-      finalizarExito();
+      void encolarPagoOutbox(input).then(() => {
+        finalizarExito();
+      });
       return;
     }
 

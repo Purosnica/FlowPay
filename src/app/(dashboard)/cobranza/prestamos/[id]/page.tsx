@@ -757,8 +757,9 @@ export default function PrestamoDetailPage({ params }: PageProps) {
               idempotencyKey: crearIdempotencyKey('ges'),
             };
             if (estaOffline()) {
-              encolarGestionOutbox(input);
-              setGestionModal(false);
+              void encolarGestionOutbox(input).then(() => {
+                setGestionModal(false);
+              });
               return;
             }
             gestionMutation.mutate({ input });

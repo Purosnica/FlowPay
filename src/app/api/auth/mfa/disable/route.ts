@@ -8,6 +8,8 @@ import { handleApiError } from '@/lib/api/error-handler';
 import { mfaCodigoSchema } from '@/lib/validators/auth';
 import { desactivarMfa } from '@/lib/auth/mfa-service';
 import { validarCsrfHeader } from '@/lib/security/csrf';
+import { mensajeClienteSeguro } from '@/lib/errors/client-safe-message';
+import { ZodError } from 'zod';
 
 export async function POST(req: NextRequest) {
   try {
@@ -32,12 +34,15 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    if (error instanceof Error) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: 400 },
-      );
+    if (error instanceof ZodError) {
+      return handleApiError(error);
     }
-    return handleApiError(error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: mensajeClienteSeguro(error, 'No se pudo desactivar MFA.'),
+      },
+      { status: 400 },
+    );
   }
 }

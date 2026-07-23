@@ -65,7 +65,8 @@ check(
 check(
   'S-5',
   'Import async dispara procesamiento inmediato',
-  asyncImport.includes('procesarImportacionesPendientes'),
+  asyncImport.includes('dispararProcesamientoImportaciones') &&
+    asyncImport.includes('enqueueImport'),
 );
 
 check(

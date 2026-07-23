@@ -43,7 +43,7 @@ Evolución planificada post-preparación Enterprise (Fases 1–13).
 |----|------------|-------|
 | PR-1 | Portal mandante read-only (reportes + liquidaciones) | Experiencia mandante |
 | PR-2 | Notificaciones push / email operativas | Tiempo de respuesta — **email digest matutino vía cron `digest_email_supervisores` (SMTP)** |
-| PR-3 | App móvil cobrador (PWA o nativa) | Parcial: PWA shell + cola gestiones offline (I036); sync pagos/acuerdos pendiente |
+| PR-3 | App móvil cobrador (PWA o nativa) | Parcial: PWA shell + outbox gestiones/pagos cifrado AES-GCM + TTL 72h (SEC-01); **acuerdos offline pendiente** |
 | PR-4 | Integración pasarela de pagos | Conciliación automática |
 | PR-5 | Motor de campañas omnicanal (SMS/WhatsApp) | Recuperación |
 

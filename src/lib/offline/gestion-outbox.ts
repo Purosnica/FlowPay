@@ -1,11 +1,16 @@
 /**
  * Cola local de gestiones offline (I036).
- * Persistencia: localStorage (sin inventar IndexedDB).
+ * Persistencia: localStorage cifrado AES-GCM + TTL 72h (SEC-01).
  */
 
 import { crearIdempotencyKey } from '@/lib/api/idempotency-key';
+import {
+  escribirColaOutboxCifrada,
+  leerColaOutboxCifrada,
+} from '@/lib/offline/outbox-storage';
 
-const STORAGE_KEY = 'flowpay.gestion-outbox.v1';
+const STORAGE_KEY = 'flowpay.gestion-outbox.v2';
+const LEGACY_KEY = 'flowpay.gestion-outbox.v1';
 
 export type GestionOutboxPayload = {
   idprestamo: number;
@@ -28,31 +33,66 @@ export type GestionOutboxItem = {
   lastError?: string;
 };
 
-function leerCola(): GestionOutboxItem[] {
-  if (typeof window === 'undefined') {
-    return [];
+let cache: GestionOutboxItem[] | null = null;
+let hydratePromise: Promise<void> | null = null;
+
+function parseItem(raw: unknown): GestionOutboxItem | null {
+  if (!raw || typeof raw !== 'object') {
+    return null;
   }
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      return [];
-    }
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-    return parsed as GestionOutboxItem[];
-  } catch {
-    return [];
+  const o = raw as Record<string, unknown>;
+  if (typeof o.id !== 'string' || typeof o.createdAt !== 'string') {
+    return null;
   }
+  if (!o.payload || typeof o.payload !== 'object') {
+    return null;
+  }
+  return o as unknown as GestionOutboxItem;
 }
 
-function escribirCola(items: GestionOutboxItem[]): void {
+function emitirCambio(): void {
   if (typeof window === 'undefined') {
     return;
   }
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
   window.dispatchEvent(new CustomEvent('flowpay:gestion-outbox'));
+}
+
+async function persistir(items: GestionOutboxItem[]): Promise<void> {
+  cache = items;
+  await escribirColaOutboxCifrada(STORAGE_KEY, items);
+  if (typeof window !== 'undefined') {
+    window.localStorage.removeItem(LEGACY_KEY);
+  }
+  emitirCambio();
+}
+
+export async function hidratarGestionOutbox(): Promise<void> {
+  if (cache !== null) {
+    return;
+  }
+  if (!hydratePromise) {
+    hydratePromise = (async () => {
+      let items = await leerColaOutboxCifrada(STORAGE_KEY, parseItem);
+      if (items.length === 0 && typeof window !== 'undefined') {
+        const legacy = window.localStorage.getItem(LEGACY_KEY);
+        if (legacy) {
+          items = await leerColaOutboxCifrada(LEGACY_KEY, parseItem);
+          if (items.length > 0) {
+            await escribirColaOutboxCifrada(STORAGE_KEY, items);
+          }
+          window.localStorage.removeItem(LEGACY_KEY);
+        }
+      }
+      cache = items;
+    })().finally(() => {
+      hydratePromise = null;
+    });
+  }
+  await hydratePromise;
+}
+
+function colaSync(): GestionOutboxItem[] {
+  return cache ?? [];
 }
 
 export function estaOffline(): boolean {
@@ -63,18 +103,19 @@ export function estaOffline(): boolean {
 }
 
 export function listarGestionOutbox(): GestionOutboxItem[] {
-  return leerCola();
+  return colaSync();
 }
 
 export function contarGestionOutbox(): number {
-  return leerCola().length;
+  return colaSync().length;
 }
 
-export function encolarGestionOutbox(
+export async function encolarGestionOutbox(
   input: Omit<GestionOutboxPayload, 'idempotencyKey'> & {
     idempotencyKey?: string;
   },
-): GestionOutboxItem {
+): Promise<GestionOutboxItem> {
+  await hidratarGestionOutbox();
   const item: GestionOutboxItem = {
     id: crearIdempotencyKey('out'),
     createdAt: new Date().toISOString(),
@@ -83,19 +124,30 @@ export function encolarGestionOutbox(
       idempotencyKey: input.idempotencyKey ?? crearIdempotencyKey('ges'),
     },
   };
-  const cola = leerCola();
-  cola.push(item);
-  escribirCola(cola);
+  await persistir([...colaSync(), item]);
   return item;
 }
 
-export function removerGestionOutbox(id: string): void {
-  escribirCola(leerCola().filter((x) => x.id !== id));
+export async function removerGestionOutbox(id: string): Promise<void> {
+  await hidratarGestionOutbox();
+  await persistir(colaSync().filter((x) => x.id !== id));
 }
 
-export function marcarErrorGestionOutbox(id: string, error: string): void {
-  const cola = leerCola().map((x) =>
-    x.id === id ? { ...x, lastError: error } : x,
+export async function marcarErrorGestionOutbox(
+  id: string,
+  error: string,
+): Promise<void> {
+  await hidratarGestionOutbox();
+  await persistir(
+    colaSync().map((x) => (x.id === id ? { ...x, lastError: error } : x)),
   );
-  escribirCola(cola);
+}
+
+export async function purgarGestionOutbox(): Promise<void> {
+  cache = [];
+  if (typeof window !== 'undefined') {
+    window.localStorage.removeItem(STORAGE_KEY);
+    window.localStorage.removeItem(LEGACY_KEY);
+  }
+  emitirCambio();
 }

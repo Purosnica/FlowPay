@@ -83,13 +83,13 @@ export async function checkReadiness(): Promise<ReadyStatus> {
   try {
     await prisma.$queryRaw`SELECT 1`;
     checks.database = 'up';
-  } catch (err) {
+  } catch {
     return {
       status: 'not_ready',
       service: 'flowpay',
       checks,
       ts,
-      error: err instanceof Error ? err.message : 'db_unreachable',
+      error: 'db_unreachable',
     };
   }
 

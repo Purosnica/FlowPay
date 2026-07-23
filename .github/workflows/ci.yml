@@ -32,9 +32,21 @@ jobs:
       - name: Unit + QA scripts
         run: npm run test:unit && npm run test:qa
 
+      # CI-01: xlsx/sharp reportan high sin fix estable; no bloquear merge.
+      # Revisar en cada release; migrar xlsx cuando exista alternativa.
       - name: npm audit (high+)
         run: npm audit --audit-level=high
         continue-on-error: true
 
-      - name: Audits (docs + security + graphql)
-        run: npm run audit:docs && npm run audit:security && npm run audit:graphql
+      - name: Audits (docs + security + graphql + perf + scale)
+        run: >
+          npm run audit:docs &&
+          npm run audit:security &&
+          npm run audit:graphql &&
+          npm run audit:performance &&
+          npm run audit:scalability
+
+      - name: E2E login UI (sin auth DB)
+        env:
+          E2E_SKIP_AUTH: '1'
+        run: npx playwright install chromium --with-deps && npm run test:e2e -- e2e/login.spec.ts

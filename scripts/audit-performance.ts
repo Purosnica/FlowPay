@@ -247,7 +247,14 @@ check('I114', 'Profiling mora recalculo', moraProfile);
 check(
   'I115',
   'Import sync delega a async',
-  read('src/app/api/cobranza/importar/route.ts').includes('crearImportacionJob'),
+  (() => {
+    const syncRoute = read('src/app/api/cobranza/importar/route.ts');
+    return (
+      syncRoute.includes('enqueueImport') &&
+      syncRoute.includes('forceSync') &&
+      syncRoute.includes('dispararProcesamientoImportaciones')
+    );
+  })(),
 );
 check(
   'I116',
