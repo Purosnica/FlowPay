@@ -7,6 +7,7 @@ import { PERMISO } from '@/lib/permissions/permiso-codes';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { SIMULAR_ACUERDO } from '@/lib/graphql/queries/cobranza.queries';
 import { type SimulacionAcuerdo, formatearMoneda } from '@/types/cobranza';
+import { parseInputNumber } from '@/lib/utils/number';
 
 interface AcuerdoSimulatorProps {
   idprestamo: number;
@@ -33,7 +34,9 @@ export function AcuerdoSimulator({
   onConfirm,
   isLoading,
 }: AcuerdoSimulatorProps) {
-  const [porcentajeDesc, setPorcentajeDesc] = useState(10);
+  const [porcentajeDesc, setPorcentajeDesc] = useState(() =>
+    Math.min(10, Math.max(0, descuentoMaximo)),
+  );
   const [numeroCuotas, setNumeroCuotas] = useState(1);
   const [dispensarInteresMoratorio, setDispensarInteresMoratorio] =
     useState(false);
@@ -42,6 +45,21 @@ export function AcuerdoSimulator({
   const [fechaInicio, setFechaInicio] = useState(
     new Date().toISOString().slice(0, 10),
   );
+
+  const descuentoExcedeMaximo = porcentajeDesc > descuentoMaximo;
+  const descuentoInvalido =
+    !Number.isFinite(porcentajeDesc) ||
+    porcentajeDesc < 0 ||
+    porcentajeDesc > 100;
+  const cuotasInvalidas =
+    !Number.isFinite(numeroCuotas) ||
+    !Number.isInteger(numeroCuotas) ||
+    numeroCuotas < 1;
+  const puedeSimular =
+    idprestamo > 0 &&
+    !descuentoExcedeMaximo &&
+    !descuentoInvalido &&
+    !cuotasInvalidas;
 
   const { data, refetch, isFetching, error } = useGraphQLQuery<{
     simularAcuerdo: SimulacionAcuerdo;
@@ -56,14 +74,18 @@ export function AcuerdoSimulator({
         dispensarGestionCobranza,
       },
     },
-    { enabled: false },
+    {
+      enabled: false,
+      requestOptions: { suppressErrorToast: true },
+    },
   );
 
   useEffect(() => {
-    if (idprestamo > 0) {
-      refetch();
+    if (puedeSimular) {
+      void refetch();
     }
   }, [
+    puedeSimular,
     idprestamo,
     porcentajeDesc,
     numeroCuotas,
@@ -72,7 +94,25 @@ export function AcuerdoSimulator({
     refetch,
   ]);
 
-  const sim = data?.simularAcuerdo;
+  const sim = puedeSimular ? data?.simularAcuerdo : undefined;
+
+  const handlePorcentajeChange = (raw: string) => {
+    const parsed = parseInputNumber(raw);
+    if (parsed === null) {
+      setPorcentajeDesc(0);
+      return;
+    }
+    setPorcentajeDesc(parsed);
+  };
+
+  const handleCuotasChange = (raw: string) => {
+    const parsed = parseInputNumber(raw);
+    if (parsed === null) {
+      setNumeroCuotas(1);
+      return;
+    }
+    setNumeroCuotas(Math.max(1, Math.floor(parsed)));
+  };
 
   return (
     <div className="space-y-4">
@@ -92,12 +132,22 @@ export function AcuerdoSimulator({
             max={descuentoMaximo}
             step={0.5}
             value={porcentajeDesc}
-            onChange={(e) => setPorcentajeDesc(Number(e.target.value))}
+            onChange={(e) => handlePorcentajeChange(e.target.value)}
             className="w-full rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2 dark:text-white"
           />
-          <p className="mt-1 text-xs text-gray-6">
-            Máximo autorizado: {descuentoMaximo}%
-          </p>
+          {descuentoExcedeMaximo ? (
+            <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+              El descuento no puede superar el {descuentoMaximo}% autorizado.
+            </p>
+          ) : descuentoInvalido ? (
+            <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+              El descuento debe estar entre 0% y 100%.
+            </p>
+          ) : (
+            <p className="mt-1 text-xs text-gray-6">
+              Máximo autorizado: {descuentoMaximo}%
+            </p>
+          )}
         </div>
         <div>
           <label className="mb-1 block text-sm font-medium">Cuotas</label>
@@ -105,9 +155,14 @@ export function AcuerdoSimulator({
             type="number"
             min={1}
             value={numeroCuotas}
-            onChange={(e) => setNumeroCuotas(Number(e.target.value))}
+            onChange={(e) => handleCuotasChange(e.target.value)}
             className="w-full rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2 dark:text-white"
           />
+          {cuotasInvalidas && (
+            <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+              Debe indicar al menos 1 cuota.
+            </p>
+          )}
         </div>
         <div>
           <label className="mb-1 block text-sm font-medium">Fecha inicio</label>
@@ -156,13 +211,13 @@ export function AcuerdoSimulator({
         </label>
       </div>
 
-      {error && (
+      {error && puedeSimular && (
         <div className="rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-900/20">
           {error.message}
         </div>
       )}
 
-      {isFetching && (
+      {isFetching && puedeSimular && (
         <p className="text-sm text-gray-6">Calculando simulación...</p>
       )}
 
@@ -234,7 +289,7 @@ export function AcuerdoSimulator({
               dispensarGestionCobranza,
             })
           }
-          disabled={isLoading || !sim}
+          disabled={isLoading || !sim || !puedeSimular}
         >
           {isLoading ? 'Creando acuerdo...' : 'Confirmar acuerdo'}
         </Button>

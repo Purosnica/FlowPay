@@ -115,6 +115,7 @@ const { handleRequest } = createYoga<NextRouteContext>({
                 if (originalError instanceof GraphQLPermissionError) {
                   return {
                     ...error,
+                    message: originalError.message,
                     extensions: originalError.extensions,
                   };
                 }
@@ -122,6 +123,7 @@ const { handleRequest } = createYoga<NextRouteContext>({
                 if (originalError instanceof GraphQLAuthenticationError) {
                   return {
                     ...error,
+                    message: originalError.message,
                     extensions: originalError.extensions,
                   };
                 }
@@ -129,6 +131,7 @@ const { handleRequest } = createYoga<NextRouteContext>({
                 if (originalError instanceof GraphQLValidationError) {
                   return {
                     ...error,
+                    message: originalError.message,
                     extensions: originalError.extensions,
                   };
                 }

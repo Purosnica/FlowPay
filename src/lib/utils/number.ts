@@ -45,3 +45,21 @@ export function isNonNegative(value: number): boolean {
   return value >= 0;
 }
 
+/**
+ * Parsea el valor de un input numérico.
+ * Quita ceros a la izquierda (ej. "045" → 45) y rechaza NaN/Infinity.
+ * Cadena vacía → null (campo aún no completado).
+ */
+export function parseInputNumber(raw: string): number | null {
+  const trimmed = raw.trim();
+  if (trimmed === '') {
+    return null;
+  }
+  const normalized = trimmed.replace(/^0+(?=\d)/, '');
+  const value = Number(normalized);
+  if (!Number.isFinite(value)) {
+    return null;
+  }
+  return value;
+}
+
