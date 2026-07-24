@@ -63,6 +63,7 @@ export const DetallePagoLiquidacionType =
       idpago: t.exposeInt('idpago'),
       idprestamo: t.exposeInt('idprestamo'),
       noPrestamo: t.exposeString('noPrestamo'),
+      fechaPago: t.exposeString('fechaPago'),
       monto: t.exposeFloat('monto'),
       monedaOriginal: t.exposeString('monedaOriginal'),
       montoOriginal: t.exposeFloat('montoOriginal'),

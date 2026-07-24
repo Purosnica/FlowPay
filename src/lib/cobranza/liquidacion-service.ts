@@ -45,6 +45,7 @@ export interface GenerarLiquidacionParams {
 interface PagoLiquidacionRow {
   idpago: number;
   idprestamo: number;
+  fechaPago: Date;
   monto: number;
   montoOriginal: number;
   monedaOriginal: string;
@@ -170,6 +171,7 @@ async function cargarPagosPeriodo(
     return {
       idpago: p.idpago,
       idprestamo: p.idprestamo,
+      fechaPago: p.fechaPago,
       monto: fx.montoBase,
       montoOriginal: decimalToNumber(p.monto),
       monedaOriginal: fx.monedaOriginal,
@@ -217,6 +219,7 @@ export async function simularLiquidacion(
       idpago: pago.idpago,
       idprestamo: pago.idprestamo,
       noPrestamo: pago.noPrestamo,
+      fechaPago: pago.fechaPago.toISOString(),
       monto: pago.monto,
       monedaOriginal: pago.monedaOriginal,
       montoOriginal: pago.montoOriginal,
@@ -258,12 +261,19 @@ async function cargarSimulacionDesdeLiquidacion(
 ): Promise<SimulacionLiquidacion> {
   const liq = await prisma.tbl_liquidacion.findUniqueOrThrow({
     where: { idliquidacion },
-    include: { detalle: true },
+    include: {
+      detalle: {
+        include: {
+          pago: { select: { fechaPago: true } },
+        },
+      },
+    },
   });
   const detalle: DetallePagoLiquidacion[] = liq.detalle.map((d) => ({
     idpago: d.idpago,
     idprestamo: d.idprestamo,
     noPrestamo: d.noPrestamo,
+    fechaPago: d.pago.fechaPago.toISOString(),
     monto: decimalToNumber(d.monto),
     monedaOriginal: d.monedaOriginal,
     montoOriginal: decimalToNumber(d.montoOriginal),
@@ -745,6 +755,9 @@ export async function obtenerDetalleLiquidacion(
 
   const rows = await prisma.tbl_liquidacion_detalle.findMany({
     where: { idliquidacion },
+    include: {
+      pago: { select: { fechaPago: true } },
+    },
     orderBy: { iddetalle: 'asc' },
   });
 
@@ -752,6 +765,7 @@ export async function obtenerDetalleLiquidacion(
     idpago: r.idpago,
     idprestamo: r.idprestamo,
     noPrestamo: r.noPrestamo,
+    fechaPago: r.pago.fechaPago.toISOString(),
     monto: decimalToNumber(r.monto),
     monedaOriginal: r.monedaOriginal,
     montoOriginal: decimalToNumber(r.montoOriginal),

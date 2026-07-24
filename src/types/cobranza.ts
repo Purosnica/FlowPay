@@ -337,6 +337,8 @@ export interface DetallePagoLiquidacion {
   idpago: number;
   idprestamo: number;
   noPrestamo: string;
+  /** Fecha del pago (ISO). */
+  fechaPago: string;
   /** Monto en moneda base de liquidación. */
   monto: number;
   monedaOriginal: string;

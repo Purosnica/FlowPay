@@ -626,8 +626,8 @@ export const GET_AGENDA_SECUENCIA_HOY = `
 `;
 
 export const GET_IMPORTACION_JOBS = `
-  query GetImportacionJobs($limite: Int) {
-    importacionJobs(limite: $limite) {
+  query GetImportacionJobs($limite: Int, $soloActivos: Boolean) {
+    importacionJobs(limite: $limite, soloActivos: $soloActivos) {
       idjob
       idmandante
       idcampana
@@ -893,6 +893,7 @@ export const SIMULAR_LIQUIDACION = `
       detalle {
         idpago
         noPrestamo
+        fechaPago
         monto
         diasMora
         nombreGestor
@@ -1996,6 +1997,7 @@ export const GET_LIQUIDACION_DETALLE = `
       idpago
       idprestamo
       noPrestamo
+      fechaPago
       monto
       diasMora
       nombreGestor

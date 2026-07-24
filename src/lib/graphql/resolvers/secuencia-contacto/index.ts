@@ -261,14 +261,19 @@ builder.queryField('agendaSecuenciaHoy', (t) =>
 builder.queryField('importacionJobs', (t) =>
   t.field({
     type: [ImportJobType],
-    args: { limite: t.arg.int({ required: false, defaultValue: 20 }) },
+    args: {
+      limite: t.arg.int({ required: false, defaultValue: 20 }),
+      soloActivos: t.arg.boolean({ required: false, defaultValue: false }),
+    },
     resolve: async (_p, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.CARTERA_READ);
       const idusuario = ctx.usuario?.idusuario;
       if (!idusuario) {
         throw new GraphQLValidationError('Usuario no autenticado.');
       }
-      return listarImportacionJobs(idusuario, args.limite ?? 20);
+      return listarImportacionJobs(idusuario, args.limite ?? 20, {
+        soloActivos: args.soloActivos === true,
+      });
     },
   }),
 );

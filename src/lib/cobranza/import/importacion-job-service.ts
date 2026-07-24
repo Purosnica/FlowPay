@@ -153,11 +153,17 @@ export async function obtenerImportacionJob(
 export async function listarImportacionJobs(
   idusuario: number,
   limite = 20,
+  opciones?: { soloActivos?: boolean },
 ): Promise<ImportacionJobResumen[]> {
   await reconciliarImportacionesAtascadas();
 
   const jobs = await prisma.tbl_importacion_job.findMany({
-    where: { idusuario },
+    where: {
+      idusuario,
+      ...(opciones?.soloActivos
+        ? { estado: { in: ['PENDIENTE', 'PROCESANDO'] } }
+        : {}),
+    },
     orderBy: { createdAt: 'desc' },
     take: limite,
   });

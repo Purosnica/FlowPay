@@ -32,6 +32,7 @@ import {
 } from '@/types/cobranza';
 import { periodoActual } from '@/lib/cobranza/periodo-utils';
 import { crearIdempotencyKey } from '@/lib/api/idempotency-key';
+import { formatFechaNegocio } from '@/lib/utils/timezone';
 
 type ConfirmLiq =
   | { tipo: 'anular'; id: number }
@@ -89,6 +90,7 @@ export default function LiquidacionesPage() {
   const { data: detalleData, isLoading: loadingDetalle } = useGraphQLQuery<{
     liquidacionDetalle: Array<{
       noPrestamo: string;
+      fechaPago: string;
       nombreGestor: string | null;
       monto: number;
       diasMora: number;
@@ -369,6 +371,7 @@ export default function LiquidacionesPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b text-left">
+                      <th className="py-1">Fecha pago</th>
                       <th className="py-1">Préstamo</th>
                       <th className="py-1">Cobrador</th>
                       <th className="py-1">Recuperado</th>
@@ -381,6 +384,9 @@ export default function LiquidacionesPage() {
                   <tbody>
                     {simulacion.detalle.map((d) => (
                       <tr key={d.idpago} className="border-b border-gray-100">
+                        <td className="py-1 whitespace-nowrap">
+                          {formatFechaNegocio(d.fechaPago)}
+                        </td>
                         <td className="py-1">{d.noPrestamo}</td>
                         <td className="py-1">{d.nombreGestor ?? '—'}</td>
                         <td className="py-1">{formatearMoneda(d.monto)}</td>
@@ -441,6 +447,7 @@ export default function LiquidacionesPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b text-left text-xs text-gray-500">
+                  <th className="py-2">Fecha pago</th>
                   <th className="py-2">Préstamo</th>
                   <th className="py-2">Cobrador</th>
                   <th className="py-2">Monto</th>
@@ -450,6 +457,9 @@ export default function LiquidacionesPage() {
               <tbody>
                 {detalleData?.liquidacionDetalle.map((d, i) => (
                   <tr key={i} className="border-b border-stroke/50">
+                    <td className="py-2 whitespace-nowrap">
+                      {formatFechaNegocio(d.fechaPago)}
+                    </td>
                     <td className="py-2">{d.noPrestamo}</td>
                     <td className="py-2">{d.nombreGestor ?? '—'}</td>
                     <td className="py-2">{formatearMoneda(d.monto)}</td>
