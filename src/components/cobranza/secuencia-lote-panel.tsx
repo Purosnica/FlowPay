@@ -3,14 +3,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { useGraphQLMutation } from '@/hooks/use-graphql-mutation';
-import { CREATE_GESTION } from '@/lib/graphql/queries/cobranza.queries';
-import { trackGestionCreated } from '@/lib/analytics/product-analytics';
+import { useRegistrarGestionContacto } from '@/hooks/use-registrar-gestion-contacto';
 import {
+  canalGestionDesdeAccion,
   claveAgendaItem,
-  construirNotaGestionSecuencia,
   etiquetaCanalAccion,
   resolverAccionContacto,
+  resolverMensajeAgenda,
   siguienteIndiceAccionable,
 } from '@/lib/logic/secuencia-lote-logic';
 import { csrfHeaders } from '@/lib/security/csrf';
@@ -26,6 +25,7 @@ type FaseCola = 'idle' | 'enviando' | 'esperando_confirmacion' | 'registrando';
 
 /**
  * Cola de secuencia: un contacto a la vez (sin abrir N ventanas).
+ * Tras abrir el canal, registra la gestión automáticamente.
  */
 export function SecuenciaLotePanel({ items, onDone }: SecuenciaLotePanelProps) {
   const [colaIndex, setColaIndex] = useState<number | null>(null);
@@ -36,11 +36,8 @@ export function SecuenciaLotePanel({ items, onDone }: SecuenciaLotePanelProps) {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const createGestion = useGraphQLMutation<
-    { createGestion: { idgestion: number } },
-    { input: { idprestamo: number; nota: string; telefonoContacto?: string } }
-  >(CREATE_GESTION, {
-    successMessage: 'Gestión registrada correctamente',
+  const { registrar } = useRegistrarGestionContacto({
+    successMessage: 'Gestión de secuencia registrada',
   });
 
   const itemActual =
@@ -80,6 +77,28 @@ export function SecuenciaLotePanel({ items, onDone }: SecuenciaLotePanelProps) {
     setFase('idle');
   }
 
+  async function registrarGestionActual(): Promise<boolean> {
+    if (!itemActual || !accionActual || accionActual.tipo === 'omitido') {
+      return false;
+    }
+    setFase('registrando');
+    setError(null);
+    const canal = canalGestionDesdeAccion(itemActual, accionActual);
+    const result = await registrar({
+      idprestamo: itemActual.idprestamo,
+      canal,
+      telefono: itemActual.telefono,
+      mensajeSnippet: resolverMensajeAgenda(itemActual),
+    });
+    if (!result.ok) {
+      setError(result.error);
+      setFase('esperando_confirmacion');
+      return false;
+    }
+    avanzarTrasPaso(claveAgendaItem(itemActual), true);
+    return true;
+  }
+
   async function abrirContactoActual(): Promise<void> {
     if (!itemActual || !accionActual) {
       return;
@@ -94,9 +113,13 @@ export function SecuenciaLotePanel({ items, onDone }: SecuenciaLotePanelProps) {
         return;
       }
 
-      if (accionActual.tipo === 'whatsapp' || accionActual.tipo === 'sms') {
+      if (
+        accionActual.tipo === 'whatsapp' ||
+        accionActual.tipo === 'sms' ||
+        accionActual.tipo === 'llamada'
+      ) {
         window.open(accionActual.url, '_blank', 'noopener,noreferrer');
-        setFase('esperando_confirmacion');
+        await registrarGestionActual();
         return;
       }
 
@@ -125,36 +148,10 @@ export function SecuenciaLotePanel({ items, onDone }: SecuenciaLotePanelProps) {
         setFase('esperando_confirmacion');
         return;
       }
-      setFase('esperando_confirmacion');
+      await registrarGestionActual();
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Error al contactar',
-      );
-      setFase('esperando_confirmacion');
-    }
-  }
-
-  async function confirmarYRegistrar(): Promise<void> {
-    if (!itemActual) {
-      return;
-    }
-    setFase('registrando');
-    setError(null);
-    try {
-      await createGestion.mutateAsync({
-        input: {
-          idprestamo: itemActual.idprestamo,
-          nota: construirNotaGestionSecuencia(itemActual),
-          telefonoContacto: itemActual.telefono ?? undefined,
-        },
-      });
-      trackGestionCreated();
-      avanzarTrasPaso(claveAgendaItem(itemActual), true);
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'Error al registrar gestión',
       );
       setFase('esperando_confirmacion');
     }
@@ -256,7 +253,7 @@ export function SecuenciaLotePanel({ items, onDone }: SecuenciaLotePanelProps) {
               ? accionActual.motivo
               : accionActual.tipo === 'email'
                 ? itemActual.email
-                : itemActual.telefono ?? '—'}
+                : (itemActual.telefono ?? '—')}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             {fase === 'idle' && (
@@ -269,8 +266,8 @@ export function SecuenciaLotePanel({ items, onDone }: SecuenciaLotePanelProps) {
                 }}
               >
                 {accionActual.tipo === 'email'
-                  ? 'Enviar email'
-                  : `Abrir ${etiquetaCanalAccion(accionActual)}`}
+                  ? 'Enviar email y registrar'
+                  : `Abrir ${etiquetaCanalAccion(accionActual)} y registrar`}
               </Button>
             )}
             {fase === 'esperando_confirmacion' && (
@@ -280,10 +277,10 @@ export function SecuenciaLotePanel({ items, onDone }: SecuenciaLotePanelProps) {
                   size="sm"
                   data-ux-id="secuencia-confirmar"
                   onClick={() => {
-                    void confirmarYRegistrar();
+                    void registrarGestionActual();
                   }}
                 >
-                  Enviado — registrar y siguiente
+                  Reintentar registro y siguiente
                 </Button>
                 <Button
                   type="button"
@@ -380,7 +377,7 @@ export function SecuenciaLotePanel({ items, onDone }: SecuenciaLotePanelProps) {
                       ? accion.motivo
                       : accion.tipo === 'email'
                         ? item.email
-                        : item.telefono ?? '—'}
+                        : (item.telefono ?? '—')}
                   </td>
                 </tr>
               );

@@ -207,7 +207,10 @@ export function GestionRapidaModal({
               <p className="text-sm text-gray-500">
                 {nombreCliente} · {prestamo.diasMora} días mora
               </p>
-              <ContactoRapidoAcciones telefono={celular} />
+              <ContactoRapidoAcciones
+                idprestamo={prestamo.idprestamo}
+                telefono={celular}
+              />
             </div>
             {horarioData?.verificarHorarioCobranza && (
               <div className="mb-4">

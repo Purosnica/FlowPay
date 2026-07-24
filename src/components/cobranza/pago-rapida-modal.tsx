@@ -165,7 +165,10 @@ export function PagoRapidaModal({
                 Saldo {formatearMoneda(prestamo.saldoTotal, prestamo.moneda)} ·{' '}
                 {prestamo.diasMora} días mora
               </p>
-              <ContactoRapidoAcciones telefono={celular} />
+              <ContactoRapidoAcciones
+                idprestamo={prestamo.idprestamo}
+                telefono={celular}
+              />
             </div>
             <PagoForm
               key={prestamo.idprestamo}

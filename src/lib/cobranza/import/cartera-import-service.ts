@@ -619,7 +619,8 @@ async function procesarFilaCartera(
           tipo: tel.length === 8 ? 'CELULAR' : 'TELEFONO',
           valor: tel,
           fuente: 'MANDANTE',
-          autorizado: false,
+          // Teléfonos del archivo de cartera del deudor: canal propio.
+          autorizado: true,
         })),
       });
       resultado.contactosCreados += contactosNuevos.length;

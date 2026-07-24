@@ -76,7 +76,10 @@ export function EstacionCasoPanel({
 
       <div className="mt-3">
         {tieneTelefono ? (
-          <ContactoRapidoAcciones telefono={caso.telefono} />
+          <ContactoRapidoAcciones
+            idprestamo={caso.idprestamo}
+            telefono={caso.telefono}
+          />
         ) : (
           <p
             className="text-xs text-amber-700 dark:text-amber-300"

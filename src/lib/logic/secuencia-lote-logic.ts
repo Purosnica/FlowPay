@@ -1,6 +1,6 @@
 /**
  * Lógica de contacto en lote para agenda de secuencia (Mi día).
- * Reutiliza plantillas + deep links WA/SMS y API email de cobro.
+ * Reutiliza plantillas + deep links WA/SMS/llamada y API email de cobro.
  */
 
 import {
@@ -11,6 +11,11 @@ import {
   enlaceWhatsApp,
   type PlantillaMensajeContext,
 } from '@/lib/cobranza/plantilla-mensaje-utils';
+import { enlaceLlamadaTelefonica } from '@/lib/logic/contacto-rapido-logic';
+import {
+  canalGestionDesdeTexto,
+  type CanalGestionContacto,
+} from '@/lib/logic/gestion-contacto-auto-logic';
 import type { AgendaSecuenciaItem } from '@/types/cobranza';
 
 export type CanalSecuencia = 'WHATSAPP' | 'SMS' | 'EMAIL' | string;
@@ -59,7 +64,7 @@ export function resolverMensajeAgenda(item: AgendaSecuenciaItem): string {
 }
 
 export type AccionContactoAgenda =
-  | { tipo: 'whatsapp' | 'sms'; url: string }
+  | { tipo: 'whatsapp' | 'sms' | 'llamada'; url: string }
   | { tipo: 'email'; to: string; subject: string; body: string }
   | { tipo: 'omitido'; motivo: string };
 
@@ -84,6 +89,17 @@ export function resolverAccionContacto(
       return { tipo: 'omitido', motivo: 'Sin teléfono' };
     }
     return { tipo: 'sms', url: enlaceSms(item.telefono, mensaje) };
+  }
+
+  if (canal === 'LLAMADA' || canal === 'TELEFONO' || canal === 'TEL') {
+    if (!item.telefono) {
+      return { tipo: 'omitido', motivo: 'Sin teléfono' };
+    }
+    const url = enlaceLlamadaTelefonica(item.telefono);
+    if (!url) {
+      return { tipo: 'omitido', motivo: 'Teléfono inválido' };
+    }
+    return { tipo: 'llamada', url };
   }
 
   if (canal === 'EMAIL') {
@@ -112,6 +128,25 @@ export function resolverAccionContacto(
     tipo: 'omitido',
     motivo: `Canal ${item.canal} sin datos de contacto`,
   };
+}
+
+export function canalGestionDesdeAccion(
+  item: AgendaSecuenciaItem,
+  accion: AccionContactoAgenda,
+): CanalGestionContacto {
+  if (accion.tipo === 'whatsapp') {
+    return 'WHATSAPP';
+  }
+  if (accion.tipo === 'sms') {
+    return 'SMS';
+  }
+  if (accion.tipo === 'llamada') {
+    return 'LLAMADA';
+  }
+  if (accion.tipo === 'email') {
+    return 'EMAIL';
+  }
+  return canalGestionDesdeTexto(item.canal) ?? 'WHATSAPP';
 }
 
 export function construirNotaGestionSecuencia(
@@ -152,6 +187,9 @@ export function etiquetaCanalAccion(accion: AccionContactoAgenda): string {
   }
   if (accion.tipo === 'sms') {
     return 'SMS';
+  }
+  if (accion.tipo === 'llamada') {
+    return 'Llamada';
   }
   if (accion.tipo === 'email') {
     return 'Email';

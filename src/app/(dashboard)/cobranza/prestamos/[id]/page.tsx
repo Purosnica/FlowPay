@@ -381,7 +381,10 @@ export default function PrestamoDetailPage({ params }: PageProps) {
             )}
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <ContactoRapidoAcciones telefono={celularCliente} />
+            <ContactoRapidoAcciones
+              idprestamo={idprestamo}
+              telefono={celularCliente}
+            />
             <PermissionGate permiso={PERMISO.PAGO_WRITE}>
               <Button
                 className="field-touch-target"
@@ -753,7 +756,10 @@ export default function PrestamoDetailPage({ params }: PageProps) {
         size="lg"
       >
         <div className="mb-3">
-          <ContactoRapidoAcciones telefono={celularCliente} />
+          <ContactoRapidoAcciones
+            idprestamo={idprestamo}
+            telefono={celularCliente}
+          />
         </div>
         <GestionForm
           idmandante={prestamo.idmandante}

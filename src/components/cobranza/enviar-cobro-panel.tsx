@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { PermissionGate } from '@/components/auth/permission-gate';
 import { PERMISO } from '@/lib/permissions/permiso-codes';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
+import { useRegistrarGestionContacto } from '@/hooks/use-registrar-gestion-contacto';
 import { GET_PLANTILLAS_MENSAJE } from '@/lib/graphql/queries/cobranza.queries';
 import {
   aplicarVariablesPlantilla,
@@ -49,6 +50,9 @@ export function EnviarCobroPanel({
   const [enviandoSms, setEnviandoSms] = useState(false);
   const [smsStatus, setSmsStatus] = useState<string | null>(null);
   const [smsError, setSmsError] = useState<string | null>(null);
+  const [gestionError, setGestionError] = useState<string | null>(null);
+
+  const { registrar } = useRegistrarGestionContacto();
 
   const { data: plantillasData, isLoading } = useGraphQLQuery<{
     plantillasMensaje: {
@@ -60,9 +64,9 @@ export function EnviarCobroPanel({
     { enabled: idmandante > 0 },
   );
 
-  const plantillas = (plantillasData?.plantillasMensaje?.plantillas ?? []).filter(
-    (p) => p.estado,
-  );
+  const plantillas = (
+    plantillasData?.plantillasMensaje?.plantillas ?? []
+  ).filter((p) => p.estado);
 
   const canales = useMemo(() => {
     const set = new Set(plantillas.map((p) => p.canal));
@@ -88,8 +92,7 @@ export function EnviarCobroPanel({
     context.cliente?.telefono ??
     '';
 
-  const emailDeudor =
-    emailOverride ?? context.cliente?.email ?? '';
+  const emailDeudor = emailOverride ?? context.cliente?.email ?? '';
 
   const plantillaActiva = plantillas.find(
     (p) => p.idplantilla === idplantillaSel,
@@ -117,6 +120,23 @@ export function EnviarCobroPanel({
     vars,
   ]);
 
+  const registrarGestionCanal = async (
+    canal: 'WHATSAPP' | 'SMS' | 'EMAIL',
+  ): Promise<boolean> => {
+    setGestionError(null);
+    const result = await registrar({
+      idprestamo,
+      canal,
+      telefono: canal === 'EMAIL' ? null : telefono,
+      mensajeSnippet: mensajePreview,
+    });
+    if (!result.ok) {
+      setGestionError(result.error);
+      return false;
+    }
+    return true;
+  };
+
   const seleccionarPlantilla = (p: PlantillaMensaje) => {
     setIdplantillaSel(p.idplantilla);
     setMensajeEditado(p.contenido);
@@ -127,6 +147,7 @@ export function EnviarCobroPanel({
     setEmailError(null);
     setSmsStatus(null);
     setSmsError(null);
+    setGestionError(null);
   };
 
   const copiarMensaje = async () => {
@@ -173,9 +194,16 @@ export function EnviarCobroPanel({
       if (!res.ok || !json.success) {
         throw new Error(json.error ?? 'No se pudo encolar el SMS');
       }
-      setSmsStatus(
-        'SMS encolado; el gateway lo enviará en breve.',
-      );
+      const gestionOk = await registrarGestionCanal('SMS');
+      if (gestionOk) {
+        setSmsStatus(
+          'SMS encolado y gestión registrada; el gateway lo enviará en breve.',
+        );
+      } else {
+        setSmsStatus(
+          'SMS encolado; el gateway lo enviará en breve. Revisar error de gestión.',
+        );
+      }
     } catch (err) {
       setSmsError(
         err instanceof Error ? err.message : 'Error al encolar SMS',
@@ -221,7 +249,16 @@ export function EnviarCobroPanel({
       if (!res.ok || !json.success) {
         throw new Error(json.error ?? 'No se pudo enviar el correo');
       }
-      setEmailStatus(`Correo enviado a ${emailDeudor.trim()}`);
+      const gestionOk = await registrarGestionCanal('EMAIL');
+      if (gestionOk) {
+        setEmailStatus(
+          `Correo enviado a ${emailDeudor.trim()} y gestión registrada.`,
+        );
+      } else {
+        setEmailStatus(
+          `Correo enviado a ${emailDeudor.trim()}. Revisar error de gestión.`,
+        );
+      }
     } catch (err) {
       setEmailError(
         err instanceof Error ? err.message : 'Error al enviar correo',
@@ -353,6 +390,9 @@ export function EnviarCobroPanel({
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center rounded-md bg-green-600 px-3 py-1.5 text-sm text-white hover:bg-green-700"
+              onClick={() => {
+                void registrarGestionCanal('WHATSAPP');
+              }}
             >
               WhatsApp
             </a>
@@ -413,6 +453,11 @@ export function EnviarCobroPanel({
       )}
       {smsError && (
         <p className="text-xs text-red-600 dark:text-red-400">{smsError}</p>
+      )}
+      {gestionError && (
+        <p className="text-xs text-red-600 dark:text-red-400" role="alert">
+          {gestionError}
+        </p>
       )}
 
       {!telefono && !emailDeudor && (

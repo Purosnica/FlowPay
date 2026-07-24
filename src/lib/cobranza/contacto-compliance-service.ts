@@ -11,10 +11,30 @@ export interface ValidacionContactoResult {
   motivo?: string;
 }
 
-function normalizarTelefono(valor: string): string {
+export function normalizarTelefono(valor: string): string {
   return valor.replace(/\D/g, '');
 }
 
+/** True si el teléfono coincide con celular/teléfono del cliente deudor. */
+export function esTelefonoPropioDelCliente(
+  telefonoNorm: string,
+  cliente: { celular: string | null; telefono: string | null },
+): boolean {
+  const propios = [cliente.celular, cliente.telefono]
+    .filter((v): v is string => Boolean(v?.trim()))
+    .map(normalizarTelefono)
+    .filter((v) => v.length > 0);
+  return propios.includes(telefonoNorm);
+}
+
+/**
+ * Valida medio de contacto para una gestión (Ley 787).
+ * - `noContactar` siempre bloquea.
+ * - Teléfono propio del deudor (tbl_cliente) se permite aunque el
+ *   registro en deudor_contacto aún no esté marcado autorizado
+ *   (importaciones lo crean en false por defecto).
+ * - Números adicionales / terceros requieren autorizado.
+ */
 export async function validarContactoParaGestion(params: {
   idcliente: number;
   telefonoContacto?: string | null;
@@ -29,13 +49,23 @@ export async function validarContactoParaGestion(params: {
   }
 
   const telefonoNorm = normalizarTelefono(params.telefonoContacto);
-  const contactos = await prisma.tbl_deudor_contacto.findMany({
-    where: {
-      idcliente: params.idcliente,
-      deletedAt: null,
-      estado: true,
-    },
-  });
+  if (!telefonoNorm) {
+    return { permitido: true };
+  }
+
+  const [cliente, contactos] = await Promise.all([
+    prisma.tbl_cliente.findUnique({
+      where: { idcliente: params.idcliente },
+      select: { celular: true, telefono: true },
+    }),
+    prisma.tbl_deudor_contacto.findMany({
+      where: {
+        idcliente: params.idcliente,
+        deletedAt: null,
+        estado: true,
+      },
+    }),
+  ]);
 
   const contactoMatch = contactos.find(
     (c) => normalizarTelefono(c.valor) === telefonoNorm,
@@ -48,7 +78,15 @@ export async function validarContactoParaGestion(params: {
     };
   }
 
-  if (contactoMatch && !contactoMatch.autorizado && !contactoMatch.esTercero) {
+  const esPropio =
+    cliente != null && esTelefonoPropioDelCliente(telefonoNorm, cliente);
+
+  if (
+    contactoMatch &&
+    !contactoMatch.autorizado &&
+    !contactoMatch.esTercero &&
+    !esPropio
+  ) {
     return {
       permitido: false,
       motivo: LEY_787.noAutorizado,
