@@ -117,7 +117,9 @@ export default function CronMonitorPage() {
   const ejecutarMutation = useGraphQLMutation<
     { ejecutarCronOperaciones: { estado: string; errores: number } },
     Record<string, never>
-  >(EJECUTAR_CRON_OPERACIONES);
+  >(EJECUTAR_CRON_OPERACIONES, {
+    successMessage: 'Cron ejecutado correctamente',
+  });
 
   const recalcularMoraMutation = useGraphQLMutation<
     {
@@ -127,7 +129,9 @@ export default function CronMonitorPage() {
       };
     },
     { idmandante?: number }
-  >(RECALCULAR_MORA_CARTERA);
+  >(RECALCULAR_MORA_CARTERA, {
+    successMessage: 'Mora recalculada correctamente',
+  });
 
   const monitor = data?.cronMonitor;
   const ejecuciones = ejecData?.cronEjecuciones;

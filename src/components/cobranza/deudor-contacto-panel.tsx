@@ -43,6 +43,7 @@ export function DeudorContactoPanel({ idcliente }: DeudorContactoPanelProps) {
   const pageData = data?.deudoresContacto;
 
   const createMutation = useGraphQLMutation(CREATE_DEUDOR_CONTACTO, {
+    successMessage: 'Contacto agregado correctamente',
     onSuccess: () => {
       refetch();
       setValor('');
@@ -50,10 +51,12 @@ export function DeudorContactoPanel({ idcliente }: DeudorContactoPanelProps) {
   });
 
   const updateMutation = useGraphQLMutation(UPDATE_DEUDOR_CONTACTO, {
+    successMessage: 'Contacto actualizado correctamente',
     onSuccess: () => refetch(),
   });
 
   const deleteMutation = useGraphQLMutation(DELETE_DEUDOR_CONTACTO, {
+    successMessage: 'Contacto eliminado correctamente',
     onSuccess: () => refetch(),
   });
 

@@ -84,6 +84,7 @@ export function AsignacionAutomaticaPanel() {
   });
 
   const ejecutarMutation = useGraphQLMutation(EJECUTAR_ASIGNACION_CARTERA, {
+    successMessage: 'Asignación ejecutada correctamente',
     requestOptions: { timeout: 180_000 },
     onSuccess: () => {
       setSimulacion(null);

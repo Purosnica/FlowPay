@@ -46,6 +46,7 @@ export default function CampanasPage() {
   const campanasData = data?.campanas;
 
   const cerrarMutation = useGraphQLMutation(CERRAR_CAMPANA, {
+    successMessage: 'Campaña cerrada correctamente',
     onSuccess: () => {
       refetch();
       queryClient.invalidateQueries({ queryKey: [GET_CAMPANAS] });

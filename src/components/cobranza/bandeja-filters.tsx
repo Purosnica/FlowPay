@@ -8,6 +8,7 @@ import {
   encodeTramoMoraKey,
 } from '@/lib/cobranza/tramos-mora';
 import { useBandejaPresets } from '@/hooks/use-bandeja-presets';
+import { notificationToast } from '@/lib/notifications/notification-toast';
 import { useTramosMoraMandante } from '@/hooks/use-tramos-mora-mandante';
 import { presetCoincideConFiltros } from '@/lib/cobranza/bandeja-presets';
 import { Button } from '@/components/ui/button';
@@ -84,7 +85,10 @@ export function BandejaFiltersPanel({
                   <button
                     type="button"
                     aria-label={`Eliminar ${preset.nombre}`}
-                    onClick={() => eliminarPreset(preset.id)}
+                    onClick={() => {
+                      eliminarPreset(preset.id);
+                      notificationToast.success('Vista eliminada correctamente');
+                    }}
                     className="text-xs text-red-500 hover:underline"
                   >
                     ×
@@ -116,6 +120,7 @@ export function BandejaFiltersPanel({
               disabled={!nombreNuevoPreset.trim()}
               onClick={() => {
                 guardarPreset(nombreNuevoPreset, filters);
+                notificationToast.success('Vista guardada correctamente');
                 setNombreNuevoPreset('');
                 setMostrarGuardar(false);
               }}

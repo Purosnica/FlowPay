@@ -43,6 +43,7 @@ export function TipificacionMandantePanel({
   }>(GET_CODIGOS_RESULTADO_MANDANTE, { idmandante: mandante.idmandante });
 
   const addMutation = useGraphQLMutation(ADD_TIPIFICACION_MANDANTE, {
+    successMessage: 'Tipificación agregada correctamente',
     onSuccess: () => {
       refetch();
       setIdcodaccion('');
@@ -51,6 +52,7 @@ export function TipificacionMandantePanel({
   });
 
   const removeMutation = useGraphQLMutation(REMOVE_TIPIFICACION_MANDANTE, {
+    successMessage: 'Tipificación eliminada correctamente',
     onSuccess: () => refetch(),
   });
 

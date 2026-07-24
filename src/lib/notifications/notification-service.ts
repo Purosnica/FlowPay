@@ -52,7 +52,7 @@ class NotificationService {
       type: "success",
       title,
       message: message || "",
-      duration: duration ?? 3000,
+      duration: duration ?? 4500,
     });
   }
 

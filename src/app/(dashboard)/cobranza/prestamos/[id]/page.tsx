@@ -154,6 +154,7 @@ export default function PrestamoDetailPage({ params }: PageProps) {
   };
 
   const gestionMutation = useGraphQLMutation(CREATE_GESTION, {
+    successMessage: 'Gestión registrada correctamente',
     onSuccess: () => {
       trackGestionCreated();
       invalidate();
@@ -162,16 +163,19 @@ export default function PrestamoDetailPage({ params }: PageProps) {
   });
 
   const acuerdoMutation = useGraphQLMutation(CREATE_ACUERDO, {
+    successMessage: 'Acuerdo creado correctamente',
     onSuccess: invalidate,
   });
 
   const acuerdoEstadoMutation = useGraphQLMutation(ACTUALIZAR_ESTADO_ACUERDO, {
+    successMessage: 'Estado del acuerdo actualizado correctamente',
     onSuccess: invalidate,
   });
 
   const pagoMutation = useGraphQLMutation<{
     createPago: { idpago: number; monto: number; fechaPago: string };
   }>(CREATE_PAGO, {
+    successMessage: 'Pago registrado correctamente',
     onSuccess: (result) => {
       invalidate();
       setUltimoPagoId(result.createPago.idpago);
@@ -181,6 +185,7 @@ export default function PrestamoDetailPage({ params }: PageProps) {
   });
 
   const updatePagoMutation = useGraphQLMutation(UPDATE_PAGO, {
+    successMessage: 'Pago actualizado correctamente',
     onSuccess: () => {
       invalidate();
       setPagoEditando(null);
@@ -188,6 +193,7 @@ export default function PrestamoDetailPage({ params }: PageProps) {
   });
 
   const anularPagoMutation = useGraphQLMutation(ANULAR_PAGO, {
+    successMessage: 'Pago anulado correctamente',
     onSuccess: () => {
       invalidate();
       setPagoAnularId(null);
@@ -195,6 +201,7 @@ export default function PrestamoDetailPage({ params }: PageProps) {
   });
 
   const aplicadoMutation = useGraphQLMutation(MARCAR_PAGO_APLICADO, {
+    successMessage: 'Pago marcado como aplicado correctamente',
     onSuccess: invalidate,
   });
 

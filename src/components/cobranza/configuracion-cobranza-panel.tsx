@@ -32,6 +32,7 @@ export function ConfiguracionCobranzaPanel() {
   }, [data]);
 
   const mutation = useGraphQLMutation(ACTUALIZAR_CONFIG_COBRANZA, {
+    successMessage: 'Configuración de cobranza guardada correctamente',
     onSuccess: () => {
       setGuardado(true);
       setTimeout(() => setGuardado(false), 3000);

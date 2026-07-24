@@ -13,6 +13,7 @@ import {
   DELETE_DOCUMENTO,
 } from '@/lib/graphql/queries/cobranza.queries';
 import type { DocumentoPrestamo } from '@/types/cobranza';
+import { notificationToast } from '@/lib/notifications/notification-toast';
 import { csrfHeaders } from '@/lib/security/csrf';
 import { PermissionGate } from '@/components/auth/permission-gate';
 import { PERMISO } from '@/lib/permissions/permiso-codes';
@@ -54,6 +55,7 @@ export function DocumentoPanel({ idprestamo }: DocumentoPanelProps) {
   const documentos = pageData?.documentos ?? [];
 
   const createMutation = useGraphQLMutation(CREATE_DOCUMENTO, {
+    successMessage: 'Documento adjuntado correctamente',
     onSuccess: () => {
       refetch();
       setUrl('');
@@ -61,6 +63,7 @@ export function DocumentoPanel({ idprestamo }: DocumentoPanelProps) {
   });
 
   const deleteMutation = useGraphQLMutation(DELETE_DOCUMENTO, {
+    successMessage: 'Documento eliminado correctamente',
     onSuccess: () => refetch(),
   });
 
@@ -86,8 +89,12 @@ export function DocumentoPanel({ idprestamo }: DocumentoPanelProps) {
         throw new Error(json.error ?? 'Error al subir');
       }
       setUrl(json.url);
+      notificationToast.success('Archivo subido correctamente');
     } catch (err) {
-      setUploadError(err instanceof Error ? err.message : 'Error al subir');
+      const message =
+        err instanceof Error ? err.message : 'Error al subir';
+      setUploadError(message);
+      notificationToast.error(message);
     } finally {
       setUploading(false);
     }

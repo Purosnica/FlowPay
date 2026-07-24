@@ -109,6 +109,7 @@ export default function UsuariosAdminPage() {
   };
 
   const createUsuarioMutation = useGraphQLMutation(CREATE_USUARIO, {
+    successMessage: 'Usuario creado correctamente',
     onSuccess: () => {
       invalidateUsuarios();
       setModalOpen(false);
@@ -117,6 +118,7 @@ export default function UsuariosAdminPage() {
   });
 
   const updateUsuarioMutation = useGraphQLMutation(UPDATE_USUARIO, {
+    successMessage: 'Usuario actualizado correctamente',
     onSuccess: () => {
       invalidateUsuarios();
       setModalOpen(false);
@@ -124,19 +126,29 @@ export default function UsuariosAdminPage() {
     },
   });
 
-  const toggleActivoMutation = useGraphQLMutation(SET_USUARIO_ACTIVO, {
+  const toggleActivoMutation = useGraphQLMutation<
+    unknown,
+    { idusuario: number; activo: boolean }
+  >(SET_USUARIO_ACTIVO, {
+    successMessage: (_data, variables) =>
+      variables.activo
+        ? 'Usuario activado correctamente'
+        : 'Usuario desactivado correctamente',
     onSuccess: () => invalidateUsuarios(),
   });
 
   const createRolMutation = useGraphQLMutation(CREATE_ROL, {
+    successMessage: 'Rol creado correctamente',
     onSuccess: () => invalidateRoles(),
   });
 
   const updateRolMutation = useGraphQLMutation(UPDATE_ROL, {
+    successMessage: 'Rol actualizado correctamente',
     onSuccess: () => invalidateRoles(),
   });
 
   const setPermisosMutation = useGraphQLMutation(SET_PERMISOS_ROL, {
+    successMessage: 'Permisos actualizados correctamente',
     onSuccess: () => invalidateRoles(),
   });
 

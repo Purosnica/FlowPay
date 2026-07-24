@@ -104,6 +104,8 @@ export function AsignacionManualPanel() {
     { asignarGestorMasivo: number },
     { idprestamos: number[]; idgestor: number; motivo?: string }
   >(ASIGNAR_GESTOR_MASIVO, {
+    successMessage: (data) =>
+      `${data.asignarGestorMasivo} préstamo(s) asignado(s) correctamente`,
     requestOptions: { timeout: 180_000 },
     onSuccess: (data) => {
       const asignados = data.asignarGestorMasivo;
@@ -135,6 +137,27 @@ export function AsignacionManualPanel() {
       motivo?: string;
     }
   >(ASIGNAR_GESTOR_POR_REFERENCIAS, {
+    successMessage: (data) => {
+      const result = data.asignarGestorPorReferencias;
+      const partes = [
+        `${result.asignados} préstamo(s) asignado(s)`,
+        `de ${result.encontrados} encontrado(s)`,
+      ];
+      if (result.omitidosYaAsignados > 0) {
+        partes.push(
+          `${result.omitidosYaAsignados} ya estaban con ese cobrador (omitidos)`,
+        );
+      }
+      if (result.noEncontrados.length > 0) {
+        const muestra = result.noEncontrados.slice(0, 10).join(', ');
+        const resto =
+          result.noEncontrados.length > 10
+            ? ` (+${result.noEncontrados.length - 10} más)`
+            : '';
+        partes.push(`No encontrados: ${muestra}${resto}`);
+      }
+      return `${partes.join('. ')}.`;
+    },
     requestOptions: { timeout: 180_000 },
     onSuccess: (data) => {
       const result = data.asignarGestorPorReferencias;

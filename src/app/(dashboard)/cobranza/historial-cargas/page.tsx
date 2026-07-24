@@ -68,6 +68,7 @@ export default function HistorialCargasPage() {
   );
 
   const revertirMutation = useGraphQLMutation(REVERTIR_CARGA_CARTERA, {
+    successMessage: 'Carga revertida correctamente',
     onSuccess: () => {
       refetchCargas();
       setMostrarRevertir(false);

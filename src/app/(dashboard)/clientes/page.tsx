@@ -63,6 +63,7 @@ export default function ClientesPage() {
 
   // Mutations
   const createMutation = useGraphQLMutation(CREATE_CLIENTE, {
+    successMessage: 'Cliente creado correctamente',
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [GET_CLIENTES] });
       setIsModalOpen(false);
@@ -71,6 +72,7 @@ export default function ClientesPage() {
   });
 
   const updateMutation = useGraphQLMutation(UPDATE_CLIENTE, {
+    successMessage: 'Cliente actualizado correctamente',
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [GET_CLIENTES] });
       setIsModalOpen(false);
@@ -79,6 +81,7 @@ export default function ClientesPage() {
   });
 
   const deleteMutation = useGraphQLMutation(DELETE_CLIENTE, {
+    successMessage: 'Cliente eliminado correctamente',
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [GET_CLIENTES] });
       setIsDeleteModalOpen(false);

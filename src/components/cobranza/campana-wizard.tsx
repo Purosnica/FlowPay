@@ -13,6 +13,7 @@ import {
 } from '@/lib/graphql/queries/cobranza.queries';
 import type { PlantillaMensaje } from '@/types/cobranza';
 import { ImportacionJobMonitor } from '@/components/cobranza/importacion-job-monitor';
+import { notificationToast } from '@/lib/notifications/notification-toast';
 import { csrfHeaders } from '@/lib/security/csrf';
 import { ACCEPT_IMPORTACION } from '@/lib/cobranza/upload-limits';
 
@@ -138,8 +139,12 @@ export function CampanaWizard() {
       }
       setIdjob(json.job.idjob);
       setPaso(4);
+      notificationToast.success('Campaña lanzada correctamente');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al lanzar campaña');
+      const message =
+        err instanceof Error ? err.message : 'Error al lanzar campaña';
+      setError(message);
+      notificationToast.error(message);
     } finally {
       setLanzando(false);
     }

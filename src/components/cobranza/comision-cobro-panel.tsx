@@ -75,6 +75,7 @@ export function ComisionCobroPanel({
   };
 
   const createMutation = useGraphQLMutation(CREATE_COMISION_COBRO, {
+    successMessage: 'Comisión creada correctamente',
     onSuccess: () => {
       invalidate();
       setForm(emptyForm);
@@ -82,6 +83,7 @@ export function ComisionCobroPanel({
   });
 
   const updateMutation = useGraphQLMutation(UPDATE_COMISION_COBRO, {
+    successMessage: 'Comisión actualizada correctamente',
     onSuccess: () => {
       invalidate();
       setEditing(null);
@@ -90,6 +92,7 @@ export function ComisionCobroPanel({
   });
 
   const deleteMutation = useGraphQLMutation(DELETE_COMISION_COBRO, {
+    successMessage: 'Comisión eliminada correctamente',
     onSuccess: () => invalidate(),
   });
 

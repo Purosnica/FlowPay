@@ -42,6 +42,7 @@ export function HorarioCobranzaPanel({ mandante }: HorarioCobranzaPanelProps) {
   const pageData = data?.horariosCobranza;
 
   const updateMutation = useGraphQLMutation(UPDATE_HORARIO_COBRANZA, {
+    successMessage: 'Horario actualizado correctamente',
     onSuccess: () => refetch(),
   });
 

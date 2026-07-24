@@ -96,6 +96,7 @@ export default function MandantesPage() {
   };
 
   const createMutation = useGraphQLMutation(CREATE_MANDANTE, {
+    successMessage: 'Mandante creado correctamente',
     onSuccess: () => {
       invalidate();
       setModalOpen(false);
@@ -104,6 +105,7 @@ export default function MandantesPage() {
   });
 
   const updateMutation = useGraphQLMutation(UPDATE_MANDANTE, {
+    successMessage: 'Mandante actualizado correctamente',
     onSuccess: () => {
       invalidate();
       setModalOpen(false);
@@ -112,6 +114,7 @@ export default function MandantesPage() {
   });
 
   const assignMutation = useGraphQLMutation(ASIGNAR_USUARIO_MANDANTE, {
+    successMessage: 'Usuario asignado correctamente',
     onSuccess: () => {
       refetchAsignados();
       setUsuarioAsignar('');
@@ -119,12 +122,16 @@ export default function MandantesPage() {
   });
 
   const unassignMutation = useGraphQLMutation(DESASIGNAR_USUARIO_MANDANTE, {
+    successMessage: 'Usuario desasignado correctamente',
     onSuccess: () => refetchAsignados(),
   });
 
   const comisionMutation = useGraphQLMutation(
     ACTUALIZAR_COMISION_USUARIO_MANDANTE,
-    { onSuccess: () => refetchAsignados() },
+    {
+      successMessage: 'Comisión actualizada correctamente',
+      onSuccess: () => refetchAsignados(),
+    },
   );
 
   const columns = useMemo<ColumnDef<Mandante>[]>(

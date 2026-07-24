@@ -63,12 +63,14 @@ export function PoliticaDescuentoPanel({ mandante }: PoliticaDescuentoPanelProps
     queryClient.invalidateQueries({ queryKey: [GET_POLITICAS_DESCUENTO] });
 
   const createMutation = useGraphQLMutation(CREATE_POLITICA_DESCUENTO, {
+    successMessage: 'Política de descuento creada correctamente',
     onSuccess: () => {
       invalidate();
       setForm(emptyForm);
     },
   });
   const updateMutation = useGraphQLMutation(UPDATE_POLITICA_DESCUENTO, {
+    successMessage: 'Política de descuento actualizada correctamente',
     onSuccess: () => {
       invalidate();
       setEditing(null);
@@ -76,6 +78,7 @@ export function PoliticaDescuentoPanel({ mandante }: PoliticaDescuentoPanelProps
     },
   });
   const deleteMutation = useGraphQLMutation(DELETE_POLITICA_DESCUENTO, {
+    successMessage: 'Política de descuento eliminada correctamente',
     onSuccess: invalidate,
   });
 

@@ -70,6 +70,7 @@ export default function ReclamosPage() {
   );
 
   const createMutation = useGraphQLMutation(CREATE_RECLAMO, {
+    successMessage: 'Reclamo registrado correctamente',
     onSuccess: () => {
       refetch();
       setModalOpen(false);
@@ -79,7 +80,14 @@ export default function ReclamosPage() {
     },
   });
 
-  const updateMutation = useGraphQLMutation(UPDATE_RECLAMO_ESTADO, {
+  const updateMutation = useGraphQLMutation<
+    unknown,
+    { input: { idreclamo: number; estado: string } }
+  >(UPDATE_RECLAMO_ESTADO, {
+    successMessage: (_data, variables) =>
+      variables.input.estado === 'RESUELTO'
+        ? 'Reclamo resuelto correctamente'
+        : 'Reclamo actualizado correctamente',
     onSuccess: () => refetch(),
   });
 

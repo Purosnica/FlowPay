@@ -113,6 +113,7 @@ export default function LiquidacionesPage() {
   });
 
   const generarMutation = useGraphQLMutation(GENERAR_LIQUIDACION, {
+    successMessage: 'Liquidación generada correctamente',
     onSuccess: () => {
       invalidate();
       refetch();
@@ -122,6 +123,7 @@ export default function LiquidacionesPage() {
   });
 
   const emitirMutation = useGraphQLMutation(EMITIR_LIQUIDACION, {
+    successMessage: 'Liquidación emitida correctamente',
     onSuccess: () => {
       invalidate();
       refetch();
@@ -129,6 +131,7 @@ export default function LiquidacionesPage() {
   });
 
   const pagadaMutation = useGraphQLMutation(MARCAR_LIQUIDACION_PAGADA, {
+    successMessage: 'Liquidación marcada como pagada correctamente',
     onSuccess: () => {
       invalidate();
       refetch();
@@ -138,6 +141,7 @@ export default function LiquidacionesPage() {
   const revertirPagadaMutation = useGraphQLMutation(
     REVERTIR_LIQUIDACION_PAGADA,
     {
+      successMessage: 'Liquidación revertida correctamente',
       onSuccess: () => {
         invalidate();
         refetch();
@@ -146,6 +150,7 @@ export default function LiquidacionesPage() {
   );
 
   const anularMutation = useGraphQLMutation(ANULAR_LIQUIDACION, {
+    successMessage: 'Liquidación anulada correctamente',
     onSuccess: () => {
       invalidate();
       refetch();

@@ -39,7 +39,9 @@ export function SecuenciaLotePanel({ items, onDone }: SecuenciaLotePanelProps) {
   const createGestion = useGraphQLMutation<
     { createGestion: { idgestion: number } },
     { input: { idprestamo: number; nota: string; telefonoContacto?: string } }
-  >(CREATE_GESTION);
+  >(CREATE_GESTION, {
+    successMessage: 'Gestión registrada correctamente',
+  });
 
   const itemActual =
     colaIndex != null && colaIndex >= 0 ? (items[colaIndex] ?? null) : null;

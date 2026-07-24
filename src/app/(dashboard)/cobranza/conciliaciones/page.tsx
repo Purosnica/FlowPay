@@ -68,6 +68,7 @@ export default function ConciliacionesPage() {
   const conciliacion = data?.pagosConciliacion;
 
   const conciliarMutation = useGraphQLMutation(MARCAR_PAGO_APLICADO, {
+    successMessage: 'Pago conciliado correctamente',
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [GET_PAGOS_CONCILIACION] });
     },

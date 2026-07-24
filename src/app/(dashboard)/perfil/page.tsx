@@ -26,6 +26,7 @@ export default function PerfilPage() {
   );
 
   const updateMutation = useGraphQLMutation(ACTUALIZAR_MI_PERFIL, {
+    successMessage: 'Perfil actualizado correctamente',
     onSuccess: async () => {
       setSuccessMessage('Perfil actualizado correctamente');
       setErrorMessage(null);

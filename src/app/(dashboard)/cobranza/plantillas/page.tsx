@@ -71,6 +71,7 @@ function PlantillasPageContent() {
   };
 
   const createMutation = useGraphQLMutation(CREATE_PLANTILLA_IMPORTACION, {
+    successMessage: 'Plantilla de importación creada correctamente',
     onSuccess: () => {
       invalidate();
       setModalOpen(false);
@@ -79,6 +80,7 @@ function PlantillasPageContent() {
   });
 
   const updateMutation = useGraphQLMutation(UPDATE_PLANTILLA_IMPORTACION, {
+    successMessage: 'Plantilla de importación actualizada correctamente',
     onSuccess: () => {
       invalidate();
       setModalOpen(false);
@@ -87,6 +89,7 @@ function PlantillasPageContent() {
   });
 
   const deleteMutation = useGraphQLMutation(DELETE_PLANTILLA_IMPORTACION, {
+    successMessage: 'Plantilla de importación eliminada correctamente',
     onSuccess: invalidate,
   });
 

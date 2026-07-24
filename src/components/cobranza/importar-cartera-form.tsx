@@ -20,6 +20,7 @@ import type {
 import { ImportacionJobMonitor } from '@/components/cobranza/importacion-job-monitor';
 import { ImportDesglosePreviewTable } from '@/components/cobranza/import-desglose-preview-table';
 import { csrfHeaders } from '@/lib/security/csrf';
+import { notificationToast } from '@/lib/notifications/notification-toast';
 import { ACCEPT_IMPORTACION } from '@/lib/cobranza/upload-limits';
 
 type TipoImportacion =
@@ -108,6 +109,7 @@ export function ImportarCarteraForm({ onSuccess }: ImportarCarteraFormProps) {
   );
 
   const createCampanaMutation = useGraphQLMutation(CREATE_CAMPANA, {
+    successMessage: 'Campaña creada correctamente',
     onSuccess: () => {
       refetchCampanas();
       setNuevaCampana('');
@@ -237,6 +239,7 @@ export function ImportarCarteraForm({ onSuccess }: ImportarCarteraFormProps) {
         }
         setIdjobAsync(json.job.idjob);
         setVistaPrevia(null);
+        notificationToast.success('Importación encolada correctamente');
         return;
       }
 
@@ -259,9 +262,13 @@ export function ImportarCarteraForm({ onSuccess }: ImportarCarteraFormProps) {
 
       setResultado(json.data);
       setVistaPrevia(null);
+      notificationToast.success('Importación completada correctamente');
       onSuccess?.(json.data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al importar');
+      const message =
+        err instanceof Error ? err.message : 'Error al importar';
+      setError(message);
+      notificationToast.error(message);
     } finally {
       setLoading(false);
     }

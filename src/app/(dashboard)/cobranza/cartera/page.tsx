@@ -100,6 +100,7 @@ function CarteraPageContent() {
     { createPrestamo: { idprestamo: number } },
     { input: CreatePrestamoInput }
   >(CREATE_PRESTAMO, {
+    successMessage: 'Préstamo registrado correctamente',
     onSuccess: (result) => {
       void queryClient.invalidateQueries({ queryKey: [GET_PRESTAMOS] });
       setIsRegistrarOpen(false);

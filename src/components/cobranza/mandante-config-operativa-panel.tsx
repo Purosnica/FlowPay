@@ -51,6 +51,7 @@ export function MandanteConfigOperativaPanel({
   const guardarMutation = useGraphQLMutation(
     ACTUALIZAR_CONFIG_OPERATIVA_MANDANTE,
     {
+      successMessage: 'Configuración guardada correctamente',
       onSuccess: () => {
         void refetch();
         setGuardado(true);
@@ -62,6 +63,7 @@ export function MandanteConfigOperativaPanel({
   const restablecerMutation = useGraphQLMutation(
     RESTABLECER_CONFIG_OPERATIVA_MANDANTE,
     {
+      successMessage: 'Configuración restablecida correctamente',
       onSuccess: () => {
         void refetch();
       },

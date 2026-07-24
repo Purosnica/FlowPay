@@ -104,6 +104,7 @@ export function GestionRapidaModal({
   };
 
   const mutation = useGraphQLMutation(CREATE_GESTION, {
+    successMessage: 'Gestión registrada correctamente',
     onSuccess: () => {
       finalizarExito();
     },

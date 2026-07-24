@@ -157,6 +157,7 @@ export default function CentroInteligenciaPage() {
   );
 
   const procesarMutation = useGraphQLMutation(PROCESAR_ACUERDOS_VENCIDOS, {
+    successMessage: 'Acuerdos vencidos procesados correctamente',
     onSuccess: () => {
       void refetch();
     },

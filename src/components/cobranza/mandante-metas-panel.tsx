@@ -42,6 +42,7 @@ export function MandanteMetasPanel({ mandante }: MandanteMetasPanelProps) {
   }, [data]);
 
   const guardarMutation = useGraphQLMutation(ACTUALIZAR_METAS_MANDANTE, {
+    successMessage: 'Metas guardadas correctamente',
     onSuccess: () => {
       void refetch();
       setGuardado(true);
@@ -50,6 +51,7 @@ export function MandanteMetasPanel({ mandante }: MandanteMetasPanelProps) {
   });
 
   const restablecerMutation = useGraphQLMutation(RESTABLECER_METAS_MANDANTE, {
+    successMessage: 'Metas restablecidas correctamente',
     onSuccess: () => {
       void refetch();
     },

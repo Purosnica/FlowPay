@@ -49,6 +49,7 @@ export function MetasCobradorModal({
   }, [data]);
 
   const mutation = useGraphQLMutation(ACTUALIZAR_METAS_COBRADOR, {
+    successMessage: 'Metas actualizadas correctamente',
     onSuccess: () => {
       void refetch();
       onClose();

@@ -100,12 +100,24 @@ export default function AgenciasPage() {
     incluirInactivas: puedeEscribir,
   });
 
-  const createAgencia = useGraphQLMutation(CREATE_AGENCIA);
-  const updateAgencia = useGraphQLMutation(UPDATE_AGENCIA);
-  const deleteAgencia = useGraphQLMutation(DELETE_AGENCIA);
-  const createRuta = useGraphQLMutation(CREATE_RUTA);
-  const updateRuta = useGraphQLMutation(UPDATE_RUTA);
-  const deleteRuta = useGraphQLMutation(DELETE_RUTA);
+  const createAgencia = useGraphQLMutation(CREATE_AGENCIA, {
+    successMessage: 'Agencia creada correctamente',
+  });
+  const updateAgencia = useGraphQLMutation(UPDATE_AGENCIA, {
+    successMessage: 'Agencia actualizada correctamente',
+  });
+  const deleteAgencia = useGraphQLMutation(DELETE_AGENCIA, {
+    successMessage: 'Agencia eliminada correctamente',
+  });
+  const createRuta = useGraphQLMutation(CREATE_RUTA, {
+    successMessage: 'Ruta creada correctamente',
+  });
+  const updateRuta = useGraphQLMutation(UPDATE_RUTA, {
+    successMessage: 'Ruta actualizada correctamente',
+  });
+  const deleteRuta = useGraphQLMutation(DELETE_RUTA, {
+    successMessage: 'Ruta eliminada correctamente',
+  });
 
   const agenciaColumns = useMemo<ColumnDef<Agencia>[]>(
     () => [

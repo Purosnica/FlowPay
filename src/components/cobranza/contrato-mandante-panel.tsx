@@ -51,14 +51,17 @@ export function ContratoMandantePanel({ mandante }: ContratoMandantePanelProps) 
   const pageData = data?.contratosMandante;
 
   const createMutation = useGraphQLMutation(CREATE_CONTRATO_MANDANTE, {
+    successMessage: 'Contrato creado correctamente',
     onSuccess: () => refetch(),
   });
 
   const updateMutation = useGraphQLMutation(UPDATE_CONTRATO_MANDANTE, {
+    successMessage: 'Contrato actualizado correctamente',
     onSuccess: () => refetch(),
   });
 
   const deleteMutation = useGraphQLMutation(DELETE_CONTRATO_MANDANTE, {
+    successMessage: 'Contrato eliminado correctamente',
     onSuccess: () => refetch(),
   });
 

@@ -96,6 +96,7 @@ export function PagoRapidaModal({
   };
 
   const mutation = useGraphQLMutation(CREATE_PAGO, {
+    successMessage: 'Pago registrado correctamente',
     onSuccess: () => {
       finalizarExito();
     },

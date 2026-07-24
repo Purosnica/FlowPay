@@ -42,12 +42,9 @@ export function ConfiguracionForm({ idusuario }: ConfiguracionFormProps) {
   );
 
   const updateMutation = useGraphQLMutation(BULK_UPDATE_CONFIGURACION, {
+    successMessage: 'Configuración actualizada correctamente',
     onSuccess: () => {
-      alert("Configuración actualizada exitosamente");
       refetch();
-    },
-    onError: (error) => {
-      alert(`Error al actualizar: ${error.message || "Error desconocido"}`);
     },
   });
 

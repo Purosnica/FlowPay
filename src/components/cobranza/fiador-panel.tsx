@@ -42,6 +42,7 @@ export function FiadorPanel({ idprestamo }: FiadorPanelProps) {
   const pageData = data?.fiadores;
 
   const createMutation = useGraphQLMutation(CREATE_FIADOR, {
+    successMessage: 'Fiador agregado correctamente',
     onSuccess: () => {
       refetch();
       setNombre('');
@@ -50,6 +51,7 @@ export function FiadorPanel({ idprestamo }: FiadorPanelProps) {
   });
 
   const deleteMutation = useGraphQLMutation(DELETE_FIADOR, {
+    successMessage: 'Fiador eliminado correctamente',
     onSuccess: () => refetch(),
   });
 

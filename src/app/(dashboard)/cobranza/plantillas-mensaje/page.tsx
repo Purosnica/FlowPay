@@ -108,18 +108,21 @@ function PlantillasMensajePageContent() {
   const pageData = data?.plantillasMensaje;
 
   const createMutation = useGraphQLMutation(CREATE_PLANTILLA_MENSAJE, {
+    successMessage: 'Plantilla creada correctamente',
     onSuccess: () => {
       void refetch();
       setModalOpen(false);
     },
   });
   const updateMutation = useGraphQLMutation(UPDATE_PLANTILLA_MENSAJE, {
+    successMessage: 'Plantilla actualizada correctamente',
     onSuccess: () => {
       void refetch();
       setModalOpen(false);
     },
   });
   const deleteMutation = useGraphQLMutation(DELETE_PLANTILLA_MENSAJE, {
+    successMessage: 'Plantilla eliminada correctamente',
     onSuccess: () => {
       void refetch();
     },
