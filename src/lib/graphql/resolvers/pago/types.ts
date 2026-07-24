@@ -23,6 +23,16 @@ export const CreatePagoInputSchema = z.object({
     .toUpperCase()
     .pipe(z.enum(MEDIOS_PAGO))
     .optional(),
+  descripcion: z.preprocess((v) => {
+    if (v === undefined || v === null) {
+      return undefined;
+    }
+    if (typeof v !== 'string') {
+      return v;
+    }
+    const trimmed = v.trim();
+    return trimmed === '' ? undefined : trimmed;
+  }, z.string().max(500, 'La descripción no puede superar 500 caracteres.').optional()),
   idempotencyKey: z
     .string()
     .trim()
@@ -41,6 +51,7 @@ export const CreatePagoInput = builder.inputRef('CreatePagoInput').implement({
     moneda: t.string({ required: false, defaultValue: 'NIO' }),
     tipoCambio: t.float({ required: false }),
     medio: t.string({ required: false }),
+    descripcion: t.string({ required: false }),
     idempotencyKey: t.string({ required: true }),
   }),
 });
@@ -73,6 +84,19 @@ export const UpdatePagoInputSchema = z
       const normalized = v.trim().toUpperCase();
       return normalized === '' ? undefined : normalized;
     }, z.enum(MEDIOS_PAGO).optional()),
+    descripcion: z.preprocess((v) => {
+      if (v === undefined) {
+        return undefined;
+      }
+      if (v === null) {
+        return null;
+      }
+      if (typeof v !== 'string') {
+        return v;
+      }
+      const trimmed = v.trim();
+      return trimmed === '' ? null : trimmed;
+    }, z.string().max(500).nullable().optional()),
   })
   .refine(
     (data) =>
@@ -80,7 +104,8 @@ export const UpdatePagoInputSchema = z
       data.monto !== undefined ||
       data.moneda !== undefined ||
       data.tipoCambio !== undefined ||
-      data.medio !== undefined,
+      data.medio !== undefined ||
+      data.descripcion !== undefined,
     { message: 'Debe indicar al menos un campo a actualizar.' },
   );
 
@@ -94,6 +119,7 @@ export const UpdatePagoInput = builder.inputRef('UpdatePagoInput').implement({
     moneda: t.string({ required: false }),
     tipoCambio: t.float({ required: false }),
     medio: t.string({ required: false }),
+    descripcion: t.string({ required: false }),
   }),
 });
 
@@ -109,6 +135,7 @@ export const Pago = definePrismaObject('tbl_pago', {
     monto: exposeDecimal(t, 'monto'),
     moneda: t.exposeString('moneda'),
     medio: t.exposeString('medio', { nullable: true }),
+    descripcion: t.exposeString('descripcion', { nullable: true }),
     aplicado: t.exposeBoolean('aplicado'),
     deletedAt: t.expose('deletedAt', { type: 'DateTime', nullable: true }),
     /** Estado operativo: PENDIENTE | CONCILIADO | ANULADO. */

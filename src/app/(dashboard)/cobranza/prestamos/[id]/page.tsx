@@ -211,6 +211,21 @@ export default function PrestamoDetailPage({ params }: PageProps) {
       cell: ({ row }) => row.original.medio ?? '-',
     },
     {
+      accessorKey: 'descripcion',
+      header: 'Descripción',
+      cell: ({ row }) => {
+        const desc = row.original.descripcion?.trim();
+        if (!desc) {
+          return <span className="text-gray-5">—</span>;
+        }
+        return (
+          <span className="line-clamp-2 max-w-[220px]" title={desc}>
+            {desc}
+          </span>
+        );
+      },
+    },
+    {
       accessorKey: 'estado',
       header: 'Estado',
       cell: ({ row }) => {
@@ -800,6 +815,7 @@ export default function PrestamoDetailPage({ params }: PageProps) {
                 moneda:
                   pagoEditando.moneda === 'USD' ? 'USD' : 'NIO',
                 medio: pagoEditando.medio,
+                descripcion: pagoEditando.descripcion,
               }}
               submitLabel="Guardar cambios"
               ocultarMontosRapidos
@@ -816,6 +832,7 @@ export default function PrestamoDetailPage({ params }: PageProps) {
                     fechaPago: data.fechaPago,
                     moneda: data.moneda,
                     ...(data.medio ? { medio: data.medio } : {}),
+                    descripcion: data.descripcion,
                   },
                 });
               }}

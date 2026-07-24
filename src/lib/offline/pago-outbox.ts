@@ -18,6 +18,7 @@ export type PagoOutboxPayload = {
   fechaPago: string;
   moneda: 'NIO' | 'USD';
   medio?: string;
+  descripcion?: string;
   idempotencyKey: string;
 };
 

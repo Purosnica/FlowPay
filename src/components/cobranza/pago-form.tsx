@@ -7,15 +7,15 @@ import {
   construirMontosRapidos,
   type MontoRapidoChip,
 } from '@/lib/logic/pago-montos-rapidos-logic';
-import {
-  esMedioPagoValido,
-} from '@/lib/logic/pago-medios-logic';
+import { esMedioPagoValido } from '@/lib/logic/pago-medios-logic';
 
 export interface PagoFormData {
   monto: number;
   fechaPago: string;
   moneda: 'NIO' | 'USD';
   medio?: string;
+  /** Texto libre; vacío si no hay nota. */
+  descripcion: string;
   idempotencyKey: string;
 }
 
@@ -24,6 +24,7 @@ export interface PagoFormInitialValues {
   fechaPago: string;
   moneda: 'NIO' | 'USD';
   medio?: string | null;
+  descripcion?: string | null;
 }
 
 interface PagoFormProps {
@@ -44,6 +45,8 @@ interface PagoFormProps {
   onSubmit: (data: PagoFormData) => void;
   isLoading?: boolean;
 }
+
+const DESCRIPCION_MAX = 500;
 
 function fechaInputValue(fecha: string): string {
   const match = /^(\d{4}-\d{2}-\d{2})/.exec(fecha);
@@ -88,6 +91,7 @@ export function PagoForm({
   const fechaId = useId();
   const monedaId = useId();
   const medioId = useId();
+  const descripcionId = useId();
   const [monto, setMonto] = useState(
     initialValues != null ? String(initialValues.monto) : '',
   );
@@ -101,6 +105,9 @@ export function PagoForm({
   );
   const [medio, setMedio] = useState(() =>
     normalizarMedioInicial(initialValues?.medio, medioDefault),
+  );
+  const [descripcion, setDescripcion] = useState(
+    initialValues?.descripcion ?? '',
   );
   const [idempotencyKey] = useState(() => crearIdempotencyKey('pago'));
   const [localError, setLocalError] = useState<string | null>(null);
@@ -130,11 +137,19 @@ export function PagoForm({
       setLocalError('La fecha del pago no es válida.');
       return;
     }
+    const desc = descripcion.trim();
+    if (desc.length > DESCRIPCION_MAX) {
+      setLocalError(
+        `La descripción no puede superar ${DESCRIPCION_MAX} caracteres.`,
+      );
+      return;
+    }
     onSubmit({
       monto: m,
       fechaPago: fecha.toISOString(),
       moneda,
       medio: medio || undefined,
+      descripcion: desc,
       idempotencyKey,
     });
   };
@@ -226,6 +241,27 @@ export function PagoForm({
             <option value="OTRO">Otro</option>
           </select>
         </div>
+        <div className="md:col-span-2">
+          <label
+            htmlFor={descripcionId}
+            className="mb-1 block text-sm font-medium"
+          >
+            Descripción
+          </label>
+          <textarea
+            id={descripcionId}
+            rows={3}
+            maxLength={DESCRIPCION_MAX}
+            value={descripcion}
+            placeholder="Ej. Transferencia BAC ref. 123456, abono parcial..."
+            onChange={(e) => setDescripcion(e.target.value)}
+            className="field-touch-target w-full rounded-lg border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2 dark:text-white"
+            data-ux-id="pago-descripcion"
+          />
+          <p className="mt-1 text-xs text-gray-5 dark:text-dark-6">
+            Opcional · {descripcion.trim().length}/{DESCRIPCION_MAX}
+          </p>
+        </div>
       </div>
       {displayError ? (
         <p className="text-sm text-red" role="alert">
@@ -233,7 +269,11 @@ export function PagoForm({
         </p>
       ) : null}
       <div className="field-sticky-actions">
-        <Button type="submit" disabled={isLoading} className="field-touch-target">
+        <Button
+          type="submit"
+          disabled={isLoading}
+          className="field-touch-target"
+        >
           {isLoading ? 'Guardando...' : submitLabel}
         </Button>
       </div>

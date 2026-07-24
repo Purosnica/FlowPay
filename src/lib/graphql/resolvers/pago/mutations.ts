@@ -114,6 +114,7 @@ builder.mutationField('createPago', (t) =>
               moneda: data.moneda,
               tipoCambio: data.tipoCambio,
               medio: data.medio,
+              descripcion: data.descripcion,
               idempotencyKey: data.idempotencyKey,
             },
           });
@@ -299,6 +300,9 @@ builder.mutationField('updatePago', (t) =>
               ? { tipoCambio: campos.tipoCambio }
               : {}),
             ...(campos.medio !== undefined ? { medio: campos.medio } : {}),
+            ...(campos.descripcion !== undefined
+              ? { descripcion: campos.descripcion }
+              : {}),
           },
         });
 
@@ -314,6 +318,7 @@ builder.mutationField('updatePago', (t) =>
               monto: decimalToNumber(pago.monto),
               moneda: pago.moneda,
               medio: pago.medio,
+              descripcion: pago.descripcion,
               tipoCambio:
                 pago.tipoCambio != null
                   ? decimalToNumber(pago.tipoCambio)

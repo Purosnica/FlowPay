@@ -244,6 +244,7 @@ export interface Pago {
   monto: number;
   moneda: string;
   medio: string | null;
+  descripcion?: string | null;
   aplicado: boolean;
   deletedAt?: string | null;
   estado?: 'PENDIENTE' | 'CONCILIADO' | 'ANULADO';

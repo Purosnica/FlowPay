@@ -928,6 +928,8 @@ model tbl_pago {
   tipoCambio Decimal?  @db.Decimal(10, 4)
   /// Catálogo: EFECTIVO | TRANSFERENCIA | DEPOSITO | CHEQUE | TARJETA | OTRO (Zod MEDIOS_PAGO).
   medio      String? @db.VarChar(32)
+  /// Nota libre del cobrador al registrar el pago.
+  descripcion String? @db.VarChar(500)
   /// Clave de idempotencia del cliente (reintentos no duplican pago).
   idempotencyKey String? @db.VarChar(64)
   aplicado   Boolean   @default(false) // conciliación con siguiente corte

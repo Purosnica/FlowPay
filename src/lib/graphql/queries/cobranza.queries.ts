@@ -309,6 +309,7 @@ export const GET_PAGOS = `
         monto
         moneda
         medio
+        descripcion
         aplicado
         deletedAt
         estado
@@ -694,6 +695,8 @@ export const CREATE_PAGO = `
       idpago
       monto
       fechaPago
+      medio
+      descripcion
       reciboUrl
     }
   }
@@ -707,6 +710,7 @@ export const UPDATE_PAGO = `
       fechaPago
       moneda
       medio
+      descripcion
       aplicado
       deletedAt
       estado

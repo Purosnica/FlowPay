@@ -111,6 +111,9 @@ export function PagoRapidaModal({
       fechaPago: form.fechaPago,
       moneda: form.moneda,
       medio: form.medio,
+      ...(form.descripcion.trim()
+        ? { descripcion: form.descripcion.trim() }
+        : {}),
       idempotencyKey: form.idempotencyKey,
     };
 
