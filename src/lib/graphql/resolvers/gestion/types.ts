@@ -6,29 +6,38 @@ import type { tbl_gestion } from "@prisma/client";
 
 export const CreateGestionInputSchema = z.object({
   idprestamo: z.number().int().positive(),
-  idcodaccion: z.number().int().positive().optional(),
-  idcodresultado: z.number().int().positive().optional(),
-  telefonoContacto: z.string().optional(),
-  contactoTercero: z.boolean().default(false),
-  nota: z.string().min(1, "La nota de gestión es requerida"),
-  razonMora: z.string().optional(),
-  montoPromesa: z.number().positive().optional(),
-  fechaPromesa: z.union([z.date(), z.string()]).optional().transform((v) =>
-    v ? (typeof v === "string" ? new Date(v) : v) : undefined,
-  ),
-  fechaProximaGestion: z.union([z.date(), z.string()]).optional().transform((v) =>
-    v ? (typeof v === "string" ? new Date(v) : v) : undefined,
-  ),
-  comentario: z.string().optional(),
-  latitud: z.number().optional(),
-  longitud: z.number().optional(),
+  idcodaccion: z.number().int().positive().nullish(),
+  idcodresultado: z.number().int().positive().nullish(),
+  telefonoContacto: z.string().nullish(),
+  contactoTercero: z
+    .boolean()
+    .nullish()
+    .transform((v) => v ?? false),
+  nota: z.string().min(1, 'La nota de gestión es requerida'),
+  razonMora: z.string().nullish(),
+  montoPromesa: z.number().positive().nullish(),
+  fechaPromesa: z
+    .union([z.date(), z.string()])
+    .nullish()
+    .transform((v) =>
+      v ? (typeof v === 'string' ? new Date(v) : v) : undefined,
+    ),
+  fechaProximaGestion: z
+    .union([z.date(), z.string()])
+    .nullish()
+    .transform((v) =>
+      v ? (typeof v === 'string' ? new Date(v) : v) : undefined,
+    ),
+  comentario: z.string().nullish(),
+  latitud: z.number().nullish(),
+  longitud: z.number().nullish(),
   idempotencyKey: z
     .string()
     .trim()
     .min(8)
     .max(64)
-    .regex(/^[a-zA-Z0-9_-]+$/, "idempotencyKey inválida")
-    .optional(),
+    .regex(/^[a-zA-Z0-9_-]+$/, 'idempotencyKey inválida')
+    .nullish(),
 });
 
 export const CreateGestionInput = builder.inputRef("CreateGestionInput").implement({

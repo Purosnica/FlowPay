@@ -778,10 +778,12 @@ export default function PrestamoDetailPage({ params }: PageProps) {
               fechaProximaGestion: form.fechaProximaGestion
                 ? new Date(form.fechaProximaGestion).toISOString()
                 : undefined,
-              idempotencyKey: crearIdempotencyKey('ges'),
             };
             if (estaOffline()) {
-              void encolarGestionOutbox(input).then(() => {
+              void encolarGestionOutbox({
+                ...input,
+                idempotencyKey: crearIdempotencyKey('ges'),
+              }).then(() => {
                 setGestionModal(false);
               });
               return;

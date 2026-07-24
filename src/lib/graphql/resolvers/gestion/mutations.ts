@@ -26,7 +26,14 @@ builder.mutationField("createGestion", (t) =>
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.GESTION_WRITE);
       if (!ctx.usuario) throw new GraphQLValidationError("Debes estar autenticado.");
 
-      const data = CreateGestionInputSchema.parse(args.input);
+      const parsed = CreateGestionInputSchema.safeParse(args.input);
+      if (!parsed.success) {
+        const first = parsed.error.issues[0];
+        throw new GraphQLValidationError(
+          first?.message ?? 'Datos de gestión inválidos.',
+        );
+      }
+      const data = parsed.data;
       const prestamo = await ctx.prisma.tbl_prestamo.findUnique({
         where: { idprestamo: data.idprestamo },
         include: { cliente: { select: { idcliente: true } } },

@@ -37,6 +37,25 @@ interface FormattableGraphQLError {
   extensions?: Record<string, unknown>;
 }
 
+function esErrorDominioGraphQL(
+  err: unknown,
+):
+  | GraphQLPermissionError
+  | GraphQLAuthenticationError
+  | GraphQLValidationError
+  | null {
+  if (err instanceof GraphQLPermissionError) {
+    return err;
+  }
+  if (err instanceof GraphQLAuthenticationError) {
+    return err;
+  }
+  if (err instanceof GraphQLValidationError) {
+    return err;
+  }
+  return null;
+}
+
 /** Contexto de Route Handler App Router (Next 15+). */
 interface NextRouteContext {
   params: Promise<Record<string, string>>;
@@ -111,28 +130,18 @@ const { handleRequest } = createYoga<NextRouteContext>({
             result.errors = result.errors.map(
               (error: FormattableGraphQLError) => {
                 const originalError = error.originalError;
+                const domainError =
+                  esErrorDominioGraphQL(error) ??
+                  esErrorDominioGraphQL(originalError);
 
-                if (originalError instanceof GraphQLPermissionError) {
+                if (domainError) {
                   return {
                     ...error,
-                    message: originalError.message,
-                    extensions: originalError.extensions,
-                  };
-                }
-
-                if (originalError instanceof GraphQLAuthenticationError) {
-                  return {
-                    ...error,
-                    message: originalError.message,
-                    extensions: originalError.extensions,
-                  };
-                }
-
-                if (originalError instanceof GraphQLValidationError) {
-                  return {
-                    ...error,
-                    message: originalError.message,
-                    extensions: originalError.extensions,
+                    message: domainError.message,
+                    extensions: domainError.extensions as Record<
+                      string,
+                      unknown
+                    >,
                   };
                 }
 

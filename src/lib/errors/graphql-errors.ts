@@ -1,69 +1,51 @@
 /**
- * ERRORES PERSONALIZADOS PARA GRAPHQL
- * 
- * Clases de error personalizadas que se formatean correctamente
- * para GraphQL con extensiones apropiadas.
+ * Errores de dominio GraphQL.
+ * Extienden GraphQLError para que Yoga (maskedErrors) no los
+ * reescriba como "Unexpected error." en producción.
  */
 
-import { ErrorCode } from "./types";
+import { GraphQLError } from 'graphql';
 
-export class GraphQLPermissionError extends Error {
-  public extensions: {
-    code: ErrorCode;
-    statusCode: number;
-    userMessage: string;
-    timestamp: string;
-  };
+import { ErrorCode } from './types';
 
+export class GraphQLPermissionError extends GraphQLError {
   constructor(message: string, code: ErrorCode = ErrorCode.FORBIDDEN) {
-    super(message);
-    this.name = "GraphQLPermissionError";
-    this.extensions = {
-      code,
-      statusCode: 403,
-      userMessage: message,
-      timestamp: new Date().toISOString(),
-    };
+    super(message, {
+      extensions: {
+        code,
+        statusCode: 403,
+        userMessage: message,
+        timestamp: new Date().toISOString(),
+      },
+    });
+    this.name = 'GraphQLPermissionError';
   }
 }
 
-export class GraphQLAuthenticationError extends Error {
-  public extensions: {
-    code: ErrorCode;
-    statusCode: number;
-    userMessage: string;
-    timestamp: string;
-  };
-
+export class GraphQLAuthenticationError extends GraphQLError {
   constructor(message: string) {
-    super(message);
-    this.name = "GraphQLAuthenticationError";
-    this.extensions = {
-      code: ErrorCode.UNAUTHORIZED,
-      statusCode: 401,
-      userMessage: message,
-      timestamp: new Date().toISOString(),
-    };
+    super(message, {
+      extensions: {
+        code: ErrorCode.UNAUTHORIZED,
+        statusCode: 401,
+        userMessage: message,
+        timestamp: new Date().toISOString(),
+      },
+    });
+    this.name = 'GraphQLAuthenticationError';
   }
 }
 
-export class GraphQLValidationError extends Error {
-  public extensions: {
-    code: ErrorCode;
-    statusCode: number;
-    userMessage: string;
-    timestamp: string;
-  };
-
+export class GraphQLValidationError extends GraphQLError {
   constructor(message: string, code: ErrorCode = ErrorCode.VALIDATION_ERROR) {
-    super(message);
-    this.name = "GraphQLValidationError";
-    this.extensions = {
-      code,
-      statusCode: 400,
-      userMessage: message,
-      timestamp: new Date().toISOString(),
-    };
+    super(message, {
+      extensions: {
+        code,
+        statusCode: 400,
+        userMessage: message,
+        timestamp: new Date().toISOString(),
+      },
+    });
+    this.name = 'GraphQLValidationError';
   }
 }
-

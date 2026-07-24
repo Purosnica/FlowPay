@@ -135,11 +135,13 @@ export function GestionRapidaModal({
         ? new Date(form.fechaProximaGestion).toISOString()
         : undefined,
       comentario: form.comentario,
-      idempotencyKey: crearIdempotencyKey('ges'),
     };
 
     if (estaOffline()) {
-      void encolarGestionOutbox(input).then(() => {
+      void encolarGestionOutbox({
+        ...input,
+        idempotencyKey: crearIdempotencyKey('ges'),
+      }).then(() => {
         finalizarExito();
       });
       return;
