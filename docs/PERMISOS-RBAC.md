@@ -69,7 +69,7 @@ El sistema tiene permisos RBAC en 3 categorías (ver `PERMISOS_CATALOGO` en `per
 
 ### Permisos redundantes
 
-**No se eliminó ningún permiso.** El catálogo core incluye `PAGO_APPLY` (SoD H07) además de los módulos históricos. Los finos `REPORTE_*_READ` por pantalla **están incluidos en los presets** de rol (H28): grupos + finos del grupo correspondiente.
+**No se eliminó ningún permiso.** El catálogo core incluye `PAGO_APPLY` (histórico SoD H07; ahora también en preset cobrador con scope de pagos propios) además de los módulos históricos. Los finos `REPORTE_*_READ` por pantalla **están incluidos en los presets** de rol (H28): grupos + finos del grupo correspondiente.
 
 ---
 
@@ -77,8 +77,8 @@ El sistema tiene permisos RBAC en 3 categorías (ver `PERMISOS_CATALOGO` en `per
 
 | Rol | Permisos |
 |-----|----------|
-| **COBRADOR** | Cartera lectura, mandante lectura, gestión, acuerdos, pagos, `REPORTE_COBRANZA_READ`, `REPORTE_OPERACION_READ` |
-| **SUPERVISOR** | Cobrador + cartera escritura, `PAGO_APPLY`, inteligencia, equipo, liquidación lectura, `REPORTE_RIESGO_READ`, `REPORTE_EQUIPO_READ` |
+| **COBRADOR** | Cartera lectura, mandante lectura, gestión, acuerdos, pagos (`PAGO_READ`/`WRITE`/`APPLY` solo propios), `REPORTE_COBRANZA_READ`, `REPORTE_OPERACION_READ` |
+| **SUPERVISOR** | Cobrador + cartera escritura, inteligencia, equipo, liquidación lectura, `REPORTE_RIESGO_READ`, `REPORTE_EQUIPO_READ` |
 | **GERENTE** | Supervisor + liquidación escritura, usuarios lectura, `REPORTE_FINANZAS_READ`, `REPORTE_GERENCIAL_READ` |
 | **ADMIN** | Todos los permisos (incl. comodín `REPORTE_READ`) |
 
@@ -251,8 +251,8 @@ Definidos en `PERMISOS_COBRADOR`, `PERMISOS_SUPERVISOR`, `PERMISOS_GERENTE`, `PE
 |---------|---------|
 | **Permite** | Aplicar, desaplicar y conciliación automática de extracto |
 | **No permite** | Sustituir `PAGO_WRITE` (alta de pago) |
-| **Roles** | SUPERVISOR+ (SoD H07; cobrador registra, no aplica) |
-| **GraphQL** | `aplicarPago`, desaplicar, extracto `aplicarAutomatico` |
+| **Roles** | COBRADOR+ (cobrador solo pagos que registró; supervisor+ todos del mandante) |
+| **GraphQL** | `marcarPagoAplicado`, extracto `aplicarAutomatico` |
 
 ---
 

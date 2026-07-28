@@ -10,7 +10,10 @@ import {
 import { requerirPermiso, tienePermiso } from '@/lib/permissions/permission-service';
 import { PERMISO } from '@/lib/permissions/permiso-codes';
 import { requerirAccesoMandante } from '@/lib/cobranza/mandante-scope';
-import { requerirAccesoPrestamoCobrador } from '@/lib/cobranza/cobrador-scope';
+import {
+  requerirAccesoPagoCobrador,
+  requerirAccesoPrestamoCobrador,
+} from '@/lib/cobranza/cobrador-scope';
 import { registrarAuditoria } from '@/lib/cobranza/auditoria-service';
 import { emitirNotificacionPago } from '@/lib/cobranza/notificacion-emision-service';
 import {
@@ -395,10 +398,7 @@ builder.mutationField('marcarPagoAplicado', (t) =>
         throw new GraphQLValidationError('Pago no encontrado.');
       }
       await requerirAccesoMandante(ctx.usuario?.idusuario, pago.idmandante);
-      await requerirAccesoPrestamoCobrador(
-        ctx.usuario?.idusuario,
-        pago.idprestamo,
-      );
+      await requerirAccesoPagoCobrador(ctx.usuario?.idusuario, idpago);
 
       if (pago.aplicado === aplicado) {
         return ctx.prisma.tbl_pago.findUniqueOrThrow({

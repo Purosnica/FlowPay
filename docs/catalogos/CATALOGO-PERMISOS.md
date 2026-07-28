@@ -36,7 +36,7 @@ El catálogo incluye permisos de administración, configuración, cobranza opera
 | `ACUERDO_WRITE` | Gestionar Acuerdos | Crear y modificar acuerdos |
 | `PAGO_READ` | Ver Pagos | Consultar pagos |
 | `PAGO_WRITE` | Registrar Pagos | Registrar pagos (alta); no implica aplicar |
-| `PAGO_APPLY` | Aplicar / conciliar pagos | SoD: aplicar, desaplicar, extracto auto (supervisor+) |
+| `PAGO_APPLY` | Aplicar / conciliar pagos | Aplicar, desaplicar; cobrador solo los que registró |
 | `LIQUIDACION_READ` | Ver Liquidaciones | Consultar liquidaciones |
 | `LIQUIDACION_WRITE` | Gestionar Liquidaciones | Crear y emitir liquidaciones |
 | `INTELIGENCIA_READ` | Centro de Inteligencia | Analytics operativos |
@@ -77,8 +77,8 @@ Guía de pantallas: [MANUAL-REPORTES.md](../manuales/MANUAL-REPORTES.md)
 
 | Rol | Permisos base |
 |-----|---------------|
-| **COBRADOR** | Cartera/mandante read, gestiones/acuerdos/pagos R/W (`PAGO_WRITE`, sin `PAGO_APPLY`), reportes cobranza + operación |
-| **SUPERVISOR** | Cobrador + `CARTERA_WRITE`, `PAGO_APPLY`, `INTELIGENCIA_READ`, `EQUIPO_READ`, `LIQUIDACION_READ`, reportes riesgo + equipo |
+| **COBRADOR** | Cartera/mandante read, gestiones/acuerdos/pagos R/W + `PAGO_APPLY` (solo propios), reportes cobranza + operación |
+| **SUPERVISOR** | Cobrador + `CARTERA_WRITE`, `INTELIGENCIA_READ`, `EQUIPO_READ`, `LIQUIDACION_READ`, reportes riesgo + equipo |
 | **GERENTE** | Supervisor + `LIQUIDACION_WRITE`, `USER_READ`, reportes finanzas + gerencial |
 | **ADMIN** | Todo el catálogo (`PERMISOS_CATALOGO`) |
 

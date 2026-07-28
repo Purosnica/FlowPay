@@ -60,6 +60,15 @@ export async function whereGestionPorRol(
   return {};
 }
 
+export async function wherePagoPorRol(
+  idusuario: number,
+): Promise<Prisma.tbl_pagoWhereInput> {
+  if (await esUsuarioCobrador(idusuario)) {
+    return { idgestor: idusuario };
+  }
+  return {};
+}
+
 export async function requerirAccesoPrestamoCobrador(
   idusuario: number | null | undefined,
   idprestamo: number,
@@ -80,6 +89,40 @@ export async function requerirAccesoPrestamoCobrador(
   if (prestamo.idgestorAsignado !== idusuario) {
     throw new GraphQLPermissionError('No tienes acceso a este préstamo.');
   }
+}
+
+/**
+ * Cobrador solo puede operar pagos que él registró (idgestor).
+ * También exige acceso al préstamo asignado.
+ */
+export async function requerirAccesoPagoCobrador(
+  idusuario: number | null | undefined,
+  idpago: number,
+): Promise<void> {
+  if (!idusuario || !(await esUsuarioCobrador(idusuario))) {
+    return;
+  }
+
+  const pago = await prisma.tbl_pago.findUnique({
+    where: { idpago },
+    select: {
+      idgestor: true,
+      idprestamo: true,
+      deletedAt: true,
+    },
+  });
+
+  if (!pago || pago.deletedAt) {
+    throw new GraphQLPermissionError('No tienes acceso a este pago.');
+  }
+
+  if (pago.idgestor !== idusuario) {
+    throw new GraphQLPermissionError(
+      'Solo puedes conciliar los pagos que registraste.',
+    );
+  }
+
+  await requerirAccesoPrestamoCobrador(idusuario, pago.idprestamo);
 }
 
 export async function requerirAccesoClienteCobrador(

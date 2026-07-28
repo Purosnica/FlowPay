@@ -617,6 +617,7 @@ function testUxColaYMontosRapidos(): void {
           items: [
             { title: 'Bandeja', url: '/cobranza/bandeja' },
             { title: 'Asignación', url: '/cobranza/asignacion' },
+            { title: 'Conciliaciones', url: '/cobranza/conciliaciones' },
           ],
         },
       ],
@@ -626,7 +627,12 @@ function testUxColaYMontosRapidos(): void {
   assert.equal(cobrador[0]?.items.length, 2);
   assert.equal(
     cobrador[0]?.items.find((i) => i.title === 'Cobranza')?.items?.length,
-    1,
+    2,
+  );
+  assert.ok(
+    cobrador[0]?.items
+      .find((i) => i.title === 'Cobranza')
+      ?.items?.some((s) => s.url === '/cobranza/conciliaciones'),
   );
 
   const agenda: AgendaSecuenciaItem[] = [

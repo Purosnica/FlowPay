@@ -12,6 +12,7 @@ const URLS_COBRADOR = new Set([
   '/cobranza/bandeja',
   '/cobranza/gestiones',
   '/cobranza/reclamos',
+  '/cobranza/conciliaciones',
   '/clientes',
 ]);
 

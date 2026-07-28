@@ -120,9 +120,11 @@ export default function ConciliacionesPage() {
         title="Conciliaciones"
         description="Pagos registrados pendientes de aplicar al saldo del préstamo."
         actions={
-          <Link href="/cobranza/liquidaciones">
-            <Button variant="outline">Ver liquidaciones</Button>
-          </Link>
+          <PermissionGate permiso={PERMISO.LIQUIDACION_READ}>
+            <Link href="/cobranza/liquidaciones">
+              <Button variant="outline">Ver liquidaciones</Button>
+            </Link>
+          </PermissionGate>
         }
       />
 

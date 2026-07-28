@@ -17,7 +17,7 @@ export const PERMISO = {
   ACUERDO_WRITE: 'ACUERDO_WRITE',
   PAGO_READ: 'PAGO_READ',
   PAGO_WRITE: 'PAGO_WRITE',
-  /** Conciliar / aplicar / desaplicar pagos (SoD H07). */
+  /** Conciliar / aplicar / desaplicar pagos. Cobrador: solo los propios. */
   PAGO_APPLY: 'PAGO_APPLY',
   LIQUIDACION_READ: 'LIQUIDACION_READ',
   LIQUIDACION_WRITE: 'LIQUIDACION_WRITE',
@@ -170,7 +170,7 @@ export const PERMISOS_CATALOGO: PermisoDefinicion[] = [
     codigo: PERMISO.PAGO_APPLY,
     nombre: 'Aplicar / Conciliar Pagos',
     descripcion:
-      'Marcar pagos como aplicados o desaplicarlos (segregación de funciones)',
+      'Marcar pagos como aplicados o desaplicarlos. El cobrador solo aplica los que registró',
     categoria: 'COBRANZA',
     tipo: 'operativo',
   },
@@ -487,6 +487,7 @@ export const PERMISOS_COBRADOR: PermisoCodigo[] = [
   PERMISO.ACUERDO_WRITE,
   PERMISO.PAGO_READ,
   PERMISO.PAGO_WRITE,
+  PERMISO.PAGO_APPLY,
   PERMISO.REPORTE_COBRANZA_READ,
   PERMISO.REPORTE_OPERACION_READ,
   ...PERMISOS_REPORTE_FINOS_COBRANZA,
@@ -499,7 +500,6 @@ export const PERMISOS_SUPERVISOR: PermisoCodigo[] = [
   PERMISO.INTELIGENCIA_READ,
   PERMISO.EQUIPO_READ,
   PERMISO.LIQUIDACION_READ,
-  PERMISO.PAGO_APPLY,
   PERMISO.REPORTE_RIESGO_READ,
   PERMISO.REPORTE_EQUIPO_READ,
   ...PERMISOS_REPORTE_FINOS_RIESGO,

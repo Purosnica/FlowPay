@@ -1,7 +1,7 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { filtroMandante, requerirAccesoMandante } from './mandante-scope';
-import { wherePrestamoPorRol } from './cobrador-scope';
+import { wherePagoPorRol, wherePrestamoPorRol } from './cobrador-scope';
 import { decimalToNumber } from './decimal-utils';
 import { nombreCompletoCliente } from '@/types/cobranza';
 
@@ -47,12 +47,16 @@ export async function listarPagosConciliacion(
     ? idmandante
     : await filtroMandante(idusuario);
 
-  const prestamoScope = await wherePrestamoPorRol(idusuario);
+  const [prestamoScope, pagoScope] = await Promise.all([
+    wherePrestamoPorRol(idusuario),
+    wherePagoPorRol(idusuario),
+  ]);
 
   const where: Prisma.tbl_pagoWhereInput = {
     deletedAt: null,
     idmandante: mandanteFilter,
     ...(soloPendientes ? { aplicado: false } : {}),
+    ...pagoScope,
     prestamo: {
       deletedAt: null,
       ...prestamoScope,
@@ -79,6 +83,7 @@ export async function listarPagosConciliacion(
         deletedAt: null,
         idmandante: mandanteFilter,
         aplicado: false,
+        ...pagoScope,
         prestamo: {
           deletedAt: null,
           ...prestamoScope,
