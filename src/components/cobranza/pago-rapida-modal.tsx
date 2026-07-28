@@ -35,7 +35,8 @@ interface PagoRapidaModalProps {
   idprestamo?: number | null;
   onClose: () => void;
   /**
-   * Tras guardar. Retornar `false` para no cerrar (auto-avance).
+   * Tras guardar. Retornar `false` para no cerrar (uso avanzado).
+   * Por defecto el modal se cierra; el avance de cola lo hacen Mi día / Bandeja.
    */
   onSuccess?: () => boolean | void;
 }

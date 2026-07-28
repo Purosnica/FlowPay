@@ -16,6 +16,14 @@ export interface ComponentesSaldoCredicompras {
   descuentosArchivo?: number;
 }
 
+export interface PagoAplicadoDesglose {
+  idpago: number;
+  fechaPago: Date;
+  monto: number;
+  medio: string | null;
+  folio: string | null;
+}
+
 export interface DesgloseSaldoPrestamo {
   montoPrestamo: number;
   interes: number;
@@ -37,6 +45,10 @@ export interface DesgloseSaldoPrestamo {
   diferencia: number;
   cuadra: boolean;
 }
+
+export type DesgloseSaldoPrestamoDetalle = DesgloseSaldoPrestamo & {
+  pagosAplicados: PagoAplicadoDesglose[];
+};
 
 export interface CalcularDesgloseSaldoInput extends ComponentesSaldoCredicompras {
   interesMoratorio: number;

@@ -59,6 +59,14 @@ export interface Prestamo {
   gestor?: { idusuario: number; nombre: string } | null;
 }
 
+export interface PagoAplicadoDesglose {
+  idpago: number;
+  fechaPago: string;
+  monto: number;
+  medio: string | null;
+  folio: string | null;
+}
+
 export interface DesgloseSaldoPrestamo {
   montoPrestamo: number;
   interes: number;
@@ -73,6 +81,7 @@ export interface DesgloseSaldoPrestamo {
   interesMoratorio: number;
   subtotalComponentes: number;
   totalPagosAplicados: number;
+  pagosAplicados: PagoAplicadoDesglose[];
   saldoCalculado: number;
   saldoRegistrado: number;
   baseAcuerdo: number;

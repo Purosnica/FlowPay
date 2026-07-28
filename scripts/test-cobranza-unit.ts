@@ -731,6 +731,16 @@ function testUxColaYMontosRapidos(): void {
       haySiguiente: true,
       posicionSiguiente: 2,
       total: 10,
+      nombreSiguiente: 'Elia Yamileth',
+    }).includes('Elia Yamileth'),
+  );
+  assert.ok(
+    mensajeAvanceOperativo({
+      accion: 'pago',
+      haySiguiente: true,
+      posicionSiguiente: 2,
+      total: 10,
+      nombreSiguiente: 'Adelina Gonzalez',
     }).includes('2/10'),
   );
 }

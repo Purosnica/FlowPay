@@ -1,14 +1,15 @@
 import type { PrismaClient } from '@prisma/client';
-import { decimalToNumber } from './decimal-utils';
+import { decimalToNumber, roundMoney } from './decimal-utils';
 import {
   calcularDesgloseSaldo,
-  type DesgloseSaldoPrestamo,
+  type DesgloseSaldoPrestamoDetalle,
+  type PagoAplicadoDesglose,
 } from './prestamo-saldo-desglose';
 
 export async function obtenerDesgloseSaldoPrestamo(
   db: PrismaClient,
   idprestamo: number,
-): Promise<DesgloseSaldoPrestamo | null> {
+): Promise<DesgloseSaldoPrestamoDetalle | null> {
   const prestamo = await db.tbl_prestamo.findFirst({
     where: { idprestamo, deletedAt: null },
     select: {
@@ -31,14 +32,21 @@ export async function obtenerDesgloseSaldoPrestamo(
     return null;
   }
 
-  const [pagosAgg, acuerdoVigente] = await Promise.all([
-    db.tbl_pago.aggregate({
+  const [pagosRows, acuerdoVigente] = await Promise.all([
+    db.tbl_pago.findMany({
       where: {
         idprestamo,
         aplicado: true,
         deletedAt: null,
       },
-      _sum: { monto: true },
+      select: {
+        idpago: true,
+        fechaPago: true,
+        monto: true,
+        medio: true,
+        folio: true,
+      },
+      orderBy: { fechaPago: 'desc' },
     }),
     db.tbl_acuerdo.findFirst({
       where: {
@@ -54,6 +62,18 @@ export async function obtenerDesgloseSaldoPrestamo(
       orderBy: { createdAt: 'desc' },
     }),
   ]);
+
+  const pagosAplicados: PagoAplicadoDesglose[] = pagosRows.map((p) => ({
+    idpago: p.idpago,
+    fechaPago: p.fechaPago,
+    monto: decimalToNumber(p.monto),
+    medio: p.medio,
+    folio: p.folio,
+  }));
+
+  const totalPagosAplicados = roundMoney(
+    pagosAplicados.reduce((sum, p) => sum + p.monto, 0),
+  );
 
   const interesMoratorio = decimalToNumber(prestamo.interesMoratorio);
   const gestionCobranza = decimalToNumber(prestamo.gestionCobranza);
@@ -71,7 +91,7 @@ export async function obtenerDesgloseSaldoPrestamo(
     devolucionSaldoFavor: decimalToNumber(prestamo.devolucionSaldoFavor),
     descuentosArchivo: decimalToNumber(prestamo.descuentosArchivo),
     interesMoratorio,
-    totalPagosAplicados: decimalToNumber(pagosAgg._sum.monto),
+    totalPagosAplicados,
     saldoRegistrado,
     descuentoAcuerdoVigente: acuerdoVigente
       ? decimalToNumber(acuerdoVigente.montoDescuento)
@@ -89,10 +109,11 @@ export async function obtenerDesgloseSaldoPrestamo(
     return {
       ...desglose,
       baseAcuerdo: Math.round(baseAcuerdo * 100) / 100,
+      pagosAplicados,
     };
   }
 
-  return desglose;
+  return { ...desglose, pagosAplicados };
 }
 
 export async function obtenerTotalesPagosPorPrestamos(

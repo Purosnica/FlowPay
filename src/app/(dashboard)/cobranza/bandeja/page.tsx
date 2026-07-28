@@ -318,12 +318,16 @@ function BandejaPageContent() {
     const idx = next
       ? prestamos.findIndex((p) => p.idprestamo === next.idprestamo)
       : -1;
+    const nombreSiguiente = next?.cliente
+      ? nombreCompletoCliente(next.cliente)
+      : null;
     notificationToast.success(
       mensajeAvanceOperativo({
         accion,
         haySiguiente: Boolean(next),
         posicionSiguiente: idx >= 0 ? idx + 1 : undefined,
         total: prestamos.length,
+        nombreSiguiente,
       }),
     );
   };
@@ -645,11 +649,7 @@ function BandejaPageContent() {
           onSuccess={() => {
             const next = avanzarTrasId(gestionRapida.idprestamo);
             notificarAvance('gestion', next);
-            if (!next) {
-              return;
-            }
-            setGestionRapida(next);
-            return false;
+            // Cierra el modal: evita tipificar el siguiente caso por error.
           }}
         />
       )}
@@ -661,11 +661,7 @@ function BandejaPageContent() {
           onSuccess={() => {
             const next = avanzarTrasId(pagoRapido.idprestamo);
             notificarAvance('pago', next);
-            if (!next) {
-              return;
-            }
-            setPagoRapido(next);
-            return false;
+            // Cierra el modal: evita registrar pago en el siguiente cliente.
           }}
         />
       )}

@@ -7,6 +7,8 @@ export function mensajeAvanceOperativo(params: {
   haySiguiente: boolean;
   posicionSiguiente?: number;
   total?: number;
+  /** Nombre del cliente del caso al que se avanzó. */
+  nombreSiguiente?: string | null;
 }): string {
   const verbo =
     params.accion === 'pago' ? 'Pago registrado' : 'Gestión guardada';
@@ -15,7 +17,9 @@ export function mensajeAvanceOperativo(params: {
     params.posicionSiguiente != null &&
     params.total != null
   ) {
-    return `${verbo}. Siguiente caso ${params.posicionSiguiente}/${params.total}.`;
+    const nombre = params.nombreSiguiente?.trim();
+    const quien = nombre ? `: ${nombre}` : '';
+    return `${verbo}. Siguiente caso${quien} (${params.posicionSiguiente}/${params.total}).`;
   }
   return `${verbo}. Fin de la cola.`;
 }

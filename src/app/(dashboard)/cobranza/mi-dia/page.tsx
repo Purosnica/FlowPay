@@ -180,6 +180,7 @@ export default function MiDiaPage() {
         haySiguiente: Boolean(next),
         posicionSiguiente: idx >= 0 ? idx + 1 : undefined,
         total: casos.length,
+        nombreSiguiente: next?.nombreCliente,
       }),
     );
   };
@@ -570,11 +571,7 @@ export default function MiDiaPage() {
             void refetchAgenda();
             const next = avanzarTrasId(actual);
             notificarAvance('gestion', next);
-            if (!next) {
-              return;
-            }
-            setGestionPrestamoId(next.idprestamo);
-            return false;
+            // Cierra el modal: evita tipificar el siguiente caso por error.
           }}
         />
       )}
@@ -589,11 +586,7 @@ export default function MiDiaPage() {
             void refetchCasos();
             const next = avanzarTrasId(actual);
             notificarAvance('pago', next);
-            if (!next) {
-              return;
-            }
-            setPagoPrestamoId(next.idprestamo);
-            return false;
+            // Cierra el modal: evita registrar pago en el siguiente cliente.
           }}
         />
       )}

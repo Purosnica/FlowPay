@@ -191,6 +191,13 @@ export const GET_DESGLOSE_SALDO_PRESTAMO = `
       interesMoratorio
       subtotalComponentes
       totalPagosAplicados
+      pagosAplicados {
+        idpago
+        fechaPago
+        monto
+        medio
+        folio
+      }
       saldoCalculado
       saldoRegistrado
       baseAcuerdo

@@ -501,8 +501,8 @@ export default function PrestamoDetailPage({ params }: PageProps) {
               </div>
             )}
           </dl>
-          <div className="mt-6 border-t pt-6 dark:border-dark-3">
-            <h3 className="mb-3 font-semibold">Actividad reciente</h3>
+          <div className="mt-6 border-t pt-4 dark:border-dark-3">
+            <h3 className="mb-2 text-sm font-semibold">Actividad reciente</h3>
             <PrestamoTimelinePanel idprestamo={idprestamo} compact />
           </div>
         </div>

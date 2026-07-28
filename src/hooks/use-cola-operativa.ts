@@ -11,9 +11,11 @@ type CasoConId = { idprestamo: number };
 
 /**
  * Estado compartido de cola operativa (selección + avance) para Mi día / Bandeja.
+ * La selección es sticky por `idprestamo` para no saltar de cliente si la lista
+ * se reordena tras un refetch.
  */
 export function useColaOperativa<T extends CasoConId>(casos: readonly T[]) {
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
 
   const colaIds = useMemo(
     () => casos.map((c) => c.idprestamo),
@@ -21,26 +23,51 @@ export function useColaOperativa<T extends CasoConId>(casos: readonly T[]) {
   );
 
   useEffect(() => {
-    setSelectedIndex((prev) => clampIndiceCola(prev, casos.length));
-  }, [casos.length]);
+    if (casos.length === 0) {
+      setSelectedId(null);
+      return;
+    }
+    setSelectedId((prev) => {
+      if (prev != null && colaIds.includes(prev)) {
+        return prev;
+      }
+      return casos[0]?.idprestamo ?? null;
+    });
+  }, [casos, colaIds]);
+
+  const selectedIndex = useMemo(() => {
+    if (selectedId == null || casos.length === 0) {
+      return 0;
+    }
+    const idx = colaIds.indexOf(selectedId);
+    return idx >= 0 ? idx : 0;
+  }, [casos.length, colaIds, selectedId]);
 
   const casoSeleccionado = casos[selectedIndex] ?? casos[0] ?? null;
 
-  const seleccionarPorId = useCallback(
-    (idprestamo: number) => {
-      const idx = colaIds.indexOf(idprestamo);
-      if (idx >= 0) {
-        setSelectedIndex(idx);
-      }
+  const setSelectedIndex = useCallback(
+    (index: number) => {
+      const nextIdx = clampIndiceCola(index, casos.length);
+      setSelectedId(casos[nextIdx]?.idprestamo ?? null);
     },
-    [colaIds],
+    [casos],
   );
+
+  const seleccionarPorId = useCallback((idprestamo: number) => {
+    setSelectedId(idprestamo);
+  }, []);
 
   const mover = useCallback(
     (delta: number) => {
-      setSelectedIndex((i) => moverIndiceCola(i, casos.length, delta));
+      setSelectedId((prev) => {
+        const prevIdx =
+          prev != null ? colaIds.indexOf(prev) : selectedIndex;
+        const base = prevIdx >= 0 ? prevIdx : 0;
+        const nextIdx = moverIndiceCola(base, casos.length, delta);
+        return casos[nextIdx]?.idprestamo ?? null;
+      });
     },
-    [casos.length],
+    [casos, colaIds, selectedIndex],
   );
 
   /**
@@ -53,10 +80,7 @@ export function useColaOperativa<T extends CasoConId>(casos: readonly T[]) {
       if (nextId == null) {
         return null;
       }
-      const nextIdx = colaIds.indexOf(nextId);
-      if (nextIdx >= 0) {
-        setSelectedIndex(nextIdx);
-      }
+      setSelectedId(nextId);
       return casos.find((c) => c.idprestamo === nextId) ?? null;
     },
     [casos, colaIds],

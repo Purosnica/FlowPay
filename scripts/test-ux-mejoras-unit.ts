@@ -21,6 +21,10 @@ import {
   getHeatmapBuckets,
   getLastTimeToFirstGestion,
 } from '@/lib/analytics/product-analytics';
+import {
+  lineaSecundariaTimeline,
+  resumirTextoTimeline,
+} from '@/lib/logic/prestamo-timeline-ui-logic';
 
 function testLey787Microcopy(): void {
   assert.ok(LEY_787.contactoTerceroLabel.includes('Ley 787'));
@@ -75,11 +79,27 @@ function testAnalyticsExports(): void {
   assert.equal(session.firstGestionAt, null);
 }
 
+function testTimelineUiLogic(): void {
+  const json = resumirTextoTimeline(
+    '{"gestorAnterior":"null","gestorNuevo":4}',
+  );
+  assert.equal(json, 'gestorNuevo: 4');
+
+  const largo = 'x'.repeat(120);
+  const resumido = resumirTextoTimeline(largo, 40);
+  assert.ok(resumido !== null && resumido.endsWith('…'));
+  assert.ok(resumido.length <= 40);
+
+  const linea = lineaSecundariaTimeline('500 NIO · DEPOSITO', null);
+  assert.equal(linea, '500 NIO · DEPOSITO');
+}
+
 function main(): void {
   testLey787Microcopy();
   testTourCi();
   testUxPrefsKeys();
   testAnalyticsExports();
+  testTimelineUiLogic();
   // eslint-disable-next-line no-console
   console.warn('test-ux-mejoras-unit: OK');
 }

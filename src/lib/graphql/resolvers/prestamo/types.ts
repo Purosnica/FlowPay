@@ -217,6 +217,24 @@ export const PrestamoFiltersInput = builder.inputRef("PrestamoFiltersInput").imp
   }),
 });
 
+export const PagoAplicadoDesgloseType = builder
+  .objectRef<{
+    idpago: number;
+    fechaPago: Date;
+    monto: number;
+    medio: string | null;
+    folio: string | null;
+  }>('PagoAplicadoDesglose')
+  .implement({
+    fields: (t) => ({
+      idpago: t.exposeInt('idpago'),
+      fechaPago: t.expose('fechaPago', { type: 'DateTime' }),
+      monto: t.exposeFloat('monto'),
+      medio: t.exposeString('medio', { nullable: true }),
+      folio: t.exposeString('folio', { nullable: true }),
+    }),
+  });
+
 export const DesgloseSaldoPrestamoType = builder.objectRef<{
   montoPrestamo: number;
   interes: number;
@@ -231,6 +249,13 @@ export const DesgloseSaldoPrestamoType = builder.objectRef<{
   interesMoratorio: number;
   subtotalComponentes: number;
   totalPagosAplicados: number;
+  pagosAplicados: Array<{
+    idpago: number;
+    fechaPago: Date;
+    monto: number;
+    medio: string | null;
+    folio: string | null;
+  }>;
   saldoCalculado: number;
   saldoRegistrado: number;
   baseAcuerdo: number;
@@ -252,6 +277,10 @@ export const DesgloseSaldoPrestamoType = builder.objectRef<{
     interesMoratorio: t.exposeFloat('interesMoratorio'),
     subtotalComponentes: t.exposeFloat('subtotalComponentes'),
     totalPagosAplicados: t.exposeFloat('totalPagosAplicados'),
+    pagosAplicados: t.field({
+      type: [PagoAplicadoDesgloseType],
+      resolve: (parent) => parent.pagosAplicados,
+    }),
     saldoCalculado: t.exposeFloat('saldoCalculado'),
     saldoRegistrado: t.exposeFloat('saldoRegistrado'),
     baseAcuerdo: t.exposeFloat('baseAcuerdo'),

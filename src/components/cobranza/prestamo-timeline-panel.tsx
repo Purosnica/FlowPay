@@ -3,6 +3,10 @@
 import Link from 'next/link';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { GET_TIMELINE_PRESTAMO } from '@/lib/graphql/queries/cobranza.queries';
+import {
+  formatearFechaTimeline,
+  lineaSecundariaTimeline,
+} from '@/lib/logic/prestamo-timeline-ui-logic';
 import { cn } from '@/lib/utils';
 
 interface TimelineEvento {
@@ -15,13 +19,13 @@ interface TimelineEvento {
   fecha: string;
 }
 
-const TIPO_STYLES: Record<string, string> = {
-  ESTADO: 'border-l-primary bg-primary/5',
-  GESTION: 'border-l-blue-500 bg-blue-50 dark:bg-blue-950/20',
-  PAGO: 'border-l-green-500 bg-green-50 dark:bg-green-950/20',
-  ACUERDO: 'border-l-purple-500 bg-purple-50 dark:bg-purple-950/20',
-  ASIGNACION: 'border-l-gray-500 bg-gray-50 dark:bg-dark-2',
-  AUDITORIA: 'border-l-amber-500 bg-amber-50 dark:bg-amber-950/20',
+const TIPO_DOT: Record<string, string> = {
+  ESTADO: 'bg-primary',
+  GESTION: 'bg-blue-500',
+  PAGO: 'bg-emerald-500',
+  ACUERDO: 'bg-purple-500',
+  ASIGNACION: 'bg-gray-500',
+  AUDITORIA: 'bg-amber-500',
 };
 
 const TIPO_LABELS: Record<string, string> = {
@@ -32,6 +36,58 @@ const TIPO_LABELS: Record<string, string> = {
   ASIGNACION: 'Asignación',
   AUDITORIA: 'Auditoría',
 };
+
+function EventoTimelineFila({ evento }: { evento: TimelineEvento }) {
+  const secundaria = lineaSecundariaTimeline(
+    evento.descripcion,
+    evento.metadata,
+  );
+  const tituloIncluyeDesc =
+    secundaria !== null &&
+    evento.titulo.toLowerCase().includes(secundaria.toLowerCase());
+
+  return (
+    <li className="flex gap-2.5 py-1.5">
+      <span
+        className={cn(
+          'mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full',
+          TIPO_DOT[evento.tipo] ?? 'bg-stroke',
+        )}
+        aria-hidden
+      />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline justify-between gap-2">
+          <p className="min-w-0 truncate text-sm leading-snug text-dark dark:text-white">
+            <span className="mr-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-5 dark:text-dark-6">
+              {TIPO_LABELS[evento.tipo] ?? evento.tipo}
+            </span>
+            <span className="font-medium">{evento.titulo}</span>
+            {secundaria && !tituloIncluyeDesc ? (
+              <span
+                className="text-gray-5 dark:text-dark-6"
+                title={evento.descripcion}
+              >
+                {' '}
+                · {secundaria}
+              </span>
+            ) : null}
+          </p>
+          <time
+            className="shrink-0 text-[10px] tabular-nums text-gray-5 dark:text-dark-6"
+            dateTime={evento.fecha}
+          >
+            {formatearFechaTimeline(evento.fecha)}
+          </time>
+        </div>
+        {evento.usuario ? (
+          <p className="truncate text-[10px] leading-tight text-gray-400 dark:text-dark-6">
+            {evento.usuario}
+          </p>
+        ) : null}
+      </div>
+    </li>
+  );
+}
 
 export function PrestamoTimelinePanel({
   idprestamo,
@@ -59,10 +115,10 @@ export function PrestamoTimelinePanel({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {!compact && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-gray-500">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs text-gray-500">
             {eventos.length} evento(s) en orden cronológico
           </p>
           <Link
@@ -73,45 +129,26 @@ export function PrestamoTimelinePanel({
           </Link>
         </div>
       )}
-      <ul className="space-y-2">
+      <ul
+        className={cn(
+          'divide-y divide-stroke/70 dark:divide-dark-3/70',
+          compact && 'max-h-64 overflow-y-auto pr-0.5',
+        )}
+      >
         {eventos.map((evento) => (
-          <li
-            key={evento.id}
-            className={cn(
-              'rounded-lg border border-l-4 p-3 dark:border-dark-3',
-              TIPO_STYLES[evento.tipo] ?? 'border-l-stroke',
-            )}
-          >
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded bg-white/80 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-600 dark:bg-dark-3 dark:text-gray-300">
-                    {TIPO_LABELS[evento.tipo] ?? evento.tipo}
-                  </span>
-                  <span className="font-medium text-dark dark:text-white">
-                    {evento.titulo}
-                  </span>
-                </div>
-                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                  {evento.descripcion}
-                </p>
-                {evento.metadata && (
-                  <p className="mt-1 text-xs text-gray-500">{evento.metadata}</p>
-                )}
-              </div>
-              <time
-                className="shrink-0 text-xs text-gray-500"
-                dateTime={evento.fecha}
-              >
-                {new Date(evento.fecha).toLocaleString('es-NI')}
-              </time>
-            </div>
-            {evento.usuario && (
-              <p className="mt-1 text-xs text-gray-400">Por: {evento.usuario}</p>
-            )}
-          </li>
+          <EventoTimelineFila key={evento.id} evento={evento} />
         ))}
       </ul>
+      {compact ? (
+        <div className="pt-1 text-right">
+          <Link
+            href={`/configuracion/auditoria?entidad=prestamo&entidadId=${idprestamo}`}
+            className="text-[11px] text-primary hover:underline"
+          >
+            Ver auditoría
+          </Link>
+        </div>
+      ) : null}
     </div>
   );
 }

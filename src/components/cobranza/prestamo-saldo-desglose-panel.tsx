@@ -1,9 +1,16 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { useState } from 'react';
+import { ChevronUpIcon } from '@/assets/icons';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { GET_DESGLOSE_SALDO_PRESTAMO } from '@/lib/graphql/queries/cobranza.queries';
-import { formatearMoneda, type DesgloseSaldoPrestamo } from '@/types/cobranza';
+import { etiquetaPagoAplicadoDesglose } from '@/lib/logic/pago-aplicado-desglose-logic';
+import {
+  formatearMoneda,
+  type DesgloseSaldoPrestamo,
+  type PagoAplicadoDesglose,
+} from '@/types/cobranza';
 
 interface PrestamoSaldoDesglosePanelProps {
   idprestamo: number;
@@ -237,6 +244,78 @@ function FilaTabla({
   );
 }
 
+function FilaPagosAplicados({
+  valor,
+  pagos,
+  fmt,
+}: {
+  valor: number;
+  pagos: PagoAplicadoDesglose[];
+  fmt: (n: number) => string;
+}): ReactNode {
+  const [abierto, setAbierto] = useState(false);
+  const puedeExpandir = pagos.length > 0;
+
+  return (
+    <>
+      <tr className="border-b border-stroke/60 dark:border-dark-3/60">
+        <SignoCell signo="−" />
+        <td className="py-1.5 pr-3 text-sm text-gray-6 dark:text-dark-6">
+          {puedeExpandir ? (
+            <button
+              type="button"
+              onClick={() => setAbierto((v) => !v)}
+              aria-expanded={abierto}
+              className="inline-flex items-center gap-1 rounded text-left hover:text-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:hover:text-white"
+            >
+              <span>Pagos aplicados</span>
+              <span className="text-[10px] text-gray-5 dark:text-dark-6">
+                ({pagos.length})
+              </span>
+              <ChevronUpIcon
+                width={12}
+                height={12}
+                className={`shrink-0 text-gray-5 transition-transform dark:text-dark-6 ${
+                  abierto ? '' : 'rotate-180'
+                }`}
+              />
+            </button>
+          ) : (
+            'Pagos aplicados'
+          )}
+        </td>
+        <td className="whitespace-nowrap py-1.5 pl-2 pr-3 text-right text-sm tabular-nums text-dark dark:text-white">
+          {fmt(valor)}
+        </td>
+      </tr>
+      {abierto && puedeExpandir ? (
+        <tr className="border-b border-stroke/60 dark:border-dark-3/60">
+          <td className="w-7 px-1 py-0" />
+          <td colSpan={2} className="pb-2 pr-3 pt-0">
+            <div className="max-h-28 overflow-y-auto rounded-md border border-stroke/70 bg-gray-50/80 dark:border-dark-3 dark:bg-dark-2/60">
+              <ul className="divide-y divide-stroke/60 dark:divide-dark-3/60">
+                {pagos.map((pago) => (
+                  <li
+                    key={pago.idpago}
+                    className="flex items-baseline justify-between gap-3 px-2.5 py-1 text-[11px]"
+                  >
+                    <span className="min-w-0 truncate text-gray-5 dark:text-dark-6">
+                      {etiquetaPagoAplicadoDesglose(pago)}
+                    </span>
+                    <span className="shrink-0 tabular-nums text-dark dark:text-white">
+                      {fmt(pago.monto)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </td>
+        </tr>
+      ) : null}
+    </>
+  );
+}
+
 export function PrestamoSaldoDesglosePanel({
   idprestamo,
   moneda,
@@ -267,6 +346,7 @@ export function PrestamoSaldoDesglosePanel({
 
   const fmt = (n: number): string => formatearMoneda(n, moneda);
   const filas = construirFilas(desglose);
+  const pagosAplicados = desglose.pagosAplicados ?? [];
 
   return (
     <div
@@ -297,9 +377,18 @@ export function PrestamoSaldoDesglosePanel({
       <div className="overflow-x-auto">
         <table className="w-full min-w-[280px] border-collapse">
           <tbody>
-            {filas.map((fila) => (
-              <FilaTabla key={fila.key} fila={fila} fmt={fmt} />
-            ))}
+            {filas.map((fila) =>
+              fila.key === 'pagos' ? (
+                <FilaPagosAplicados
+                  key={fila.key}
+                  valor={fila.valor}
+                  pagos={pagosAplicados}
+                  fmt={fmt}
+                />
+              ) : (
+                <FilaTabla key={fila.key} fila={fila} fmt={fmt} />
+              ),
+            )}
           </tbody>
         </table>
       </div>
