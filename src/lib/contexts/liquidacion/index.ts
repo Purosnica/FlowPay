@@ -8,6 +8,7 @@ export {
   marcarLiquidacionPagada,
   anularLiquidacionBorrador,
   revertirLiquidacionPagada,
+  revertirLiquidacionEmitida,
   simularLiquidacion,
   obtenerDetalleLiquidacion,
 } from '@/lib/cobranza/liquidacion-service';

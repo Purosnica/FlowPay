@@ -959,6 +959,15 @@ export const REVERTIR_LIQUIDACION_PAGADA = `
   }
 `;
 
+export const REVERTIR_LIQUIDACION_EMITIDA = `
+  mutation RevertirLiquidacionEmitida($idliquidacion: Int!) {
+    revertirLiquidacionEmitida(idliquidacion: $idliquidacion) {
+      idliquidacion
+      estado
+    }
+  }
+`;
+
 export const ANULAR_LIQUIDACION = `
   mutation AnularLiquidacion($idliquidacion: Int!) {
     anularLiquidacion(idliquidacion: $idliquidacion)

@@ -32,3 +32,8 @@ export function puedeMarcarLiquidacionPagada(estado: string): boolean {
 export function puedeRevertirLiquidacionPagada(estado: string): boolean {
   return estado === ESTADOS_LIQUIDACION.PAGADA;
 }
+
+/** Reabrir emisión para regenerar con pagos conciliados a destiempo. */
+export function puedeRevertirLiquidacionEmitida(estado: string): boolean {
+  return estado === ESTADOS_LIQUIDACION.EMITIDA;
+}

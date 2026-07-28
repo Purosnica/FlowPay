@@ -21,6 +21,7 @@ import {
   puedeEmitirLiquidacion,
   puedeMarcarLiquidacionPagada,
   puedeRegenerarLiquidacion,
+  puedeRevertirLiquidacionEmitida,
   puedeRevertirLiquidacionPagada,
 } from '@/lib/logic/liquidacion-estado-logic';
 import {
@@ -380,8 +381,8 @@ export async function generarLiquidacion(
 
     if (reutilizable && !puedeRegenerarLiquidacion(reutilizable.estado)) {
       throw new Error(
-        `No se puede regenerar una liquidación en estado ${reutilizable.estado}. ` +
-          'EMITIDA/PAGADA son inmutables; anule el borrador o cree un periodo nuevo.',
+        `No se puede regenerar en estado ${reutilizable.estado}. ` +
+          'Use Revertir a borrador (o Revertir pago si está PAGADA).',
       );
     }
 
@@ -689,9 +690,82 @@ export async function revertirLiquidacionPagada(
 }
 
 /**
+ * Revierte EMITIDA → BORRADOR para regenerar con pagos conciliados a destiempo.
+ * PAGADA debe revertirse a EMITIDA primero.
+ */
+export async function revertirLiquidacionEmitida(
+  idliquidacion: number,
+  idusuario: number,
+): Promise<void> {
+  const liq = await prisma.tbl_liquidacion.findUnique({
+    where: { idliquidacion },
+  });
+  if (!liq || liq.deletedAt) {
+    throw new Error('Liquidación no encontrada.');
+  }
+  await requerirAccesoMandante(idusuario, liq.idmandante);
+  if (!puedeRevertirLiquidacionEmitida(liq.estado)) {
+    throw new Error(
+      'Solo se puede revertir a borrador una liquidación EMITIDA.',
+    );
+  }
+
+  const lockName = `liq-revertir-emit:${idliquidacion}`;
+  const locked = await adquirirBloqueoMysql(lockName, 5);
+  if (!locked) {
+    throw new Error(
+      'La liquidación está siendo modificada. Intente de nuevo.',
+    );
+  }
+  try {
+    const actual = await prisma.tbl_liquidacion.findUnique({
+      where: { idliquidacion },
+    });
+    if (
+      !actual ||
+      actual.deletedAt ||
+      !puedeRevertirLiquidacionEmitida(actual.estado)
+    ) {
+      throw new Error(
+        'Solo se puede revertir a borrador una liquidación EMITIDA.',
+      );
+    }
+    await prisma.$transaction(async (tx) => {
+      await tx.tbl_liquidacion.update({
+        where: { idliquidacion },
+        data: {
+          estado: 'BORRADOR',
+          idusuarioEmision: null,
+        },
+      });
+      await registrarAuditoria(tx, {
+        idusuario,
+        entidad: 'tbl_liquidacion',
+        entidadId: idliquidacion,
+        accion: 'REVERTIR_EMITIDA',
+        detalle: JSON.stringify({
+          before: {
+            estado: actual.estado,
+            totalRecuperado: decimalToNumber(actual.totalRecuperado),
+            totalComision: decimalToNumber(actual.totalComision),
+            idusuarioEmision: actual.idusuarioEmision,
+          },
+          after: {
+            estado: 'BORRADOR',
+            idusuarioEmision: null,
+          },
+        }),
+      });
+    });
+  } finally {
+    await liberarBloqueoMysql(lockName);
+  }
+}
+
+/**
  * Anula (soft-delete) una liquidación en BORRADOR y libera periodoActivo
  * para poder regenerar el mismo periodo.
- * EMITIDA/PAGADA son inmutables (H01).
+ * EMITIDA/PAGADA deben revertirse a BORRADOR antes de anular.
  */
 export async function anularLiquidacionBorrador(
   idliquidacion: number,

@@ -11,6 +11,7 @@ import {
   emitirLiquidacion,
   generarLiquidacion,
   marcarLiquidacionPagada,
+  revertirLiquidacionEmitida,
   revertirLiquidacionPagada,
 } from '@/lib/contexts/liquidacion';
 import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
@@ -130,6 +131,30 @@ builder.mutationField('revertirLiquidacionPagada', (t) =>
       const { idliquidacion } = IdLiquidacionSchema.parse(args);
       try {
         await revertirLiquidacionPagada(idliquidacion, idusuario);
+      } catch (err) {
+        throw wrapServiceError(err);
+      }
+      return ctx.prisma.tbl_liquidacion.findUniqueOrThrow({
+        ...(query as Record<string, unknown>),
+        where: { idliquidacion },
+      }) as never;
+    },
+  }),
+);
+
+builder.mutationField('revertirLiquidacionEmitida', (t) =>
+  t.prismaField({
+    type: Liquidacion,
+    args: { idliquidacion: t.arg.int({ required: true }) },
+    resolve: async (query, _parent, args, ctx: GraphQLContext) => {
+      await requerirPermiso(ctx.usuario?.idusuario, PERMISO.LIQUIDACION_WRITE);
+      const idusuario = ctx.usuario?.idusuario;
+      if (!idusuario) {
+        throw new GraphQLValidationError('Usuario no autenticado.');
+      }
+      const { idliquidacion } = IdLiquidacionSchema.parse(args);
+      try {
+        await revertirLiquidacionEmitida(idliquidacion, idusuario);
       } catch (err) {
         throw wrapServiceError(err);
       }

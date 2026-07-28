@@ -23,6 +23,7 @@ import {
   EMITIR_LIQUIDACION,
   MARCAR_LIQUIDACION_PAGADA,
   REVERTIR_LIQUIDACION_PAGADA,
+  REVERTIR_LIQUIDACION_EMITIDA,
   ANULAR_LIQUIDACION,
 } from '@/lib/graphql/queries/cobranza.queries';
 import {
@@ -37,6 +38,7 @@ import { formatFechaNegocio } from '@/lib/utils/timezone';
 type ConfirmLiq =
   | { tipo: 'anular'; id: number }
   | { tipo: 'revertir'; id: number }
+  | { tipo: 'revertirEmitida'; id: number }
   | null;
 
 function estadoBadge(estado: string): string {
@@ -149,6 +151,17 @@ export default function LiquidacionesPage() {
     },
   );
 
+  const revertirEmitidaMutation = useGraphQLMutation(
+    REVERTIR_LIQUIDACION_EMITIDA,
+    {
+      successMessage: 'Liquidación revertida a borrador',
+      onSuccess: () => {
+        invalidate();
+        refetch();
+      },
+    },
+  );
+
   const anularMutation = useGraphQLMutation(ANULAR_LIQUIDACION, {
     successMessage: 'Liquidación anulada correctamente',
     onSuccess: () => {
@@ -229,6 +242,21 @@ export default function LiquidacionesPage() {
                     Marcar pagada
                   </Button>
                 )}
+                {liq.estado === 'EMITIDA' && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={revertirEmitidaMutation.isPending}
+                    onClick={() =>
+                      setConfirmLiq({
+                        tipo: 'revertirEmitida',
+                        id: liq.idliquidacion,
+                      })
+                    }
+                  >
+                    Revertir a borrador
+                  </Button>
+                )}
                 {liq.estado === 'PAGADA' && (
                   <Button
                     size="sm"
@@ -244,9 +272,7 @@ export default function LiquidacionesPage() {
                     Revertir pago
                   </Button>
                 )}
-                {(liq.estado === 'BORRADOR' ||
-                  liq.estado === 'EMITIDA' ||
-                  liq.estado === 'PAGADA') && (
+                {liq.estado === 'BORRADOR' && (
                   <Button
                     size="sm"
                     variant="outline"
@@ -271,6 +297,7 @@ export default function LiquidacionesPage() {
       emitirMutation,
       pagadaMutation,
       revertirPagadaMutation,
+      revertirEmitidaMutation,
       anularMutation,
     ],
   );
@@ -483,19 +510,29 @@ export default function LiquidacionesPage() {
         title={
           confirmLiq?.tipo === 'anular'
             ? 'Anular liquidación'
-            : 'Revertir pago de liquidación'
+            : confirmLiq?.tipo === 'revertirEmitida'
+              ? 'Revertir a borrador'
+              : 'Revertir pago de liquidación'
         }
         description={
           confirmLiq?.tipo === 'anular'
             ? 'La liquidación quedará anulada. Esta acción queda auditada.'
-            : 'Se revertirá el estado pagada. Confirme solo si el pago no se concretó.'
+            : confirmLiq?.tipo === 'revertirEmitida'
+              ? 'La liquidación volverá a BORRADOR para poder regenerarla con pagos conciliados después. Queda auditado.'
+              : 'Se revertirá el estado pagada. Confirme solo si el pago no se concretó.'
         }
         confirmLabel={
-          confirmLiq?.tipo === 'anular' ? 'Anular' : 'Revertir pago'
+          confirmLiq?.tipo === 'anular'
+            ? 'Anular'
+            : confirmLiq?.tipo === 'revertirEmitida'
+              ? 'Revertir a borrador'
+              : 'Revertir pago'
         }
         variant="danger"
         isLoading={
-          anularMutation.isPending || revertirPagadaMutation.isPending
+          anularMutation.isPending ||
+          revertirPagadaMutation.isPending ||
+          revertirEmitidaMutation.isPending
         }
         onConfirm={() => {
           if (!confirmLiq) {
@@ -503,6 +540,13 @@ export default function LiquidacionesPage() {
           }
           if (confirmLiq.tipo === 'anular') {
             anularMutation.mutate(
+              { idliquidacion: confirmLiq.id },
+              { onSuccess: () => setConfirmLiq(null) },
+            );
+            return;
+          }
+          if (confirmLiq.tipo === 'revertirEmitida') {
+            revertirEmitidaMutation.mutate(
               { idliquidacion: confirmLiq.id },
               { onSuccess: () => setConfirmLiq(null) },
             );

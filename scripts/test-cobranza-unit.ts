@@ -20,6 +20,7 @@ import {
   puedeEmitirLiquidacion,
   puedeMarcarLiquidacionPagada,
   puedeRegenerarLiquidacion,
+  puedeRevertirLiquidacionEmitida,
   puedeRevertirLiquidacionPagada,
 } from '@/lib/logic/liquidacion-estado-logic';
 import {
@@ -320,10 +321,15 @@ function testLiquidacionEstadoLogic(): void {
   assert.equal(puedeRegenerarLiquidacion('EMITIDA'), false);
   assert.equal(puedeRegenerarLiquidacion('PAGADA'), false);
   assert.equal(puedeAnularLiquidacion('BORRADOR'), true);
+  assert.equal(puedeAnularLiquidacion('EMITIDA'), false);
   assert.equal(puedeAnularLiquidacion('PAGADA'), false);
   assert.equal(puedeEmitirLiquidacion('BORRADOR'), true);
   assert.equal(puedeMarcarLiquidacionPagada('EMITIDA'), true);
   assert.equal(puedeRevertirLiquidacionPagada('PAGADA'), true);
+  assert.equal(puedeRevertirLiquidacionPagada('EMITIDA'), false);
+  assert.equal(puedeRevertirLiquidacionEmitida('EMITIDA'), true);
+  assert.equal(puedeRevertirLiquidacionEmitida('BORRADOR'), false);
+  assert.equal(puedeRevertirLiquidacionEmitida('PAGADA'), false);
 }
 
 function testPagoEstadoLogic(): void {
