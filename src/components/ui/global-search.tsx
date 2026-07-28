@@ -101,7 +101,7 @@ export function GlobalSearch() {
                   {results.clientes.map((item) => (
                     <Link
                       key={`cliente-${item.id}`}
-                      href={`/clientes?id=${item.id}`}
+                      href={`/clientes/${item.id}`}
                       onClick={handleSelect}
                       className="block px-4 py-2 hover:bg-gray-50 dark:hover:bg-dark-3"
                     >

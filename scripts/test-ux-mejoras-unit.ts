@@ -25,6 +25,7 @@ import {
   lineaSecundariaTimeline,
   resumirTextoTimeline,
 } from '@/lib/logic/prestamo-timeline-ui-logic';
+import { prestamosOperativosCliente } from '@/lib/logic/cliente-cobranza-acciones-logic';
 
 function testLey787Microcopy(): void {
   assert.ok(LEY_787.contactoTerceroLabel.includes('Ley 787'));
@@ -94,12 +95,44 @@ function testTimelineUiLogic(): void {
   assert.equal(linea, '500 NIO · DEPOSITO');
 }
 
+function testClienteCobranzaAccionesLogic(): void {
+  const operativos = prestamosOperativosCliente([
+    {
+      idprestamo: 1,
+      noPrestamo: 'A',
+      estado: 'Vencido',
+      saldoTotal: 100,
+      diasMora: 10,
+      mandante: 'M',
+    },
+    {
+      idprestamo: 2,
+      noPrestamo: 'B',
+      estado: 'Cancelado',
+      saldoTotal: 0,
+      diasMora: 0,
+      mandante: 'M',
+    },
+    {
+      idprestamo: 3,
+      noPrestamo: 'C',
+      estado: 'Finalizado',
+      saldoTotal: 0,
+      diasMora: 0,
+      mandante: 'M',
+    },
+  ]);
+  assert.equal(operativos.length, 1);
+  assert.equal(operativos[0].idprestamo, 1);
+}
+
 function main(): void {
   testLey787Microcopy();
   testTourCi();
   testUxPrefsKeys();
   testAnalyticsExports();
   testTimelineUiLogic();
+  testClienteCobranzaAccionesLogic();
   // eslint-disable-next-line no-console
   console.warn('test-ux-mejoras-unit: OK');
 }

@@ -18,6 +18,7 @@ import {
   cellPrestamoLink,
   cellTexto,
 } from '@/components/cobranza/reporte-table-cells';
+import { ClienteCobranzaAcciones } from '@/components/clientes/cliente-cobranza-acciones';
 import { getContactoEstadoUi } from '@/lib/logic/cliente-contacto-estado';
 import { LEY_787 } from '@/lib/compliance/ley-787-microcopy';
 import { rutaComprobantePago } from '@/lib/logic/comprobante-pago-logic';
@@ -32,15 +33,20 @@ interface ClienteVista360ViewProps {
 function SectionPanel({
   title,
   children,
+  actions,
 }: {
   title: string;
   children: ReactNode;
+  actions?: ReactNode;
 }) {
   return (
     <section className="rounded-lg bg-white p-6 shadow-1 dark:bg-gray-dark">
-      <h2 className="mb-4 text-lg font-semibold text-dark dark:text-white">
-        {title}
-      </h2>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-lg font-semibold text-dark dark:text-white">
+          {title}
+        </h2>
+        {actions}
+      </div>
       {children}
     </section>
   );
@@ -72,27 +78,37 @@ function KpiTile({
 }
 
 export function ClienteVista360View({ data }: ClienteVista360ViewProps) {
-  const { cliente, totales, prestamos, gestionesRecientes, pagosRecientes, reclamos, contactos } =
-    data;
+  const {
+    cliente,
+    totales,
+    prestamos,
+    gestionesRecientes,
+    pagosRecientes,
+    reclamos,
+    contactos,
+  } = data;
 
   const telefono =
     cliente.celular ?? cliente.telefono ?? 'Sin teléfono';
 
   return (
     <div className="space-y-6">
-      <div>
-        <Link
-          href="/clientes"
-          className="text-sm text-primary hover:underline"
-        >
-          ← Clientes
-        </Link>
-        <h1 className="mt-1 text-2xl font-bold text-dark dark:text-white">
-          {cliente.nombreCompleto}
-        </h1>
-        <p className="text-gray-6">
-          {cliente.numerodocumento} · {telefono}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <Link
+            href="/clientes"
+            className="text-sm text-primary hover:underline"
+          >
+            ← Clientes
+          </Link>
+          <h1 className="mt-1 text-2xl font-bold text-dark dark:text-white">
+            {cliente.nombreCompleto}
+          </h1>
+          <p className="text-gray-6">
+            {cliente.numerodocumento} · {telefono}
+          </p>
+        </div>
+        <ClienteCobranzaAcciones prestamos={prestamos} />
       </div>
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -109,10 +125,7 @@ export function ClienteVista360View({ data }: ClienteVista360ViewProps) {
           label="Pagos del mes"
           value={formatearMoneda(totales.pagosMes)}
         />
-        <KpiTile
-          label="Gestiones"
-          value={totales.gestionesTotal}
-        />
+        <KpiTile label="Gestiones" value={totales.gestionesTotal} />
       </div>
 
       <Tabs defaultValue="resumen">
@@ -267,22 +280,22 @@ export function ClienteVista360View({ data }: ClienteVista360ViewProps) {
                   {LEY_787.panelContactos}
                 </p>
                 <ul className="divide-y divide-stroke dark:divide-dark-3">
-                {contactos.map((c) => {
-                  const estado = getContactoEstadoUi(c);
-                  return (
-                    <li
-                      key={c.idcontacto}
-                      className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm"
-                    >
-                      <span className="font-medium text-dark dark:text-white">
-                        {c.tipo}: {c.valor}
-                      </span>
-                      <Badge variant={estado.variant} size="sm">
-                        {estado.label}
-                      </Badge>
-                    </li>
-                  );
-                })}
+                  {contactos.map((c) => {
+                    const estado = getContactoEstadoUi(c);
+                    return (
+                      <li
+                        key={c.idcontacto}
+                        className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm"
+                      >
+                        <span className="font-medium text-dark dark:text-white">
+                          {c.tipo}: {c.valor}
+                        </span>
+                        <Badge variant={estado.variant} size="sm">
+                          {estado.label}
+                        </Badge>
+                      </li>
+                    );
+                  })}
                 </ul>
               </>
             )}
@@ -340,6 +353,7 @@ function PrestamosTable({
             <th className="px-4 py-3 font-medium">Estado</th>
             <th className="px-4 py-3 font-medium">Mora</th>
             <th className="px-4 py-3 font-medium">Saldo</th>
+            <th className="px-4 py-3 font-medium" />
           </tr>
         </thead>
         <tbody>
@@ -359,6 +373,13 @@ function PrestamosTable({
               </td>
               <td className="px-4 py-3 font-medium text-primary">
                 {cellMoneda(p.saldoTotal)}
+              </td>
+              <td className="px-4 py-3">
+                <ClienteCobranzaAcciones
+                  prestamos={prestamos}
+                  idprestamoFijo={p.idprestamo}
+                  size="sm"
+                />
               </td>
             </tr>
           ))}
