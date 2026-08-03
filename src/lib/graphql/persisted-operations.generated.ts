@@ -180,6 +180,7 @@ export const PERSISTED_OPERATION_NAMES = [
   'RestablecerConfigOperativaMandanteGlobal',
   'RestablecerMetasMandanteGlobal',
   'RevertirCargaCartera',
+  'RevertirLiquidacionEmitida',
   'RevertirLiquidacionPagada',
   'SetPermisosRol',
   'SetUsuarioActivo',
