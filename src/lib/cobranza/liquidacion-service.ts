@@ -319,10 +319,22 @@ export async function generarLiquidacion(
       },
     });
     if (porKey) {
-      return {
-        idliquidacion: porKey.idliquidacion,
-        simulacion: await cargarSimulacionDesdeLiquidacion(porKey.idliquidacion),
-      };
+      const detalleCount = await prisma.tbl_liquidacion_detalle.count({
+        where: { idliquidacion: porKey.idliquidacion },
+      });
+      // Reintento idempotente solo si ya tiene detalle o no es regenerable.
+      // BORRADOR vacío (p. ej. tras wipe de pagos) debe regenerarse.
+      if (
+        detalleCount > 0 ||
+        !puedeRegenerarLiquidacion(porKey.estado)
+      ) {
+        return {
+          idliquidacion: porKey.idliquidacion,
+          simulacion: await cargarSimulacionDesdeLiquidacion(
+            porKey.idliquidacion,
+          ),
+        };
+      }
     }
   }
 
@@ -350,12 +362,20 @@ export async function generarLiquidacion(
         },
       });
       if (race) {
-        return {
-          idliquidacion: race.idliquidacion,
-          simulacion: await cargarSimulacionDesdeLiquidacion(
-            race.idliquidacion,
-          ),
-        };
+        const detalleCount = await prisma.tbl_liquidacion_detalle.count({
+          where: { idliquidacion: race.idliquidacion },
+        });
+        if (
+          detalleCount > 0 ||
+          !puedeRegenerarLiquidacion(race.estado)
+        ) {
+          return {
+            idliquidacion: race.idliquidacion,
+            simulacion: await cargarSimulacionDesdeLiquidacion(
+              race.idliquidacion,
+            ),
+          };
+        }
       }
     }
 

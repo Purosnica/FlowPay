@@ -26,6 +26,8 @@ export interface ImportarPagosParams {
   buffer: Buffer;
   nombreArchivo: string;
   nombreHoja?: string;
+  /** Progreso relativo del bloque de pagos (0–100). */
+  onProgreso?: (progresoPct: number) => Promise<void>;
 }
 
 function resolverIdGestorPago(
@@ -77,6 +79,10 @@ export async function importarPagosHistoricos(
     omitidos: 0,
     errores: [],
   };
+
+  const totalFilas = parsed.filas.length;
+  let filasHechas = 0;
+  let ultimoPctReportado = -1;
 
   for (const fila of parsed.filas) {
     try {
@@ -161,6 +167,18 @@ export async function importarPagosHistoricos(
         mensaje:
           error instanceof Error ? error.message : 'Error desconocido en fila',
       });
+    } finally {
+      filasHechas += 1;
+      if (params.onProgreso && totalFilas > 0) {
+        const pct = Math.min(
+          100,
+          Math.floor((filasHechas / totalFilas) * 100),
+        );
+        if (pct !== ultimoPctReportado && (pct % 5 === 0 || filasHechas === totalFilas)) {
+          ultimoPctReportado = pct;
+          await params.onProgreso(pct);
+        }
+      }
     }
   }
 

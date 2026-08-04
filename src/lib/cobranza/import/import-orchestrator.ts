@@ -104,12 +104,21 @@ export async function importarCobranza(
   }
 
   if (params.tipo === 'PAGOS' || params.tipo === 'COMPLETO') {
+    const basePct = params.tipo === 'COMPLETO' ? 85 : 15;
+    const spanPct = params.tipo === 'COMPLETO' ? 10 : 75;
     resultado.pagos = await importarPagosHistoricos({
       idmandante: params.idmandante,
       idusuario: params.idusuario,
       buffer: params.buffer,
       nombreArchivo: params.nombreArchivo,
       nombreHoja: params.tipo === 'PAGOS' ? params.nombreHoja : 'PAGOS',
+      onProgreso: async (pctPagos) => {
+        const mapped = Math.min(
+          95,
+          basePct + Math.floor((pctPagos / 100) * spanPct),
+        );
+        await params.onProgreso?.(mapped);
+      },
     });
     await params.onProgreso?.(90);
   }
