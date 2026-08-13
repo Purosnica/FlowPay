@@ -20,6 +20,7 @@ interface Usuario {
   email: string;
   idrol: number;
   rolCodigo?: string;
+  fotoPerfil?: string | null;
 }
 
 type LoginResult =
@@ -98,10 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const login = async (
-    email: string,
-    password: string,
-  ): Promise<LoginResult> => {
+  const login = async (email: string, password: string): Promise<LoginResult> => {
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
@@ -117,8 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!contentType.includes('application/json')) {
         return {
           success: false,
-          error:
-            'El servidor no respondió correctamente. Recarga la página e intenta de nuevo.',
+          error: 'El servidor no respondió correctamente. Recarga la página e intenta de nuevo.',
         };
       }
 
@@ -151,8 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         error: data.error || 'Error al iniciar sesión',
       };
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Error al iniciar sesión';
+      const errorMessage = error instanceof Error ? error.message : 'Error al iniciar sesión';
       return { success: false, error: errorMessage };
     }
   };
@@ -193,8 +189,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         error: data.error || 'Código MFA inválido',
       };
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Error al verificar MFA';
+      const errorMessage = error instanceof Error ? error.message : 'Error al verificar MFA';
       return { success: false, error: errorMessage };
     }
   };
@@ -209,12 +204,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // Continuar con logout local aunque falle el servidor
     } finally {
-      const { limpiarClaveOutboxSesion } = await import(
-        '@/lib/offline/outbox-crypto'
-      );
-      const { purgarGestionOutbox } = await import(
-        '@/lib/offline/gestion-outbox'
-      );
+      const { limpiarClaveOutboxSesion } = await import('@/lib/offline/outbox-crypto');
+      const { purgarGestionOutbox } = await import('@/lib/offline/gestion-outbox');
       const { purgarPagoOutbox } = await import('@/lib/offline/pago-outbox');
       limpiarClaveOutboxSesion();
       await Promise.all([purgarGestionOutbox(), purgarPagoOutbox()]);
@@ -233,10 +224,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     enabled: Boolean(usuario) && !loading,
     idleSeconds: SESSION_IDLE_SECONDS,
     onIdle: () => {
-      notificationToast.warning(
-        'Cerramos tu sesión por inactividad.',
-        'Sesión cerrada',
-      );
+      notificationToast.warning('Cerramos tu sesión por inactividad.', 'Sesión cerrada');
       void logout();
     },
   });

@@ -215,6 +215,8 @@ model tbl_usuario {
   nombre            String
   email             String    @unique
   telefono          String?
+  fotoPerfilBlob    Bytes?    @db.LongBlob
+  fotoPerfilMime    String?
   porcentajeComision Decimal  @default(0) @db.Decimal(5, 2) // % sobre ingreso empresa
   passwordHash      String? // bcrypt
   salt         String? // vacío con bcrypt (compat)

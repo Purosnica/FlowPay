@@ -1,27 +1,22 @@
-"use client";
+'use client';
 
-import { ChevronUpIcon } from "@/assets/icons";
-import {
-  Dropdown,
-  DropdownContent,
-  DropdownTrigger,
-} from "@/components/ui/dropdown";
-import { cn } from "@/lib/utils";
-import Image from "next/image";
-import Link from "next/link";
-import { useState } from "react";
-import { LogOutIcon, UserIcon } from "./icons";
-import { useAuth } from "@/contexts/auth-context";
+import { ChevronUpIcon } from '@/assets/icons';
+import { Dropdown, DropdownContent, DropdownTrigger } from '@/components/ui/dropdown';
+import { cn } from '@/lib/utils';
+import Link from 'next/link';
+import { useState } from 'react';
+import { LogOutIcon, UserIcon } from './icons';
+import { useAuth } from '@/contexts/auth-context';
 
 export function UserInfo() {
   const [isOpen, setIsOpen] = useState(false);
   const { usuario, logout } = useAuth();
 
-  // Usar datos del usuario autenticado o valores por defecto
+  const inicial = (usuario?.nombre || 'Usuario').trim().charAt(0).toUpperCase();
   const USER = {
-    name: usuario?.nombre || "Usuario",
-    email: usuario?.email || "usuario@flowpay.com",
-    img: "/images/user/user-03.png",
+    name: usuario?.nombre || 'Usuario',
+    email: usuario?.email || 'usuario@flowpay.com',
+    img: usuario?.fotoPerfil || null,
   };
 
   const handleLogout = async () => {
@@ -35,23 +30,13 @@ export function UserInfo() {
         <span className="sr-only">My Account</span>
 
         <figure className="flex items-center gap-3">
-          <Image
-            src={USER.img}
-            className="size-12"
-            alt={`Avatar of ${USER.name}`}
-            role="presentation"
-            width={200}
-            height={200}
-          />
+          <Avatar src={USER.img} name={USER.name} inicial={inicial} />
           <figcaption className="flex items-center gap-1 font-medium text-dark dark:text-dark-6 max-[1024px]:sr-only">
             <span>{USER.name}</span>
 
             <ChevronUpIcon
               aria-hidden
-              className={cn(
-                "rotate-180 transition-transform",
-                isOpen && "rotate-0",
-              )}
+              className={cn('rotate-180 transition-transform', isOpen && 'rotate-0')}
               strokeWidth={1.5}
             />
           </figcaption>
@@ -65,19 +50,10 @@ export function UserInfo() {
         <h2 className="sr-only">User information</h2>
 
         <figure className="flex items-center gap-2.5 px-5 py-3.5">
-          <Image
-            src={USER.img}
-            className="size-12"
-            alt={`Avatar for ${USER.name}`}
-            role="presentation"
-            width={200}
-            height={200}
-          />
+          <Avatar src={USER.img} name={USER.name} inicial={inicial} />
 
           <figcaption className="space-y-1 text-base font-medium">
-            <div className="mb-2 leading-none text-dark dark:text-white">
-              {USER.name}
-            </div>
+            <div className="mb-2 leading-none text-dark dark:text-white">{USER.name}</div>
 
             <div className="leading-none text-gray-6">{USER.email}</div>
           </figcaption>
@@ -111,5 +87,25 @@ export function UserInfo() {
         </div>
       </DropdownContent>
     </Dropdown>
+  );
+}
+
+function Avatar({ src, name, inicial }: { src: string | null; name: string; inicial: string }) {
+  if (src) {
+    return (
+      <img
+        src={src}
+        className="size-12 rounded-full object-cover"
+        alt={`Foto de perfil de ${name}`}
+      />
+    );
+  }
+  return (
+    <span
+      aria-label={`Inicial de ${name}`}
+      className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary text-lg font-semibold text-white"
+    >
+      {inicial}
+    </span>
   );
 }

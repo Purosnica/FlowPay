@@ -12,6 +12,7 @@ export interface UsuarioPerfil {
   nombre: string;
   email: string;
   telefono: string | null;
+  fotoPerfil: string | null;
   ultimoAcceso: string | null;
   rol: {
     idrol: number;

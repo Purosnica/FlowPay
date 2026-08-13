@@ -1,17 +1,15 @@
 import { builder } from '../../builder';
 import { UpdatePerfilInputSchema } from '@/lib/validators/usuario/perfil';
 
-export const UpdatePerfilInput = builder
-  .inputRef('UpdatePerfilInput')
-  .implement({
-    fields: (t) => ({
-      nombre: t.string({ required: false }),
-      email: t.string({ required: false }),
-      telefono: t.string({ required: false }),
-      passwordActual: t.string({ required: false }),
-      passwordNueva: t.string({ required: false }),
-    }),
-  });
+export const UpdatePerfilInput = builder.inputRef('UpdatePerfilInput').implement({
+  fields: (t) => ({
+    nombre: t.string({ required: false }),
+    email: t.string({ required: false }),
+    telefono: t.string({ required: false }),
+    passwordActual: t.string({ required: false }),
+    passwordNueva: t.string({ required: false }),
+  }),
+});
 
 export { UpdatePerfilInputSchema };
 
@@ -21,6 +19,8 @@ export const UsuarioPerfil = builder
     nombre: string;
     email: string;
     telefono: string | null;
+    fotoPerfilMime: string | null;
+    updatedAt: Date;
     ultimoAcceso: Date | null;
     rol: {
       idrol: number;
@@ -34,6 +34,13 @@ export const UsuarioPerfil = builder
       nombre: t.exposeString('nombre'),
       email: t.exposeString('email'),
       telefono: t.exposeString('telefono', { nullable: true }),
+      fotoPerfil: t.string({
+        nullable: true,
+        resolve: (parent) =>
+          parent.fotoPerfilMime
+            ? `/api/perfil/foto?v=${parent.updatedAt.getTime()}`
+            : null,
+      }),
       ultimoAcceso: t.expose('ultimoAcceso', {
         type: 'DateTime',
         nullable: true,

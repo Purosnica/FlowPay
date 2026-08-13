@@ -20,11 +20,7 @@ import {
 } from '@/lib/auth/jwt';
 import { getUserById } from '@/lib/auth/auth-service';
 import { obtenerMfaSetupRequired } from '@/lib/auth/mfa-session';
-import {
-  CSRF_COOKIE,
-  csrfCookieOptions,
-  generarTokenCsrf,
-} from '@/lib/security/csrf';
+import { CSRF_COOKIE, csrfCookieOptions, generarTokenCsrf } from '@/lib/security/csrf';
 import { SESSION_IDLE_SECONDS } from '@/lib/auth/session-ttl';
 
 function obtenerToken(req: NextRequest): string | null {
@@ -49,7 +45,7 @@ export async function GET(req: NextRequest) {
           success: false,
           error: 'No autenticado. Por favor, inicia sesión.',
         },
-        { status: 401 },
+        { status: 401 }
       );
     }
 
@@ -60,7 +56,7 @@ export async function GET(req: NextRequest) {
           success: false,
           error: 'No autenticado. Por favor, inicia sesión.',
         },
-        { status: 401 },
+        { status: 401 }
       );
     }
 
@@ -74,7 +70,7 @@ export async function GET(req: NextRequest) {
           success: false,
           error: 'Sesión expirada. Por favor, inicia sesión.',
         },
-        { status: 401 },
+        { status: 401 }
       );
       expired.cookies.set('auth-token', '', {
         httpOnly: true,
@@ -93,7 +89,7 @@ export async function GET(req: NextRequest) {
           success: false,
           error: 'Sesión inactiva. Por favor, inicia sesión.',
         },
-        { status: 401 },
+        { status: 401 }
       );
       idle.cookies.set('auth-token', '', {
         httpOnly: true,
@@ -122,7 +118,7 @@ export async function GET(req: NextRequest) {
         permisosAt: ahora,
         mfaSetupRequired,
       },
-      remaining,
+      remaining
     );
 
     const response = NextResponse.json({
@@ -130,6 +126,9 @@ export async function GET(req: NextRequest) {
       usuario: {
         ...usuario,
         rolCodigo: usuarioCompleto?.rol?.codigo ?? '',
+        fotoPerfil: usuarioCompleto?.fotoPerfilMime
+          ? `/api/perfil/foto?v=${usuarioCompleto.updatedAt.getTime()}`
+          : null,
       },
       permisos,
       mfaSetupRequired,
@@ -147,11 +146,7 @@ export async function GET(req: NextRequest) {
       path: '/',
     });
     if (!req.cookies.get(CSRF_COOKIE)?.value) {
-      response.cookies.set(
-        CSRF_COOKIE,
-        generarTokenCsrf(),
-        csrfCookieOptions(),
-      );
+      response.cookies.set(CSRF_COOKIE, generarTokenCsrf(), csrfCookieOptions());
     }
 
     return response;

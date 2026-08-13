@@ -9,10 +9,7 @@ import { verificarMfaUsuario } from '@/lib/auth/mfa-service';
 import { calcularMfaSetupRequired } from '@/lib/auth/mfa-policy';
 import type { AuthResult } from '@/lib/auth/auth-service';
 
-export async function completarLoginConMfa(
-  idusuario: number,
-  codigo: string,
-): Promise<AuthResult> {
+export async function completarLoginConMfa(idusuario: number, codigo: string): Promise<AuthResult> {
   const ok = await verificarMfaUsuario(idusuario, codigo);
   if (!ok) {
     return { success: false, error: 'Código MFA inválido' };
@@ -20,7 +17,14 @@ export async function completarLoginConMfa(
 
   const usuario = await prisma.tbl_usuario.findFirst({
     where: { idusuario, activo: true, deletedAt: null },
-    include: {
+    select: {
+      idusuario: true,
+      idrol: true,
+      nombre: true,
+      email: true,
+      mfaEnabled: true,
+      fotoPerfilMime: true,
+      updatedAt: true,
       rol: { select: { idrol: true, codigo: true, descripcion: true } },
     },
   });
@@ -31,10 +35,7 @@ export async function completarLoginConMfa(
 
   const permisos = await obtenerPermisosUsuario(usuario.idusuario);
   const rolCodigo = usuario.rol?.codigo ?? '';
-  const mfaSetupRequired = calcularMfaSetupRequired(
-    rolCodigo,
-    Boolean(usuario.mfaEnabled),
-  );
+  const mfaSetupRequired = calcularMfaSetupRequired(rolCodigo, Boolean(usuario.mfaEnabled));
   const ahora = Math.floor(Date.now() / 1000);
   const payload: JWTPayload = {
     idusuario: usuario.idusuario,
@@ -66,6 +67,9 @@ export async function completarLoginConMfa(
       email: usuario.email,
       idrol: usuario.idrol || 0,
       rolCodigo,
+      fotoPerfil: usuario.fotoPerfilMime
+        ? `/api/perfil/foto?v=${usuario.updatedAt.getTime()}`
+        : null,
     },
   };
 }

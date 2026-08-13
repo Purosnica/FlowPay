@@ -7,10 +7,7 @@ import { MfaSetupPanel } from '@/components/perfil/mfa-setup-panel';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { useGraphQLMutation } from '@/hooks/use-graphql-mutation';
 import { useAuth } from '@/contexts/auth-context';
-import {
-  GET_MI_PERFIL,
-  ACTUALIZAR_MI_PERFIL,
-} from '@/lib/graphql/queries/perfil.queries';
+import { GET_MI_PERFIL, ACTUALIZAR_MI_PERFIL } from '@/lib/graphql/queries/perfil.queries';
 import type { PerfilFormData, UsuarioPerfil } from '@/types/perfil';
 
 export default function PerfilPage() {
@@ -22,7 +19,7 @@ export default function PerfilPage() {
   const { data, isLoading, error } = useGraphQLQuery<{ miPerfil: UsuarioPerfil }>(
     GET_MI_PERFIL,
     undefined,
-    { enabled: !mfaSetupRequired },
+    { enabled: !mfaSetupRequired }
   );
 
   const updateMutation = useGraphQLMutation(ACTUALIZAR_MI_PERFIL, {
@@ -61,9 +58,7 @@ export default function PerfilPage() {
     return (
       <div>
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-dark dark:text-white">
-            Activar MFA
-          </h1>
+          <h1 className="text-2xl font-bold text-dark dark:text-white">Activar MFA</h1>
           <p className="mt-1 text-sm text-gray-6 dark:text-dark-6">
             Debe configurar autenticación en dos pasos antes de continuar.
           </p>
@@ -94,9 +89,7 @@ export default function PerfilPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-dark dark:text-white">
-          Mi perfil
-        </h1>
+        <h1 className="text-2xl font-bold text-dark dark:text-white">Mi perfil</h1>
         <p className="mt-1 text-sm text-gray-6 dark:text-dark-6">
           Actualice sus datos personales y contraseña de acceso.
         </p>
@@ -109,6 +102,14 @@ export default function PerfilPage() {
           isLoading={updateMutation.isPending}
           error={errorMessage}
           success={successMessage}
+          onFotoSubida={async () => {
+            setSuccessMessage('Foto de perfil actualizada correctamente');
+            setErrorMessage(null);
+            await Promise.all([
+              queryClient.invalidateQueries({ queryKey: [GET_MI_PERFIL] }),
+              refreshUser(),
+            ]);
+          }}
         />
         <MfaSetupPanel />
       </div>

@@ -54,31 +54,24 @@ const MFA_SETUP_API_PREFIXES = [
   '/api/auth/me',
   '/api/auth/logout',
   '/api/auth/refresh-session',
+  '/api/perfil/foto',
 ];
 
 function rutaPermitidaConMfaSetup(pathname: string): boolean {
   if (MFA_SETUP_PAGE_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
     return true;
   }
-  return MFA_SETUP_API_PREFIXES.some(
-    (p) => pathname === p || pathname.startsWith(p),
-  );
+  return MFA_SETUP_API_PREFIXES.some((p) => pathname === p || pathname.startsWith(p));
 }
 
 // Cron: autenticación propia vía CRON_SECRET en el handler
 const cronApiPrefix = '/api/cron/';
 
 // SMSGateway Android: autenticación propia vía SMS_GATEWAY_TOKEN
-const smsGatewayApiPrefixes = [
-  '/api/dispositivos/',
-  '/api/sms/',
-  '/api/dashboard/stats',
-];
+const smsGatewayApiPrefixes = ['/api/dispositivos/', '/api/sms/', '/api/dashboard/stats'];
 
 function esRutaSmsGateway(pathname: string): boolean {
-  return smsGatewayApiPrefixes.some(
-    (prefix) => pathname === prefix || pathname.startsWith(prefix),
-  );
+  return smsGatewayApiPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(prefix));
 }
 
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
@@ -99,20 +92,14 @@ function requiereCsrf(pathname: string, method: string): boolean {
   return pathname.startsWith('/api');
 }
 
-function asegurarCookieCsrf(
-  request: NextRequest,
-  response: NextResponse,
-): NextResponse {
+function asegurarCookieCsrf(request: NextRequest, response: NextResponse): NextResponse {
   if (!request.cookies.get(CSRF_COOKIE)?.value) {
     response.cookies.set(CSRF_COOKIE, generarTokenCsrf(), csrfCookieOptions());
   }
   return response;
 }
 
-function responderConSeguridad(
-  request: NextRequest,
-  response: NextResponse,
-): NextResponse {
+function responderConSeguridad(request: NextRequest, response: NextResponse): NextResponse {
   applySecurityHeaders(response);
   return asegurarCookieCsrf(request, response);
 }
@@ -123,10 +110,7 @@ export async function middleware(request: NextRequest) {
   if (requiereCsrf(pathname, request.method) && !validarCsrfHeader(request)) {
     return responderConSeguridad(
       request,
-      NextResponse.json(
-        { success: false, error: 'Solicitud no autorizada.' },
-        { status: 403 },
-      ),
+      NextResponse.json({ success: false, error: 'Solicitud no autorizada.' }, { status: 403 })
     );
   }
 
@@ -134,9 +118,7 @@ export async function middleware(request: NextRequest) {
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon') ||
-    pathname.match(
-      /\.(ico|png|jpg|jpeg|svg|gif|webp|css|js|woff|woff2|ttf|eot)$/,
-    )
+    pathname.match(/\.(ico|png|jpg|jpeg|svg|gif|webp|css|js|woff|woff2|ttf|eot)$/)
   ) {
     return NextResponse.next();
   }
@@ -170,10 +152,7 @@ export async function middleware(request: NextRequest) {
     if (pathname.startsWith('/api')) {
       return responderConSeguridad(
         request,
-        NextResponse.json(
-          { success: false, error: 'No autenticado' },
-          { status: 401 },
-        ),
+        NextResponse.json({ success: false, error: 'No autenticado' }, { status: 401 })
       );
     }
 
@@ -190,10 +169,7 @@ export async function middleware(request: NextRequest) {
     if (pathname.startsWith('/api')) {
       return responderConSeguridad(
         request,
-        NextResponse.json(
-          { success: false, error: 'Token inválido o expirado' },
-          { status: 401 },
-        ),
+        NextResponse.json({ success: false, error: 'Token inválido o expirado' }, { status: 401 })
       );
     }
     const loginUrl = new URL('/login', request.url);
@@ -207,10 +183,7 @@ export async function middleware(request: NextRequest) {
     if (pathname.startsWith('/api')) {
       return responderConSeguridad(
         request,
-        NextResponse.json(
-          { success: false, error: 'Sesión expirada' },
-          { status: 401 },
-        ),
+        NextResponse.json({ success: false, error: 'Sesión expirada' }, { status: 401 })
       );
     }
     const loginUrl = new URL('/login', request.url);
@@ -225,8 +198,8 @@ export async function middleware(request: NextRequest) {
         request,
         NextResponse.json(
           { success: false, error: 'Sesión inactiva. Inicia sesión de nuevo.' },
-          { status: 401 },
-        ),
+          { status: 401 }
+        )
       );
     }
     const loginUrl = new URL('/login', request.url);
@@ -237,11 +210,7 @@ export async function middleware(request: NextRequest) {
   const response = NextResponse.next();
   if (debeRefrescarActividad(lastActivityAt)) {
     const ahora = Math.floor(Date.now() / 1000);
-    const tokenNuevo = await reemitirTokenConActividad(
-      payload,
-      ahora,
-      remainingAbs,
-    );
+    const tokenNuevo = await reemitirTokenConActividad(payload, ahora, remainingAbs);
     response.cookies.set('auth-token', tokenNuevo, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -261,8 +230,8 @@ export async function middleware(request: NextRequest) {
             error: 'Debe activar MFA antes de continuar.',
             code: 'MFA_SETUP_REQUIRED',
           },
-          { status: 403 },
-        ),
+          { status: 403 }
+        )
       );
     }
     const perfilUrl = new URL('/perfil', request.url);
@@ -280,8 +249,8 @@ export async function middleware(request: NextRequest) {
             success: false,
             error: 'Permisos de sesión desactualizados. Recargue la página.',
           },
-          { status: 401 },
-        ),
+          { status: 401 }
+        )
       );
     }
     const refreshUrl = new URL('/api/auth/refresh-session', request.url);
@@ -298,8 +267,8 @@ export async function middleware(request: NextRequest) {
           request,
           NextResponse.json(
             { success: false, error: 'No tiene permisos para esta acción.' },
-            { status: 403 },
-          ),
+            { status: 403 }
+          )
         );
       }
       const deniedUrl = new URL('/dashboard', request.url);

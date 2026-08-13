@@ -5,6 +5,7 @@ export const GET_MI_PERFIL = `
       nombre
       email
       telefono
+      fotoPerfil
       ultimoAcceso
       rol {
         idrol
@@ -22,6 +23,7 @@ export const ACTUALIZAR_MI_PERFIL = `
       nombre
       email
       telefono
+      fotoPerfil
     }
   }
 `;

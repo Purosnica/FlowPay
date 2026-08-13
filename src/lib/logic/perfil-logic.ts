@@ -5,7 +5,14 @@ import type { UpdatePerfilInput } from '@/lib/validators/usuario/perfil';
 export async function obtenerMiPerfil(idusuario: number) {
   const usuario = await prisma.tbl_usuario.findFirst({
     where: { idusuario, activo: true, deletedAt: null },
-    include: {
+    select: {
+      idusuario: true,
+      nombre: true,
+      email: true,
+      telefono: true,
+      fotoPerfilMime: true,
+      ultimoAcceso: true,
+      updatedAt: true,
       rol: {
         select: {
           idrol: true,
@@ -29,6 +36,11 @@ export async function actualizarMiPerfil(
 ) {
   const usuario = await prisma.tbl_usuario.findFirst({
     where: { idusuario, activo: true, deletedAt: null },
+    select: {
+      idusuario: true,
+      email: true,
+      passwordHash: true,
+    },
   });
 
   if (!usuario) {
@@ -93,7 +105,14 @@ export async function actualizarMiPerfil(
   return prisma.tbl_usuario.update({
     where: { idusuario },
     data: updateData,
-    include: {
+    select: {
+      idusuario: true,
+      nombre: true,
+      email: true,
+      telefono: true,
+      fotoPerfilMime: true,
+      ultimoAcceso: true,
+      updatedAt: true,
       rol: {
         select: {
           idrol: true,

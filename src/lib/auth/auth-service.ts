@@ -1,17 +1,17 @@
 /**
  * SERVICIO DE AUTENTICACIÓN
- * 
+ *
  * Maneja el login, verificación de usuarios y sesiones
  */
 
-import { prisma } from "@/lib/prisma";
-import { verifyPassword, isBcryptHash } from "./password";
-import { type JWTPayload , generateToken } from "./jwt";
-import { obtenerPermisosUsuario } from "@/lib/permissions/permission-service";
-import { emitirTokenMfaPending } from "@/lib/auth/mfa-pending";
-import { calcularMfaSetupRequired } from "@/lib/auth/mfa-policy";
+import { prisma } from '@/lib/prisma';
+import { verifyPassword, isBcryptHash } from './password';
+import { type JWTPayload, generateToken } from './jwt';
+import { obtenerPermisosUsuario } from '@/lib/permissions/permission-service';
+import { emitirTokenMfaPending } from '@/lib/auth/mfa-pending';
+import { calcularMfaSetupRequired } from '@/lib/auth/mfa-policy';
 
-import { logger } from "@/lib/utils/logger";
+import { logger } from '@/lib/utils/logger';
 
 export interface LoginCredentials {
   email: string;
@@ -31,6 +31,7 @@ export interface AuthResult {
     email: string;
     idrol: number;
     rolCodigo: string;
+    fotoPerfil: string | null;
   };
   error?: string;
 }
@@ -38,9 +39,7 @@ export interface AuthResult {
 /**
  * Autentica un usuario con email y contraseña
  */
-export async function authenticateUser(
-  credentials: LoginCredentials
-): Promise<AuthResult> {
+export async function authenticateUser(credentials: LoginCredentials): Promise<AuthResult> {
   try {
     // Buscar usuario por email
     const usuario = await prisma.tbl_usuario.findFirst({
@@ -49,7 +48,16 @@ export async function authenticateUser(
         activo: true,
         deletedAt: null,
       },
-      include: {
+      select: {
+        idusuario: true,
+        idrol: true,
+        nombre: true,
+        email: true,
+        passwordHash: true,
+        mfaEnabled: true,
+        mfaSecret: true,
+        fotoPerfilMime: true,
+        updatedAt: true,
         rol: {
           select: {
             idrol: true,
@@ -63,7 +71,7 @@ export async function authenticateUser(
     if (!usuario) {
       return {
         success: false,
-        error: "Credenciales inválidas",
+        error: 'Credenciales inválidas',
       };
     }
 
@@ -71,19 +79,16 @@ export async function authenticateUser(
     if (!usuario.passwordHash || !isBcryptHash(usuario.passwordHash)) {
       return {
         success: false,
-        error: "Usuario sin contraseña configurada",
+        error: 'Usuario sin contraseña configurada',
       };
     }
 
-    const passwordValid = await verifyPassword(
-      credentials.password,
-      usuario.passwordHash,
-    );
+    const passwordValid = await verifyPassword(credentials.password, usuario.passwordHash);
 
     if (!passwordValid) {
       return {
         success: false,
-        error: "Credenciales inválidas",
+        error: 'Credenciales inválidas',
       };
     }
 
@@ -99,10 +104,7 @@ export async function authenticateUser(
     // Generar token JWT
     const permisos = await obtenerPermisosUsuario(usuario.idusuario);
     const rolCodigo = usuario.rol?.codigo ?? '';
-    const mfaSetupRequired = calcularMfaSetupRequired(
-      rolCodigo,
-      Boolean(usuario.mfaEnabled),
-    );
+    const mfaSetupRequired = calcularMfaSetupRequired(rolCodigo, Boolean(usuario.mfaEnabled));
 
     const ahora = Math.floor(Date.now() / 1000);
     const payload: JWTPayload = {
@@ -138,15 +140,18 @@ export async function authenticateUser(
         email: usuario.email,
         idrol: usuario.idrol || 0,
         rolCodigo,
+        fotoPerfil: usuario.fotoPerfilMime
+          ? `/api/perfil/foto?v=${usuario.updatedAt.getTime()}`
+          : null,
       },
     };
   } catch (error: unknown) {
-    logger.error("Error en autenticación", error instanceof Error ? error : undefined, {
+    logger.error('Error en autenticación', error instanceof Error ? error : undefined, {
       email: credentials.email,
     });
     return {
       success: false,
-      error: "Error al autenticar usuario",
+      error: 'Error al autenticar usuario',
     };
   }
 }
@@ -161,7 +166,13 @@ export async function getUserById(idusuario: number) {
       activo: true,
       deletedAt: null,
     },
-    include: {
+    select: {
+      idusuario: true,
+      idrol: true,
+      nombre: true,
+      email: true,
+      fotoPerfilMime: true,
+      updatedAt: true,
       rol: {
         select: {
           idrol: true,
@@ -194,4 +205,3 @@ export async function getUserByEmail(email: string) {
     },
   });
 }
-
