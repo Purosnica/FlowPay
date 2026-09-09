@@ -10,11 +10,13 @@ const CATALOG_TTL_SECONDS = 60;
 builder.queryField('codigosAccion', (t) =>
   t.field({
     type: [CodigoAccion],
-    resolve: async (_parent, _args, ctx: GraphQLContext) => {
-      await requerirPermiso(ctx.usuario?.idusuario, PERMISO.GESTION_READ);
-      return cacheGetOrSet('gql:codigosAccion', CATALOG_TTL_SECONDS, () =>
+    args: { todos: t.arg.boolean({ required: false, defaultValue: false }) },
+    resolve: async (_parent, args, ctx: GraphQLContext) => {
+      await requerirPermiso(ctx.usuario?.idusuario, args.todos ? PERMISO.CONFIG_SYSTEM : PERMISO.GESTION_READ);
+      const cacheKey = args.todos ? 'gql:codigosAccion:all' : 'gql:codigosAccion';
+      return cacheGetOrSet(cacheKey, CATALOG_TTL_SECONDS, () =>
         ctx.prisma.tbl_codigo_accion.findMany({
-          where: { estado: true, deletedAt: null },
+          where: args.todos ? { deletedAt: null } : { estado: true, deletedAt: null },
           orderBy: { codigo: 'asc' },
         }),
       );
@@ -25,14 +27,14 @@ builder.queryField('codigosAccion', (t) =>
 builder.queryField('codigosResultado', (t) =>
   t.field({
     type: [CodigoResultado],
-    args: { grupo: t.arg.string({ required: false }) },
+    args: { grupo: t.arg.string({ required: false }), todos: t.arg.boolean({ required: false, defaultValue: false }) },
     resolve: async (_parent, args, ctx: GraphQLContext) => {
-      await requerirPermiso(ctx.usuario?.idusuario, PERMISO.GESTION_READ);
-      const cacheKey = `gql:codigosResultado:${args.grupo ?? 'all'}`;
+      await requerirPermiso(ctx.usuario?.idusuario, args.todos ? PERMISO.CONFIG_SYSTEM : PERMISO.GESTION_READ);
+      const cacheKey = `gql:codigosResultado:${args.grupo ?? 'all'}:${args.todos ? 'all' : 'active'}`;
       return cacheGetOrSet(cacheKey, CATALOG_TTL_SECONDS, () =>
         ctx.prisma.tbl_codigo_resultado.findMany({
           where: {
-            estado: true,
+            ...(args.todos ? {} : { estado: true }),
             deletedAt: null,
             ...(args.grupo ? { grupo: args.grupo } : {}),
           },

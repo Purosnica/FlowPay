@@ -170,6 +170,11 @@ export const NAV_DATA: NavSection[] = [
             url: "/configuracion/usuarios",
             permiso: PERMISO.USER_READ,
           },
+          {
+            title: "Catálogos de cobranza",
+            url: "/configuracion/catalogos",
+            permiso: PERMISO.CONFIG_SYSTEM,
+          },
         ],
       },
     ],
