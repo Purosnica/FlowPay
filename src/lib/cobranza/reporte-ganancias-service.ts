@@ -6,7 +6,7 @@ import {
   cargarTramosRecuperacionMandante,
   comisionTramosADefs,
 } from './comision-cobro-service';
-import { diasMoraEnTramo } from './tramos-mora';
+import { resolverTramoMoraDef } from './tramos-mora';
 import type {
   ReporteGanancias,
   ReporteGananciasGestorItem,
@@ -99,8 +99,11 @@ export async function obtenerReporteGanancias(
 
   const defs = comisionTramosADefs(tramosRecuperacion);
   const porTramoMora: ReporteGananciasTramoItem[] = defs.map((def) => {
+    // Un pago se asigna a un único tramo, igual que al calcular su ingreso.
+    // Las configuraciones históricas pueden solaparse (p. ej. 31-90 y 61-90);
+    // filtrarlo contra cada banda duplicaba importes solo en este desglose.
     const enTramo = sim.detalle.filter((d) =>
-      diasMoraEnTramo(d.diasMora, def.tramoMoraMin, def.tramoMoraMax),
+      resolverTramoMoraDef(defs, d.diasMora) === def,
     );
     const totalRecuperado = roundMoney(
       enTramo.reduce((s, d) => s + d.monto, 0),
@@ -139,9 +142,7 @@ export async function obtenerReporteGanancias(
   >();
 
   for (const d of sim.detalle) {
-    const def = defs.find((t) =>
-      diasMoraEnTramo(d.diasMora, t.tramoMoraMin, t.tramoMoraMax),
-    );
+    const def = resolverTramoMoraDef(defs, d.diasMora);
     if (!def) {
       continue;
     }

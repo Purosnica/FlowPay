@@ -106,7 +106,7 @@ builder.mutationField('updateComisionCobro', (t) =>
             estado: false,
           },
         });
-        return tx.tbl_comision_cobro.create({
+        const nuevaVersion = await tx.tbl_comision_cobro.create({
           ...(query as Record<string, unknown>),
           data: {
             idmandante: existente.idmandante,
@@ -117,14 +117,19 @@ builder.mutationField('updateComisionCobro', (t) =>
             vigenteDesde: ahora,
           },
         });
-      });
 
-      await registrarAuditoria(ctx.prisma, {
-        idusuario: ctx.usuario?.idusuario,
-        entidad: 'tbl_comision_cobro',
-        entidadId: creada.idcomision,
-        accion: 'VERSIONAR',
-        detalle: JSON.stringify({ reemplaza: idcomision }),
+        // La versiÃ³n y su auditorÃ­a deben confirmarse juntas. Antes la
+        // auditorÃ­a se escribÃ­a despuÃ©s del commit: si fallaba, el cliente
+        // recibÃ­a un error aunque el tramo ya hubiera cambiado.
+        await registrarAuditoria(tx, {
+          idusuario: ctx.usuario?.idusuario,
+          entidad: 'tbl_comision_cobro',
+          entidadId: nuevaVersion.idcomision,
+          accion: 'VERSIONAR',
+          detalle: JSON.stringify({ reemplaza: idcomision }),
+        });
+
+        return nuevaVersion;
       });
 
       return creada as never;
