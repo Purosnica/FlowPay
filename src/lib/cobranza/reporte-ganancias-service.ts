@@ -118,6 +118,11 @@ export async function obtenerReporteGanancias(
       tramo: def.tramo,
       tramoMoraMin: def.tramoMoraMin,
       tramoMoraMax: def.tramoMoraMax,
+      porcentajeRecuperacion: tramosRecuperacion.find(
+        (tramo) =>
+          tramo.tramoMoraMin === def.tramoMoraMin &&
+          tramo.tramoMoraMax === def.tramoMoraMax,
+      )?.porcentaje ?? 0,
       cantidadPagos: enTramo.length,
       totalRecuperado,
       totalIngresoEmpresa,

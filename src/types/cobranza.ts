@@ -911,6 +911,8 @@ export interface ReporteGananciasTramoItem {
   tramo: string;
   tramoMoraMin: number;
   tramoMoraMax: number | null;
+  /** % de recuperación para la empresa configurado en el tramo. */
+  porcentajeRecuperacion: number;
   cantidadPagos: number;
   totalRecuperado: number;
   totalIngresoEmpresa: number;

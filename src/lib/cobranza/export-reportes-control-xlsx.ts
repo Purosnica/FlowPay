@@ -61,6 +61,7 @@ export function exportReporteGananciasXlsx(reporte: ReporteGanancias): void {
         title: 'Ganancias por tramo de mora',
         columns: [
           { header: 'Tramo', width: 18 },
+          { header: '% recuperaciÃ³n', width: 16, numFmt: XLSX_FMT.percent },
           { header: 'Pagos', width: 10, numFmt: XLSX_FMT.integer },
           { header: 'Recuperado', width: 14, numFmt: XLSX_FMT.money },
           { header: 'Ingreso', width: 14, numFmt: XLSX_FMT.money },
@@ -69,6 +70,7 @@ export function exportReporteGananciasXlsx(reporte: ReporteGanancias): void {
         ],
         rows: reporte.porTramoMora.map((t) => [
           t.tramo,
+          t.porcentajeRecuperacion,
           t.cantidadPagos,
           t.totalRecuperado,
           t.totalIngresoEmpresa,

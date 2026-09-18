@@ -33,6 +33,7 @@ const ReporteGananciasTramoItemType = builder
       tramo: t.exposeString('tramo'),
       tramoMoraMin: t.exposeInt('tramoMoraMin'),
       tramoMoraMax: t.exposeInt('tramoMoraMax', { nullable: true }),
+      porcentajeRecuperacion: t.exposeFloat('porcentajeRecuperacion'),
       cantidadPagos: t.exposeInt('cantidadPagos'),
       totalRecuperado: t.exposeFloat('totalRecuperado'),
       totalIngresoEmpresa: t.exposeFloat('totalIngresoEmpresa'),

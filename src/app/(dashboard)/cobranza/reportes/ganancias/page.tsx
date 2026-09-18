@@ -123,6 +123,12 @@ export default function ReporteGananciasPage() {
     () => [
       { accessorKey: 'tramo', header: 'Tramo mora' },
       {
+        accessorKey: 'porcentajeRecuperacion',
+        header: '% recuperaciÃ³n',
+        meta: { align: 'right' },
+        cell: ({ row }) => cellPorcentaje(row.original.porcentajeRecuperacion),
+      },
+      {
         accessorKey: 'cantidadPagos',
         header: 'Pagos',
         meta: { align: 'right' },

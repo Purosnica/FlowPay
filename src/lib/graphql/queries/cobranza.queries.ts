@@ -2563,6 +2563,7 @@ export const GET_REPORTE_GANANCIAS = `
         tramo
         tramoMoraMin
         tramoMoraMax
+        porcentajeRecuperacion
         cantidadPagos
         totalRecuperado
         totalIngresoEmpresa
