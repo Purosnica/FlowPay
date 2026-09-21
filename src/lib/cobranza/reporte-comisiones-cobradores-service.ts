@@ -26,21 +26,40 @@ export async function obtenerReporteComisionesCobradores(
   }
 
   let periodoLabel: string | null = null;
-  const wherePeriodo: { periodo?: string } = {};
+  let rango: { inicio: Date; fin: Date } | null = null;
+  let esPeriodoMensual = false;
   if (periodo) {
     const parsed = parsePeriodo(periodo);
     periodoLabel = parsed.periodo;
-    wherePeriodo.periodo = parsed.periodo;
+    rango = { inicio: parsed.inicio, fin: parsed.fin };
+    esPeriodoMensual = /^\d{4}-\d{2}$/.test(periodo.trim());
   }
 
   const liquidaciones = await prisma.tbl_liquidacion.findMany({
     where: {
       idmandante,
       deletedAt: null,
-      ...wherePeriodo,
+      ...(esPeriodoMensual && periodoLabel
+        ? { periodo: periodoLabel }
+        : rango
+          ? {
+              detalle: {
+                some: {
+                  pago: { fechaPago: { gte: rango.inicio, lt: rango.fin } },
+                },
+              },
+            }
+          : {}),
     },
     include: {
       detalle: {
+        ...(!esPeriodoMensual && rango
+          ? {
+              where: {
+                pago: { fechaPago: { gte: rango.inicio, lt: rango.fin } },
+              },
+            }
+          : {}),
         select: {
           idgestor: true,
           nombreGestor: true,

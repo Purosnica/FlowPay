@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { MandanteSelect } from '@/components/cobranza/mandante-select';
+import { FechaRangoInputs } from '@/components/cobranza/fecha-rango-inputs';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -62,30 +63,19 @@ export function ReporteFiltrosBar({
           />
         ) : null}
         {showPeriodo ? (
-          <div>
-            <label
-              htmlFor={periodoId}
-              className="mb-1 block text-sm font-medium text-dark dark:text-white"
-            >
-              Periodo
-            </label>
-            <input
-              id={periodoId}
-              type="month"
-              value={periodo}
-              onChange={(e) => onPeriodoChange(e.target.value)}
-              className={FILTER_INPUT_CLASS}
-            />
-          </div>
+          <FechaRangoInputs
+            id={periodoId}
+            value={periodo}
+            onChange={onPeriodoChange}
+            inputClassName={FILTER_INPUT_CLASS}
+          />
         ) : null}
         {children}
         {onRefresh ? (
           <Button
             type="button"
             variant="outline"
-            disabled={
-              isFetching || (showMandante && idmandante === '')
-            }
+            disabled={isFetching || (showMandante && idmandante === '')}
             onClick={onRefresh}
           >
             {isFetching ? 'Actualizando…' : 'Actualizar'}

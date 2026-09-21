@@ -304,6 +304,13 @@ async function cargarSimulacionDesdeLiquidacion(
 export async function generarLiquidacion(
   params: GenerarLiquidacionParams,
 ): Promise<{ idliquidacion: number; simulacion: SimulacionLiquidacion }> {
+  // Las liquidaciones son cierres contables mensuales. Los reportes pueden
+  // simular cualquier rango mediante `simularLiquidacion`, pero no se debe
+  // persistir un rango arbitrario como si fuera un mes de liquidación.
+  if (!/^\d{4}-\d{2}$/.test(params.periodo.trim())) {
+    throw new Error('La liquidación requiere un periodo mensual (YYYY-MM).');
+  }
+
   const key =
     params.idempotencyKey && params.idempotencyKey.trim().length > 0
       ? params.idempotencyKey.trim().slice(0, 64)

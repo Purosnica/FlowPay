@@ -260,12 +260,7 @@ function buildCover(informe: InformeGerencial): (Paragraph | Table)[] {
                     }),
                   ],
                 }),
-                ...[
-                  'INFORME',
-                  'GERENCIAL',
-                  'DE GESTIÓN',
-                  'DE COBRANZA',
-                ].map(
+                ...['INFORME', 'GERENCIAL', 'DE GESTIÓN', 'DE COBRANZA'].map(
                   (line) =>
                     new Paragraph({
                       spacing: { after: 20 },
@@ -385,7 +380,12 @@ function buildBodyHeader(imgs: BrandImages): Header {
       new Paragraph({
         spacing: { after: 120 },
         border: {
-          bottom: { style: BorderStyle.SINGLE, size: 12, color: '5EB8E8', space: 4 },
+          bottom: {
+            style: BorderStyle.SINGLE,
+            size: 12,
+            color: '5EB8E8',
+            space: 4,
+          },
         },
         children: [],
       }),
@@ -531,9 +531,9 @@ function buildPagosTable(informe: InformeGerencial): Table {
             fill: TOTAL_BG,
             size: 12,
           }),
-          ...widths.slice(5).map((w) =>
-            cell('', { width: w, fill: TOTAL_BG, size: 12 }),
-          ),
+          ...widths
+            .slice(5)
+            .map((w) => cell('', { width: w, fill: TOTAL_BG, size: 12 })),
         ],
       }),
     );
@@ -568,12 +568,15 @@ export async function exportInformeGerencialDocx(
       center: true,
       after: 60,
     }),
-    p(`Periodo: ${informe.periodoLabel} · Mandante: ${informe.mandanteNombre}`, {
-      size: 16,
-      color: '64748B',
-      center: true,
-      after: 200,
-    }),
+    p(
+      `Periodo: ${informe.periodoLabel} · Mandante: ${informe.mandanteNombre}`,
+      {
+        size: 16,
+        color: '64748B',
+        center: true,
+        after: 200,
+      },
+    ),
 
     p('Contenido', { bold: true, color: NAVY, size: 18, after: 60 }),
     ...[
@@ -804,7 +807,7 @@ export async function exportInformeGerencialDocx(
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `Informe_Gerencial_${safeFilename(informe.mandanteNombre)}_${informe.periodo}.docx`;
+  a.download = `Informe_Gerencial_${safeFilename(informe.mandanteNombre)}_${safeFilename(informe.periodo)}.docx`;
   a.click();
   URL.revokeObjectURL(url);
 }

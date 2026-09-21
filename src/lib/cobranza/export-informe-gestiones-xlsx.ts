@@ -81,8 +81,6 @@ export function exportInformeGestionesXlsx(
   XLSX.utils.book_append_sheet(book, sheet, 'Hoja1');
 
   const safeName = opts.mandanteNombre.replace(/[^\w\-]+/g, '_').slice(0, 40);
-  XLSX.writeFile(
-    book,
-    `Informe_de_gestiones_${safeName}_${opts.periodo}.xlsx`,
-  );
+  const safePeriodo = opts.periodo.replace(/[^\w\-]+/g, '_');
+  XLSX.writeFile(book, `Informe_de_gestiones_${safeName}_${safePeriodo}.xlsx`);
 }

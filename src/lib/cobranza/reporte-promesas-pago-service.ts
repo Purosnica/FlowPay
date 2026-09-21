@@ -6,11 +6,8 @@ import {
 import { resolverEstadoPromesa } from '@/lib/logic/promesa-estado-logic';
 import { requerirAccesoMandante } from './mandante-scope';
 import { decimalToNumber, roundMoney } from './decimal-utils';
-import { parsePeriodo } from './periodo-utils';
-import type {
-  ReportePromesaPagoItem,
-  ReportePromesasPago,
-} from '@/types/cobranza';
+import { inicioDiaNegocioActualUtc, parsePeriodo } from './periodo-utils';
+import type { ReportePromesaPagoItem, ReportePromesasPago } from '@/types/cobranza';
 
 /**
  * Promesas de pago del periodo: cumplidas / vencidas / pendientes.
@@ -18,7 +15,7 @@ import type {
 export async function obtenerReportePromesasPago(
   idmandante: number,
   idusuario: number,
-  periodo: string,
+  periodo: string
 ): Promise<ReportePromesasPago> {
   await requerirAccesoMandante(idusuario, idmandante);
 
@@ -31,8 +28,7 @@ export async function obtenerReportePromesasPago(
   }
 
   const { inicio, fin, periodo: periodoNorm } = parsePeriodo(periodo);
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
+  const hoy = inicioDiaNegocioActualUtc();
 
   const gestiones = await prisma.tbl_gestion.findMany({
     where: {
@@ -69,20 +65,13 @@ export async function obtenerReportePromesasPago(
 
     const diasVencidos =
       estado === 'VENCIDA'
-        ? Math.max(
-            1,
-            Math.floor(
-              (hoy.getTime() - fechaPromesa.getTime()) / 86_400_000,
-            ),
-          )
+        ? Math.max(1, Math.floor((hoy.getTime() - fechaPromesa.getTime()) / 86_400_000))
         : null;
 
     return {
       idgestion: g.idgestion,
       noPrestamo: g.prestamo.noPrestamo,
-      nombreCliente: g.prestamo.cliente
-        ? formatNombreClienteDisplay(g.prestamo.cliente)
-        : '—',
+      nombreCliente: g.prestamo.cliente ? formatNombreClienteDisplay(g.prestamo.cliente) : '—',
       nombreGestor: g.gestor.nombre,
       montoPromesa: decimalToNumber(g.montoPromesa),
       fechaPromesa: fechaPromesa.toISOString().slice(0, 10),
@@ -95,15 +84,10 @@ export async function obtenerReportePromesasPago(
   const vencidas = promesas.filter((p) => p.estado === 'VENCIDA').length;
   const pendientes = promesas.filter((p) => p.estado === 'PENDIENTE').length;
   const cerradas = cumplidas + vencidas;
-  const cumplimientoPct =
-    cerradas > 0 ? roundMoney((cumplidas / cerradas) * 100) : 0;
-  const montoPrometido = roundMoney(
-    promesas.reduce((s, p) => s + p.montoPromesa, 0),
-  );
+  const cumplimientoPct = cerradas > 0 ? roundMoney((cumplidas / cerradas) * 100) : 0;
+  const montoPrometido = roundMoney(promesas.reduce((s, p) => s + p.montoPromesa, 0));
   const montoCumplido = roundMoney(
-    promesas
-      .filter((p) => p.estado === 'CUMPLIDA')
-      .reduce((s, p) => s + p.montoPromesa, 0),
+    promesas.filter((p) => p.estado === 'CUMPLIDA').reduce((s, p) => s + p.montoPromesa, 0)
   );
 
   return {

@@ -23,28 +23,75 @@ export async function obtenerReporteComisionesVsProyeccion(
     throw new Error('Mandante no encontrado.');
   }
 
-  const { periodo: periodoNorm } = parsePeriodo(periodo);
+  const { inicio, fin, periodo: periodoNorm } = parsePeriodo(periodo);
   const sim = await simularLiquidacion(idmandante, periodoNorm, idusuario);
+  const esPeriodoMensual = /^\d{4}-\d{2}$/.test(periodo.trim());
+  let liquidadoRecuperado = 0;
+  let liquidadoComision = 0;
+  let cantidadLiquidaciones = 0;
+  let liquidacionEstados: string[] = [];
+  let idliquidacion: number | null = null;
+  let liquidacionEstado: string | null = null;
 
-  const liquidacion = await prisma.tbl_liquidacion.findFirst({
-    where: {
-      idmandante,
-      periodo: periodoNorm,
-      deletedAt: null,
-    },
-    orderBy: { idliquidacion: 'desc' },
-  });
+  if (esPeriodoMensual) {
+    // Compatibilidad del contrato anterior: YYYY-MM identifica exactamente
+    // la liquidación persistida del mes y usa sus totales contables.
+    const liquidacion = await prisma.tbl_liquidacion.findFirst({
+      where: { idmandante, periodo: periodoNorm, deletedAt: null },
+      orderBy: { idliquidacion: 'desc' },
+    });
+    if (liquidacion) {
+      liquidadoRecuperado = decimalToNumber(liquidacion.totalRecuperado);
+      liquidadoComision = decimalToNumber(liquidacion.totalComision);
+      cantidadLiquidaciones = 1;
+      liquidacionEstados = [liquidacion.estado];
+      idliquidacion = liquidacion.idliquidacion;
+      liquidacionEstado = liquidacion.estado;
+    }
+  } else {
+    const liquidaciones = await prisma.tbl_liquidacion.findMany({
+      where: {
+        idmandante,
+        deletedAt: null,
+        detalle: {
+          some: { pago: { fechaPago: { gte: inicio, lt: fin } } },
+        },
+      },
+      include: {
+        detalle: {
+          where: { pago: { fechaPago: { gte: inicio, lt: fin } } },
+          select: { monto: true, montoComision: true },
+        },
+      },
+    });
+    cantidadLiquidaciones = liquidaciones.length;
+    liquidacionEstados = [...new Set(liquidaciones.map((liq) => liq.estado))];
+    if (liquidaciones.length === 1) {
+      idliquidacion = liquidaciones[0].idliquidacion;
+      liquidacionEstado = liquidaciones[0].estado;
+    }
+    liquidadoRecuperado = liquidaciones.reduce(
+      (total, liquidacion) =>
+        total +
+        liquidacion.detalle.reduce(
+          (subtotal, detalle) => subtotal + decimalToNumber(detalle.monto),
+          0,
+        ),
+      0,
+    );
+    liquidadoComision = liquidaciones.reduce(
+      (total, liquidacion) =>
+        total +
+        liquidacion.detalle.reduce(
+          (subtotal, detalle) =>
+            subtotal + decimalToNumber(detalle.montoComision),
+          0,
+        ),
+      0,
+    );
+  }
 
-  const liquidadoRecuperado = liquidacion
-    ? decimalToNumber(liquidacion.totalRecuperado)
-    : 0;
-  const liquidadoComision = liquidacion
-    ? decimalToNumber(liquidacion.totalComision)
-    : 0;
-
-  const diferencialComision = roundMoney(
-    sim.totalComision - liquidadoComision,
-  );
+  const diferencialComision = roundMoney(sim.totalComision - liquidadoComision);
   const diferencialRecuperado = roundMoney(
     sim.totalRecuperado - liquidadoRecuperado,
   );
@@ -66,8 +113,10 @@ export async function obtenerReporteComisionesVsProyeccion(
     proyectadoPagos: sim.cantidadPagos,
     liquidadoRecuperado: roundMoney(liquidadoRecuperado),
     liquidadoComision: roundMoney(liquidadoComision),
-    liquidacionEstado: liquidacion?.estado ?? null,
-    idliquidacion: liquidacion?.idliquidacion ?? null,
+    liquidacionEstado,
+    idliquidacion,
+    cantidadLiquidaciones,
+    liquidacionEstados,
     diferencialComision,
     diferencialRecuperado,
     pctLiquidadoVsProyectado,

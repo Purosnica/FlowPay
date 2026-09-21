@@ -10,7 +10,11 @@ import {
 } from '@/lib/logic/cliente-tipo-persona-logic';
 import { requerirAccesoMandante } from './mandante-scope';
 import { decimalToNumber, roundMoney } from './decimal-utils';
-import { parsePeriodo } from './periodo-utils';
+import {
+  inicioDiaNegocioActualUtc,
+  parsePeriodo,
+  rangoSiguienteEquivalente,
+} from './periodo-utils';
 import {
   construirNarrativaInforme,
   type InformeGerencialNarrativa,
@@ -61,22 +65,27 @@ function formatearFechaCorta(d: Date | null | undefined): string {
   if (!d) {
     return 'Por definir';
   }
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const yyyy = d.getFullYear();
+  const dd = String(d.getUTCDate()).padStart(2, '0');
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const yyyy = d.getUTCFullYear();
   return `${dd}/${mm}/${yyyy}`;
 }
 
 function etiquetaPeriodo(inicio: Date, finExclusive: Date): string {
   const fin = new Date(finExclusive);
-  fin.setDate(fin.getDate() - 1);
-  const m = MESES_ES[inicio.getMonth()];
-  return `1 al ${fin.getDate()} de ${m} del ${inicio.getFullYear()}`;
+  fin.setUTCDate(fin.getUTCDate() - 1);
+  const inicioLabel = `${inicio.getUTCDate()} de ${MESES_ES[inicio.getUTCMonth()]}`;
+  const finLabel = `${fin.getUTCDate()} de ${MESES_ES[fin.getUTCMonth()]}`;
+  if (inicio.getUTCFullYear() === fin.getUTCFullYear()) {
+    return `${inicioLabel} al ${finLabel} del ${inicio.getUTCFullYear()}`;
+  }
+  return `${inicioLabel} del ${inicio.getUTCFullYear()} al ${finLabel} del ${fin.getUTCFullYear()}`;
 }
 
-function etiquetaMesAnio(d: Date): string {
-  const m = MESES_ES[d.getMonth()];
-  return `${m.charAt(0).toUpperCase()}${m.slice(1)} ${d.getFullYear()}`;
+function sumarDiasUtc(fecha: Date, dias: number): Date {
+  const resultado = new Date(fecha);
+  resultado.setUTCDate(resultado.getUTCDate() + dias);
+  return resultado;
 }
 
 function estatusAcuerdoLabel(estado: string): string {
@@ -92,7 +101,7 @@ function estatusAcuerdoLabel(estado: string): string {
 function tipoArregloDesdeCuotas(
   numeroCuotas: number,
   fechaInicio: Date,
-  primeraCuota: Date | null,
+  primeraCuota: Date | null
 ): string {
   if (!primeraCuota || numeroCuotas <= 1) {
     return 'Mensual';
@@ -111,14 +120,14 @@ function tipoArregloDesdeCuotas(
 export async function obtenerInformeGerencial(
   idmandante: number,
   idusuario: number,
-  periodo: string,
+  periodo: string
 ): Promise<InformeGerencial> {
   await requerirAccesoMandante(idusuario, idmandante);
 
   const { inicio, fin, periodo: periodoNorm } = parsePeriodo(periodo);
   const periodoLabel = etiquetaPeriodo(inicio, fin);
-  const proximoInicio = new Date(fin);
-  const proximoPeriodoLabel = etiquetaMesAnio(proximoInicio);
+  const { inicio: proximoInicio, fin: proximoFin } = rangoSiguienteEquivalente({ inicio, fin });
+  const proximoPeriodoLabel = etiquetaPeriodo(proximoInicio, proximoFin);
 
   const mandante = await prisma.tbl_mandante.findFirst({
     where: { idmandante, deletedAt: null },
@@ -150,7 +159,9 @@ export async function obtenerInformeGerencial(
         fechaPago: true,
         medio: true,
         diasMoraAplicacion: true,
-        gestion: { select: { idgestor: true, gestor: { select: { nombre: true } } } },
+        gestion: {
+          select: { idgestor: true, gestor: { select: { nombre: true } } },
+        },
         gestor: { select: { nombre: true } },
         prestamo: {
           select: {
@@ -219,12 +230,9 @@ export async function obtenerInformeGerencial(
       where: {
         idmandante,
         deletedAt: null,
-        fechaPromesa: { not: null, gte: new Date() },
+        fechaPromesa: { not: null, gte: inicioDiaNegocioActualUtc() },
         montoPromesa: { not: null },
-        OR: [
-          { estadoPromesa: 'PENDIENTE' },
-          { estadoPromesa: null },
-        ],
+        OR: [{ estadoPromesa: 'PENDIENTE' }, { estadoPromesa: null }],
         prestamo: { deletedAt: null, estado: { not: 'Cancelado' } },
       },
       select: { idprestamo: true },
@@ -243,22 +251,14 @@ export async function obtenerInformeGerencial(
     }),
   ]);
 
-  const montoRecuperado = roundMoney(
-    pagosRaw.reduce((s, p) => s + decimalToNumber(p.monto), 0),
-  );
+  const montoRecuperado = roundMoney(pagosRaw.reduce((s, p) => s + decimalToNumber(p.monto), 0));
 
   const acuerdosFormalizados = acuerdosRaw.length;
-  const acuerdosCumplidos = acuerdosRaw.filter(
-    (a) => a.estado === 'CUMPLIDO',
-  ).length;
-  const acuerdosIncumplidos = acuerdosRaw.filter(
-    (a) => a.estado === 'ROTO',
-  ).length;
+  const acuerdosCumplidos = acuerdosRaw.filter((a) => a.estado === 'CUMPLIDO').length;
+  const acuerdosIncumplidos = acuerdosRaw.filter((a) => a.estado === 'ROTO').length;
   const acuerdosCerrados = acuerdosCumplidos + acuerdosIncumplidos;
   const eficaciaAcuerdosPct =
-    acuerdosCerrados > 0
-      ? roundMoney((acuerdosCumplidos / acuerdosCerrados) * 100)
-      : 0;
+    acuerdosCerrados > 0 ? roundMoney((acuerdosCumplidos / acuerdosCerrados) * 100) : 0;
 
   const indicadores: InformeGerencialIndicadores = {
     montoRecuperado,
@@ -269,42 +269,32 @@ export async function obtenerInformeGerencial(
     totalGestiones: gestionesPeriodo,
   };
 
-  const acuerdos: InformeGerencialAcuerdoItem[] = acuerdosRaw.map(
-    (a, idx) => {
-      const primera = a.cuotas[0] ?? null;
-      const fechaPrimerPago = primera?.fechaVencimiento ?? a.fechaInicio;
-      return {
-        numero: idx + 1,
-        cliente: formatNombreClienteDisplay(a.prestamo.cliente),
-        saldoTotal: roundMoney(decimalToNumber(a.prestamo.saldoTotal)),
-        tipoArreglo: tipoArregloDesdeCuotas(
-          a.numeroCuotas,
-          a.fechaInicio,
-          primera?.fechaVencimiento ?? null,
-        ),
-        montoCuota: roundMoney(
-          decimalToNumber(primera?.montoCuota ?? a.montoCuota),
-        ),
-        plazo:
-          a.numeroCuotas > 0
-            ? `${a.numeroCuotas} cuota${a.numeroCuotas === 1 ? '' : 's'}`
-            : 'Por definir',
-        fechaPrimerPago: formatearFechaCorta(fechaPrimerPago),
-        estatus: estatusAcuerdoLabel(a.estado),
-      };
-    },
-  );
+  const acuerdos: InformeGerencialAcuerdoItem[] = acuerdosRaw.map((a, idx) => {
+    const primera = a.cuotas[0] ?? null;
+    const fechaPrimerPago = primera?.fechaVencimiento ?? a.fechaInicio;
+    return {
+      numero: idx + 1,
+      cliente: formatNombreClienteDisplay(a.prestamo.cliente),
+      saldoTotal: roundMoney(decimalToNumber(a.prestamo.saldoTotal)),
+      tipoArreglo: tipoArregloDesdeCuotas(
+        a.numeroCuotas,
+        a.fechaInicio,
+        primera?.fechaVencimiento ?? null
+      ),
+      montoCuota: roundMoney(decimalToNumber(primera?.montoCuota ?? a.montoCuota)),
+      plazo:
+        a.numeroCuotas > 0
+          ? `${a.numeroCuotas} cuota${a.numeroCuotas === 1 ? '' : 's'}`
+          : 'Por definir',
+      fechaPrimerPago: formatearFechaCorta(fechaPrimerPago),
+      estatus: estatusAcuerdoLabel(a.estado),
+    };
+  });
 
   const pagos: InformeGerencialPagoItem[] = pagosRaw.map((p) => {
     const ejecutivo =
-      p.gestor?.nombre ??
-      p.gestion?.gestor?.nombre ??
-      p.prestamo.gestor?.nombre ??
-      '—';
-    const depto =
-      p.prestamo.cliente.departamento?.descripcion ??
-      p.prestamo.cliente.ciudad ??
-      '—';
+      p.gestor?.nombre ?? p.gestion?.gestor?.nombre ?? p.prestamo.gestor?.nombre ?? '—';
+    const depto = p.prestamo.cliente.departamento?.descripcion ?? p.prestamo.cliente.ciudad ?? '—';
     return {
       cliente: formatNombreClienteDisplay(p.prestamo.cliente),
       noPrestamo: p.prestamo.noPrestamo,
@@ -322,16 +312,12 @@ export async function obtenerInformeGerencial(
 
   const idsConAcuerdo = new Set(prestamosConAcuerdo.map((a) => a.idprestamo));
   const idsConPromesa = new Set(
-    prestamosConPromesa
-      .map((g) => g.idprestamo)
-      .filter((id) => !idsConAcuerdo.has(id)),
+    prestamosConPromesa.map((g) => g.idprestamo).filter((id) => !idsConAcuerdo.has(id))
   );
   const baseCartera = Math.max(totalPrestamos, 1);
   const pctAcuerdo = roundMoney((idsConAcuerdo.size / baseCartera) * 100);
   const pctPromesa = roundMoney((idsConPromesa.size / baseCartera) * 100);
-  const pctCritica = roundMoney(
-    Math.max(0, 100 - pctAcuerdo - pctPromesa),
-  );
+  const pctCritica = roundMoney(Math.max(0, 100 - pctAcuerdo - pctPromesa));
 
   const segmentos: InformeGerencialSegmentoItem[] = [
     {
@@ -391,9 +377,7 @@ export async function obtenerInformeGerencial(
     {
       accion: 'Escalamiento de gestión en clientes reincidentes',
       responsable: 'Equipo de cobranza',
-      fechaLimite: formatearFechaCorta(
-        new Date(proximoInicio.getFullYear(), proximoInicio.getMonth(), 10),
-      ),
+      fechaLimite: formatearFechaCorta(sumarDiasUtc(proximoInicio, 9)),
       kpiExito: '100% de casos escalados',
     },
     {
@@ -411,17 +395,13 @@ export async function obtenerInformeGerencial(
     {
       accion: 'Implementación de recordatorios automáticos (WhatsApp/SMS)',
       responsable: 'Soporte técnico',
-      fechaLimite: formatearFechaCorta(
-        new Date(proximoInicio.getFullYear(), proximoInicio.getMonth(), 5),
-      ),
+      fechaLimite: formatearFechaCorta(sumarDiasUtc(proximoInicio, 4)),
       kpiExito: 'Tasa de recordatorio del 100%',
     },
     {
       accion: 'Solicitud formal de actualización de datos de contacto',
       responsable: 'Administración',
-      fechaLimite: formatearFechaCorta(
-        new Date(proximoInicio.getFullYear(), proximoInicio.getMonth(), 7),
-      ),
+      fechaLimite: formatearFechaCorta(sumarDiasUtc(proximoInicio, 6)),
       kpiExito: 'Actualización de 30 contactos',
     },
   ];

@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { requerirAccesoMandante } from './mandante-scope';
 import { decimalToNumber, roundMoney } from './decimal-utils';
-import { parsePeriodo } from './periodo-utils';
+import { diasEnRango, factorMesesEnRango, parsePeriodo } from './periodo-utils';
 import { obtenerIdsEquipo } from './equipo-scope';
 import { ROL } from '@/lib/permissions/role-codes';
 import {
@@ -12,15 +12,6 @@ import type {
   ReporteCumplimientoMetaItem,
   ReporteCumplimientoMetas,
 } from '@/types/cobranza';
-
-function inicioSemanaActual(): Date {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  const day = d.getDay();
-  const diff = day === 0 ? 6 : day - 1;
-  d.setDate(d.getDate() - diff);
-  return d;
-}
 
 /**
  * Cumplimiento de metas de recuperación/gestiones por cobrador.
@@ -40,8 +31,10 @@ export async function obtenerReporteCumplimientoMetas(
     throw new Error('Mandante no encontrado.');
   }
 
-  const { inicio, fin, periodo: periodoNorm } = parsePeriodo(periodo);
-  const semanaInicio = inicioSemanaActual();
+  const rango = parsePeriodo(periodo);
+  const { inicio, fin, periodo: periodoNorm } = rango;
+  const factorMeses = factorMesesEnRango(rango);
+  const factorSemanas = diasEnRango(rango) / 7;
   const equipoIds = await obtenerIdsEquipo(idusuario);
 
   const cobradorIds =
@@ -57,8 +50,10 @@ export async function obtenerReporteCumplimientoMetas(
         })
       : [];
 
-  const metaRecuperacionMandante =
-    await obtenerMetaRecuperacionMes(idmandante);
+  const metaMensualMandante = await obtenerMetaRecuperacionMes(idmandante);
+  const metaRecuperacionMandante = roundMoney(
+    metaMensualMandante * factorMeses,
+  );
 
   const pagosMandante = await prisma.tbl_pago.aggregate({
     where: {
@@ -76,7 +71,7 @@ export async function obtenerReporteCumplimientoMetas(
   const cobradores: ReporteCumplimientoMetaItem[] = [];
 
   for (const cob of cobradorIds) {
-    const [metaMes, metaGestionesSemana, pagosMes, gestionesSemana] =
+    const [metaMensual, metaGestionesSemanal, pagosMes, gestionesSemana] =
       await Promise.all([
         obtenerMetaRecuperacionMes(idmandante),
         obtenerMetaGestionesSemanaUsuario(cob.idusuario),
@@ -98,14 +93,16 @@ export async function obtenerReporteCumplimientoMetas(
             idmandante,
             deletedAt: null,
             idgestor: cob.idusuario,
-            fechaGestion: { gte: semanaInicio },
+            fechaGestion: { gte: inicio, lt: fin },
           },
         }),
       ]);
 
-    const recuperadoMes = roundMoney(
-      decimalToNumber(pagosMes._sum.monto),
+    const metaMes = roundMoney(metaMensual * factorMeses);
+    const metaGestionesSemana = roundMoney(
+      metaGestionesSemanal * factorSemanas,
     );
+    const recuperadoMes = roundMoney(decimalToNumber(pagosMes._sum.monto));
     const pctMetaRecuperacion =
       metaMes > 0 ? roundMoney((recuperadoMes / metaMes) * 100) : 0;
     const pctMetaGestiones =
@@ -124,14 +121,11 @@ export async function obtenerReporteCumplimientoMetas(
       pctMetaGestiones,
       metaRecuperacionCumplida: recuperadoMes >= metaMes && metaMes > 0,
       metaGestionesCumplida:
-        gestionesSemana >= metaGestionesSemana &&
-        metaGestionesSemana > 0,
+        gestionesSemana >= metaGestionesSemana && metaGestionesSemana > 0,
     });
   }
 
-  cobradores.sort(
-    (a, b) => b.pctMetaRecuperacion - a.pctMetaRecuperacion,
-  );
+  cobradores.sort((a, b) => b.pctMetaRecuperacion - a.pctMetaRecuperacion);
 
   return {
     idmandante,
@@ -142,9 +136,7 @@ export async function obtenerReporteCumplimientoMetas(
     recuperadoMandante,
     pctMetaMandante:
       metaRecuperacionMandante > 0
-        ? roundMoney(
-            (recuperadoMandante / metaRecuperacionMandante) * 100,
-          )
+        ? roundMoney((recuperadoMandante / metaRecuperacionMandante) * 100)
         : 0,
     cobradores,
   };

@@ -1,4 +1,4 @@
-import { builder ,type  GraphQLContext } from '../../builder';
+import { builder, type GraphQLContext } from '../../builder';
 
 import { requerirAlgunPermiso, requerirPermiso } from '@/lib/permissions/permission-service';
 import { PERMISO } from '@/lib/permissions/permiso-codes';
@@ -53,225 +53,243 @@ import {
   MarcarNotificacionesLeidasSchema,
 } from '@/lib/validators/graphql-args';
 
-const InsightType = builder.objectRef<{
-  id: string;
-  severidad: string;
-  titulo: string;
-  descripcion: string;
-  metrica?: string | null;
-  accionSugerida?: string | null;
-}>('InsightAutomatico').implement({
-  fields: (t) => ({
-    id: t.exposeString('id'),
-    severidad: t.exposeString('severidad'),
-    titulo: t.exposeString('titulo'),
-    descripcion: t.exposeString('descripcion'),
-    metrica: t.exposeString('metrica', { nullable: true }),
-    accionSugerida: t.exposeString('accionSugerida', { nullable: true }),
-  }),
-});
-
-const CentroInteligenciaType = builder.objectRef<{
-  saludCartera: number;
-  recuperacionMes: number;
-  variacionRecuperacionPct: number;
-  prestamosEnMoraPct: number;
-  promesasVencidas: number;
-  acuerdosEnRiesgo: number;
-  reclamosFueraSla: number;
-  insights: Array<{
+const InsightType = builder
+  .objectRef<{
     id: string;
     severidad: string;
     titulo: string;
     descripcion: string;
     metrica?: string | null;
     accionSugerida?: string | null;
-  }>;
-}>('CentroInteligenciaResumen').implement({
-  fields: (t) => ({
-    saludCartera: t.exposeFloat('saludCartera'),
-    recuperacionMes: t.exposeFloat('recuperacionMes'),
-    variacionRecuperacionPct: t.exposeFloat('variacionRecuperacionPct'),
-    prestamosEnMoraPct: t.exposeFloat('prestamosEnMoraPct'),
-    promesasVencidas: t.exposeInt('promesasVencidas'),
-    acuerdosEnRiesgo: t.exposeInt('acuerdosEnRiesgo'),
-    reclamosFueraSla: t.exposeInt('reclamosFueraSla'),
-    insights: t.field({ type: [InsightType], resolve: (p) => p.insights }),
-  }),
-});
+  }>('InsightAutomatico')
+  .implement({
+    fields: (t) => ({
+      id: t.exposeString('id'),
+      severidad: t.exposeString('severidad'),
+      titulo: t.exposeString('titulo'),
+      descripcion: t.exposeString('descripcion'),
+      metrica: t.exposeString('metrica', { nullable: true }),
+      accionSugerida: t.exposeString('accionSugerida', { nullable: true }),
+    }),
+  });
 
-const TendenciaRecuperacionType = builder.objectRef<{
-  periodo: string;
-  monto: number;
-}>('TendenciaRecuperacion').implement({
-  fields: (t) => ({
-    periodo: t.exposeString('periodo'),
-    monto: t.exposeFloat('monto'),
-  }),
-});
+const CentroInteligenciaType = builder
+  .objectRef<{
+    saludCartera: number;
+    recuperacionMes: number;
+    variacionRecuperacionPct: number;
+    prestamosEnMoraPct: number;
+    promesasVencidas: number;
+    acuerdosEnRiesgo: number;
+    reclamosFueraSla: number;
+    insights: Array<{
+      id: string;
+      severidad: string;
+      titulo: string;
+      descripcion: string;
+      metrica?: string | null;
+      accionSugerida?: string | null;
+    }>;
+  }>('CentroInteligenciaResumen')
+  .implement({
+    fields: (t) => ({
+      saludCartera: t.exposeFloat('saludCartera'),
+      recuperacionMes: t.exposeFloat('recuperacionMes'),
+      variacionRecuperacionPct: t.exposeFloat('variacionRecuperacionPct'),
+      prestamosEnMoraPct: t.exposeFloat('prestamosEnMoraPct'),
+      promesasVencidas: t.exposeInt('promesasVencidas'),
+      acuerdosEnRiesgo: t.exposeInt('acuerdosEnRiesgo'),
+      reclamosFueraSla: t.exposeInt('reclamosFueraSla'),
+      insights: t.field({ type: [InsightType], resolve: (p) => p.insights }),
+    }),
+  });
 
-const RankingCobradorType = builder.objectRef<{
-  idgestor: number;
-  nombre: string;
-  gestiones: number;
-  montoRecuperado: number;
-  promesasCumplidas: number;
-  posicion: number;
-  nivel: string;
-  xp: number;
-  insignias: string[];
-}>('RankingCobrador').implement({
-  fields: (t) => ({
-    idgestor: t.exposeInt('idgestor'),
-    nombre: t.exposeString('nombre'),
-    gestiones: t.exposeInt('gestiones'),
-    montoRecuperado: t.exposeFloat('montoRecuperado'),
-    promesasCumplidas: t.exposeInt('promesasCumplidas'),
-    posicion: t.exposeInt('posicion'),
-    nivel: t.exposeString('nivel'),
-    xp: t.exposeInt('xp'),
-    insignias: t.exposeStringList('insignias'),
-  }),
-});
+const TendenciaRecuperacionType = builder
+  .objectRef<{
+    periodo: string;
+    monto: number;
+  }>('TendenciaRecuperacion')
+  .implement({
+    fields: (t) => ({
+      periodo: t.exposeString('periodo'),
+      monto: t.exposeFloat('monto'),
+    }),
+  });
 
-const DashboardSupervisorType = builder.objectRef<{
-  totalCobradores: number;
-  gestionesHoy: number;
-  gestionesAyer: number;
-  montoRecuperadoMes: number;
-  promesasVencidasEquipo: number;
-  casosSinGestion7d: number;
-  tasaContactoEquipoPct: number;
-  ranking: Array<{
+const RankingCobradorType = builder
+  .objectRef<{
     idgestor: number;
     nombre: string;
     gestiones: number;
     montoRecuperado: number;
-    efectividadPct: number;
-  }>;
-}>('DashboardSupervisorResumen').implement({
-  fields: (t) => ({
-    totalCobradores: t.exposeInt('totalCobradores'),
-    gestionesHoy: t.exposeInt('gestionesHoy'),
-    gestionesAyer: t.exposeInt('gestionesAyer'),
-    montoRecuperadoMes: t.exposeFloat('montoRecuperadoMes'),
-    promesasVencidasEquipo: t.exposeInt('promesasVencidasEquipo'),
-    casosSinGestion7d: t.exposeInt('casosSinGestion7d'),
-    tasaContactoEquipoPct: t.exposeFloat('tasaContactoEquipoPct'),
-    ranking: t.field({
-      type: [
-        builder.objectRef<{
-          idgestor: number;
-          nombre: string;
-          gestiones: number;
-          montoRecuperado: number;
-          efectividadPct: number;
-        }>('RankingSupervisorItem').implement({
-          fields: (t2) => ({
-            idgestor: t2.exposeInt('idgestor'),
-            nombre: t2.exposeString('nombre'),
-            gestiones: t2.exposeInt('gestiones'),
-            montoRecuperado: t2.exposeFloat('montoRecuperado'),
-            efectividadPct: t2.exposeFloat('efectividadPct'),
-          }),
-        }),
-      ],
-      resolve: (p) => p.ranking,
+    promesasCumplidas: number;
+    posicion: number;
+    nivel: string;
+    xp: number;
+    insignias: string[];
+  }>('RankingCobrador')
+  .implement({
+    fields: (t) => ({
+      idgestor: t.exposeInt('idgestor'),
+      nombre: t.exposeString('nombre'),
+      gestiones: t.exposeInt('gestiones'),
+      montoRecuperado: t.exposeFloat('montoRecuperado'),
+      promesasCumplidas: t.exposeInt('promesasCumplidas'),
+      posicion: t.exposeInt('posicion'),
+      nivel: t.exposeString('nivel'),
+      xp: t.exposeInt('xp'),
+      insignias: t.exposeStringList('insignias'),
     }),
-  }),
-});
+  });
 
-const MiDiaResumenType = builder.objectRef<{
-  casosPrioritarios: number;
-  promesasHoy: number;
-  promesasVencidas: number;
-  gestionesHoy: number;
-  pagosHoy: number;
-  montoRecuperadoHoy: number;
-  agendaHoy: number;
-}>('MiDiaResumen').implement({
-  fields: (t) => ({
-    casosPrioritarios: t.exposeInt('casosPrioritarios'),
-    promesasHoy: t.exposeInt('promesasHoy'),
-    promesasVencidas: t.exposeInt('promesasVencidas'),
-    gestionesHoy: t.exposeInt('gestionesHoy'),
-    pagosHoy: t.exposeInt('pagosHoy'),
-    montoRecuperadoHoy: t.exposeFloat('montoRecuperadoHoy'),
-    agendaHoy: t.exposeInt('agendaHoy'),
-  }),
-});
+const DashboardSupervisorType = builder
+  .objectRef<{
+    totalCobradores: number;
+    gestionesHoy: number;
+    gestionesAyer: number;
+    montoRecuperadoMes: number;
+    promesasVencidasEquipo: number;
+    casosSinGestion7d: number;
+    tasaContactoEquipoPct: number;
+    ranking: Array<{
+      idgestor: number;
+      nombre: string;
+      gestiones: number;
+      montoRecuperado: number;
+      efectividadPct: number;
+    }>;
+  }>('DashboardSupervisorResumen')
+  .implement({
+    fields: (t) => ({
+      totalCobradores: t.exposeInt('totalCobradores'),
+      gestionesHoy: t.exposeInt('gestionesHoy'),
+      gestionesAyer: t.exposeInt('gestionesAyer'),
+      montoRecuperadoMes: t.exposeFloat('montoRecuperadoMes'),
+      promesasVencidasEquipo: t.exposeInt('promesasVencidasEquipo'),
+      casosSinGestion7d: t.exposeInt('casosSinGestion7d'),
+      tasaContactoEquipoPct: t.exposeFloat('tasaContactoEquipoPct'),
+      ranking: t.field({
+        type: [
+          builder
+            .objectRef<{
+              idgestor: number;
+              nombre: string;
+              gestiones: number;
+              montoRecuperado: number;
+              efectividadPct: number;
+            }>('RankingSupervisorItem')
+            .implement({
+              fields: (t2) => ({
+                idgestor: t2.exposeInt('idgestor'),
+                nombre: t2.exposeString('nombre'),
+                gestiones: t2.exposeInt('gestiones'),
+                montoRecuperado: t2.exposeFloat('montoRecuperado'),
+                efectividadPct: t2.exposeFloat('efectividadPct'),
+              }),
+            }),
+        ],
+        resolve: (p) => p.ranking,
+      }),
+    }),
+  });
 
-const MiDiaCasoType = builder.objectRef<{
-  idprestamo: number;
-  noPrestamo: string;
-  nombreCliente: string;
-  saldoTotal: number;
-  diasMora: number;
-  scorePrioridad: number;
-  motivoPrioridad: string;
-  telefono: string | null;
-}>('MiDiaCaso').implement({
-  fields: (t) => ({
-    idprestamo: t.exposeInt('idprestamo'),
-    noPrestamo: t.exposeString('noPrestamo'),
-    nombreCliente: t.exposeString('nombreCliente'),
-    saldoTotal: t.exposeFloat('saldoTotal'),
-    diasMora: t.exposeInt('diasMora'),
-    scorePrioridad: t.exposeFloat('scorePrioridad'),
-    motivoPrioridad: t.exposeString('motivoPrioridad'),
-    telefono: t.exposeString('telefono', { nullable: true }),
-  }),
-});
+const MiDiaResumenType = builder
+  .objectRef<{
+    casosPrioritarios: number;
+    promesasHoy: number;
+    promesasVencidas: number;
+    gestionesHoy: number;
+    pagosHoy: number;
+    montoRecuperadoHoy: number;
+    agendaHoy: number;
+  }>('MiDiaResumen')
+  .implement({
+    fields: (t) => ({
+      casosPrioritarios: t.exposeInt('casosPrioritarios'),
+      promesasHoy: t.exposeInt('promesasHoy'),
+      promesasVencidas: t.exposeInt('promesasVencidas'),
+      gestionesHoy: t.exposeInt('gestionesHoy'),
+      pagosHoy: t.exposeInt('pagosHoy'),
+      montoRecuperadoHoy: t.exposeFloat('montoRecuperadoHoy'),
+      agendaHoy: t.exposeInt('agendaHoy'),
+    }),
+  });
 
-const ProcesoOperativoResultType = builder.objectRef<{
-  evaluados: number;
-  rotos?: number;
-  vencidas?: number;
-  cumplidas?: number;
-  castigados?: number;
-  escalados?: number;
-  actualizados?: number;
-}>('ProcesoOperativoResult').implement({
-  fields: (t) => ({
-    evaluados: t.exposeInt('evaluados'),
-    rotos: t.exposeInt('rotos', { nullable: true }),
-    vencidas: t.exposeInt('vencidas', { nullable: true }),
-    cumplidas: t.exposeInt('cumplidas', { nullable: true }),
-    castigados: t.exposeInt('castigados', { nullable: true }),
-    escalados: t.exposeInt('escalados', { nullable: true }),
-    actualizados: t.exposeInt('actualizados', { nullable: true }),
-  }),
-});
+const MiDiaCasoType = builder
+  .objectRef<{
+    idprestamo: number;
+    noPrestamo: string;
+    nombreCliente: string;
+    saldoTotal: number;
+    diasMora: number;
+    scorePrioridad: number;
+    motivoPrioridad: string;
+    telefono: string | null;
+  }>('MiDiaCaso')
+  .implement({
+    fields: (t) => ({
+      idprestamo: t.exposeInt('idprestamo'),
+      noPrestamo: t.exposeString('noPrestamo'),
+      nombreCliente: t.exposeString('nombreCliente'),
+      saldoTotal: t.exposeFloat('saldoTotal'),
+      diasMora: t.exposeInt('diasMora'),
+      scorePrioridad: t.exposeFloat('scorePrioridad'),
+      motivoPrioridad: t.exposeString('motivoPrioridad'),
+      telefono: t.exposeString('telefono', { nullable: true }),
+    }),
+  });
 
-const ConfigCobranzaType = builder.objectRef<{
-  pagoAutoAplicar: boolean;
-  maxContactosDia: number;
-  acuerdoDiasGracia: number;
-  diasSinGestionAlerta: number;
-  diasMoraCastigo: number;
-  acuerdoDescuentoMaxSinAprobacion: number;
-  metaGestionesSemana: number;
-  metaRecuperacionSemana: number;
-  metaRecuperacionMes: number;
-  bandejaCandidateLimit: number;
-  miDiaCandidateLimit: number;
-}>('ConfigCobranzaOperativa').implement({
-  fields: (t) => ({
-    pagoAutoAplicar: t.exposeBoolean('pagoAutoAplicar'),
-    maxContactosDia: t.exposeInt('maxContactosDia'),
-    acuerdoDiasGracia: t.exposeInt('acuerdoDiasGracia'),
-    diasSinGestionAlerta: t.exposeInt('diasSinGestionAlerta'),
-    diasMoraCastigo: t.exposeInt('diasMoraCastigo'),
-    acuerdoDescuentoMaxSinAprobacion: t.exposeInt(
-      'acuerdoDescuentoMaxSinAprobacion',
-    ),
-    metaGestionesSemana: t.exposeInt('metaGestionesSemana'),
-    metaRecuperacionSemana: t.exposeInt('metaRecuperacionSemana'),
-    metaRecuperacionMes: t.exposeInt('metaRecuperacionMes'),
-    bandejaCandidateLimit: t.exposeInt('bandejaCandidateLimit'),
-    miDiaCandidateLimit: t.exposeInt('miDiaCandidateLimit'),
-  }),
-});
+const ProcesoOperativoResultType = builder
+  .objectRef<{
+    evaluados: number;
+    rotos?: number;
+    vencidas?: number;
+    cumplidas?: number;
+    castigados?: number;
+    escalados?: number;
+    actualizados?: number;
+  }>('ProcesoOperativoResult')
+  .implement({
+    fields: (t) => ({
+      evaluados: t.exposeInt('evaluados'),
+      rotos: t.exposeInt('rotos', { nullable: true }),
+      vencidas: t.exposeInt('vencidas', { nullable: true }),
+      cumplidas: t.exposeInt('cumplidas', { nullable: true }),
+      castigados: t.exposeInt('castigados', { nullable: true }),
+      escalados: t.exposeInt('escalados', { nullable: true }),
+      actualizados: t.exposeInt('actualizados', { nullable: true }),
+    }),
+  });
+
+const ConfigCobranzaType = builder
+  .objectRef<{
+    pagoAutoAplicar: boolean;
+    maxContactosDia: number;
+    acuerdoDiasGracia: number;
+    diasSinGestionAlerta: number;
+    diasMoraCastigo: number;
+    acuerdoDescuentoMaxSinAprobacion: number;
+    metaGestionesSemana: number;
+    metaRecuperacionSemana: number;
+    metaRecuperacionMes: number;
+    bandejaCandidateLimit: number;
+    miDiaCandidateLimit: number;
+  }>('ConfigCobranzaOperativa')
+  .implement({
+    fields: (t) => ({
+      pagoAutoAplicar: t.exposeBoolean('pagoAutoAplicar'),
+      maxContactosDia: t.exposeInt('maxContactosDia'),
+      acuerdoDiasGracia: t.exposeInt('acuerdoDiasGracia'),
+      diasSinGestionAlerta: t.exposeInt('diasSinGestionAlerta'),
+      diasMoraCastigo: t.exposeInt('diasMoraCastigo'),
+      acuerdoDescuentoMaxSinAprobacion: t.exposeInt('acuerdoDescuentoMaxSinAprobacion'),
+      metaGestionesSemana: t.exposeInt('metaGestionesSemana'),
+      metaRecuperacionSemana: t.exposeInt('metaRecuperacionSemana'),
+      metaRecuperacionMes: t.exposeInt('metaRecuperacionMes'),
+      bandejaCandidateLimit: t.exposeInt('bandejaCandidateLimit'),
+      miDiaCandidateLimit: t.exposeInt('miDiaCandidateLimit'),
+    }),
+  });
 
 async function leerConfigCobranzaOperativa(): Promise<{
   pagoAutoAplicar: boolean;
@@ -342,7 +360,7 @@ builder.queryField('centroInteligencia', (t) =>
       }
       return obtenerCentroInteligencia(idusuario, args.idmandante ?? undefined);
     },
-  }),
+  })
 );
 
 builder.queryField('tendenciaRecuperacion', (t) =>
@@ -361,13 +379,9 @@ builder.queryField('tendenciaRecuperacion', (t) =>
       if (!idusuario) {
         throw new GraphQLValidationError('Usuario no autenticado.');
       }
-      return obtenerTendenciaRecuperacion(
-        idusuario,
-        args.idmandante ?? undefined,
-        args.meses ?? 6,
-      );
+      return obtenerTendenciaRecuperacion(idusuario, args.idmandante ?? undefined, args.meses ?? 6);
     },
-  }),
+  })
 );
 
 builder.queryField('dashboardSupervisor', (t) =>
@@ -381,7 +395,7 @@ builder.queryField('dashboardSupervisor', (t) =>
       }
       return obtenerDashboardSupervisor(idusuario);
     },
-  }),
+  })
 );
 
 builder.queryField('resumenMiDia', (t) =>
@@ -395,7 +409,7 @@ builder.queryField('resumenMiDia', (t) =>
       }
       return obtenerResumenMiDia(idusuario);
     },
-  }),
+  })
 );
 
 builder.queryField('casosPrioritariosMiDia', (t) =>
@@ -410,7 +424,7 @@ builder.queryField('casosPrioritariosMiDia', (t) =>
       }
       return obtenerCasosPrioritariosMiDia(idusuario, args.limite ?? 10);
     },
-  }),
+  })
 );
 
 builder.queryField('rankingCobradores', (t) =>
@@ -425,7 +439,7 @@ builder.queryField('rankingCobradores', (t) =>
       }
       return obtenerRankingCobradores(idusuario, args.periodoDias ?? 30);
     },
-  }),
+  })
 );
 
 builder.queryField('miGamificacion', (t) =>
@@ -440,23 +454,23 @@ builder.queryField('miGamificacion', (t) =>
       }
       return obtenerGamificacionUsuario(idusuario);
     },
-  }),
+  })
 );
 
-const MetasGamificacionType = builder.objectRef<
-  Awaited<ReturnType<typeof obtenerMetasGamificacion>>
->('MetasGamificacion').implement({
-  fields: (t) => ({
-    metaGestionesSemana: t.exposeInt('metaGestionesSemana'),
-    metaRecuperacionSemana: t.exposeInt('metaRecuperacionSemana'),
-    gestionesSemana: t.exposeInt('gestionesSemana'),
-    recuperacionSemana: t.exposeFloat('recuperacionSemana'),
-    pctGestiones: t.exposeInt('pctGestiones'),
-    pctRecuperacion: t.exposeInt('pctRecuperacion'),
-    metaGestionesCumplida: t.exposeBoolean('metaGestionesCumplida'),
-    metaRecuperacionCumplida: t.exposeBoolean('metaRecuperacionCumplida'),
-  }),
-});
+const MetasGamificacionType = builder
+  .objectRef<Awaited<ReturnType<typeof obtenerMetasGamificacion>>>('MetasGamificacion')
+  .implement({
+    fields: (t) => ({
+      metaGestionesSemana: t.exposeInt('metaGestionesSemana'),
+      metaRecuperacionSemana: t.exposeInt('metaRecuperacionSemana'),
+      gestionesSemana: t.exposeInt('gestionesSemana'),
+      recuperacionSemana: t.exposeFloat('recuperacionSemana'),
+      pctGestiones: t.exposeInt('pctGestiones'),
+      pctRecuperacion: t.exposeInt('pctRecuperacion'),
+      metaGestionesCumplida: t.exposeBoolean('metaGestionesCumplida'),
+      metaRecuperacionCumplida: t.exposeBoolean('metaRecuperacionCumplida'),
+    }),
+  });
 
 builder.queryField('metasGamificacion', (t) =>
   t.field({
@@ -469,7 +483,7 @@ builder.queryField('metasGamificacion', (t) =>
       }
       return obtenerMetasGamificacion(idusuario);
     },
-  }),
+  })
 );
 
 builder.queryField('configCobranzaOperativa', (t) =>
@@ -480,7 +494,7 @@ builder.queryField('configCobranzaOperativa', (t) =>
       await asegurarConfigsCobranzaDefault();
       return leerConfigCobranzaOperativa();
     },
-  }),
+  })
 );
 
 builder.mutationField('procesarAcuerdosVencidos', (t) =>
@@ -494,7 +508,7 @@ builder.mutationField('procesarAcuerdosVencidos', (t) =>
         rotos: resultado.rotos,
       };
     },
-  }),
+  })
 );
 
 builder.mutationField('recalcularMoraCartera', (t) =>
@@ -504,17 +518,14 @@ builder.mutationField('recalcularMoraCartera', (t) =>
     resolve: async (_p, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.CONFIG_SYSTEM);
       const { idmandante: idmandanteArg } = IdMandanteArgsSchema.parse(args);
-      const idmandante = await requerirScopeOperacionCartera(
-        ctx.usuario?.idusuario,
-        idmandanteArg,
-      );
+      const idmandante = await requerirScopeOperacionCartera(ctx.usuario?.idusuario, idmandanteArg);
       const resultado = await procesarRecalculoMoraCartera(idmandante);
       return {
         evaluados: resultado.evaluados,
         actualizados: resultado.actualizados,
       };
     },
-  }),
+  })
 );
 
 builder.mutationField('procesarPromesasVencidas', (t) =>
@@ -529,7 +540,7 @@ builder.mutationField('procesarPromesasVencidas', (t) =>
         cumplidas: resultado.cumplidas,
       };
     },
-  }),
+  })
 );
 
 builder.mutationField('actualizarConfigCobranzaOperativa', (t) =>
@@ -552,112 +563,111 @@ builder.mutationField('actualizarConfigCobranzaOperativa', (t) =>
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.CONFIG_SYSTEM);
       const parsed = ActualizarConfigCobranzaSchema.parse(args);
       const idusuario = ctx.usuario?.idusuario;
-      if (
-        parsed.pagoAutoAplicar !== undefined &&
-        parsed.pagoAutoAplicar !== null
-      ) {
+      if (parsed.pagoAutoAplicar !== undefined && parsed.pagoAutoAplicar !== null) {
         await guardarConfigCobranza(
           CLAVE_PAGO_AUTO_APLICAR,
           parsed.pagoAutoAplicar ? 'true' : 'false',
-          idusuario,
+          idusuario
         );
       }
       if (parsed.maxContactosDia != null) {
         await guardarConfigCobranza(
           CLAVE_MAX_CONTACTOS_DIA,
           String(parsed.maxContactosDia),
-          idusuario,
+          idusuario
         );
       }
       if (parsed.acuerdoDiasGracia != null) {
         await guardarConfigCobranza(
           CLAVE_ACUERDO_DIAS_GRACIA,
           String(parsed.acuerdoDiasGracia),
-          idusuario,
+          idusuario
         );
       }
       if (parsed.diasSinGestionAlerta != null) {
         await guardarConfigCobranza(
           CLAVE_DIAS_SIN_GESTION_ALERTA,
           String(parsed.diasSinGestionAlerta),
-          idusuario,
+          idusuario
         );
       }
       if (parsed.diasMoraCastigo != null) {
         await guardarConfigCobranza(
           CLAVE_DIAS_MORA_CASTIGO,
           String(parsed.diasMoraCastigo),
-          idusuario,
+          idusuario
         );
       }
       if (parsed.acuerdoDescuentoMaxSinAprobacion != null) {
         await guardarConfigCobranza(
           CLAVE_ACUERDO_DESCUENTO_MAX_SIN_APROBACION,
           String(parsed.acuerdoDescuentoMaxSinAprobacion),
-          idusuario,
+          idusuario
         );
       }
       if (parsed.metaGestionesSemana != null) {
         await guardarConfigCobranza(
           CLAVE_META_GESTIONES_SEMANA,
           String(parsed.metaGestionesSemana),
-          idusuario,
+          idusuario
         );
       }
       if (parsed.metaRecuperacionSemana != null) {
         await guardarConfigCobranza(
           CLAVE_META_RECUPERACION_SEMANA,
           String(parsed.metaRecuperacionSemana),
-          idusuario,
+          idusuario
         );
       }
       if (parsed.metaRecuperacionMes != null) {
         await guardarConfigCobranza(
           CLAVE_META_RECUPERACION_MES,
           String(parsed.metaRecuperacionMes),
-          idusuario,
+          idusuario
         );
       }
       if (parsed.bandejaCandidateLimit != null) {
         await guardarConfigCobranza(
           CLAVE_BANDEJA_CANDIDATE_LIMIT,
           String(parsed.bandejaCandidateLimit),
-          idusuario,
+          idusuario
         );
       }
       if (parsed.miDiaCandidateLimit != null) {
         await guardarConfigCobranza(
           CLAVE_MI_DIA_CANDIDATE_LIMIT,
           String(parsed.miDiaCandidateLimit),
-          idusuario,
+          idusuario
         );
       }
       return leerConfigCobranzaOperativa();
     },
-  }),
+  })
 );
 
-const NotificacionType = builder.objectRef<{
-  id: string;
-  tipo: string;
-  severidad: string;
-  titulo: string;
-  mensaje: string;
-  url?: string | null;
-  createdAt: Date;
-  leida: boolean;
-}>('NotificacionOperativa').implement({
-  fields: (t) => ({
-    id: t.exposeString('id'),
-    tipo: t.exposeString('tipo'),
-    severidad: t.exposeString('severidad'),
-    titulo: t.exposeString('titulo'),
-    mensaje: t.exposeString('mensaje'),
-    url: t.exposeString('url', { nullable: true }),
-    createdAt: t.expose('createdAt', { type: 'DateTime' }),
-    leida: t.exposeBoolean('leida'),
-  }),
-});
+const NotificacionType = builder
+  .objectRef<{
+    id: string;
+    tipo: string;
+    severidad: string;
+    titulo: string;
+    mensaje: string;
+    url?: string | null;
+    createdAt: Date;
+    leida: boolean;
+  }>('NotificacionOperativa')
+  .implement({
+    fields: (t) => ({
+      id: t.exposeString('id'),
+      tipo: t.exposeString('tipo'),
+      severidad: t.exposeString('severidad'),
+      titulo: t.exposeString('titulo'),
+      mensaje: t.exposeString('mensaje'),
+      url: t.exposeString('url', { nullable: true }),
+      createdAt: t.expose('createdAt', { type: 'DateTime' }),
+      leida: t.exposeBoolean('leida'),
+    }),
+  });
 
 builder.queryField('notificacionesOperativas', (t) =>
   t.field({
@@ -670,7 +680,7 @@ builder.queryField('notificacionesOperativas', (t) =>
       const limite = Math.min(Math.max(args.limite ?? 15, 1), 30);
       return obtenerNotificacionesOperativas(idusuario, limite);
     },
-  }),
+  })
 );
 
 builder.mutationField('marcarNotificacionesOperativasLeidas', (t) =>
@@ -684,15 +694,13 @@ builder.mutationField('marcarNotificacionesOperativasLeidas', (t) =>
       const { ids } = MarcarNotificacionesLeidasSchema.parse(args);
       return marcarNotificacionesLeidas(idusuario, ids);
     },
-  }),
+  })
 );
 
 builder.queryField('dashboardGerente', (t) =>
   t.field({
     type: builder
-      .objectRef<Awaited<ReturnType<typeof obtenerDashboardGerente>>>(
-        'DashboardGerenteResumen',
-      )
+      .objectRef<Awaited<ReturnType<typeof obtenerDashboardGerente>>>('DashboardGerenteResumen')
       .implement({
         fields: (t2) => ({
           totalSupervisores: t2.exposeInt('totalSupervisores'),
@@ -738,7 +746,7 @@ builder.queryField('dashboardGerente', (t) =>
       }
       return obtenerDashboardGerente(idusuario);
     },
-  }),
+  })
 );
 
 builder.queryField('rollRateCartera', (t) =>
@@ -772,28 +780,25 @@ builder.queryField('rollRateCartera', (t) =>
           }),
         }),
       }),
-    args: { mesesAtras: t.arg.int({ required: false, defaultValue: 3 }), idmandante: t.arg.int({ required: false }) },
+    args: {
+      mesesAtras: t.arg.int({ required: false, defaultValue: 3 }),
+      idmandante: t.arg.int({ required: false }),
+    },
     resolve: async (_p, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.INTELIGENCIA_READ);
       const idusuario = ctx.usuario?.idusuario;
       if (!idusuario) {
         throw new GraphQLValidationError('Usuario no autenticado.');
       }
-      return calcularRollRate(
-        idusuario,
-        args.mesesAtras ?? 3,
-        args.idmandante ?? undefined,
-      );
+      return calcularRollRate(idusuario, args.mesesAtras ?? 3, args.idmandante ?? undefined);
     },
-  }),
+  })
 );
 
 builder.queryField('forecastRecuperacion', (t) =>
   t.field({
     type: builder
-      .objectRef<Awaited<ReturnType<typeof calcularForecastRecuperacion>>>(
-        'ForecastRecuperacion',
-      )
+      .objectRef<Awaited<ReturnType<typeof calcularForecastRecuperacion>>>('ForecastRecuperacion')
       .implement({
         fields: (t2) => ({
           recuperadoMesActual: t2.exposeFloat('recuperadoMesActual'),
@@ -805,7 +810,10 @@ builder.queryField('forecastRecuperacion', (t) =>
           pctMeta: t2.exposeFloat('pctMeta', { nullable: true }),
         }),
       }),
-    args: { idmandante: t.arg.int({ required: false }) },
+    args: {
+      idmandante: t.arg.int({ required: false }),
+      periodo: t.arg.string({ required: false }),
+    },
     resolve: async (_p, args, ctx: GraphQLContext) => {
       await requerirAlgunPermiso(ctx.usuario?.idusuario, [
         PERMISO.REPORTE_COBRANZA_READ,
@@ -818,17 +826,16 @@ builder.queryField('forecastRecuperacion', (t) =>
       return calcularForecastRecuperacion(
         idusuario,
         args.idmandante ?? undefined,
+        args.periodo ?? undefined
       );
     },
-  }),
+  })
 );
 
 builder.queryField('kpisCobranzaCore', (t) =>
   t.field({
     type: builder
-      .objectRef<Awaited<ReturnType<typeof obtenerKpisCobranzaCore>>>(
-        'KpisCobranzaCore',
-      )
+      .objectRef<Awaited<ReturnType<typeof obtenerKpisCobranzaCore>>>('KpisCobranzaCore')
       .implement({
         fields: (t2) => ({
           carteraTotal: t2.exposeFloat('carteraTotal'),
@@ -841,7 +848,10 @@ builder.queryField('kpisCobranzaCore', (t) =>
           acuerdosVigentes: t2.exposeInt('acuerdosVigentes'),
         }),
       }),
-    args: { idmandante: t.arg.int({ required: false }) },
+    args: {
+      idmandante: t.arg.int({ required: false }),
+      periodo: t.arg.string({ required: false }),
+    },
     resolve: async (_p, args, ctx: GraphQLContext) => {
       await requerirAlgunPermiso(ctx.usuario?.idusuario, [
         PERMISO.REPORTE_COBRANZA_READ,
@@ -855,9 +865,10 @@ builder.queryField('kpisCobranzaCore', (t) =>
       return obtenerKpisCobranzaCore(
         idusuario,
         args.idmandante ?? undefined,
+        args.periodo ?? undefined
       );
     },
-  }),
+  })
 );
 
 builder.mutationField('procesarCastigoCartera', (t) =>
@@ -867,17 +878,14 @@ builder.mutationField('procesarCastigoCartera', (t) =>
     resolve: async (_p, args, ctx: GraphQLContext) => {
       await requerirPermiso(ctx.usuario?.idusuario, PERMISO.CARTERA_WRITE);
       const { idmandante: idmandanteArg } = IdMandanteArgsSchema.parse(args);
-      const idmandante = await requerirScopeOperacionCartera(
-        ctx.usuario?.idusuario,
-        idmandanteArg,
-      );
+      const idmandante = await requerirScopeOperacionCartera(ctx.usuario?.idusuario, idmandanteArg);
       const resultado = await procesarCastigoCartera(idmandante);
       return {
         evaluados: resultado.evaluados,
         castigados: resultado.castigados,
       };
     },
-  }),
+  })
 );
 
 builder.mutationField('escalarReclamosSla', (t) =>
@@ -891,5 +899,5 @@ builder.mutationField('escalarReclamosSla', (t) =>
         escalados: resultado.reclamosEscalados,
       };
     },
-  }),
+  })
 );

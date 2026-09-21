@@ -7,6 +7,7 @@ import {
   FILTER_INPUT_CLASS,
   ReporteFiltrosBar,
 } from '@/components/cobranza/reporte-filtros-bar';
+import { FechaRangoInputs } from '@/components/cobranza/fecha-rango-inputs';
 import { ReporteTableSection } from '@/components/cobranza/reporte-table-section';
 import {
   cellEstadoBadge,
@@ -21,10 +22,11 @@ import {
 import { ReporteAsyncContent } from '@/components/cobranza/reporte-async-content';
 import { PageHeader } from '@/components/ui/page-header';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
+import { useRangoFechasActual } from '@/hooks/use-periodo-negocio-actual';
 import { useReporteExportFeedback } from '@/hooks/use-reporte-export-feedback';
 import { GET_REPORTE_COMISIONES_COBRADORES } from '@/lib/graphql/queries/cobranza.queries';
 import { exportReporteComisionesXlsx } from '@/lib/cobranza/export-reportes-control-xlsx';
-import { periodoActual } from '@/lib/cobranza/periodo-utils';
+import { esRangoFechasValido } from '@/lib/cobranza/periodo-utils';
 import {
   formatearMoneda,
   type ReporteComisionCobradorItem,
@@ -33,15 +35,15 @@ import {
 
 export default function ReporteComisionesCobradoresPage() {
   const [idmandante, setIdmandante] = useState<number | ''>('');
-  const [periodo, setPeriodo] = useState(periodoActual());
-  // Histórico por defecto: si se filtra el mes actual sin liquidación,
-  // el reporte parece vacío aunque existan periodos anteriores.
+  const [periodo, setPeriodo] = useRangoFechasActual();
+  // Histórico por defecto: un rango sin liquidaciones no debe ocultar
+  // periodos anteriores al abrir la pantalla.
   const [filtrarPeriodo, setFiltrarPeriodo] = useState(false);
   const { exportOk, exportError, clearFeedback, runExport } =
     useReporteExportFeedback();
 
   const mandanteId = idmandante === '' ? 0 : idmandante;
-  const periodoValido = /^\d{4}-\d{2}$/.test(periodo);
+  const periodoValido = esRangoFechasValido(periodo);
 
   const { data, isLoading, error, refetch, isFetching } = useGraphQLQuery<{
     reporteComisionesCobradores: ReporteComisionesCobradores;
@@ -62,7 +64,7 @@ export default function ReporteComisionesCobradoresPage() {
   );
 
   const emptyMessage = filtrarPeriodo
-    ? `Sin liquidaciones en ${periodo}. Desactive «Filtrar por periodo» para ver el histórico, o genere la liquidación del mes en Liquidaciones.`
+    ? `Sin comisiones liquidadas entre las fechas seleccionadas. Desactive el filtro para ver el histórico.`
     : 'Sin liquidaciones para este mandante. Genere una en Liquidaciones para ver comisiones por cobrador.';
 
   const metrics = useMemo<DashboardMetric[]>(() => {
@@ -161,25 +163,16 @@ export default function ReporteComisionesCobradoresPage() {
           runExport(() => exportReporteComisionesXlsx(reporte));
         }}
       >
-        <div>
-          <label
-            htmlFor="periodo-comisiones"
-            className="mb-1 block text-sm font-medium text-dark dark:text-white"
-          >
-            Periodo
-          </label>
-          <input
-            id="periodo-comisiones"
-            type="month"
-            value={periodo}
-            disabled={!filtrarPeriodo}
-            onChange={(e) => {
-              clearFeedback();
-              setPeriodo(e.target.value);
-            }}
-            className={`${FILTER_INPUT_CLASS} disabled:opacity-50`}
-          />
-        </div>
+        <FechaRangoInputs
+          id="periodo-comisiones"
+          value={periodo}
+          disabled={!filtrarPeriodo}
+          onChange={(value) => {
+            clearFeedback();
+            setPeriodo(value);
+          }}
+          inputClassName={`${FILTER_INPUT_CLASS} disabled:opacity-50`}
+        />
         <label className="flex items-center gap-2 pb-2 text-sm text-dark dark:text-white">
           <input
             type="checkbox"
@@ -189,7 +182,7 @@ export default function ReporteComisionesCobradoresPage() {
               setFiltrarPeriodo(e.target.checked);
             }}
           />
-          Filtrar por periodo
+          Filtrar por rango de fechas
         </label>
       </ReporteFiltrosBar>
 

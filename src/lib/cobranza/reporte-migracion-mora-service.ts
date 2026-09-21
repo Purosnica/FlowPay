@@ -2,18 +2,9 @@ import { prisma } from '@/lib/prisma';
 import { requerirAccesoMandante } from './mandante-scope';
 import { decimalToNumber, roundMoney } from './decimal-utils';
 import { parsePeriodo } from './periodo-utils';
-import {
-  cargarTramosRecuperacionMandante,
-  comisionTramosADefs,
-} from './comision-cobro-service';
-import {
-  resolverTramoMoraDef,
-  type TramoMoraDef,
-} from './tramos-mora';
-import type {
-  ReporteMigracionMora,
-  ReporteMigracionMoraItem,
-} from '@/types/cobranza';
+import { cargarTramosRecuperacionMandante, comisionTramosADefs } from './comision-cobro-service';
+import { resolverTramoMoraDef, type TramoMoraDef } from './tramos-mora';
+import type { ReporteMigracionMora, ReporteMigracionMoraItem } from '@/types/cobranza';
 
 function tramoLabel(defs: TramoMoraDef[], diasMora: number): string {
   return resolverTramoMoraDef(defs, diasMora)?.tramo ?? 'Sin tramo';
@@ -26,7 +17,7 @@ function tramoLabel(defs: TramoMoraDef[], diasMora: number): string {
 export async function obtenerReporteMigracionMora(
   idmandante: number,
   idusuario: number,
-  periodo: string,
+  periodo: string
 ): Promise<ReporteMigracionMora> {
   await requerirAccesoMandante(idusuario, idmandante);
 
@@ -40,7 +31,7 @@ export async function obtenerReporteMigracionMora(
 
   const { inicio, fin, periodo: periodoNorm } = parsePeriodo(periodo);
   const fechaDestino = new Date(fin);
-  fechaDestino.setDate(fechaDestino.getDate() - 1);
+  fechaDestino.setUTCDate(fechaDestino.getUTCDate() - 1);
 
   const [prestamos, tramosRecuperacion] = await Promise.all([
     prisma.tbl_prestamo.findMany({
@@ -67,10 +58,11 @@ export async function obtenerReporteMigracionMora(
   let totalPrestamos = 0;
 
   for (const p of prestamos) {
-    const corteOrigen = p.cortes.find((c) => c.fechaCorte < inicio);
-    const corteDestino = p.cortes.find(
-      (c) => c.fechaCorte >= inicio && c.fechaCorte < fin,
-    );
+    // Los cortes vienen descendentes: tomar el último conocido en cada
+    // frontera. Restringir destino a cortes dentro del rango hacía que un
+    // periodo histórico sin corte interno usara incorrectamente la mora actual.
+    const corteOrigen = p.cortes.find((c) => c.fechaCorte <= inicio);
+    const corteDestino = p.cortes.find((c) => c.fechaCorte < fin);
 
     const diasOrigen = corteOrigen?.diasMora ?? p.diasMora;
     const diasDestino = corteDestino?.diasMora ?? p.diasMora;

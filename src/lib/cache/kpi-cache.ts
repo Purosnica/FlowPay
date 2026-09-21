@@ -33,8 +33,9 @@ export function claveCacheResumenDashboard(
 export function claveCacheKpisCore(
   idusuario: number,
   idmandante: MandanteScope,
+  periodo?: string | null,
 ): string {
-  return `kpi:core:${idusuario}:${mandanteKeyPart(idmandante)}`;
+  return `kpi:core:${idusuario}:${mandanteKeyPart(idmandante)}:${periodo ?? 'actual'}`;
 }
 
 export async function conCacheKpi<T>(

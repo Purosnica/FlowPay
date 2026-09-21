@@ -15,6 +15,7 @@ import {
   type DashboardMetric,
 } from '@/components/dashboard/dashboard-metric-strip';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
+import { useRangoFechasActual } from '@/hooks/use-periodo-negocio-actual';
 import { usePermisos } from '@/hooks/use-permisos';
 import { GET_REPORTES_DASHBOARD } from '@/lib/graphql/queries/cobranza.queries';
 import {
@@ -34,8 +35,9 @@ import {
   exportReporteCobranzaXlsx,
 } from '@/lib/cobranza/export-reporte-hub-xlsx';
 import { ReporteAgingChart } from '@/components/cobranza/reporte-aging-chart';
+import { FechaRangoInputs } from '@/components/cobranza/fecha-rango-inputs';
 import { cellMoneda } from '@/components/cobranza/reporte-table-cells';
-import { periodoActual } from '@/lib/cobranza/periodo-utils';
+import { esRangoFechasValido } from '@/lib/cobranza/periodo-utils';
 import { cn } from '@/lib/utils';
 
 function moraTone(pct: number): DashboardMetric['tone'] {
@@ -54,7 +56,7 @@ function buildOpsMetrics(
     {
       label: 'Tasa de contacto',
       value: `${kpis.tasaContactoPct}%`,
-      sub: `${kpis.gestionesMes} gestiones en el mes`,
+      sub: `${kpis.gestionesMes} gestiones ${usarPeriodo ? 'en el rango' : 'en el mes'}`,
     },
     {
       label: 'Promesas abiertas',
@@ -62,9 +64,7 @@ function buildOpsMetrics(
     },
     {
       label: 'Acuerdos vigentes',
-      value: String(
-        reporte?.totalAcuerdosVigentes ?? kpis.acuerdosVigentes,
-      ),
+      value: String(reporte?.totalAcuerdosVigentes ?? kpis.acuerdosVigentes),
     },
   ];
 
@@ -114,14 +114,11 @@ function buildOpsMetrics(
 
 export default function ReportesPage() {
   const [idmandante, setIdmandante] = useState<number | ''>('');
-  const [periodo, setPeriodo] = useState(periodoActual());
+  const [periodo, setPeriodo] = useRangoFechasActual();
   const [usarPeriodo, setUsarPeriodo] = useState(true);
   const [filtroCatalogo, setFiltroCatalogo] = useState('');
   const permisos = usePermisos();
-  const puedeHubCobranza = usuarioPuedeVerReporte(
-    permisos,
-    REPORTE_KEY.hub,
-  );
+  const puedeHubCobranza = usuarioPuedeVerReporte(permisos, REPORTE_KEY.hub);
 
   const mandanteId = idmandante === '' ? 0 : idmandante;
 
@@ -171,7 +168,12 @@ export default function ReportesPage() {
       periodo: usarPeriodo ? periodo : null,
       meses: 6,
     },
-    { enabled: mandanteId > 0 && puedeHubCobranza },
+    {
+      enabled:
+        mandanteId > 0 &&
+        puedeHubCobranza &&
+        (!usarPeriodo || esRangoFechasValido(periodo)),
+    },
   );
 
   const reporte = data?.reporteCobranza;
@@ -303,18 +305,13 @@ export default function ReportesPage() {
             label="Mandante"
             selectClassName="w-full rounded border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2"
           />
-          <div>
-            <label className="mb-1 block text-sm font-medium text-dark dark:text-white">
-              Periodo
-            </label>
-            <input
-              type="month"
-              className="w-full rounded border border-stroke px-3 py-2 text-sm disabled:opacity-50 dark:border-dark-3 dark:bg-dark-2"
-              value={periodo}
-              disabled={!usarPeriodo}
-              onChange={(e) => setPeriodo(e.target.value)}
-            />
-          </div>
+          <FechaRangoInputs
+            id="periodo-reporte-hub"
+            value={periodo}
+            disabled={!usarPeriodo}
+            onChange={setPeriodo}
+            inputClassName="w-full rounded border border-stroke px-3 py-2 text-sm disabled:opacity-50 dark:border-dark-3 dark:bg-dark-2"
+          />
           <div className="flex items-end">
             <label className="flex items-center gap-2 pb-2 text-sm text-dark dark:text-white">
               <input
@@ -322,7 +319,7 @@ export default function ReportesPage() {
                 checked={usarPeriodo}
                 onChange={(e) => setUsarPeriodo(e.target.checked)}
               />
-              Filtrar por periodo
+              Filtrar por rango de fechas
             </label>
           </div>
         </div>
@@ -350,17 +347,20 @@ export default function ReportesPage() {
                 Resumen del mandante · actualiza al cambiar filtros
               </p>
             </div>
-            <div className="grid grid-cols-1 divide-y divide-stroke sm:grid-cols-2 sm:divide-x sm:divide-y-0 dark:divide-dark-3">
+            <div className="grid grid-cols-1 divide-y divide-stroke dark:divide-dark-3 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
               <div className="min-w-0 bg-primary/[0.06] px-5 py-5 dark:bg-primary/10">
                 <p className="text-[11px] font-medium uppercase tracking-wide text-gray-5">
-                  Recuperación del mes
+                  {usarPeriodo
+                    ? 'Recuperación del rango'
+                    : 'Recuperación del mes'}
                 </p>
                 <p className="mt-2 text-3xl font-bold tabular-nums text-primary">
                   {formatearMoneda(kpis.recuperacionMes)}
                 </p>
                 {forecastRecuperacion?.pctMeta != null && (
                   <p className="mt-1 text-xs text-gray-5">
-                    {forecastRecuperacion.pctMeta}% de meta mensual
+                    {forecastRecuperacion.pctMeta}% de meta{' '}
+                    {usarPeriodo ? 'proporcional' : 'mensual'}
                   </p>
                 )}
               </div>
@@ -390,6 +390,7 @@ export default function ReportesPage() {
 
           {forecastRecuperacion && (
             <ForecastPanel
+              scopeLabel={usarPeriodo ? 'rango' : 'mes'}
               forecast={{
                 recuperadoMesActual: forecastRecuperacion.recuperadoMesActual,
                 runRateDiario: forecastRecuperacion.runRateDiario,
@@ -407,12 +408,7 @@ export default function ReportesPage() {
               Indicadores operativos
             </h2>
             <DashboardMetricStrip
-              metrics={buildOpsMetrics(
-                kpis,
-                reporte,
-                usarPeriodo,
-                periodo,
-              )}
+              metrics={buildOpsMetrics(kpis, reporte, usarPeriodo, periodo)}
             />
           </div>
         </>

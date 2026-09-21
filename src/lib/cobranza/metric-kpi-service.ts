@@ -3,13 +3,12 @@ import { filtroMandante, requerirAccesoMandante } from './mandante-scope';
 import { decimalToNumber, roundMoney } from './decimal-utils';
 import {
   filtroFechaEnPeriodo,
+  inicioDiaNegocioActualUtc,
+  parsePeriodo,
   rangoPeriodoActual,
 } from './periodo-utils';
 import type { KpiCobranzaCore } from '@/types/cobranza';
-import {
-  claveCacheKpisCore,
-  conCacheKpi,
-} from '@/lib/cache/kpi-cache';
+import { claveCacheKpisCore, conCacheKpi } from '@/lib/cache/kpi-cache';
 import {
   obtenerResumenDiarioMaterializado,
   type ResumenDiarioCobranza,
@@ -22,16 +21,12 @@ export function mapearKpisDesdeResumenMaterializado(
   resumen: ResumenDiarioCobranza,
   live: Pick<
     KpiCobranzaCore,
-    | 'gestionesMes'
-    | 'tasaContactoPct'
-    | 'promesasAbiertas'
-    | 'acuerdosVigentes'
-  >,
+    'gestionesMes' | 'tasaContactoPct' | 'promesasAbiertas' | 'acuerdosVigentes'
+  >
 ): KpiCobranzaCore {
   const carteraTotal = roundMoney(resumen.saldoCartera);
   const carteraEnMora = roundMoney(resumen.saldoMora);
-  const carteraEnMoraPct =
-    carteraTotal > 0 ? roundMoney((carteraEnMora / carteraTotal) * 100) : 0;
+  const carteraEnMoraPct = carteraTotal > 0 ? roundMoney((carteraEnMora / carteraTotal) * 100) : 0;
   return {
     carteraTotal,
     carteraEnMora,
@@ -46,31 +41,28 @@ export function mapearKpisDesdeResumenMaterializado(
 
 async function obtenerKpisLiveOperativos(
   mandanteFilter: number | { in: number[] } | undefined,
+  rangoFecha = filtroFechaEnPeriodo(rangoPeriodoActual())
 ): Promise<
   Pick<
     KpiCobranzaCore,
-    | 'gestionesMes'
-    | 'tasaContactoPct'
-    | 'promesasAbiertas'
-    | 'acuerdosVigentes'
+    'gestionesMes' | 'tasaContactoPct' | 'promesasAbiertas' | 'acuerdosVigentes'
   >
 > {
-  const rangoMes = filtroFechaEnPeriodo(rangoPeriodoActual());
-
+  const hoy = inicioDiaNegocioActualUtc();
   const [gestionesMes, promesasAbiertas, acuerdosVigentes, gestionesConContacto] =
     await Promise.all([
       prisma.tbl_gestion.count({
         where: {
           deletedAt: null,
           idmandante: mandanteFilter,
-          fechaGestion: rangoMes,
+          fechaGestion: rangoFecha,
         },
       }),
       prisma.tbl_gestion.count({
         where: {
           deletedAt: null,
           idmandante: mandanteFilter,
-          fechaPromesa: { gte: new Date() },
+          fechaPromesa: { gte: hoy },
         },
       }),
       prisma.tbl_acuerdo.count({
@@ -84,7 +76,7 @@ async function obtenerKpisLiveOperativos(
         where: {
           deletedAt: null,
           idmandante: mandanteFilter,
-          fechaGestion: rangoMes,
+          fechaGestion: rangoFecha,
           codresult: {
             tipoGestion: { in: ['EFECTIVA', 'EFECTIVA CON TERCERO'] },
           },
@@ -93,9 +85,7 @@ async function obtenerKpisLiveOperativos(
     ]);
 
   const tasaContactoPct =
-    gestionesMes > 0
-      ? roundMoney((gestionesConContacto / gestionesMes) * 100)
-      : 0;
+    gestionesMes > 0 ? roundMoney((gestionesConContacto / gestionesMes) * 100) : 0;
 
   return {
     gestionesMes,
@@ -108,27 +98,28 @@ async function obtenerKpisLiveOperativos(
 export async function obtenerKpisCobranzaCore(
   idusuario: number,
   idmandante?: number,
+  periodo?: string | null
 ): Promise<KpiCobranzaCore> {
   if (idmandante) {
     await requerirAccesoMandante(idusuario, idmandante);
   }
 
   const mandanteFilter = idmandante ?? (await filtroMandante(idusuario));
-  const cacheKey = claveCacheKpisCore(idusuario, mandanteFilter);
+  const rango = periodo ? parsePeriodo(periodo) : rangoPeriodoActual();
+  const rangoFecha = filtroFechaEnPeriodo(rango);
+  const cacheKey = claveCacheKpisCore(idusuario, mandanteFilter, periodo ? rango.periodo : null);
 
   return conCacheKpi(cacheKey, async () => {
     // I106: un mandante con resumen del día → cartera/recuperación materializada.
-    if (typeof idmandante === 'number') {
-      const materializado =
-        await obtenerResumenDiarioMaterializado(idmandante);
+    if (!periodo && typeof idmandante === 'number') {
+      const materializado = await obtenerResumenDiarioMaterializado(idmandante);
       if (materializado) {
         const live = await obtenerKpisLiveOperativos(idmandante);
         return mapearKpisDesdeResumenMaterializado(materializado, live);
       }
     }
 
-    const rangoMes = filtroFechaEnPeriodo(rangoPeriodoActual());
-
+    const hoy = inicioDiaNegocioActualUtc();
     const [
       aggCartera,
       aggMora,
@@ -160,7 +151,7 @@ export async function obtenerKpisCobranzaCore(
           deletedAt: null,
           aplicado: true,
           idmandante: mandanteFilter,
-          fechaPago: rangoMes,
+          fechaPago: rangoFecha,
         },
         _sum: { monto: true },
       }),
@@ -168,14 +159,14 @@ export async function obtenerKpisCobranzaCore(
         where: {
           deletedAt: null,
           idmandante: mandanteFilter,
-          fechaGestion: rangoMes,
+          fechaGestion: rangoFecha,
         },
       }),
       prisma.tbl_gestion.count({
         where: {
           deletedAt: null,
           idmandante: mandanteFilter,
-          fechaPromesa: { gte: new Date() },
+          fechaPromesa: { gte: hoy },
         },
       }),
       prisma.tbl_acuerdo.count({
@@ -189,7 +180,7 @@ export async function obtenerKpisCobranzaCore(
         where: {
           deletedAt: null,
           idmandante: mandanteFilter,
-          fechaGestion: rangoMes,
+          fechaGestion: rangoFecha,
           codresult: {
             tipoGestion: { in: ['EFECTIVA', 'EFECTIVA CON TERCERO'] },
           },
@@ -202,9 +193,7 @@ export async function obtenerKpisCobranzaCore(
     const carteraEnMoraPct =
       carteraTotal > 0 ? roundMoney((carteraEnMora / carteraTotal) * 100) : 0;
     const tasaContactoPct =
-      gestionesMes > 0
-        ? roundMoney((gestionesConContacto / gestionesMes) * 100)
-        : 0;
+      gestionesMes > 0 ? roundMoney((gestionesConContacto / gestionesMes) * 100) : 0;
 
     return {
       carteraTotal,

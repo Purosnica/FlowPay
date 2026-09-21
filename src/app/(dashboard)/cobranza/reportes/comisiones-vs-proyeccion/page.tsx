@@ -18,9 +18,10 @@ import { ReporteAsyncContent } from '@/components/cobranza/reporte-async-content
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
+import { useRangoFechasActual } from '@/hooks/use-periodo-negocio-actual';
 import { useReporteExportFeedback } from '@/hooks/use-reporte-export-feedback';
 import { GET_REPORTE_COMISIONES_VS_PROYECCION } from '@/lib/graphql/queries/cobranza.queries';
-import { periodoActual } from '@/lib/cobranza/periodo-utils';
+import { esRangoFechasValido } from '@/lib/cobranza/periodo-utils';
 import {
   formatearMoneda,
   type ReporteComisionesVsProyeccion,
@@ -36,12 +37,12 @@ interface ComparacionRow {
 
 export default function Page() {
   const [idmandante, setIdmandante] = useState<number | ''>('');
-  const [periodo, setPeriodo] = useState(periodoActual());
+  const [periodo, setPeriodo] = useRangoFechasActual();
   const { exportOk, exportError, clearFeedback, runExport } =
     useReporteExportFeedback();
 
   const mandanteId = idmandante === '' ? 0 : idmandante;
-  const periodoValido = /^\d{4}-\d{2}$/.test(periodo);
+  const periodoValido = esRangoFechasValido(periodo);
 
   const { data, isLoading, error, refetch, isFetching } = useGraphQLQuery<{
     reporteComisionesVsProyeccion: ReporteComisionesVsProyeccion;
@@ -67,7 +68,10 @@ export default function Page() {
       {
         label: 'Liquidado',
         value: formatearMoneda(r.liquidadoComision),
-        sub: r.liquidacionEstado ?? 'Sin liquidación',
+        sub:
+          r.cantidadLiquidaciones > 0
+            ? `${r.cantidadLiquidaciones} liquidación(es)`
+            : 'Sin liquidación',
       },
       {
         label: 'Diferencial',
@@ -198,6 +202,12 @@ export default function Page() {
                       ? cellNumero(reporte.idliquidacion)
                       : cellTexto(null)}
                     {cellEstadoBadge(reporte.liquidacionEstado)}
+                    {reporte.cantidadLiquidaciones > 1 ? (
+                      <span className="text-gray-5">
+                        {reporte.cantidadLiquidaciones} liquidaciones ·{' '}
+                        {reporte.liquidacionEstados.join(', ')}
+                      </span>
+                    ) : null}
                   </div>
                 </CardHeader>
               </Card>

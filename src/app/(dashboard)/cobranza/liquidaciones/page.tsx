@@ -15,6 +15,7 @@ import { PERMISO } from '@/lib/permissions/permiso-codes';
 import { usePagination } from '@/hooks/use-pagination';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { useGraphQLMutation } from '@/hooks/use-graphql-mutation';
+import { usePeriodoMensualActual } from '@/hooks/use-periodo-negocio-actual';
 import {
   GET_LIQUIDACIONES,
   GET_LIQUIDACION_DETALLE,
@@ -31,7 +32,6 @@ import {
   type SimulacionLiquidacion,
   formatearMoneda,
 } from '@/types/cobranza';
-import { periodoActual } from '@/lib/cobranza/periodo-utils';
 import { crearIdempotencyKey } from '@/lib/api/idempotency-key';
 import { formatFechaNegocio } from '@/lib/utils/timezone';
 
@@ -57,19 +57,15 @@ function estadoBadge(estado: string): string {
 export default function LiquidacionesPage() {
   const queryClient = useQueryClient();
   const [idmandante, setIdmandante] = useState<number | ''>('');
-  const [periodo, setPeriodo] = useState(periodoActual());
+  const [periodo, setPeriodo] = usePeriodoMensualActual();
   const [idempotencyKey, setIdempotencyKey] = useState(crearIdempotencyKey);
   const [simulacion, setSimulacion] = useState<SimulacionLiquidacion | null>(
     null,
   );
   const [detalleId, setDetalleId] = useState<number | null>(null);
   const [confirmLiq, setConfirmLiq] = useState<ConfirmLiq>(null);
-  const {
-    queryVars,
-    resetPage,
-    handlePageChange,
-    handlePageSizeChange,
-  } = usePagination();
+  const { queryVars, resetPage, handlePageChange, handlePageSizeChange } =
+    usePagination();
 
   const mandanteId = idmandante === '' ? 0 : idmandante;
 
@@ -99,9 +95,13 @@ export default function LiquidacionesPage() {
       montoComision: number;
       ingresoEmpresa: number;
     }>;
-  }>(GET_LIQUIDACION_DETALLE, { idliquidacion: detalleId ?? 0 }, {
-    enabled: detalleId != null && detalleId > 0,
-  });
+  }>(
+    GET_LIQUIDACION_DETALLE,
+    { idliquidacion: detalleId ?? 0 },
+    {
+      enabled: detalleId != null && detalleId > 0,
+    },
+  );
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: [GET_LIQUIDACIONES] });
@@ -359,13 +359,13 @@ export default function LiquidacionesPage() {
             <PermissionGate permiso={PERMISO.LIQUIDACION_WRITE}>
               <Button
                 variant="outline"
-                disabled={!mandanteId || simularMutation.isPending}
+                disabled={!mandanteId || !periodo || simularMutation.isPending}
                 onClick={handleSimular}
               >
                 Simular
               </Button>
               <Button
-                disabled={!mandanteId || generarMutation.isPending}
+                disabled={!mandanteId || !periodo || generarMutation.isPending}
                 onClick={handleGenerar}
               >
                 Generar borrador
@@ -416,7 +416,7 @@ export default function LiquidacionesPage() {
                   <tbody>
                     {simulacion.detalle.map((d) => (
                       <tr key={d.idpago} className="border-b border-gray-100">
-                        <td className="py-1 whitespace-nowrap">
+                        <td className="whitespace-nowrap py-1">
                           {formatFechaNegocio(d.fechaPago)}
                         </td>
                         <td className="py-1">{d.noPrestamo}</td>
@@ -489,7 +489,7 @@ export default function LiquidacionesPage() {
               <tbody>
                 {detalleData?.liquidacionDetalle.map((d, i) => (
                   <tr key={i} className="border-b border-stroke/50">
-                    <td className="py-2 whitespace-nowrap">
+                    <td className="whitespace-nowrap py-2">
                       {formatFechaNegocio(d.fechaPago)}
                     </td>
                     <td className="py-2">{d.noPrestamo}</td>

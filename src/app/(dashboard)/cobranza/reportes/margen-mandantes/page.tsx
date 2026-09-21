@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { ReporteFiltrosBar } from '@/components/cobranza/reporte-filtros-bar';
 import { ReporteTableSection } from '@/components/cobranza/reporte-table-section';
@@ -16,9 +16,10 @@ import {
 import { ReporteAsyncContent } from '@/components/cobranza/reporte-async-content';
 import { PageHeader } from '@/components/ui/page-header';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
+import { useRangoFechasActual } from '@/hooks/use-periodo-negocio-actual';
 import { useReporteExportFeedback } from '@/hooks/use-reporte-export-feedback';
 import { GET_REPORTE_MARGEN_MANDANTES } from '@/lib/graphql/queries/cobranza.queries';
-import { periodoActual } from '@/lib/cobranza/periodo-utils';
+import { esRangoFechasValido } from '@/lib/cobranza/periodo-utils';
 import {
   formatearMoneda,
   type ReporteMargenMandantes,
@@ -27,19 +28,15 @@ import {
 import { exportReporteMargenMandantesXlsx } from '@/lib/cobranza/export-reportes-avanzados-xlsx';
 
 export default function Page() {
-  const [periodo, setPeriodo] = useState(periodoActual());
+  const [periodo, setPeriodo] = useRangoFechasActual();
   const { exportOk, exportError, clearFeedback, runExport } =
     useReporteExportFeedback();
 
-  const periodoValido = /^\d{4}-\d{2}$/.test(periodo);
+  const periodoValido = esRangoFechasValido(periodo);
 
   const { data, isLoading, error, refetch, isFetching } = useGraphQLQuery<{
     reporteMargenMandantes: ReporteMargenMandantes;
-  }>(
-    GET_REPORTE_MARGEN_MANDANTES,
-    { periodo },
-    { enabled: periodoValido },
-  );
+  }>(GET_REPORTE_MARGEN_MANDANTES, { periodo }, { enabled: periodoValido });
 
   const reporte = data?.reporteMargenMandantes;
 

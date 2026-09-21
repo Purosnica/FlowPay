@@ -16,10 +16,11 @@ import {
 import { ReporteAsyncContent } from '@/components/cobranza/reporte-async-content';
 import { PageHeader } from '@/components/ui/page-header';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
+import { useRangoFechasActual } from '@/hooks/use-periodo-negocio-actual';
 import { useReporteExportFeedback } from '@/hooks/use-reporte-export-feedback';
 import { GET_REPORTE_EFECTIVIDAD } from '@/lib/graphql/queries/cobranza.queries';
 import { exportReporteEfectividadXlsx } from '@/lib/cobranza/export-reportes-control-xlsx';
-import { periodoActual } from '@/lib/cobranza/periodo-utils';
+import { esRangoFechasValido } from '@/lib/cobranza/periodo-utils';
 import {
   formatearMoneda,
   type ReporteEfectividad,
@@ -28,12 +29,12 @@ import {
 
 export default function ReporteEfectividadPage() {
   const [idmandante, setIdmandante] = useState<number | ''>('');
-  const [periodo, setPeriodo] = useState(periodoActual());
+  const [periodo, setPeriodo] = useRangoFechasActual();
   const { exportOk, exportError, clearFeedback, runExport } =
     useReporteExportFeedback();
 
   const mandanteId = idmandante === '' ? 0 : idmandante;
-  const periodoValido = /^\d{4}-\d{2}$/.test(periodo);
+  const periodoValido = esRangoFechasValido(periodo);
 
   const { data, isLoading, error, refetch, isFetching } = useGraphQLQuery<{
     reporteEfectividad: ReporteEfectividad;

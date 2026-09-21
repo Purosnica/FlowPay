@@ -41,7 +41,7 @@ export function exportReporteMargenMandantesXlsx(
           { label: 'Comisiones', value: reporte.totalComision },
           { label: 'Ganancia neta', value: reporte.gananciaNeta },
           { label: 'Margen %', value: reporte.margenPct },
-        ]
+        ],
       },
       {
         name: 'Por mandante',
@@ -82,8 +82,16 @@ export function exportReporteComisionesVsProyeccionXlsx(
         title: 'Comisiones vs proyección',
         meta: metaMandante(reporte.mandanteNombre, [
           { label: 'Periodo', value: reporte.periodo },
-          { label: 'Estado liquidación', value: reporte.liquidacionEstado ?? '' },
+          {
+            label: 'Estado liquidación',
+            value: reporte.liquidacionEstado ?? '',
+          },
           { label: 'Id liquidación', value: reporte.idliquidacion ?? '' },
+          {
+            label: 'Liquidaciones incluidas',
+            value: reporte.cantidadLiquidaciones,
+          },
+          { label: 'Estados', value: reporte.liquidacionEstados.join(', ') },
         ]),
         columns: [
           { header: 'Concepto', width: 28 },
@@ -104,18 +112,8 @@ export function exportReporteComisionesVsProyeccionXlsx(
             reporte.liquidadoComision,
             reporte.diferencialComision,
           ],
-          [
-            'Ingreso empresa (proy.)',
-            reporte.proyectadoIngresoEmpresa,
-            '',
-            '',
-          ],
-          [
-            'Pagos proyectados',
-            reporte.proyectadoPagos,
-            '',
-            '',
-          ],
+          ['Ingreso empresa (proy.)', reporte.proyectadoIngresoEmpresa, '', ''],
+          ['Pagos proyectados', reporte.proyectadoPagos, '', ''],
           [
             '% liquidado vs proyectado',
             reporte.pctLiquidadoVsProyectado,
@@ -142,7 +140,7 @@ export function exportReporteIngresoTramoMoraXlsx(
           { label: 'Ingreso empresa', value: reporte.totalIngresoEmpresa },
           { label: 'Comisiones', value: reporte.totalComision },
           { label: 'Ganancia neta', value: reporte.gananciaNeta },
-        ])
+        ]),
       },
       {
         name: 'Por tramo',
@@ -190,7 +188,7 @@ export function exportReportePromesasPagoXlsx(
           { label: 'Cumplimiento %', value: reporte.cumplimientoPct },
           { label: 'Monto prometido', value: reporte.montoPrometido },
           { label: 'Monto cumplido', value: reporte.montoCumplido },
-        ])
+        ]),
       },
       {
         name: 'Promesas',
@@ -232,8 +230,11 @@ export function exportReporteProductividadDiariaXlsx(
         meta: metaMandante(reporte.mandanteNombre, [
           { label: 'Periodo', value: reporte.periodo },
           { label: 'Total gestiones', value: reporte.totalGestiones },
-          { label: 'Promedio gestiones/día', value: reporte.promedioGestionesDia },
-        ])
+          {
+            label: 'Promedio gestiones/día',
+            value: reporte.promedioGestionesDia,
+          },
+        ]),
       },
       {
         name: 'Por gestor',
@@ -293,7 +294,7 @@ export function exportReporteRecontactosXlsx(
           { label: 'Mín. gestiones', value: reporte.minGestiones },
           { label: 'Préstamos', value: reporte.totalPrestamos },
           { label: 'Saldo', value: reporte.saldoTotal },
-        ])
+        ]),
       },
       {
         name: 'Préstamos',
@@ -337,7 +338,7 @@ export function exportReporteReclamosSlaXlsx(
           { label: 'Resueltos', value: reporte.resueltos },
           { label: 'Fuera de SLA', value: reporte.fueraSla },
           { label: '% fuera SLA', value: reporte.pctFueraSla },
-        ])
+        ]),
       },
       {
         name: 'Reclamos',
@@ -383,7 +384,7 @@ export function exportReporteMigracionMoraXlsx(
           { label: 'Fecha origen', value: reporte.fechaOrigen },
           { label: 'Fecha destino', value: reporte.fechaDestino },
           { label: 'Total préstamos', value: reporte.totalPrestamos },
-        ])
+        ]),
       },
       {
         name: 'Migraciones',
@@ -418,7 +419,7 @@ export function exportReporteConcentracionRiesgoXlsx(
         title: 'Concentración de riesgo',
         meta: metaMandante(reporte.mandanteNombre, [
           { label: 'Saldo mora total', value: reporte.saldoMoraTotal },
-        ])
+        ]),
       },
       {
         name: 'Top deudores',
@@ -468,7 +469,7 @@ export function exportReporteCuotasVencidasXlsx(
         meta: metaMandante(reporte.mandanteNombre, [
           { label: 'Total cuotas', value: reporte.totalCuotas },
           { label: 'Monto total', value: reporte.montoTotal },
-        ])
+        ]),
       },
       {
         name: 'Cuotas',
@@ -522,7 +523,7 @@ export function exportReporteCumplimientoMetasXlsx(
             value: reporte.recuperadoMandante,
           },
           { label: '% meta mandante', value: reporte.pctMetaMandante },
-        ])
+        ]),
       },
       {
         name: 'Cobradores',
@@ -531,7 +532,11 @@ export function exportReporteCumplimientoMetasXlsx(
           { header: 'Gestor', width: 28 },
           { header: 'Meta recuperación', width: 16, numFmt: XLSX_FMT.money },
           { header: 'Recuperado', width: 14, numFmt: XLSX_FMT.money },
-          { header: '% meta recuperación', width: 16, numFmt: XLSX_FMT.percent },
+          {
+            header: '% meta recuperación',
+            width: 16,
+            numFmt: XLSX_FMT.percent,
+          },
           {
             header: 'Meta gestiones',
             width: 14,
@@ -576,7 +581,7 @@ export function exportReporteSupervisorEquipoXlsx(
             value: reporte.promedioEfectividad,
           },
           { label: 'Total recuperado', value: reporte.totalRecuperado },
-        ])
+        ]),
       },
       {
         name: 'Ranking',
@@ -638,7 +643,11 @@ export function exportReporteClienteObligacionesXlsx(
         columns: [
           { header: 'Documento', width: 16 },
           { header: 'Cliente', width: 32 },
-          { header: 'Mandantes con deuda', width: 16, numFmt: XLSX_FMT.integer },
+          {
+            header: 'Mandantes con deuda',
+            width: 16,
+            numFmt: XLSX_FMT.integer,
+          },
           { header: 'Préstamos', width: 12, numFmt: XLSX_FMT.integer },
           { header: 'Saldo', width: 14, numFmt: XLSX_FMT.money },
           { header: 'Máx. días mora', width: 14, numFmt: XLSX_FMT.integer },

@@ -6,19 +6,18 @@ import { MandanteSelect } from '@/components/cobranza/mandante-select';
 import { InformeGerencialDocument } from '@/components/cobranza/informe-gerencial-document';
 import { PageHeader } from '@/components/ui/page-header';
 import { ReporteAsyncContent } from '@/components/cobranza/reporte-async-content';
+import { FechaRangoInputs } from '@/components/cobranza/fecha-rango-inputs';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
+import { useRangoFechasActual } from '@/hooks/use-periodo-negocio-actual';
 import { GET_INFORME_GERENCIAL } from '@/lib/graphql/queries/cobranza.queries';
 import { exportInformePagosXlsx } from '@/lib/cobranza/export-informe-pagos-xlsx';
 import { exportInformeGerencialDocx } from '@/lib/cobranza/export-informe-gerencial-docx';
-import { periodoActual } from '@/lib/cobranza/periodo-utils';
-import {
-  formatearMoneda,
-  type InformeGerencial,
-} from '@/types/cobranza';
+import { esRangoFechasValido } from '@/lib/cobranza/periodo-utils';
+import { formatearMoneda, type InformeGerencial } from '@/types/cobranza';
 
 export default function InformeGerencialPage() {
   const [idmandante, setIdmandante] = useState<number | ''>('');
-  const [periodo, setPeriodo] = useState(periodoActual());
+  const [periodo, setPeriodo] = useRangoFechasActual();
   const [destinatarioNombre, setDestinatarioNombre] = useState('');
   const [destinatarioCargo, setDestinatarioCargo] = useState('Ingeniero');
   const [exportError, setExportError] = useState<string | null>(null);
@@ -32,7 +31,7 @@ export default function InformeGerencialPage() {
   }>(
     GET_INFORME_GERENCIAL,
     { idmandante: mandanteId, periodo },
-    { enabled: mandanteId > 0 && /^\d{4}-\d{2}$/.test(periodo) },
+    { enabled: mandanteId > 0 && esRangoFechasValido(periodo) },
   );
 
   const informe = data?.informeGerencial;
@@ -83,7 +82,7 @@ export default function InformeGerencialPage() {
       <div className="print:hidden">
         <PageHeader
           title="Informe gerencial"
-          description="Informe de cierre de mes para el mandante. Previsualice, imprima o exporte a Word / Excel."
+          description="Informe del rango de fechas seleccionado para el mandante. Previsualice, imprima o exporte a Word / Excel."
         />
 
         <div className="mt-4 space-y-3 rounded-lg border border-stroke bg-white p-4 dark:border-dark-3 dark:bg-gray-dark">
@@ -96,24 +95,15 @@ export default function InformeGerencialPage() {
               }}
               required
             />
-            <div>
-              <label
-                htmlFor="periodo-informe"
-                className="mb-1 block text-sm font-medium"
-              >
-                Periodo
-              </label>
-              <input
-                id="periodo-informe"
-                type="month"
-                value={periodo}
-                onChange={(e) => {
-                  clearFeedback();
-                  setPeriodo(e.target.value);
-                }}
-                className="rounded-md border border-stroke bg-transparent px-3 py-2 text-sm dark:border-dark-3"
-              />
-            </div>
+            <FechaRangoInputs
+              id="periodo-informe"
+              value={periodo}
+              onChange={(value) => {
+                clearFeedback();
+                setPeriodo(value);
+              }}
+              inputClassName="rounded-md border border-stroke bg-transparent px-3 py-2 text-sm dark:border-dark-3"
+            />
             <div>
               <label
                 htmlFor="dest-nombre"
@@ -209,7 +199,9 @@ export default function InformeGerencialPage() {
               <p className="text-xs text-dark-5 dark:text-dark-6">
                 Acuerdos formalizados
               </p>
-              <p className="text-lg font-semibold">{ind.acuerdosFormalizados}</p>
+              <p className="text-lg font-semibold">
+                {ind.acuerdosFormalizados}
+              </p>
             </div>
             <div className="rounded-lg border border-stroke bg-white p-3 dark:border-dark-3 dark:bg-gray-dark">
               <p className="text-xs text-dark-5 dark:text-dark-6">Cumplidos</p>
@@ -230,9 +222,8 @@ export default function InformeGerencialPage() {
       </div>
 
       {mandanteId === 0 ? (
-        <p className="print:hidden text-sm text-dark-5 dark:text-dark-6">
-          Seleccione un mandante y el periodo de cierre para generar el
-          informe.
+        <p className="text-sm text-dark-5 dark:text-dark-6 print:hidden">
+          Seleccione un mandante y el periodo de cierre para generar el informe.
         </p>
       ) : (
         <ReporteAsyncContent

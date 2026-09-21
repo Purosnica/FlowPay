@@ -1100,6 +1100,8 @@ export interface ReporteComisionesVsProyeccion {
   liquidadoComision: number;
   liquidacionEstado: string | null;
   idliquidacion: number | null;
+  cantidadLiquidaciones: number;
+  liquidacionEstados: string[];
   diferencialComision: number;
   diferencialRecuperado: number;
   pctLiquidadoVsProyectado: number;

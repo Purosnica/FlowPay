@@ -16,9 +16,9 @@ import type {
 } from '@/types/cobranza';
 
 const ReporteMargenMandanteItemType = builder
-  .objectRef<ReporteMargenMandantes['porMandante'][number]>(
-    'ReporteMargenMandanteItem',
-  )
+  .objectRef<
+    ReporteMargenMandantes['porMandante'][number]
+  >('ReporteMargenMandanteItem')
   .implement({
     fields: (t) => ({
       idmandante: t.exposeInt('idmandante'),
@@ -68,6 +68,8 @@ export const ReporteComisionesVsProyeccionType = builder
         nullable: true,
       }),
       idliquidacion: t.exposeInt('idliquidacion', { nullable: true }),
+      cantidadLiquidaciones: t.exposeInt('cantidadLiquidaciones'),
+      liquidacionEstados: t.exposeStringList('liquidacionEstados'),
       diferencialComision: t.exposeFloat('diferencialComision'),
       diferencialRecuperado: t.exposeFloat('diferencialRecuperado'),
       pctLiquidadoVsProyectado: t.exposeFloat('pctLiquidadoVsProyectado'),
@@ -75,9 +77,9 @@ export const ReporteComisionesVsProyeccionType = builder
   });
 
 const ReporteIngresoTramoItemType = builder
-  .objectRef<ReporteIngresoTramoMora['porTramo'][number]>(
-    'ReporteIngresoTramoItem',
-  )
+  .objectRef<
+    ReporteIngresoTramoMora['porTramo'][number]
+  >('ReporteIngresoTramoItem')
   .implement({
     fields: (t) => ({
       tramo: t.exposeString('tramo'),
@@ -149,9 +151,9 @@ export const ReportePromesasPagoType = builder
   });
 
 const ReporteProductividadDiaItemType = builder
-  .objectRef<ReporteProductividadDiaria['porDia'][number]>(
-    'ReporteProductividadDiaItem',
-  )
+  .objectRef<
+    ReporteProductividadDiaria['porDia'][number]
+  >('ReporteProductividadDiaItem')
   .implement({
     fields: (t) => ({
       fecha: t.exposeString('fecha'),
@@ -164,9 +166,9 @@ const ReporteProductividadDiaItemType = builder
   });
 
 const ReporteProductividadGestorResumenType = builder
-  .objectRef<ReporteProductividadDiaria['porGestor'][number]>(
-    'ReporteProductividadGestorResumen',
-  )
+  .objectRef<
+    ReporteProductividadDiaria['porGestor'][number]
+  >('ReporteProductividadGestorResumen')
   .implement({
     fields: (t) => ({
       idgestor: t.exposeInt('idgestor'),
@@ -269,9 +271,9 @@ export const ReporteReclamosSlaType = builder
   });
 
 const ReporteMigracionMoraItemType = builder
-  .objectRef<ReporteMigracionMora['migraciones'][number]>(
-    'ReporteMigracionMoraItem',
-  )
+  .objectRef<
+    ReporteMigracionMora['migraciones'][number]
+  >('ReporteMigracionMoraItem')
   .implement({
     fields: (t) => ({
       tramoOrigen: t.exposeString('tramoOrigen'),
@@ -301,9 +303,9 @@ export const ReporteMigracionMoraType = builder
   });
 
 const ReporteConcentracionItemType = builder
-  .objectRef<ReporteConcentracionRiesgo['topDeudores'][number]>(
-    'ReporteConcentracionItem',
-  )
+  .objectRef<
+    ReporteConcentracionRiesgo['topDeudores'][number]
+  >('ReporteConcentracionItem')
   .implement({
     fields: (t) => ({
       tipo: t.exposeString('tipo'),
@@ -335,9 +337,7 @@ export const ReporteConcentracionRiesgoType = builder
   });
 
 const ReporteCuotaVencidaItemType = builder
-  .objectRef<ReporteCuotasVencidas['cuotas'][number]>(
-    'ReporteCuotaVencidaItem',
-  )
+  .objectRef<ReporteCuotasVencidas['cuotas'][number]>('ReporteCuotaVencidaItem')
   .implement({
     fields: (t) => ({
       idcuota: t.exposeInt('idcuota'),
@@ -370,9 +370,9 @@ export const ReporteCuotasVencidasType = builder
   });
 
 const ReporteCumplimientoMetaItemType = builder
-  .objectRef<ReporteCumplimientoMetas['cobradores'][number]>(
-    'ReporteCumplimientoMetaItem',
-  )
+  .objectRef<
+    ReporteCumplimientoMetas['cobradores'][number]
+  >('ReporteCumplimientoMetaItem')
   .implement({
     fields: (t) => ({
       idgestor: t.exposeInt('idgestor'),
@@ -407,9 +407,9 @@ export const ReporteCumplimientoMetasType = builder
   });
 
 const ReporteSupervisorEquipoItemType = builder
-  .objectRef<ReporteSupervisorEquipo['ranking'][number]>(
-    'ReporteSupervisorEquipoItem',
-  )
+  .objectRef<
+    ReporteSupervisorEquipo['ranking'][number]
+  >('ReporteSupervisorEquipoItem')
   .implement({
     fields: (t) => ({
       idgestor: t.exposeInt('idgestor'),
@@ -419,9 +419,7 @@ const ReporteSupervisorEquipoItemType = builder
       efectividadPct: t.exposeFloat('efectividadPct'),
       montoRecuperado: t.exposeFloat('montoRecuperado'),
       brechaVsPromedioRecuperado: t.exposeFloat('brechaVsPromedioRecuperado'),
-      brechaVsPromedioEfectividad: t.exposeFloat(
-        'brechaVsPromedioEfectividad',
-      ),
+      brechaVsPromedioEfectividad: t.exposeFloat('brechaVsPromedioEfectividad'),
     }),
   });
 
@@ -445,9 +443,9 @@ export const ReporteSupervisorEquipoType = builder
   });
 
 const ReporteClienteObligacionItemType = builder
-  .objectRef<ReporteClienteObligaciones['clientes'][number]['obligaciones'][number]>(
-    'ReporteClienteObligacionItem',
-  )
+  .objectRef<
+    ReporteClienteObligaciones['clientes'][number]['obligaciones'][number]
+  >('ReporteClienteObligacionItem')
   .implement({
     fields: (t) => ({
       idprestamo: t.exposeInt('idprestamo'),
@@ -463,9 +461,9 @@ const ReporteClienteObligacionItemType = builder
   });
 
 const ReporteClienteMandanteResumenType = builder
-  .objectRef<ReporteClienteObligaciones['clientes'][number]['mandantes'][number]>(
-    'ReporteClienteMandanteResumen',
-  )
+  .objectRef<
+    ReporteClienteObligaciones['clientes'][number]['mandantes'][number]
+  >('ReporteClienteMandanteResumen')
   .implement({
     fields: (t) => ({
       idmandante: t.exposeInt('idmandante'),
@@ -478,9 +476,9 @@ const ReporteClienteMandanteResumenType = builder
   });
 
 const ReporteClienteObligacionesClienteType = builder
-  .objectRef<ReporteClienteObligaciones['clientes'][number]>(
-    'ReporteClienteObligacionesCliente',
-  )
+  .objectRef<
+    ReporteClienteObligaciones['clientes'][number]
+  >('ReporteClienteObligacionesCliente')
   .implement({
     fields: (t) => ({
       idcliente: t.exposeInt('idcliente'),

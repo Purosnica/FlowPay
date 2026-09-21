@@ -16,10 +16,11 @@ import {
 import { ReporteAsyncContent } from '@/components/cobranza/reporte-async-content';
 import { PageHeader } from '@/components/ui/page-header';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
+import { useRangoFechasActual } from '@/hooks/use-periodo-negocio-actual';
 import { useReporteExportFeedback } from '@/hooks/use-reporte-export-feedback';
 import { GET_REPORTE_CUMPLIMIENTO_METAS } from '@/lib/graphql/queries/cobranza.queries';
 import { exportReporteCumplimientoMetasXlsx } from '@/lib/cobranza/export-reportes-avanzados-xlsx';
-import { periodoActual } from '@/lib/cobranza/periodo-utils';
+import { esRangoFechasValido } from '@/lib/cobranza/periodo-utils';
 import {
   formatearMoneda,
   type ReporteCumplimientoMetaItem,
@@ -28,12 +29,12 @@ import {
 
 export default function ReporteCumplimientoMetasPage() {
   const [idmandante, setIdmandante] = useState<number | ''>('');
-  const [periodo, setPeriodo] = useState(periodoActual());
+  const [periodo, setPeriodo] = useRangoFechasActual();
   const { exportOk, exportError, clearFeedback, runExport } =
     useReporteExportFeedback();
 
   const mandanteId = idmandante === '' ? 0 : idmandante;
-  const periodoValido = /^\d{4}-\d{2}$/.test(periodo);
+  const periodoValido = esRangoFechasValido(periodo);
 
   const { data, isLoading, error, refetch, isFetching } = useGraphQLQuery<{
     reporteCumplimientoMetas: ReporteCumplimientoMetas;
@@ -87,7 +88,7 @@ export default function ReporteCumplimientoMetasPage() {
       },
       {
         accessorKey: 'gestionesSemana',
-        header: 'Gest. semana',
+        header: 'Gest. rango',
         meta: { align: 'right' },
         cell: ({ row }) => cellNumero(row.original.gestionesSemana),
       },
@@ -112,7 +113,7 @@ export default function ReporteCumplimientoMetasPage() {
     <div className="space-y-6">
       <PageHeader
         title="Cumplimiento de metas"
-        description="Meta vs recuperación/gestiones por cobrador."
+        description="Metas proporcionales vs recuperación y gestiones del rango seleccionado."
       />
 
       <ReporteFiltrosBar

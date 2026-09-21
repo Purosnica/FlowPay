@@ -1,13 +1,20 @@
 import assert from 'node:assert/strict';
 import { puedeTransicionar } from '@/lib/cobranza/estado-prestamo-service';
-import {
-  presetCoincideConFiltros,
-  PRESETS_BANDEJA_SISTEMA,
-} from '@/lib/cobranza/bandeja-presets';
+import { presetCoincideConFiltros, PRESETS_BANDEJA_SISTEMA } from '@/lib/cobranza/bandeja-presets';
 import { calcularAbonoCuotasPorTotal } from '@/lib/cobranza/acuerdo-cuota-service';
 import { construirNarrativaInforme } from '@/lib/cobranza/informe-gerencial-narrativa';
 import { parseReferenciasPrestamo } from '@/lib/cobranza/parse-referencias-prestamo';
-import { parsePeriodo, filtroFechaEnPeriodo } from '@/lib/cobranza/periodo-utils';
+import {
+  esRangoFechasValido,
+  factorMesesEnRango,
+  finRangoHastaHoy,
+  filtroFechaEnPeriodo,
+  inicioDiaNegocioActualUtc,
+  parsePeriodo,
+  periodoActual,
+  rangoFechasMesActual,
+  rangoSiguienteEquivalente,
+} from '@/lib/cobranza/periodo-utils';
 import { resolverIdGestorPago } from '@/lib/cobranza/pago-atributacion';
 import {
   folioComprobantePago,
@@ -42,10 +49,7 @@ import {
   debeCondonarResidualTrasAcuerdo,
   montosCondonacionResidual,
 } from '@/lib/logic/acuerdo-condonacion-logic';
-import {
-  puedeAsignarRol,
-  puedeEditarPermisosDelRol,
-} from '@/lib/logic/rol-privilege-logic';
+import { puedeAsignarRol, puedeEditarPermisosDelRol } from '@/lib/logic/rol-privilege-logic';
 import {
   debePreservarSaldoVivo,
   normalizarEstadoImportacion,
@@ -71,10 +75,7 @@ import {
 } from '@/lib/logic/password-policy-logic';
 import { convertirMontoAMonedaBase } from '@/lib/logic/liquidacion-fx-logic';
 import { construirMontosRapidos } from '@/lib/logic/pago-montos-rapidos-logic';
-import {
-  moverIndiceCola,
-  siguienteIdEnCola,
-} from '@/lib/logic/cola-operativa-logic';
+import { moverIndiceCola, siguienteIdEnCola } from '@/lib/logic/cola-operativa-logic';
 import { enlaceLlamadaTelefonica } from '@/lib/logic/contacto-rapido-logic';
 import {
   filtrosBandejaDesdeSearchParams,
@@ -91,8 +92,7 @@ import {
   resultadoRequiereProximaGestion,
 } from '@/lib/logic/resultado-tipificacion-logic';
 import { mensajeAvanceOperativo } from '@/lib/logic/avance-operativo-feedback-logic';
-import type { AgendaSecuenciaItem } from '@/types/cobranza';
-import type { CodigoResultado } from '@/types/cobranza';
+import type { AgendaSecuenciaItem, CodigoResultado } from '@/types/cobranza';
 
 function testTransicionesEstado(): void {
   assert.equal(puedeTransicionar('Vigente', 'Vencido'), true);
@@ -101,18 +101,10 @@ function testTransicionesEstado(): void {
 }
 
 function testBandejaPresets(): void {
-  const promesas = PRESETS_BANDEJA_SISTEMA.find(
-    (p) => p.id === 'promesas_vencidas',
-  );
+  const promesas = PRESETS_BANDEJA_SISTEMA.find((p) => p.id === 'promesas_vencidas');
   assert.ok(promesas);
-  assert.equal(
-    presetCoincideConFiltros(promesas, { soloPromesaVencida: true }),
-    true,
-  );
-  assert.equal(
-    presetCoincideConFiltros(promesas, { soloPromesaVencida: false }),
-    false,
-  );
+  assert.equal(presetCoincideConFiltros(promesas, { soloPromesaVencida: true }), true);
+  assert.equal(presetCoincideConFiltros(promesas, { soloPromesaVencida: false }), false);
 }
 
 function testAbonoCuotasAcumulado(): void {
@@ -126,28 +118,28 @@ function testAbonoCuotasAcumulado(): void {
   const parcial = calcularAbonoCuotasPorTotal(cuotas, 50);
   assert.deepEqual(
     parcial.map((r) => r.estadoNuevo),
-    ['PENDIENTE', 'PENDIENTE', 'PENDIENTE'],
+    ['PENDIENTE', 'PENDIENTE', 'PENDIENTE']
   );
 
   // Acumulado cubre 1 cuota
   const una = calcularAbonoCuotasPorTotal(cuotas, 100);
   assert.deepEqual(
     una.map((r) => r.estadoNuevo),
-    ['PAGADA', 'PENDIENTE', 'PENDIENTE'],
+    ['PAGADA', 'PENDIENTE', 'PENDIENTE']
   );
 
   // Cubre 1.5 → solo 1 PAGADA (resto abona la siguiente sin marcarla)
   const unaYMedia = calcularAbonoCuotasPorTotal(cuotas, 150);
   assert.deepEqual(
     unaYMedia.map((r) => r.estadoNuevo),
-    ['PAGADA', 'PENDIENTE', 'PENDIENTE'],
+    ['PAGADA', 'PENDIENTE', 'PENDIENTE']
   );
 
   // Cubre 2 cuotas
   const dos = calcularAbonoCuotasPorTotal(cuotas, 200);
   assert.deepEqual(
     dos.map((r) => r.estadoNuevo),
-    ['PAGADA', 'PAGADA', 'PENDIENTE'],
+    ['PAGADA', 'PAGADA', 'PENDIENTE']
   );
 
   // Preserva VENCIDA si no se cubre
@@ -156,7 +148,7 @@ function testAbonoCuotasAcumulado(): void {
       { idcuota: 1, numeroCuota: 1, montoCuota: 100, estado: 'VENCIDA' },
       { idcuota: 2, numeroCuota: 2, montoCuota: 100, estado: 'PENDIENTE' },
     ],
-    40,
+    40
   );
   assert.equal(conVencida[0]?.estadoNuevo, 'VENCIDA');
   assert.equal(conVencida[1]?.estadoNuevo, 'PENDIENTE');
@@ -191,10 +183,7 @@ testAbonoCuotasAcumulado();
 testNarrativaInformeGerencial();
 
 function testParseReferenciasPrestamo(): void {
-  assert.deepEqual(
-    parseReferenciasPrestamo('A\nB\nA, C; D\tE'),
-    ['A', 'B', 'C', 'D', 'E'],
-  );
+  assert.deepEqual(parseReferenciasPrestamo('A\nB\nA, C; D\tE'), ['A', 'B', 'C', 'D', 'E']);
   assert.deepEqual(parseReferenciasPrestamo('  \n , ; '), []);
 }
 
@@ -215,23 +204,62 @@ function testParsePeriodoUtcIncluyeDiaUno(): void {
 
 testParsePeriodoUtcIncluyeDiaUno();
 
+function testParseRangoFechasInclusivo(): void {
+  const rango = parsePeriodo('2026-06-10/2026-07-03');
+  assert.equal(rango.periodo, '2026-06-10/2026-07-03');
+  assert.equal(rango.inicio.toISOString(), '2026-06-10T00:00:00.000Z');
+  assert.equal(rango.fin.toISOString(), '2026-07-04T00:00:00.000Z');
+  assert.equal(esRangoFechasValido('2026-02-01/2026-02-28'), true);
+  assert.equal(esRangoFechasValido('2026-02-29/2026-03-01'), false);
+  assert.equal(esRangoFechasValido('2026-07-03/2026-06-10'), false);
+  assert.throws(() => parsePeriodo('2026-04-31/2026-05-01'));
+  assert.throws(() => parsePeriodo('2025-01-01/2026-01-02'));
+  assert.equal(factorMesesEnRango(parsePeriodo('2026-02-01/2026-02-28')), 1);
+  assert.equal(factorMesesEnRango(parsePeriodo('2026-01-01/2026-02-28')), 2);
+  assert.equal(factorMesesEnRango(parsePeriodo('2026-02-01/2026-02-14')), 0.5);
+}
+
+testParseRangoFechasInclusivo();
+
+function testPeriodoActualRespetaZonaNegocio(): void {
+  // En UTC ya es octubre, pero en Nicaragua todavía es 30 de septiembre.
+  const bordeUtc = new Date('2026-10-01T03:00:00.000Z');
+  assert.equal(periodoActual(bordeUtc), '2026-09');
+  assert.equal(rangoFechasMesActual(bordeUtc), '2026-09-01/2026-09-30');
+  assert.equal(inicioDiaNegocioActualUtc(bordeUtc).toISOString(), '2026-09-30T00:00:00.000Z');
+  assert.equal(
+    finRangoHastaHoy(parsePeriodo('2026-09'), bordeUtc).toISOString(),
+    '2026-10-01T00:00:00.000Z'
+  );
+  assert.equal(
+    finRangoHastaHoy(parsePeriodo('2026-10-10/2026-10-20'), bordeUtc).toISOString(),
+    '2026-10-10T00:00:00.000Z'
+  );
+}
+
+testPeriodoActualRespetaZonaNegocio();
+
+function testRangoSiguienteEquivalente(): void {
+  const marzo = rangoSiguienteEquivalente(parsePeriodo('2026-02-01/2026-02-28'));
+  assert.equal(marzo.inicio.toISOString(), '2026-03-01T00:00:00.000Z');
+  assert.equal(marzo.fin.toISOString(), '2026-04-01T00:00:00.000Z');
+
+  const siguienteParcial = rangoSiguienteEquivalente(parsePeriodo('2026-06-10/2026-07-03'));
+  assert.equal(siguienteParcial.inicio.toISOString(), '2026-07-04T00:00:00.000Z');
+  assert.equal(siguienteParcial.fin.toISOString(), '2026-07-28T00:00:00.000Z');
+}
+
+testRangoSiguienteEquivalente();
+
 function testRangoMesRelativoYFiltros(): void {
   const junio = parsePeriodo('2026-06');
   // Congelar “actual” vía parsePeriodo + offset simulado
   const { inicio, fin } = junio;
-  assert.equal(
-    filtroFechaEnPeriodo(junio).gte.toISOString(),
-    inicio.toISOString(),
-  );
-  assert.equal(
-    filtroFechaEnPeriodo(junio).lt.toISOString(),
-    fin.toISOString(),
-  );
+  assert.equal(filtroFechaEnPeriodo(junio).gte.toISOString(), inicio.toISOString());
+  assert.equal(filtroFechaEnPeriodo(junio).lt.toISOString(), fin.toISOString());
 
   // Mayo = junio - 1 mes (UTC)
-  const mayoAncla = new Date(
-    Date.UTC(inicio.getUTCFullYear(), inicio.getUTCMonth() - 1, 1),
-  );
+  const mayoAncla = new Date(Date.UTC(inicio.getUTCFullYear(), inicio.getUTCMonth() - 1, 1));
   const mayoPeriodo = `${mayoAncla.getUTCFullYear()}-${String(mayoAncla.getUTCMonth() + 1).padStart(2, '0')}`;
   assert.equal(mayoPeriodo, '2026-05');
   const mayo = parsePeriodo(mayoPeriodo);
@@ -247,20 +275,20 @@ function testResolverIdGestorPago(): void {
       gestion: { idgestor: 7 },
       prestamo: { idgestorAsignado: 3 },
     }),
-    7,
+    7
   );
   assert.equal(
     resolverIdGestorPago({
       gestion: null,
       prestamo: { idgestorAsignado: 3 },
     }),
-    3,
+    3
   );
   assert.equal(
     resolverIdGestorPago({
       prestamo: { idgestorAsignado: null },
     }),
-    null,
+    null
   );
 }
 
@@ -270,10 +298,7 @@ function testComprobantePagoLogic(): void {
   assert.equal(folioComprobantePago(42), 'FP-00000042');
   assert.equal(folioComprobantePago(1), 'FP-00000001');
   assert.equal(folioComprobantePago(100000000), 'FP-100000000');
-  assert.equal(
-    rutaComprobantePago(42),
-    '/cobranza/pagos/42/comprobante',
-  );
+  assert.equal(rutaComprobantePago(42), '/cobranza/pagos/42/comprobante');
 
   const aplicado = calcularSaldosComprobante({
     saldoActual: 700,
@@ -301,7 +326,7 @@ function testComprobantePagoLogic(): void {
       fechaPago: fecha,
       idpago: 11,
     }),
-    true,
+    true
   );
   assert.equal(
     esPagoPosteriorAlComprobante({
@@ -310,7 +335,7 @@ function testComprobantePagoLogic(): void {
       fechaPago: new Date('2026-06-01T12:00:00.000Z'),
       idpago: 99,
     }),
-    false,
+    false
   );
 }
 
@@ -333,20 +358,14 @@ function testLiquidacionEstadoLogic(): void {
 }
 
 function testPagoEstadoLogic(): void {
-  assert.equal(
-    resolverEstadoPago({ aplicado: false, deletedAt: null }),
-    ESTADOS_PAGO.PENDIENTE,
-  );
-  assert.equal(
-    resolverEstadoPago({ aplicado: true, deletedAt: null }),
-    ESTADOS_PAGO.CONCILIADO,
-  );
+  assert.equal(resolverEstadoPago({ aplicado: false, deletedAt: null }), ESTADOS_PAGO.PENDIENTE);
+  assert.equal(resolverEstadoPago({ aplicado: true, deletedAt: null }), ESTADOS_PAGO.CONCILIADO);
   assert.equal(
     resolverEstadoPago({
       aplicado: true,
       deletedAt: new Date('2026-07-22T00:00:00.000Z'),
     }),
-    ESTADOS_PAGO.ANULADO,
+    ESTADOS_PAGO.ANULADO
   );
   assert.equal(etiquetaEstadoPago(ESTADOS_PAGO.ANULADO), 'Anulado');
   assert.equal(puedeEditarPago({ aplicado: false, deletedAt: null }), true);
@@ -356,19 +375,16 @@ function testPagoEstadoLogic(): void {
       aplicado: false,
       deletedAt: new Date('2026-07-22T00:00:00.000Z'),
     }),
-    false,
+    false
   );
   assert.equal(puedeAnularPago({ deletedAt: null }), true);
-  assert.equal(
-    puedeAnularPago({ deletedAt: new Date('2026-07-22T00:00:00.000Z') }),
-    false,
-  );
+  assert.equal(puedeAnularPago({ deletedAt: new Date('2026-07-22T00:00:00.000Z') }), false);
   assert.equal(
     puedeConciliarPago({
       aplicado: false,
       deletedAt: new Date('2026-07-22T00:00:00.000Z'),
     }),
-    false,
+    false
   );
 }
 
@@ -386,10 +402,7 @@ function testPagoWaterfallLogic(): void {
     interes: 100,
     montoPrestamo: 830,
   });
-  const { asignacion, componentesNuevos } = calcularWaterfallAplicacion(
-    base,
-    80,
-  );
+  const { asignacion, componentesNuevos } = calcularWaterfallAplicacion(base, 80);
   assert.equal(asignacion.gestionCobranza, 50);
   assert.equal(asignacion.cargosAdmin, 20);
   assert.equal(asignacion.interes, 10);
@@ -425,30 +438,27 @@ testPagoWaterfallLogic();
 testAcuerdoCondonacionLogic();
 
 function testRolPrivilegeYSod(): void {
-  assert.equal(
-    puedeAsignarRol({ codigoActor: 'ADMIN', codigoRolObjetivo: 'ADMIN' }),
-    true,
-  );
+  assert.equal(puedeAsignarRol({ codigoActor: 'ADMIN', codigoRolObjetivo: 'ADMIN' }), true);
   assert.equal(
     puedeAsignarRol({
       codigoActor: 'GERENTE',
       codigoRolObjetivo: 'ADMIN',
     }),
-    false,
+    false
   );
   assert.equal(
     puedeAsignarRol({
       codigoActor: 'GERENTE',
       codigoRolObjetivo: 'COBRADOR',
     }),
-    true,
+    true
   );
   assert.equal(
     puedeEditarPermisosDelRol({
       codigoActor: 'GERENTE',
       codigoRolObjetivo: 'ADMIN',
     }),
-    false,
+    false
   );
   assert.equal(debePreservarSaldoVivo({ cantidadPagosAplicados: 1 }), true);
   assert.equal(debePreservarSaldoVivo({ cantidadPagosAplicados: 0 }), false);
@@ -464,7 +474,7 @@ function testPrestamoCuotaYMetaAcuerdo(): void {
       { idcuota: 1, numero: 1, saldo: 100, estado: 'PENDIENTE' },
       { idcuota: 2, numero: 2, saldo: 100, estado: 'PENDIENTE' },
     ],
-    150,
+    150
   );
   assert.equal(abonos.length, 2);
   assert.equal(abonos[0].montoAplicado, 100);
@@ -479,7 +489,7 @@ function testPrestamoCuotaYMetaAcuerdo(): void {
       totalPagado: 1000,
       dispensarInteresMoratorio: false,
     }),
-    1000,
+    1000
   );
   assert.equal(
     acuerdoCumplidoPorPagos({
@@ -488,7 +498,7 @@ function testPrestamoCuotaYMetaAcuerdo(): void {
       totalPagado: 1000,
       dispensarInteresMoratorio: false,
     }),
-    true,
+    true
   );
 
   const sim = simularAcuerdo({
@@ -509,7 +519,7 @@ function testPromesaEstadoYConfigMandante(): void {
       nota: '',
       tienePromesa: true,
     }),
-    ESTADO_PROMESA.CUMPLIDA,
+    ESTADO_PROMESA.CUMPLIDA
   );
   assert.equal(
     resolverEstadoPromesa({
@@ -517,32 +527,32 @@ function testPromesaEstadoYConfigMandante(): void {
       nota: 'ok [PROMESA_VENCIDA] x',
       tienePromesa: true,
     }),
-    ESTADO_PROMESA.VENCIDA,
+    ESTADO_PROMESA.VENCIDA
   );
   assert.equal(
     esPromesaAbierta({
       estadoPromesa: ESTADO_PROMESA.PENDIENTE,
       tienePromesa: true,
     }),
-    true,
+    true
   );
   assert.equal(
     promesaCumplidaPorMonto({
       montoPromesa: 100,
       montoAcumuladoPagos: 99,
     }),
-    true,
+    true
   );
   assert.equal(
     promesaCumplidaPorMonto({
       montoPromesa: 100,
       montoAcumuladoPagos: 98,
     }),
-    false,
+    false
   );
   assert.equal(
     claveMetaMandante('cobranza.dias_mora_castigo', 7),
-    'cobranza.dias_mora_castigo.mandante.7',
+    'cobranza.dias_mora_castigo.mandante.7'
   );
 }
 
@@ -568,7 +578,7 @@ function testLiquidacionFxEInformeAcuerdos(): void {
       monto: 10,
       moneda: 'USD',
       tipoCambio: null,
-    }),
+    })
   );
 
   assert.equal(PASSWORD_MIN_LENGTH, 8);
@@ -594,15 +604,21 @@ function testUxColaYMontosRapidos(): void {
     montoPromesa: 150,
   });
   assert.equal(chips[0]?.label, 'Cuota');
-  assert.equal(chips.some((c) => c.label === 'Saldo' && c.valor === 1000), true);
-  assert.equal(chips.some((c) => c.label === '50%' && c.valor === 500), true);
+  assert.equal(
+    chips.some((c) => c.label === 'Saldo' && c.valor === 1000),
+    true
+  );
+  assert.equal(
+    chips.some((c) => c.label === '50%' && c.valor === 500),
+    true
+  );
 
   assert.equal(enlaceLlamadaTelefonica('8888-1234'), 'tel:88881234');
   assert.equal(enlaceLlamadaTelefonica(null), null);
 
   const params = searchParamsDesdeFiltrosBandeja(
     { soloPromesaVencida: true, idmandante: 5 },
-    'ABC-1',
+    'ABC-1'
   );
   assert.equal(params.get('soloPromesaVencida'), '1');
   assert.equal(params.get('idmandante'), '5');
@@ -631,14 +647,11 @@ function testUxColaYMontosRapidos(): void {
   ];
   const cobrador = filtrarNavPorRol(nav, 'COBRADOR');
   assert.equal(cobrador[0]?.items.length, 2);
-  assert.equal(
-    cobrador[0]?.items.find((i) => i.title === 'Cobranza')?.items?.length,
-    2,
-  );
+  assert.equal(cobrador[0]?.items.find((i) => i.title === 'Cobranza')?.items?.length, 2);
   assert.ok(
     cobrador[0]?.items
       .find((i) => i.title === 'Cobranza')
-      ?.items?.some((s) => s.url === '/cobranza/conciliaciones'),
+      ?.items?.some((s) => s.url === '/cobranza/conciliaciones')
   );
 
   const agenda: AgendaSecuenciaItem[] = [
@@ -732,7 +745,7 @@ function testUxColaYMontosRapidos(): void {
       posicionSiguiente: 2,
       total: 10,
       nombreSiguiente: 'Elia Yamileth',
-    }).includes('Elia Yamileth'),
+    }).includes('Elia Yamileth')
   );
   assert.ok(
     mensajeAvanceOperativo({
@@ -741,7 +754,7 @@ function testUxColaYMontosRapidos(): void {
       posicionSiguiente: 2,
       total: 10,
       nombreSiguiente: 'Adelina Gonzalez',
-    }).includes('2/10'),
+    }).includes('2/10')
   );
 }
 

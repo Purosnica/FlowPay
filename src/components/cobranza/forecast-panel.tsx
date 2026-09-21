@@ -15,16 +15,24 @@ export interface ForecastPanelData {
 interface ForecastPanelProps {
   forecast: ForecastPanelData;
   className?: string;
+  scopeLabel?: 'mes' | 'rango';
 }
 
-export function ForecastPanel({ forecast, className }: ForecastPanelProps) {
+export function ForecastPanel({
+  forecast,
+  className,
+  scopeLabel = 'mes',
+}: ForecastPanelProps) {
   const hasMeta = forecast.metaMes != null;
   const pctMeta = forecast.pctMeta ?? 0;
   const progressPct = Math.min(Math.max(pctMeta, 0), 100);
 
   const items = [
     {
-      label: 'Recuperado mes actual',
+      label:
+        scopeLabel === 'rango'
+          ? 'Recuperado en rango'
+          : 'Recuperado mes actual',
       value: formatearMoneda(forecast.recuperadoMesActual),
       sub:
         hasMeta && forecast.pctMeta != null
@@ -38,7 +46,10 @@ export function ForecastPanel({ forecast, className }: ForecastPanelProps) {
       primary: false,
     },
     {
-      label: 'Forecast fin de mes',
+      label:
+        scopeLabel === 'rango'
+          ? 'Forecast fin del rango'
+          : 'Forecast fin de mes',
       value: formatearMoneda(forecast.forecastFinMes),
       sub:
         forecast.diasRestantesMes != null
@@ -49,7 +60,8 @@ export function ForecastPanel({ forecast, className }: ForecastPanelProps) {
     ...(hasMeta
       ? [
           {
-            label: 'Meta del mes',
+            label:
+              scopeLabel === 'rango' ? 'Meta proporcional' : 'Meta del mes',
             value: formatearMoneda(forecast.metaMes ?? 0),
             sub:
               forecast.pctMeta != null
@@ -64,7 +76,7 @@ export function ForecastPanel({ forecast, className }: ForecastPanelProps) {
   return (
     <div className={cn('space-y-3', className)}>
       <h2 className="text-lg font-semibold text-dark dark:text-white">
-        Proyección del mes
+        {scopeLabel === 'rango' ? 'Proyección del rango' : 'Proyección del mes'}
       </h2>
 
       <div className="overflow-hidden rounded-xl border border-stroke bg-white shadow-sm dark:border-dark-3 dark:bg-gray-dark">
@@ -105,16 +117,16 @@ export function ForecastPanel({ forecast, className }: ForecastPanelProps) {
               <p
                 className={cn(
                   'mt-1 truncate text-base font-bold tabular-nums sm:text-lg',
-                  item.primary
-                    ? 'text-primary'
-                    : 'text-dark dark:text-white',
+                  item.primary ? 'text-primary' : 'text-dark dark:text-white',
                 )}
                 title={item.value}
               >
                 {item.value}
               </p>
               {item.sub ? (
-                <p className="mt-0.5 truncate text-xs text-gray-5">{item.sub}</p>
+                <p className="mt-0.5 truncate text-xs text-gray-5">
+                  {item.sub}
+                </p>
               ) : null}
             </div>
           ))}

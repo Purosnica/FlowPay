@@ -2089,8 +2089,8 @@ export const GET_ROLL_RATE = `
 `;
 
 export const GET_FORECAST_RECUPERACION = `
-  query GetForecastRecuperacion($idmandante: Int) {
-    forecastRecuperacion(idmandante: $idmandante) {
+  query GetForecastRecuperacion($idmandante: Int, $periodo: String) {
+    forecastRecuperacion(idmandante: $idmandante, periodo: $periodo) {
       recuperadoMesActual
       diasTranscurridos
       diasRestantesMes
@@ -2103,8 +2103,8 @@ export const GET_FORECAST_RECUPERACION = `
 `;
 
 export const GET_KPIS_COBRANZA_CORE = `
-  query GetKpisCobranzaCore($idmandante: Int) {
-    kpisCobranzaCore(idmandante: $idmandante) {
+  query GetKpisCobranzaCore($idmandante: Int, $periodo: String) {
+    kpisCobranzaCore(idmandante: $idmandante, periodo: $periodo) {
       carteraTotal
       carteraEnMora
       carteraEnMoraPct
@@ -2198,7 +2198,7 @@ export const GET_REPORTES_DASHBOARD = `
         porcentajeSaldo
       }
     }
-    forecastRecuperacion(idmandante: $idmandante) {
+    forecastRecuperacion(idmandante: $idmandante, periodo: $periodo) {
       recuperadoMesActual
       diasRestantesMes
       runRateDiario
@@ -2210,7 +2210,7 @@ export const GET_REPORTES_DASHBOARD = `
       periodo
       monto
     }
-    kpisCobranzaCore(idmandante: $idmandante) {
+    kpisCobranzaCore(idmandante: $idmandante, periodo: $periodo) {
       carteraTotal
       carteraEnMora
       carteraEnMoraPct
@@ -2495,7 +2495,6 @@ export const GET_CLIENTE_VISTA_360 = `
   }
 `;
 
-
 export const GET_INFORME_GESTIONES = `
   query GetInformeGestiones(
     $idmandante: Int!
@@ -2733,6 +2732,7 @@ export const GET_REPORTE_COMISIONES_VS_PROYECCION = `
       idmandante mandanteCodigo mandanteNombre periodo
       proyectadoRecuperado proyectadoIngresoEmpresa proyectadoComision proyectadoPagos
       liquidadoRecuperado liquidadoComision liquidacionEstado idliquidacion
+      cantidadLiquidaciones liquidacionEstados
       diferencialComision diferencialRecuperado pctLiquidadoVsProyectado
     }
   }
