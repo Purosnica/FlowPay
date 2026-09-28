@@ -2877,3 +2877,99 @@ export const GET_REPORTE_CLIENTE_OBLIGACIONES = `
     }
   }
 `;
+
+
+export const GET_EXTRACTOS_BANCARIOS = `
+  query GetExtractosBancarios($idmandante: Int!) {
+    extractosBancarios(idmandante: $idmandante) {
+      idextracto
+      idmandante
+      institucionFinanciera
+      cuenta
+      moneda
+      fechaDesde
+      fechaHasta
+      archivoNombre
+      archivoHash
+      createdAt
+      totalLineas
+      pendientes
+      conciliadas
+      ambiguas
+    }
+  }
+`;
+
+export const GET_LINEAS_EXTRACTO_BANCARIO = `
+  query GetLineasExtractoBancario($idextracto: Int!, $estado: String) {
+    lineasExtractoBancario(idextracto: $idextracto, estado: $estado) {
+      idlinea
+      idextracto
+      fechaOperacion
+      fechaValor
+      referenciaOriginal
+      referenciaNormalizada
+      descripcion
+      monto
+      moneda
+      estado
+      idpago
+      metodoMatch
+      confidence
+    }
+  }
+`;
+
+export const GET_RESUMEN_CONCILIACION_BANCARIA = `
+  query GetResumenConciliacionBancaria($idextracto: Int!) {
+    resumenConciliacionBancaria(idextracto: $idextracto) {
+      total
+      pendientes
+      conciliadas
+      ambiguas
+      sinCoincidencia
+      duplicadas
+      excluidas
+    }
+  }
+`;
+
+export const CARGAR_EXTRACTO_BANCARIO = `
+  mutation CargarExtractoBancario($input: CrearExtractoBancarioInput!) {
+    cargarExtractoBancario(input: $input) {
+      idextracto
+      idmandante
+      archivoNombre
+      totalLineas
+      pendientes
+    }
+  }
+`;
+
+export const EJECUTAR_MATCHING_EXTRACTO = `
+  mutation EjecutarMatchingExtracto($idextracto: Int!) {
+    ejecutarMatchingExtracto(idextracto: $idextracto) {
+      conciliadas
+      ambiguas
+      sinCoincidencia
+    }
+  }
+`;
+
+export const CONCILIAR_LINEA_MANUAL = `
+  mutation ConciliarLineaManual($idlinea: Int!, $idpago: Int!, $motivo: String!) {
+    conciliarLineaManual(idlinea: $idlinea, idpago: $idpago, motivo: $motivo)
+  }
+`;
+
+export const DESCONCILIAR_LINEA_BANCARIA = `
+  mutation DesconciliarLineaBancaria($idlinea: Int!, $motivo: String!) {
+    desconciliarLineaBancaria(idlinea: $idlinea, motivo: $motivo)
+  }
+`;
+
+export const EXCLUIR_LINEA_BANCARIA = `
+  mutation ExcluirLineaBancaria($idlinea: Int!, $motivo: String!) {
+    excluirLineaBancaria(idlinea: $idlinea, motivo: $motivo)
+  }
+`;
