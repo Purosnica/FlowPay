@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { requirePermission } from '@/lib/middleware/auth';
 import { PERMISO } from '@/lib/permissions/permiso-codes';
 import { handleApiError } from '@/lib/api/error-handler';
-import { leerDocumentoCobranza, esNombreArchivoDocumentoSeguro } from '@/lib/cobranza/documento-storage';
+import { descomprimirDocumento, leerDocumentoCobranza, esNombreArchivoDocumentoSeguro } from '@/lib/cobranza/documento-storage';
 import { prisma } from '@/lib/prisma';
 import {
   requerirAccesoCliente,
@@ -72,7 +72,18 @@ export async function GET(
       );
     }
 
-    const archivo = await leerDocumentoCobranza(nombre);
+    const archivo = doc.archivoBlob
+      ? {
+          buffer: await descomprimirDocumento(
+            Buffer.from(doc.archivoBlob),
+            doc.archivoComprimido,
+          ),
+          mime: doc.archivoMime ?? 'application/octet-stream',
+          nombre: doc.nombreArchivo ?? nombre,
+        }
+      : await leerDocumentoCobranza(nombre).then((resultado) =>
+          resultado ? { ...resultado, nombre: nombre } : null,
+        );
     if (!archivo) {
       return NextResponse.json(
         { success: false, error: 'Archivo no encontrado.' },
@@ -84,7 +95,7 @@ export async function GET(
       status: 200,
       headers: {
         'Content-Type': archivo.mime,
-        'Content-Disposition': `attachment; filename="${nombre}"`,
+        'Content-Disposition': `attachment; filename="${archivo.nombre.replace(/["\\\r\n]/g, '_')}"`,
         'Cache-Control': 'private, no-store',
         'X-Content-Type-Options': 'nosniff',
       },

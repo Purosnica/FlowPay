@@ -1123,6 +1123,11 @@ model tbl_documento {
   idcliente   Int?
   tipo        String // RECIBO / PODER / EVIDENCIA / GRABACION / CONTRATO
   url         String
+  nombreArchivo String?  @db.VarChar(255)
+  archivoMime   String?  @db.VarChar(100)
+  archivoBlob   Bytes?   @db.LongBlob
+  archivoComprimido Boolean @default(false)
+  tamanioOriginal Int?
   deletedAt   DateTime?
   createdAt   DateTime  @default(now())
 

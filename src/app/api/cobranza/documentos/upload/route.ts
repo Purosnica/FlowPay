@@ -8,7 +8,10 @@ import {
 import { handleApiError } from '@/lib/api/error-handler';
 import {
   MIME_A_EXTENSION,
-  guardarDocumentoCobranza,
+  comprimirDocumento,
+  generarNombreDocumento,
+  urlDocumentoApi,
+  validarMagicBytes,
 } from '@/lib/cobranza/documento-storage';
 import { prisma } from '@/lib/prisma';
 import {
@@ -36,6 +39,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const usuario = await requirePermission(req, PERMISO.CARTERA_WRITE);
     const formData = await req.formData();
     const archivo = formData.get('archivo');
+    const tipo = formData.get('tipo');
     const idprestamo = parseIdPositivo(formData.get('idprestamo'));
     const idcliente = parseIdPositivo(formData.get('idcliente'));
 
@@ -71,6 +75,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         { status: 400 },
       );
     }
+    if (
+      typeof tipo !== 'string' ||
+      !['RECIBO', 'PODER', 'EVIDENCIA', 'GRABACION', 'CONTRATO'].includes(tipo)
+    ) {
+      return NextResponse.json(
+        { success: false, error: 'Tipo de documento no válido.' },
+        { status: 400 },
+      );
+    }
     if (archivo.size > MAX_DOCUMENTO_FILE_BYTES) {
       return NextResponse.json(
         {
@@ -88,11 +101,34 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     const buffer = Buffer.from(await archivo.arrayBuffer());
-    const { url } = await guardarDocumentoCobranza(buffer, archivo.type);
+    if (!validarMagicBytes(buffer, archivo.type)) {
+      return NextResponse.json(
+        { success: false, error: 'El contenido no coincide con el tipo de archivo.' },
+        { status: 400 },
+      );
+    }
+    const comprimido = await comprimirDocumento(buffer);
+    const nombreArchivo = generarNombreDocumento(archivo.type);
+    const url = urlDocumentoApi(nombreArchivo);
+    const documento = await prisma.tbl_documento.create({
+      data: {
+        idprestamo: idprestamo ?? undefined,
+        idcliente: idcliente ?? undefined,
+        tipo,
+        url,
+        nombreArchivo: archivo.name,
+        archivoMime: archivo.type,
+        archivoBlob: comprimido.buffer as unknown as Uint8Array<ArrayBuffer>,
+        archivoComprimido: comprimido.comprimido,
+        tamanioOriginal: buffer.length,
+      },
+      select: { iddocumento: true, tipo: true, url: true, createdAt: true },
+    });
 
     return NextResponse.json({
       success: true,
       url,
+      documento,
     });
   } catch (error) {
     if (

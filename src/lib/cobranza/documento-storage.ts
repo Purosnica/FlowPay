@@ -8,7 +8,12 @@
 import path from 'path';
 import { mkdir, writeFile, readFile, access } from 'fs/promises';
 import { constants } from 'fs';
+import { promisify } from 'util';
+import { gzip, gunzip } from 'zlib';
 import { resolverStorageRoot } from '@/lib/cobranza/storage-root';
+
+const gzipAsync = promisify(gzip);
+const gunzipAsync = promisify(gunzip);
 
 export const DOCUMENTOS_STORAGE_DIR = path.join(
   resolverStorageRoot(),
@@ -66,6 +71,31 @@ export function rutaDocumentoLegacyPublic(nombre: string): string {
 
 export function urlDocumentoApi(nombre: string): string {
   return `/api/cobranza/documentos/file/${nombre}`;
+}
+
+export function generarNombreDocumento(mime: string): string {
+  const ext = MIME_A_EXTENSION[mime];
+  if (!ext) throw new Error('Tipo de archivo no permitido.');
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}${ext}`;
+}
+
+/** Comprime el contenido solo cuando el resultado realmente ocupa menos. */
+export async function comprimirDocumento(buffer: Buffer): Promise<{
+  buffer: Buffer;
+  comprimido: boolean;
+}> {
+  const comprimido = await gzipAsync(buffer, { level: 6 });
+  if (comprimido.length >= buffer.length) {
+    return { buffer, comprimido: false };
+  }
+  return { buffer: comprimido, comprimido: true };
+}
+
+export async function descomprimirDocumento(
+  buffer: Buffer,
+  comprimido: boolean,
+): Promise<Buffer> {
+  return comprimido ? gunzipAsync(buffer) : buffer;
 }
 
 /**
@@ -159,7 +189,7 @@ export async function guardarDocumentoCobranza(
     );
   }
 
-  const nombre = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`;
+  const nombre = generarNombreDocumento(mime);
   await mkdir(DOCUMENTOS_STORAGE_DIR, { recursive: true });
   await writeFile(rutaDocumentoStorage(nombre), buffer);
 
