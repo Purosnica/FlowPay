@@ -1085,6 +1085,7 @@ model tbl_pago {
   /// Huella estable del origen externo (importación/banco); evita doble aplicación concurrente.
   sourceFingerprint String? @db.Char(64)
   origenPago String? @db.VarChar(32)
+  referenciaBancaria String? @db.VarChar(160)
   aplicado   Boolean   @default(false) // conciliación con siguiente corte
   /// Snapshot de mora al aplicar el pago (comisiones / liquidación).
   diasMoraAplicacion Int?
@@ -1110,6 +1111,7 @@ model tbl_pago {
   @@index([fechaPago, aplicado])
   @@index([idmandante, deletedAt, aplicado, fechaPago])
   @@index([idprestamo, fechaPago, monto, medio])
+  @@index([idmandante, referenciaBancaria])
   @@unique([idgestor, idempotencyKey])
   @@unique([idmandante, sourceFingerprint])
   @@map("tbl_pago")
