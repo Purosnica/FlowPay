@@ -11,7 +11,7 @@ import {
   mensajeFormatoImportacionNoSoportado,
 } from '@/lib/cobranza/upload-limits';
 import { parsearExtractoBancario } from '@/lib/cobranza/conciliacion-extracto-parser';
-import { crearExtractoBancario } from '@/lib/cobranza/conciliacion-persistente-service';
+import { crearExtractoBancario } from '@/lib/cobranza/conciliacion-bancaria-service';
 
 export const maxDuration = 120;
 
