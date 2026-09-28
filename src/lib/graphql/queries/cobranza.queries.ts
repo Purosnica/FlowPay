@@ -2973,3 +2973,81 @@ export const EXCLUIR_LINEA_BANCARIA = `
     excluirLineaBancaria(idlinea: $idlinea, motivo: $motivo)
   }
 `;
+
+
+export const GET_CIERRES_DIARIOS = `
+  query GetCierresDiarios($idmandante: Int, $estado: String, $take: Int) {
+    cierresDiarios(idmandante: $idmandante, estado: $estado, take: $take) {
+      idcierre
+      idmandante
+      fechaNegocio
+      idagencia
+      idusuarioCaja
+      estado
+      totalSistema
+      totalDeclarado
+      diferencia
+      creadoPor
+      revisadoPor
+      cerradoPor
+      motivoReapertura
+      reopenedAt
+      closedAt
+      createdAt
+      updatedAt
+      detalles {
+        iddetalle
+        medio
+        montoSistema
+        montoDeclarado
+        diferencia
+      }
+    }
+  }
+`;
+
+export const CREAR_CIERRE_DIARIO = `
+  mutation CrearCierreDiario($idmandante: Int!, $fechaNegocio: DateTime!, $idagencia: Int, $idusuarioCaja: Int) {
+    crearCierreDiario(idmandante: $idmandante, fechaNegocio: $fechaNegocio, idagencia: $idagencia, idusuarioCaja: $idusuarioCaja) {
+      idcierre
+      idmandante
+      fechaNegocio
+      estado
+      totalSistema
+      totalDeclarado
+      diferencia
+      detalles { iddetalle medio montoSistema montoDeclarado diferencia }
+    }
+  }
+`;
+
+export const GUARDAR_DECLARACION_CIERRE = `
+  mutation GuardarDeclaracionCierre($idcierre: Int!, $declarados: [DeclaracionCierreInput!]!) {
+    guardarDeclaracionCierre(idcierre: $idcierre, declarados: $declarados) {
+      idcierre
+      estado
+      totalSistema
+      totalDeclarado
+      diferencia
+      detalles { iddetalle medio montoSistema montoDeclarado diferencia }
+    }
+  }
+`;
+
+export const ENVIAR_CIERRE_REVISION = `
+  mutation EnviarCierreRevision($idcierre: Int!) {
+    enviarCierreRevision(idcierre: $idcierre) { idcierre estado totalSistema totalDeclarado diferencia }
+  }
+`;
+
+export const CERRAR_CIERRE_DIARIO = `
+  mutation CerrarCierreDiario($idcierre: Int!) {
+    cerrarCierreDiario(idcierre: $idcierre) { idcierre estado closedAt totalSistema totalDeclarado diferencia }
+  }
+`;
+
+export const REABRIR_CIERRE_DIARIO = `
+  mutation ReabrirCierreDiario($idcierre: Int!, $motivo: String!) {
+    reabrirCierreDiario(idcierre: $idcierre, motivo: $motivo) { idcierre estado motivoReapertura reopenedAt }
+  }
+`;

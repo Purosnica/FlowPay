@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { validarCronAuth } from '@/lib/cron/cron-auth';
 import { calcularProximaEjecucion } from '@/lib/cron/cron-schedule';
 import { cronEstadoRequiereAlerta } from '@/lib/cobranza/cron-alerta-email-service';
+import { partesEnZona, TZ_NEGOCIO } from '@/lib/utils/timezone';
 
 function testCronAuthBearer(): void {
   const secret = 'test-secret-123';
@@ -30,7 +31,8 @@ function testProximaEjecucion(): void {
   const desde = new Date('2026-07-07T10:00:00');
   const proxima = calcularProximaEjecucion('0 6 * * *', desde);
   assert.ok(proxima);
-  assert.equal(proxima.getHours(), 6);
+  const partes = partesEnZona(proxima, TZ_NEGOCIO);
+  assert.equal(partes.hora, 6);
   assert.ok(proxima > desde);
 }
 

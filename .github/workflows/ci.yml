@@ -8,6 +8,9 @@ on:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    env:
+      NODE_ENV: development
+      JWT_SECRET: ci-only-jwt-secret-0123456789-abcdef-0123456789
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4

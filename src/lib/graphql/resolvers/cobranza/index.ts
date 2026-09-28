@@ -27,3 +27,5 @@ import "../secuencia-contacto";
 import "../catalogo-cobranza";
 
 import "../conciliacion";
+
+import "../cierre-diario";
