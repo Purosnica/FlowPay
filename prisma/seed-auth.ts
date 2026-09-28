@@ -11,6 +11,9 @@ import { hashPassword } from '../src/lib/auth/password';
 const prisma = new PrismaClient();
 
 export async function seedAuth() {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('El seed de credenciales de demostración está prohibido en producción.');
+  }
   console.log('\n🌱 Creando usuarios de prueba...');
 
   let rolAdmin = await prisma.tbl_rol.findFirst({

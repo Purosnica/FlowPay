@@ -5,7 +5,7 @@
 
 import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { diferenciaEnDias } from '@/lib/utils/date';
+import { diasCalendarioEntre, inicioDiaNegocio } from '@/lib/utils/timezone';
 import { decimalToNumber } from './decimal-utils';
 import {
   CLAVE_MORA_DIAS_GRACIA,
@@ -35,16 +35,6 @@ export interface ResultadoSincronizacionMora {
   actualizado: boolean;
 }
 
-function normalizarFecha(fecha: Date): Date {
-  const copia = new Date(fecha);
-  copia.setHours(0, 0, 0, 0);
-  return copia;
-}
-
-function fechaHoy(): Date {
-  return normalizarFecha(new Date());
-}
-
 /**
  * Calcula días de mora a partir de datos del préstamo (función pura).
  *
@@ -65,20 +55,22 @@ export function calcularDiasMora(datos: DatosCalculoDiasMora): number {
   }
 
   const diasGracia = datos.diasGracia ?? 0;
-  const fechaCalculo = normalizarFecha(datos.fechaCalculo ?? fechaHoy());
-  const fechaVencimiento = normalizarFecha(datos.fechaVencimiento);
+  const fechaCalculo = datos.fechaCalculo ?? inicioDiaNegocio();
+  const fechaVencimiento = datos.fechaVencimiento;
 
-  if (fechaCalculo <= fechaVencimiento) {
+  if (diasCalendarioEntre(fechaVencimiento, fechaCalculo) <= 0) {
     return 0;
   }
 
   if (datos.acuerdoVigente && datos.fechaInicioAcuerdo) {
-    const fechaCongelamiento = normalizarFecha(datos.fechaInicioAcuerdo);
-    const diasCongelados = diferenciaEnDias(fechaVencimiento, fechaCongelamiento);
+    const diasCongelados = diasCalendarioEntre(
+      fechaVencimiento,
+      datos.fechaInicioAcuerdo,
+    );
     return Math.max(0, diasCongelados - diasGracia);
   }
 
-  const dias = diferenciaEnDias(fechaVencimiento, fechaCalculo);
+  const dias = diasCalendarioEntre(fechaVencimiento, fechaCalculo);
   return Math.max(0, dias - diasGracia);
 }
 

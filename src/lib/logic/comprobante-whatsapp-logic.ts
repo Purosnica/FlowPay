@@ -4,8 +4,7 @@
 
 import { formatearFechaComprobante } from '@/lib/logic/comprobante-pago-logic';
 import { enlaceWhatsApp } from '@/lib/cobranza/plantilla-mensaje-utils';
-import { formatearMoneda } from '@/types/cobranza';
-import type { ComprobantePago } from '@/types/cobranza';
+import { formatearMoneda, type ComprobantePago } from '@/types/cobranza';
 
 export function mensajeComprobanteWhatsApp(
   c: Pick<

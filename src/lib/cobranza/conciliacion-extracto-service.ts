@@ -15,6 +15,7 @@ import { validarPagoAnticipado } from '@/lib/cobranza/pago-validacion-service';
 import { requerirPermiso } from '@/lib/permissions/permission-service';
 import { PERMISO } from '@/lib/permissions/permiso-codes';
 import { z } from 'zod';
+import { validarPoliticaPago } from './pago-politica-service';
 
 export const ExtractoBancarioLineaSchema = z.object({
   fecha: z.coerce.date(),
@@ -129,6 +130,14 @@ export async function conciliarExtractoBancario(
         await validarPagoAnticipado(tx, {
           idprestamo: pago.idprestamo,
           monto,
+          fechaPago: pago.fechaPago,
+        });
+        const pagoActual = await tx.tbl_pago.findUniqueOrThrow({ where: { idpago: pago.idpago } });
+        await validarPoliticaPago(tx, {
+          idprestamo: pago.idprestamo,
+          monto,
+          moneda: pagoActual.moneda,
+          tipoCambio: pagoActual.tipoCambio?.toNumber(),
           fechaPago: pago.fechaPago,
         });
 

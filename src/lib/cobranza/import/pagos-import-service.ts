@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 import { requerirAccesoMandante } from '@/lib/cobranza/mandante-scope';
 import { parseExcelSheet } from './parse-excel-sheet';
 import {
@@ -17,8 +18,28 @@ import {
   valorTexto,
 } from './cartera-parse-helpers';
 import type { ResultadoImportacionPagos } from '@/types/cobranza';
+import { createHash } from 'node:crypto';
 
 export type { ResultadoImportacionPagos };
+
+function fingerprintPagoImportado(input: {
+  idmandante: number;
+  idprestamo: number;
+  fechaPago: Date;
+  monto: number;
+  medio: string;
+}): string {
+  // La plantilla actual no ofrece referencia bancaria; se usa una llave determinista de origen.
+  // Si el mandante admite dos pagos idénticos el mismo día deberá suministrar referencia externa.
+  const payload = [
+    input.idmandante,
+    input.idprestamo,
+    input.fechaPago.toISOString(),
+    input.monto.toFixed(2),
+    input.medio,
+  ].join('|');
+  return createHash('sha256').update(payload).digest('hex');
+}
 
 export interface ImportarPagosParams {
   idmandante: number;
@@ -115,16 +136,22 @@ export async function importarPagosHistoricos(
         params.idusuario,
         cacheGestores,
       );
+      const sourceFingerprint = fingerprintPagoImportado({
+        idmandante: params.idmandante,
+        idprestamo: prestamo.idprestamo,
+        fechaPago,
+        monto,
+        medio: 'IMPORTADO',
+      });
 
       // Idempotencia dentro de la misma transacción (anti TOCTOU).
       let omitidoPorDuplicado = false;
-      await prisma.$transaction(async (tx) => {
+      try {
+        await prisma.$transaction(async (tx) => {
         const duplicado = await tx.tbl_pago.findFirst({
           where: {
-            idprestamo: prestamo.idprestamo,
-            monto,
-            fechaPago,
-            medio: 'IMPORTADO',
+            idmandante: params.idmandante,
+            sourceFingerprint,
             deletedAt: null,
           },
           select: { idpago: true },
@@ -144,6 +171,8 @@ export async function importarPagosHistoricos(
             moneda: prestamo.moneda,
             medio: 'IMPORTADO',
             aplicado: true,
+            origenPago: 'IMPORTACION_HISTORICA',
+            sourceFingerprint,
           },
         });
 
@@ -154,7 +183,17 @@ export async function importarPagosHistoricos(
           idpago: created.idpago,
           idusuario: params.idusuario,
         });
-      }, IMPORT_TRANSACTION_OPTIONS);
+        }, IMPORT_TRANSACTION_OPTIONS);
+      } catch (error) {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2002'
+        ) {
+          omitidoPorDuplicado = true;
+        } else {
+          throw error;
+        }
+      }
 
       if (omitidoPorDuplicado) {
         resultado.omitidos++;

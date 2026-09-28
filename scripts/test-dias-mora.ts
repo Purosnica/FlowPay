@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import { calcularDiasMora } from '@/lib/cobranza/dias-mora-service';
+import { zonedWallTimeToUtc } from '@/lib/utils/timezone';
 
 function fecha(d: string): Date {
-  const f = new Date(d);
-  f.setHours(0, 0, 0, 0);
-  return f;
+  const [year, month, day] = d.split('-').map(Number);
+  return zonedWallTimeToUtc(year!, month!, day!, 0, 0, 0);
 }
 
 function testSinSaldo(): void {
@@ -116,6 +116,18 @@ function testAcuerdoRotoRecalcula(): void {
   );
 }
 
+function testBordeZonaNegocio(): void {
+  const vencimiento = zonedWallTimeToUtc(2026, 1, 1, 0, 0, 0);
+  const alVencer = zonedWallTimeToUtc(2026, 1, 1, 23, 30, 0);
+  const diaSiguiente = zonedWallTimeToUtc(2026, 1, 2, 0, 30, 0);
+  const base = {
+    fechaVencimiento: vencimiento, ultimaFechaPago: null, saldoTotal: 100,
+    estado: 'Vencido', acuerdoVigente: false, fechaInicioAcuerdo: null,
+  };
+  assert.equal(calcularDiasMora({ ...base, fechaCalculo: alVencer }), 0);
+  assert.equal(calcularDiasMora({ ...base, fechaCalculo: diaSiguiente }), 1);
+}
+
 testSinSaldo();
 testCancelado();
 testMoraDesdeVencimiento();
@@ -123,4 +135,5 @@ testAntesDeVencimiento();
 testDiasGracia();
 testAcuerdoVigenteCongelaMora();
 testAcuerdoRotoRecalcula();
+testBordeZonaNegocio();
 console.log('dias-mora-service: OK');

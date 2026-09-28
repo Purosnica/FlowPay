@@ -27,7 +27,15 @@ export async function purgarDatosHistoricos(
 
   const [auditoria, cronEjecuciones, rateLimit] = await Promise.all([
     prisma.tbl_auditoria.deleteMany({
-      where: { createdAt: { lt: limiteAuditoria } },
+      // Sin almacenamiento WORM configurado ningún evento HOT puede purgarse.
+      // Solo un archivador externo que haya persistido y verificado la copia puede
+      // marcar explícitamente PURGE_ALLOWED.
+      where: {
+        createdAt: { lt: limiteAuditoria },
+        archivoEstado: 'PURGE_ALLOWED',
+        archivedAt: { not: null },
+        archivoUri: { not: null },
+      },
     }),
     prisma.tbl_cron_ejecucion.deleteMany({
       where: { iniciadoEn: { lt: limiteCron } },

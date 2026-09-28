@@ -5,7 +5,10 @@
 
 import { prisma } from '@/lib/prisma';
 import { ROL } from '@/lib/permissions/role-codes';
-import { ejecutarAsignacionCartera } from '@/lib/cobranza/asignacion-cartera-service';
+import {
+  ejecutarAsignacionCartera,
+  type MetodoAsignacion,
+} from '@/lib/cobranza/asignacion-cartera-service';
 import {
   CLAVE_ASIGNACION_AUTO_POST_IMPORT,
   CLAVE_ASIGNACION_AUTO_METODO,
@@ -14,7 +17,6 @@ import {
   obtenerConfigCobranza,
   claveMetaMandante,
 } from '@/lib/cobranza/configuracion-cobranza-service';
-import type { MetodoAsignacion } from '@/lib/cobranza/asignacion-cartera-service';
 import { logger } from '@/lib/utils/logger';
 
 const METODOS_VALIDOS: MetodoAsignacion[] = [

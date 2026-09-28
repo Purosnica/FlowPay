@@ -125,6 +125,28 @@ export function finDiaEnZona(
   return inicioDiaEnZona(next, timeZone);
 }
 
+/** Fecha calendario de negocio, normalizada al inicio del día en Managua. */
+export function inicioDiaNegocio(fecha: Date = new Date()): Date {
+  return inicioDiaEnZona(fecha, TZ_NEGOCIO);
+}
+
+/** Diferencia de días de calendario, independiente de la zona horaria del host. */
+export function diasCalendarioEntre(
+  fechaInicio: Date,
+  fechaFin: Date,
+  timeZone: string = TZ_NEGOCIO,
+): number {
+  const inicio = partesEnZona(fechaInicio, timeZone);
+  const fin = partesEnZona(fechaFin, timeZone);
+  const inicioUtc = Date.UTC(inicio.year, inicio.month - 1, inicio.day);
+  const finUtc = Date.UTC(fin.year, fin.month - 1, fin.day);
+  return Math.floor((finUtc - inicioUtc) / 86_400_000);
+}
+
+export function esFechaFuturaNegocio(fecha: Date, ahora: Date = new Date()): boolean {
+  return diasCalendarioEntre(ahora, fecha) > 0;
+}
+
 /**
  * Interpreta YYYY-MM-DD (o ISO) como inicio de ese día en zona de negocio.
  */

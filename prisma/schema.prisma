@@ -270,6 +270,15 @@ model tbl_auditoria {
   detalle     String?
   ip          String?
   userAgent   String?
+  motivo      String?  @db.Text
+  idaprobador Int?
+  requestId   String?  @db.VarChar(64)
+  correlationId String? @db.VarChar(64)
+  previousHash String? @db.Char(64)
+  recordHash   String? @db.Char(64)
+  archivoEstado String @default("HOT") @db.VarChar(24) // HOT / PENDING_ARCHIVE / ARCHIVED / PURGE_ALLOWED
+  archivoUri  String? @db.VarChar(500)
+  archivedAt  DateTime?
   createdAt   DateTime @default(now())
 
   usuario tbl_usuario? @relation(fields: [idusuario], references: [idusuario])
@@ -278,6 +287,7 @@ model tbl_auditoria {
   @@index([idusuario])
   @@index([createdAt])
   @@index([accion])
+  @@index([archivoEstado, createdAt])
   @@map("tbl_auditoria")
 }
 
@@ -595,6 +605,7 @@ model tbl_prestamo {
   refinanciamientosOrigen tbl_refinanciamiento[] @relation("RefinanciamientoOrigen")
   refinanciamientosNuevo  tbl_refinanciamiento[] @relation("RefinanciamientoNuevo")
   enviosSms               tbl_envio_sms[]
+  movimientosFinancieros  tbl_movimiento_financiero[]
 
   @@unique([idmandante, noPrestamo])
   @@unique([idmandante, codigoUnico])
@@ -605,6 +616,139 @@ model tbl_prestamo {
   @@index([idmandante, diasMora, deletedAt])
   @@index([idcampana])
   @@map("tbl_prestamo")
+}
+
+/// Libro mayor financiero append-only. Los importes negativos reducen saldo; positivos lo incrementan.
+model tbl_movimiento_financiero {
+  idmovimiento        Int      @id @default(autoincrement())
+  idmandante          Int
+  idprestamo          Int
+  idcliente           Int
+  tipoMovimiento      String   @db.VarChar(32)
+  monto               Decimal  @db.Decimal(14, 2)
+  moneda              String   @db.VarChar(3)
+  montoBase           Decimal  @db.Decimal(14, 2)
+  monedaBase          String   @db.VarChar(3)
+  tipoCambio          Decimal? @db.Decimal(10, 4)
+  fuenteTipoCambio    String?  @db.VarChar(64)
+  impactoSaldo        Decimal  @db.Decimal(14, 2)
+  saldoAnterior       Decimal  @db.Decimal(14, 2)
+  saldoPosterior      Decimal  @db.Decimal(14, 2)
+  fechaOperacion      DateTime
+  fechaRegistro       DateTime @default(now())
+  idpago              Int?
+  idacuerdo           Int?
+  idmovimientoOrigen  Int?
+  descripcion         String?  @db.Text
+  motivo              String?  @db.Text
+  creadoPor           Int?
+  aprobadoPor         Int?
+  metadata            String?  @db.Text
+  createdAt           DateTime @default(now())
+
+  prestamo tbl_prestamo @relation(fields: [idprestamo], references: [idprestamo], onDelete: Restrict)
+
+  @@index([idmandante, fechaOperacion])
+  @@index([idprestamo, fechaOperacion])
+  @@index([idpago])
+  @@index([tipoMovimiento, createdAt])
+  @@map("tbl_movimiento_financiero")
+}
+
+/// Archivo de extracto bancario; la huella evita cargar el mismo archivo dos veces por mandante.
+model tbl_extracto_bancario {
+  idextracto Int @id @default(autoincrement())
+  idmandante Int
+  institucionFinanciera String @db.VarChar(120)
+  cuenta String @db.VarChar(80)
+  moneda String @db.VarChar(3)
+  fechaDesde DateTime
+  fechaHasta DateTime
+  archivoNombre String @db.VarChar(255)
+  archivoHash String @db.Char(64)
+  creadoPor Int
+  createdAt DateTime @default(now())
+  lineas tbl_extracto_linea[]
+  @@unique([idmandante, archivoHash])
+  @@index([idmandante, fechaDesde, fechaHasta])
+  @@map("tbl_extracto_bancario")
+}
+
+model tbl_extracto_linea {
+  idlinea Int @id @default(autoincrement())
+  idextracto Int
+  fechaOperacion DateTime
+  fechaValor DateTime?
+  referenciaOriginal String? @db.VarChar(160)
+  referenciaNormalizada String? @db.VarChar(160)
+  descripcion String? @db.Text
+  debito Decimal @default(0) @db.Decimal(14,2)
+  credito Decimal @default(0) @db.Decimal(14,2)
+  monto Decimal @db.Decimal(14,2)
+  moneda String @db.VarChar(3)
+  fingerprint String @db.Char(64)
+  estado String @default("PENDIENTE") @db.VarChar(24)
+  extracto tbl_extracto_bancario @relation(fields: [idextracto], references: [idextracto], onDelete: Restrict)
+  conciliaciones tbl_conciliacion_pago[]
+  @@unique([idextracto, fingerprint])
+  @@index([estado, fechaOperacion])
+  @@index([referenciaNormalizada])
+  @@map("tbl_extracto_linea")
+}
+
+model tbl_conciliacion_pago {
+  idconciliacion Int @id @default(autoincrement())
+  idlinea Int
+  idpago Int
+  estado String @default("CONCILIADO") @db.VarChar(24)
+  metodoMatch String @db.VarChar(32)
+  confidence Decimal @db.Decimal(5,2)
+  conciliadoPor Int
+  conciliadoAt DateTime @default(now())
+  motivoOverride String? @db.Text
+  desconciliadoPor Int?
+  desconciliadoAt DateTime?
+  motivoDesconciliacion String? @db.Text
+  linea tbl_extracto_linea @relation(fields: [idlinea], references: [idlinea], onDelete: Restrict)
+  @@unique([idlinea, idpago])
+  @@index([idpago, estado])
+  @@map("tbl_conciliacion_pago")
+}
+
+model tbl_cierre_diario {
+  idcierre Int @id @default(autoincrement())
+  idmandante Int
+  fechaNegocio DateTime
+  idagencia Int?
+  idusuarioCaja Int?
+  estado String @default("ABIERTO") @db.VarChar(24)
+  totalSistema Decimal @default(0) @db.Decimal(14,2)
+  totalDeclarado Decimal @default(0) @db.Decimal(14,2)
+  diferencia Decimal @default(0) @db.Decimal(14,2)
+  creadoPor Int
+  revisadoPor Int?
+  cerradoPor Int?
+  motivoReapertura String? @db.Text
+  reopenedAt DateTime?
+  closedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  detalles tbl_cierre_diario_detalle[]
+  @@unique([idmandante, fechaNegocio, idagencia, idusuarioCaja])
+  @@index([idmandante, estado, fechaNegocio])
+  @@map("tbl_cierre_diario")
+}
+
+model tbl_cierre_diario_detalle {
+  iddetalle Int @id @default(autoincrement())
+  idcierre Int
+  medio String @db.VarChar(32)
+  montoSistema Decimal @default(0) @db.Decimal(14,2)
+  montoDeclarado Decimal @default(0) @db.Decimal(14,2)
+  diferencia Decimal @default(0) @db.Decimal(14,2)
+  cierre tbl_cierre_diario @relation(fields: [idcierre], references: [idcierre], onDelete: Restrict)
+  @@unique([idcierre, medio])
+  @@map("tbl_cierre_diario_detalle")
 }
 
 /// Cuotas del crédito importado (distintas de tbl_acuerdo_cuota) — I031.
@@ -934,6 +1078,9 @@ model tbl_pago {
   descripcion String? @db.VarChar(500)
   /// Clave de idempotencia del cliente (reintentos no duplican pago).
   idempotencyKey String? @db.VarChar(64)
+  /// Huella estable del origen externo (importación/banco); evita doble aplicación concurrente.
+  sourceFingerprint String? @db.Char(64)
+  origenPago String? @db.VarChar(32)
   aplicado   Boolean   @default(false) // conciliación con siguiente corte
   /// Snapshot de mora al aplicar el pago (comisiones / liquidación).
   diasMoraAplicacion Int?
@@ -960,6 +1107,7 @@ model tbl_pago {
   @@index([idmandante, deletedAt, aplicado, fechaPago])
   @@index([idprestamo, fechaPago, monto, medio])
   @@unique([idgestor, idempotencyKey])
+  @@unique([idmandante, sourceFingerprint])
   @@map("tbl_pago")
 }
 

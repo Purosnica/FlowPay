@@ -1,7 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ChevronUpIcon } from '@/assets/icons';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { GET_DESGLOSE_SALDO_PRESTAMO } from '@/lib/graphql/queries/cobranza.queries';

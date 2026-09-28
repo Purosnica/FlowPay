@@ -4,6 +4,7 @@ import { requerirAccesoMandante } from '@/lib/cobranza/mandante-scope';
 import { registrarAuditoria } from '@/lib/cobranza/auditoria-service';
 import { emitirNotificacionAsignacion } from '@/lib/cobranza/notificacion-emision-service';
 import { decimalToNumber } from '@/lib/cobranza/decimal-utils';
+import { transicionarEstadoPrestamo } from '@/lib/cobranza/estado-prestamo-service';
 import { diasMoraEnTramo } from '@/lib/cobranza/tramos-mora';
 import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
 
@@ -501,7 +502,7 @@ export async function cancelarPrestamo(
 ): Promise<void> {
   const prestamo = await prisma.tbl_prestamo.findUnique({
     where: { idprestamo },
-    select: { idmandante: true, estado: true, deletedAt: true },
+    select: { idmandante: true, estado: true, saldoTotal: true, deletedAt: true },
   });
 
   if (!prestamo || prestamo.deletedAt) {
@@ -514,20 +515,19 @@ export async function cancelarPrestamo(
     return;
   }
 
-  await prisma.tbl_prestamo.update({
-    where: { idprestamo },
-    data: { estado: 'Cancelado', saldoTotal: 0 },
-  });
+  if (decimalToNumber(prestamo.saldoTotal) > 0) {
+    throw new GraphQLValidationError(
+      'No se puede cancelar una obligación con saldo. Use un flujo financiero aprobado (pago, condonación, castigo o ajuste).',
+    );
+  }
 
-  await registrarAuditoria(prisma, {
-    idusuario,
-    entidad: 'prestamo',
-    entidadId: idprestamo,
-    accion: 'cancelacion',
-    detalle: JSON.stringify({
-      estadoAnterior: prestamo.estado,
-      motivo,
-    }),
+  await prisma.$transaction(async (tx) => {
+    await transicionarEstadoPrestamo(tx, {
+      idprestamo,
+      estadoNuevo: 'Cancelado',
+      idusuario,
+      motivo: motivo ?? 'Cancelación administrativa de obligación ya liquidada',
+    });
   });
 }
 

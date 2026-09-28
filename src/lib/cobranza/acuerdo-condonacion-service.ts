@@ -11,6 +11,7 @@ import {
   debeCondonarResidualTrasAcuerdo,
   montosCondonacionResidual,
 } from '@/lib/logic/acuerdo-condonacion-logic';
+import { registrarMovimientoFinanciero } from './ledger-financiero-service';
 
 type Tx = Prisma.TransactionClient;
 
@@ -30,6 +31,9 @@ export async function condonarResidualTrasAcuerdoCumplido(
   const prestamo = await tx.tbl_prestamo.findUnique({
     where: { idprestamo: params.idprestamo },
     select: {
+      idmandante: true,
+      idcliente: true,
+      moneda: true,
       saldoTotal: true,
       interesMoratorio: true,
       deletedAt: true,
@@ -53,6 +57,22 @@ export async function condonarResidualTrasAcuerdoCumplido(
   const montos = montosCondonacionResidual({
     saldoTotal: saldo,
     interesMoratorio: moratorio,
+  });
+
+  await registrarMovimientoFinanciero(tx, {
+    idmandante: prestamo.idmandante,
+    idprestamo: params.idprestamo,
+    idcliente: prestamo.idcliente,
+    tipoMovimiento: 'CONDONACION',
+    monto: montos.saldoCondonado,
+    moneda: prestamo.moneda,
+    impactoSaldo: -montos.saldoCondonado,
+    saldoAnterior: saldo,
+    fechaOperacion: new Date(),
+    idacuerdo: params.idacuerdo,
+    creadoPor: params.idusuario,
+    motivo: 'Residual condonado tras cumplimiento de acuerdo',
+    metadata: { moratorioCondonado: montos.moratorioCondonado },
   });
 
   await tx.tbl_prestamo.update({

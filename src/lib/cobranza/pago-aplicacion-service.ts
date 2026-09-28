@@ -27,6 +27,7 @@ import {
   revertirPagoDePlanCuotas,
 } from './prestamo-cuota-pago-service';
 import { acuerdoCumplidoPorPagos } from '@/lib/logic/acuerdo-meta-pagable-logic';
+import { registrarMovimientoFinanciero } from './ledger-financiero-service';
 
 type Tx = Prisma.TransactionClient;
 
@@ -52,6 +53,9 @@ export async function aplicarPagoAlPrestamo(
     where: { idprestamo: params.idprestamo },
     select: {
       idprestamo: true,
+      idmandante: true,
+      idcliente: true,
+      moneda: true,
       saldoTotal: true,
       diasMora: true,
       deletedAt: true,
@@ -119,6 +123,21 @@ export async function aplicarPagoAlPrestamo(
       'No se pudo aplicar el pago: saldo insuficiente o préstamo no disponible.',
     );
   }
+
+  await registrarMovimientoFinanciero(tx, {
+    idmandante: prestamo.idmandante,
+    idprestamo: prestamo.idprestamo,
+    idcliente: prestamo.idcliente,
+    tipoMovimiento: 'PAGO',
+    monto,
+    moneda: prestamo.moneda,
+    impactoSaldo: -monto,
+    saldoAnterior: saldoActual,
+    fechaOperacion: params.fechaPago,
+    idpago: params.idpago,
+    idacuerdo: params.idacuerdo,
+    creadoPor: params.idusuario,
+  });
 
   const cuotasSnapshot = await aplicarPagoAPlanCuotas(tx, {
     idprestamo: params.idprestamo,
@@ -195,6 +214,10 @@ export async function revertirPagoDelPrestamo(
     where: { idprestamo: params.idprestamo },
     select: {
       idprestamo: true,
+      idmandante: true,
+      idcliente: true,
+      moneda: true,
+      saldoTotal: true,
       deletedAt: true,
       gestionCobranza: true,
       cargosAdmin: true,
@@ -262,6 +285,20 @@ export async function revertirPagoDelPrestamo(
       'No se pudo revertir el pago: préstamo no disponible.',
     );
   }
+
+  await registrarMovimientoFinanciero(tx, {
+    idmandante: prestamo.idmandante,
+    idprestamo: prestamo.idprestamo,
+    idcliente: prestamo.idcliente,
+    tipoMovimiento: 'REVERSO_PAGO',
+    monto,
+    moneda: prestamo.moneda,
+    impactoSaldo: monto,
+    saldoAnterior: decimalToNumber(prestamo.saldoTotal),
+    fechaOperacion: new Date(),
+    idpago: params.idpago,
+    creadoPor: params.idusuario,
+  });
 
   if (cuotasRevertir.length > 0) {
     await revertirPagoDePlanCuotas(tx, cuotasRevertir);

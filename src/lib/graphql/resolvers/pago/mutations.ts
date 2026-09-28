@@ -38,6 +38,7 @@ import {
 import { encolarWebhookMandante } from '@/lib/cobranza/webhook-mandante-service';
 import { MarcarPagoAplicadoSchema, IdPositiveSchema } from '@/lib/validators/graphql-args';
 import { anularPagoEnTransaccion } from '@/lib/cobranza/pago-anulacion-service';
+import { validarPoliticaPago } from '@/lib/cobranza/pago-politica-service';
 
 builder.mutationField('createPago', (t) =>
   t.prismaField({
@@ -97,6 +98,7 @@ builder.mutationField('createPago', (t) =>
       }
 
       const pago = await ctx.prisma.$transaction(async (tx) => {
+        await validarPoliticaPago(tx, data);
         await validarPagoAnticipado(tx, {
           idprestamo: data.idprestamo,
           monto: data.monto,
@@ -285,6 +287,13 @@ builder.mutationField('updatePago', (t) =>
         campos.monto ?? decimalToNumber(pago.monto);
 
       await ctx.prisma.$transaction(async (tx) => {
+        await validarPoliticaPago(tx, {
+          idprestamo: pago.idprestamo,
+          monto,
+          moneda: campos.moneda ?? pago.moneda,
+          tipoCambio: campos.tipoCambio ?? pago.tipoCambio?.toNumber(),
+          fechaPago,
+        });
         await validarPagoAnticipado(tx, {
           idprestamo: pago.idprestamo,
           monto,
@@ -426,6 +435,13 @@ builder.mutationField('marcarPagoAplicado', (t) =>
         }
 
         if (aplicado) {
+          await validarPoliticaPago(tx, {
+            idprestamo: pago.idprestamo,
+            monto,
+            moneda: pago.moneda,
+            tipoCambio: pago.tipoCambio?.toNumber(),
+            fechaPago: pago.fechaPago,
+          });
           await validarPagoAnticipado(tx, {
             idprestamo: pago.idprestamo,
             monto,
