@@ -26,6 +26,7 @@ import { PrestamoCortesPanel } from '@/components/cobranza/prestamo-cortes-panel
 import { HorarioAlerta } from '@/components/cobranza/horario-alerta';
 import { EnviarCobroPanel } from '@/components/cobranza/enviar-cobro-panel';
 import { PrestamoEstadoHistorialPanel } from '@/components/cobranza/prestamo-estado-historial-panel';
+import { PrestamoAsignacionHistorialPanel } from '@/components/cobranza/prestamo-asignacion-historial-panel';
 import { PrestamoTimelinePanel } from '@/components/cobranza/prestamo-timeline-panel';
 import { PrestamoSaldoDesglosePanel } from '@/components/cobranza/prestamo-saldo-desglose-panel';
 import { buildPlantillaContextFromPrestamo } from '@/lib/cobranza/plantilla-mensaje-utils';
@@ -92,7 +93,13 @@ export default function PrestamoDetailPage({ params }: PageProps) {
   const [pagoAnularId, setPagoAnularId] = useState<number | null>(null);
   const [acuerdoRotoId, setAcuerdoRotoId] = useState<number | null>(null);
   const [masSeccion, setMasSeccion] = useState<
-    'contactos' | 'cortes' | 'timeline' | 'estados' | 'fiadores' | 'documentos'
+    | 'contactos'
+    | 'cortes'
+    | 'timeline'
+    | 'estados'
+    | 'cobradores'
+    | 'fiadores'
+    | 'documentos'
   >('timeline');
   const gestionesPagination = usePagination({ initialPageSize: 10 });
   const pagosPagination = useScopedPagination(idprestamo, {
@@ -702,6 +709,7 @@ export default function PrestamoDetailPage({ params }: PageProps) {
                   ['contactos', 'Contactos'],
                   ['cortes', 'Cortes'],
                   ['estados', 'Estados'],
+                  ['cobradores', 'Cobradores'],
                   ['fiadores', 'Fiadores'],
                   ['documentos', 'Documentos'],
                 ] as const
@@ -736,6 +744,12 @@ export default function PrestamoDetailPage({ params }: PageProps) {
                 <>
                   <h2 className="mb-4 font-semibold">Historial de estados</h2>
                   <PrestamoEstadoHistorialPanel idprestamo={idprestamo} />
+                </>
+              )}
+              {masSeccion === 'cobradores' && (
+                <>
+                  <h2 className="mb-4 font-semibold">Historial de cobradores</h2>
+                  <PrestamoAsignacionHistorialPanel idprestamo={idprestamo} />
                 </>
               )}
               {masSeccion === 'fiadores' && (

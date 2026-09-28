@@ -91,7 +91,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       fechaHasta: new Date(Math.max(...fechas)),
       archivoNombre: archivo.name,
       archivoHash,
-      lineas: resultado.lineas,
+      lineas: resultado.lineas.map((linea) => ({
+        ...linea,
+        moneda: linea.moneda?.trim().toUpperCase() || parsed.data.moneda,
+      })),
     });
 
     return NextResponse.json({

@@ -32,7 +32,7 @@ function testProximaEjecucion(): void {
   const proxima = calcularProximaEjecucion('0 6 * * *', desde);
   assert.ok(proxima);
   const partes = partesEnZona(proxima, TZ_NEGOCIO);
-  assert.equal(partes.hora, 6);
+  assert.equal(partes.hour, 6);
   assert.ok(proxima > desde);
 }
 

@@ -268,29 +268,35 @@ export async function asignarGestorConHistorial(
 
   const gestorAnterior = prestamo.idgestorAsignado;
 
-  await prisma.tbl_prestamo.update({
-    where: { idprestamo },
-    data: { idgestorAsignado: idgestorNuevo },
-  });
+  // El responsable vigente, su historial y la auditorÃ­a deben avanzar juntos.
+  // De este modo una falla no puede dejar un crÃ©dito reasignado sin traza.
+  await prisma.$transaction(async (tx) => {
+    await tx.tbl_prestamo.update({
+      where: { idprestamo },
+      data: { idgestorAsignado: idgestorNuevo },
+    });
 
-  await registrarHistorialAsignacion(
-    idprestamo,
-    gestorAnterior,
-    idgestorNuevo,
-    idusuario,
-    motivo,
-  );
+    await tx.tbl_prestamo_asignacion_historial.create({
+      data: {
+        idprestamo,
+        idgestorAnterior: gestorAnterior,
+        idgestorNuevo,
+        idusuario,
+        motivo: motivo ?? null,
+      },
+    });
 
-  await registrarAuditoria(prisma, {
-    idusuario,
-    entidad: 'prestamo',
-    entidadId: idprestamo,
-    accion: 'asignacion_gestor',
-    detalle: JSON.stringify({
-      gestorAnterior,
-      gestorNuevo: idgestorNuevo,
-      motivo,
-    }),
+    await registrarAuditoria(tx, {
+      idusuario,
+      entidad: 'prestamo',
+      entidadId: idprestamo,
+      accion: 'asignacion_gestor',
+      detalle: JSON.stringify({
+        gestorAnterior,
+        gestorNuevo: idgestorNuevo,
+        motivo,
+      }),
+    });
   });
 
   if (!opciones?.omitirNotificacion) {
