@@ -8,12 +8,7 @@ import { PermissionGate } from '@/components/auth/permission-gate';
 import { useEsCobrador } from '@/hooks/use-rol';
 import { PERMISO } from '@/lib/permissions/permiso-codes';
 import { Modal } from '@/components/ui/modal';
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { GestionForm } from '@/components/cobranza/gestion-form';
 import { AcuerdoSimulator } from '@/components/cobranza/acuerdo-simulator';
 import { PagoForm } from '@/components/cobranza/pago-form';
@@ -32,10 +27,7 @@ import { PrestamoSaldoDesglosePanel } from '@/components/cobranza/prestamo-saldo
 import { buildPlantillaContextFromPrestamo } from '@/lib/cobranza/plantilla-mensaje-utils';
 import { trackGestionCreated } from '@/lib/analytics/product-analytics';
 import { crearIdempotencyKey } from '@/lib/api/idempotency-key';
-import {
-  encolarGestionOutbox,
-  estaOffline,
-} from '@/lib/offline/gestion-outbox';
+import { encolarGestionOutbox, estaOffline } from '@/lib/offline/gestion-outbox';
 import { PaginatedDataTable } from '@/components/cobranza/paginated-data-table';
 import { usePagination } from '@/hooks/use-pagination';
 import { useScopedPagination } from '@/hooks/use-scoped-pagination';
@@ -56,7 +48,11 @@ import {
   ACTUALIZAR_ESTADO_ACUERDO,
   VERIFICAR_HORARIO_COBRANZA,
 } from '@/lib/graphql/queries/cobranza.queries';
-import { type Acuerdo, type Gestion, type Pago, type Prestamo ,
+import {
+  type Acuerdo,
+  type Gestion,
+  type Pago,
+  type Prestamo,
   formatearMoneda,
   nombreCompletoCliente,
 } from '@/types/cobranza';
@@ -93,13 +89,7 @@ export default function PrestamoDetailPage({ params }: PageProps) {
   const [pagoAnularId, setPagoAnularId] = useState<number | null>(null);
   const [acuerdoRotoId, setAcuerdoRotoId] = useState<number | null>(null);
   const [masSeccion, setMasSeccion] = useState<
-    | 'contactos'
-    | 'cortes'
-    | 'timeline'
-    | 'estados'
-    | 'cobradores'
-    | 'fiadores'
-    | 'documentos'
+    'contactos' | 'cortes' | 'timeline' | 'estados' | 'cobradores' | 'fiadores' | 'documentos'
   >('timeline');
   const gestionesPagination = usePagination({ initialPageSize: 10 });
   const pagosPagination = useScopedPagination(idprestamo, {
@@ -121,16 +111,18 @@ export default function PrestamoDetailPage({ params }: PageProps) {
       pageSize: number;
       totalPages: number;
     };
-  }>(GET_GESTIONES, { idprestamo, ...gestionesPagination.queryVars }, {
-    enabled:
-      prestamoCargado &&
-      (activeTab === 'gestiones' || activeTab === 'resumen'),
-  });
+  }>(
+    GET_GESTIONES,
+    { idprestamo, ...gestionesPagination.queryVars },
+    {
+      enabled: prestamoCargado && (activeTab === 'gestiones' || activeTab === 'resumen'),
+    }
+  );
 
   const { data: acuerdosData } = useGraphQLQuery<{ acuerdos: Acuerdo[] }>(
     GET_ACUERDOS,
     { idprestamo },
-    { enabled: prestamoCargado },
+    { enabled: prestamoCargado }
   );
 
   const { data: pagosData, isLoading: loadingPagos } = useGraphQLQuery<{
@@ -141,16 +133,20 @@ export default function PrestamoDetailPage({ params }: PageProps) {
       pageSize: number;
       totalPages: number;
     };
-  }>(GET_PAGOS, { idprestamo, ...pagosPagination.queryVars }, {
-    enabled: prestamoCargado && activeTab === 'pagos',
-  });
+  }>(
+    GET_PAGOS,
+    { idprestamo, ...pagosPagination.queryVars },
+    {
+      enabled: prestamoCargado && activeTab === 'pagos',
+    }
+  );
 
   const { data: horarioData } = useGraphQLQuery<{
     verificarHorarioCobranza: { permitido: boolean; motivo?: string | null };
   }>(
     VERIFICAR_HORARIO_COBRANZA,
     { idmandante: prestamo?.idmandante },
-    { enabled: !!prestamo?.idmandante },
+    { enabled: !!prestamo?.idmandante }
   );
 
   const invalidate = () => {
@@ -216,8 +212,7 @@ export default function PrestamoDetailPage({ params }: PageProps) {
     {
       accessorKey: 'fechaPago',
       header: 'Fecha',
-      cell: ({ row }) =>
-        new Date(row.original.fechaPago).toLocaleDateString('es-NI'),
+      cell: ({ row }) => new Date(row.original.fechaPago).toLocaleDateString('es-NI'),
     },
     {
       accessorKey: 'medio',
@@ -244,16 +239,14 @@ export default function PrestamoDetailPage({ params }: PageProps) {
       header: 'Estado',
       cell: ({ row }) => {
         const estado =
-          (row.original.estado as EstadoPago | undefined) ??
-          resolverEstadoPago(row.original);
+          (row.original.estado as EstadoPago | undefined) ?? resolverEstadoPago(row.original);
         return etiquetaEstadoPago(estado);
       },
     },
     {
       accessorKey: 'monto',
       header: 'Monto',
-      cell: ({ row }) =>
-        formatearMoneda(row.original.monto, row.original.moneda),
+      cell: ({ row }) => formatearMoneda(row.original.monto, row.original.moneda),
     },
     {
       id: 'acciones',
@@ -264,10 +257,10 @@ export default function PrestamoDetailPage({ params }: PageProps) {
         const anulable = puedeAnularPago(pago);
         const conciliable = puedeConciliarPago(pago);
         return (
-          <div className="flex flex-wrap justify-end gap-2">
+          <div className="flex items-center justify-end gap-1 whitespace-nowrap">
             <Link href={rutaComprobantePago(pago.idpago)}>
-              <Button size="sm" variant="outline">
-                Comprobante
+              <Button size="sm" variant="outline" className="px-2" title="Ver comprobante">
+                Ver
               </Button>
             </Link>
             {editable && (
@@ -275,6 +268,7 @@ export default function PrestamoDetailPage({ params }: PageProps) {
                 <Button
                   size="sm"
                   variant="outline"
+                  className="px-2"
                   onClick={() => setPagoEditando(pago)}
                 >
                   Editar
@@ -286,6 +280,7 @@ export default function PrestamoDetailPage({ params }: PageProps) {
                 <Button
                   size="sm"
                   variant="outline"
+                  className="px-2"
                   onClick={() => setPagoAnularId(pago.idpago)}
                 >
                   Anular
@@ -297,6 +292,7 @@ export default function PrestamoDetailPage({ params }: PageProps) {
                 <Button
                   size="sm"
                   variant="outline"
+                  className="px-2"
                   disabled={aplicadoMutation.isPending}
                   onClick={() =>
                     aplicadoMutation.mutate({
@@ -359,12 +355,8 @@ export default function PrestamoDetailPage({ params }: PageProps) {
   }
 
   const cliente = prestamo.cliente;
-  const acuerdoVigente =
-    acuerdosData?.acuerdos.find((a) => a.estado === 'VIGENTE') ?? null;
-  const plantillaContext = buildPlantillaContextFromPrestamo(
-    prestamo,
-    acuerdoVigente,
-  );
+  const acuerdoVigente = acuerdosData?.acuerdos.find((a) => a.estado === 'VIGENTE') ?? null;
+  const plantillaContext = buildPlantillaContextFromPrestamo(prestamo, acuerdoVigente);
   const celularCliente = cliente?.celular ?? cliente?.telefono ?? null;
 
   return (
@@ -388,10 +380,7 @@ export default function PrestamoDetailPage({ params }: PageProps) {
             )}
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <ContactoRapidoAcciones
-              idprestamo={idprestamo}
-              telefono={celularCliente}
-            />
+            <ContactoRapidoAcciones idprestamo={idprestamo} telefono={celularCliente} />
             <PermissionGate permiso={PERMISO.PAGO_WRITE}>
               <Button
                 className="field-touch-target"
@@ -407,9 +396,7 @@ export default function PrestamoDetailPage({ params }: PageProps) {
                 className="field-touch-target"
                 data-ux-id="prestamo-tipificar"
                 onClick={() => setGestionModal(true)}
-                disabled={
-                  horarioData?.verificarHorarioCobranza.permitido === false
-                }
+                disabled={horarioData?.verificarHorarioCobranza.permitido === false}
               >
                 Tipificar gestión
               </Button>
@@ -458,230 +445,231 @@ export default function PrestamoDetailPage({ params }: PageProps) {
         </TabsList>
 
         <TabsContent value="resumen">
-        <div className="space-y-6">
-          <PrestamoSaldoDesglosePanel
-            idprestamo={idprestamo}
-            moneda={prestamo.moneda}
-          />
-        <div className="rounded-xl border border-stroke bg-white p-6 shadow-sm dark:border-dark-3 dark:bg-gray-dark">
-          <dl className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
-            <div>
-              <dt className="text-gray-6">Mandante</dt>
-              <dd>{prestamo.mandante?.nombre}</dd>
-            </div>
-            <div>
-              <dt className="text-gray-6">Código único</dt>
-              <dd>{prestamo.codigoUnico}</dd>
-            </div>
-            <div>
-              <dt className="text-gray-6">Monto préstamo</dt>
-              <dd>{formatearMoneda(prestamo.montoPrestamo, prestamo.moneda)}</dd>
-            </div>
-            <div>
-              <dt className="text-gray-6">Interés</dt>
-              <dd>{formatearMoneda(prestamo.interes, prestamo.moneda)}</dd>
-            </div>
-            <div>
-              <dt className="text-gray-6">Gestión de cobranza</dt>
-              <dd>
-                {formatearMoneda(prestamo.gestionCobranza ?? 0, prestamo.moneda)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-gray-6">Central de riesgo</dt>
-              <dd>
-                {prestamo.reportableCentralRiesgo
-                  ? 'Reportable'
-                  : 'No reportable (acuerdo vigente)'}
-              </dd>
-            </div>
-            {cliente?.celular && (
-              <div>
-                <dt className="text-gray-6">Celular</dt>
-                <dd>{cliente.celular}</dd>
+          <div className="space-y-6">
+            <PrestamoSaldoDesglosePanel idprestamo={idprestamo} moneda={prestamo.moneda} />
+            <div className="rounded-xl border border-stroke bg-white p-6 shadow-sm dark:border-dark-3 dark:bg-gray-dark">
+              <dl className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
+                <div>
+                  <dt className="text-gray-6">Mandante</dt>
+                  <dd>{prestamo.mandante?.nombre}</dd>
+                </div>
+                <div>
+                  <dt className="text-gray-6">Código único</dt>
+                  <dd>{prestamo.codigoUnico}</dd>
+                </div>
+                <div>
+                  <dt className="text-gray-6">Monto préstamo</dt>
+                  <dd>{formatearMoneda(prestamo.montoPrestamo, prestamo.moneda)}</dd>
+                </div>
+                <div>
+                  <dt className="text-gray-6">Interés</dt>
+                  <dd>{formatearMoneda(prestamo.interes, prestamo.moneda)}</dd>
+                </div>
+                <div>
+                  <dt className="text-gray-6">Gestión de cobranza</dt>
+                  <dd>{formatearMoneda(prestamo.gestionCobranza ?? 0, prestamo.moneda)}</dd>
+                </div>
+                <div>
+                  <dt className="text-gray-6">Central de riesgo</dt>
+                  <dd>
+                    {prestamo.reportableCentralRiesgo
+                      ? 'Reportable'
+                      : 'No reportable (acuerdo vigente)'}
+                  </dd>
+                </div>
+                {cliente?.celular && (
+                  <div>
+                    <dt className="text-gray-6">Celular</dt>
+                    <dd>{cliente.celular}</dd>
+                  </div>
+                )}
+                {cliente?.direccion && (
+                  <div>
+                    <dt className="text-gray-6">Dirección</dt>
+                    <dd>{cliente.direccion}</dd>
+                  </div>
+                )}
+              </dl>
+              <div className="mt-6 border-t pt-4 dark:border-dark-3">
+                <h3 className="mb-2 text-sm font-semibold">Actividad reciente</h3>
+                <PrestamoTimelinePanel idprestamo={idprestamo} compact />
               </div>
-            )}
-            {cliente?.direccion && (
-              <div>
-                <dt className="text-gray-6">Dirección</dt>
-                <dd>{cliente.direccion}</dd>
-              </div>
-            )}
-          </dl>
-          <div className="mt-6 border-t pt-4 dark:border-dark-3">
-            <h3 className="mb-2 text-sm font-semibold">Actividad reciente</h3>
-            <PrestamoTimelinePanel idprestamo={idprestamo} compact />
+            </div>
           </div>
-        </div>
-        </div>
         </TabsContent>
 
         <TabsContent value="gestiones">
-        <div className="rounded-lg bg-white p-6 shadow-1 dark:bg-gray-dark">
-          <PaginatedDataTable
-            data={gestionesData?.gestiones.gestiones ?? []}
-            columns={gestionColumns}
-            pagination={gestionesData?.gestiones}
-            isLoading={loadingGestiones}
-            emptyMessage="Sin gestiones registradas"
-            onPageChange={gestionesPagination.handlePageChange}
-            onPageSizeChange={gestionesPagination.handlePageSizeChange}
-            itemLabel="gestiones"
-          />
-        </div>
+          <div className="rounded-lg bg-white p-6 shadow-1 dark:bg-gray-dark">
+            <PaginatedDataTable
+              data={gestionesData?.gestiones.gestiones ?? []}
+              columns={gestionColumns}
+              pagination={gestionesData?.gestiones}
+              isLoading={loadingGestiones}
+              emptyMessage="Sin gestiones registradas"
+              onPageChange={gestionesPagination.handlePageChange}
+              onPageSizeChange={gestionesPagination.handlePageSizeChange}
+              itemLabel="gestiones"
+            />
+          </div>
         </TabsContent>
 
         <TabsContent value="acuerdo">
-        <div className="space-y-6">
-          <div className="rounded-lg bg-white p-6 shadow-1 dark:bg-gray-dark">
-            <h2 className="mb-4 font-semibold">Simulador de acuerdo</h2>
-            <AcuerdoSimulator
-              idprestamo={idprestamo}
-              moneda={prestamo.moneda}
-              descuentoMaximo={Number(prestamo.mandante?.descuentoMaximo ?? 100)}
-              interesMoratorio={Number(prestamo.interesMoratorio)}
-              gestionCobranza={Number(prestamo.gestionCobranza ?? 0)}
-              isLoading={acuerdoMutation.isPending}
-              onConfirm={(params) =>
-                acuerdoMutation.mutate({
-                  input: { idprestamo, ...params },
-                })
-              }
-            />
-          </div>
-          {(acuerdosData?.acuerdos ?? []).length > 0 && (
+          <div className="space-y-6">
             <div className="rounded-lg bg-white p-6 shadow-1 dark:bg-gray-dark">
-              <h2 className="mb-4 font-semibold">Acuerdos</h2>
-              <ul className="space-y-3 text-sm">
-                {acuerdosData?.acuerdos.map((a) => (
-                  <li
-                    key={a.idacuerdo}
-                    className="flex flex-wrap items-center justify-between gap-2 border-b border-stroke py-2 dark:border-dark-3"
-                  >
-                    <div>
-                      <span className="font-medium">{a.estado}</span>
-                      <span className="text-gray-500">
-                        {' '}
-                        · {a.porcentajeDesc}% desc. · {a.numeroCuotas} cuota(s)
-                      </span>
-                      <p className="text-xs text-gray-500">
-                        Acordado:{' '}
-                        {formatearMoneda(a.montoAcordado, prestamo.moneda)}
-                      </p>
-                      {(a.dispensarInteresMoratorio ||
-                        a.dispensarGestionCobranza) && (
-                        <p className="text-xs text-green-700 dark:text-green-300">
-                          Dispensa:{' '}
-                          {[
-                            a.dispensarInteresMoratorio
-                              ? 'interés moratorio'
-                              : null,
-                            a.dispensarGestionCobranza
-                              ? 'gestión de cobranza'
-                              : null,
-                          ]
-                            .filter(Boolean)
-                            .join(' · ')}
-                        </p>
-                      )}
-                      {(a.cuotas ?? []).length > 0 && (
-                        <ul className="mt-2 space-y-1 text-xs text-gray-600">
-                          {a.cuotas?.map((c) => (
-                            <li key={c.idcuota}>
-                              Cuota {c.numeroCuota}:{' '}
-                              {formatearMoneda(c.montoCuota, prestamo.moneda)}{' '}
-                              · vence{' '}
-                              {new Date(c.fechaVencimiento).toLocaleDateString(
-                                'es-NI',
-                              )}{' '}
-                              ·{' '}
-                              <span
-                                className={
-                                  c.estado === 'VENCIDA'
-                                    ? 'text-red-600'
-                                    : c.estado === 'PAGADA'
-                                      ? 'text-green-600'
-                                      : ''
-                                }
-                              >
-                                {c.estado}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                    {a.estado === 'VIGENTE' && (
-                      <PermissionGate permiso={PERMISO.ACUERDO_WRITE}>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={acuerdoEstadoMutation.isPending}
-                            onClick={() => setAcuerdoRotoId(a.idacuerdo)}
-                          >
-                            Marcar roto
-                          </Button>
-                        </div>
-                      </PermissionGate>
-                    )}
-                  </li>
-                ))}
-              </ul>
+              <h2 className="mb-4 font-semibold">Simulador de acuerdo</h2>
+              <AcuerdoSimulator
+                idprestamo={idprestamo}
+                moneda={prestamo.moneda}
+                descuentoMaximo={Number(prestamo.mandante?.descuentoMaximo ?? 100)}
+                interesMoratorio={Number(prestamo.interesMoratorio)}
+                gestionCobranza={Number(prestamo.gestionCobranza ?? 0)}
+                isLoading={acuerdoMutation.isPending}
+                onConfirm={(params) =>
+                  acuerdoMutation.mutate({
+                    input: { idprestamo, ...params },
+                  })
+                }
+              />
             </div>
-          )}
-        </div>
+            {(acuerdosData?.acuerdos ?? []).length > 0 && (
+              <div className="rounded-lg bg-white p-6 shadow-1 dark:bg-gray-dark">
+                <h2 className="mb-4 font-semibold">Acuerdos</h2>
+                <ul className="space-y-3 text-sm">
+                  {acuerdosData?.acuerdos.map((a) => (
+                    <li
+                      key={a.idacuerdo}
+                      className="flex flex-wrap items-center justify-between gap-2 border-b border-stroke py-2 dark:border-dark-3"
+                    >
+                      <div>
+                        <span className="font-medium">{a.estado}</span>
+                        <span className="text-gray-500">
+                          {' '}
+                          · {a.porcentajeDesc}% desc. · {a.numeroCuotas} cuota(s)
+                        </span>
+                        <p className="text-xs text-gray-500">
+                          Acordado: {formatearMoneda(a.montoAcordado, prestamo.moneda)}
+                        </p>
+                        {(a.dispensarInteresMoratorio || a.dispensarGestionCobranza) && (
+                          <p className="text-xs text-green-700 dark:text-green-300">
+                            Dispensa:{' '}
+                            {[
+                              a.dispensarInteresMoratorio ? 'interés moratorio' : null,
+                              a.dispensarGestionCobranza ? 'gestión de cobranza' : null,
+                            ]
+                              .filter(Boolean)
+                              .join(' · ')}
+                          </p>
+                        )}
+                        {(a.cuotas ?? []).length > 0 && (
+                          <ul className="mt-2 space-y-1 text-xs text-gray-600">
+                            {a.cuotas?.map((c) => (
+                              <li key={c.idcuota}>
+                                Cuota {c.numeroCuota}:{' '}
+                                {formatearMoneda(c.montoCuota, prestamo.moneda)} · vence{' '}
+                                {new Date(c.fechaVencimiento).toLocaleDateString('es-NI')} ·{' '}
+                                <span
+                                  className={
+                                    c.estado === 'VENCIDA'
+                                      ? 'text-red-600'
+                                      : c.estado === 'PAGADA'
+                                        ? 'text-green-600'
+                                        : ''
+                                  }
+                                >
+                                  {c.estado}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                      {a.estado === 'VIGENTE' && (
+                        <PermissionGate permiso={PERMISO.ACUERDO_WRITE}>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={acuerdoEstadoMutation.isPending}
+                              onClick={() => setAcuerdoRotoId(a.idacuerdo)}
+                            >
+                              Marcar roto
+                            </Button>
+                          </div>
+                        </PermissionGate>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
         </TabsContent>
 
         <TabsContent value="pagos">
-        <div className="grid gap-6 lg:grid-cols-2">
-          <PermissionGate permiso={PERMISO.PAGO_WRITE}>
-          <div className="rounded-lg bg-white p-6 shadow-1 dark:bg-gray-dark">
-            <h2 className="mb-4 font-semibold">Registrar pago</h2>
-            <p className="mb-3 text-xs text-gray-500">
-              Al conciliar un pago se descuenta del saldo del préstamo. Si el
-              total pagado cubre el acuerdo vigente, se marca como cumplido.
-            </p>
-            {ultimoPagoId ? (
-              <div
-                className="mb-4 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800 dark:border-green-800 dark:bg-green-900/20 dark:text-green-300"
-                role="status"
-              >
-                <p className="mb-2 font-medium">Pago registrado.</p>
-                <PostPagoAcciones
-                  idpago={ultimoPagoId}
-                  telefono={celularCliente}
+          <div className="grid items-start gap-6 xl:grid-cols-[minmax(20rem,26rem)_minmax(0,1fr)]">
+            <PermissionGate permiso={PERMISO.PAGO_WRITE}>
+              <div className="rounded-xl border border-stroke bg-white p-5 shadow-sm dark:border-dark-3 dark:bg-gray-dark sm:p-6">
+                <div className="mb-5 border-b border-stroke pb-4 dark:border-dark-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                    Nuevo movimiento
+                  </p>
+                  <h2 className="mt-1 font-semibold text-dark dark:text-white">Registrar pago</h2>
+                </div>
+                <p className="mb-3 text-xs text-gray-500">
+                  Al conciliar un pago se descuenta del saldo del préstamo. Si el total pagado cubre
+                  el acuerdo vigente, se marca como cumplido.
+                </p>
+                {ultimoPagoId ? (
+                  <div
+                    className="mb-4 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800 dark:border-green-800 dark:bg-green-900/20 dark:text-green-300"
+                    role="status"
+                  >
+                    <p className="mb-2 font-medium">Pago registrado.</p>
+                    <PostPagoAcciones idpago={ultimoPagoId} telefono={celularCliente} />
+                  </div>
+                ) : null}
+                <PagoForm
+                  key={pagoFormKey}
+                  monedaDefault={prestamo.moneda as 'NIO' | 'USD'}
+                  saldoTotal={prestamo.saldoTotal}
+                  montoCuota={acuerdoVigente?.montoCuota}
+                  isLoading={pagoMutation.isPending}
+                  onSubmit={(data) =>
+                    pagoMutation.mutate({
+                      input: { idprestamo, ...data },
+                    })
+                  }
                 />
               </div>
-            ) : null}
-            <PagoForm
-              key={pagoFormKey}
-              monedaDefault={prestamo.moneda as 'NIO' | 'USD'}
-              saldoTotal={prestamo.saldoTotal}
-              montoCuota={acuerdoVigente?.montoCuota}
-              isLoading={pagoMutation.isPending}
-              onSubmit={(data) =>
-                pagoMutation.mutate({
-                  input: { idprestamo, ...data },
-                })
-              }
-            />
+            </PermissionGate>
+            <div className="min-w-0 rounded-xl border border-stroke bg-white p-5 shadow-sm dark:border-dark-3 dark:bg-gray-dark sm:p-6">
+              <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    Movimientos registrados
+                  </p>
+                  <h2 className="mt-1 font-semibold text-dark dark:text-white">
+                    Historial de pagos
+                  </h2>
+                </div>
+                {(pagosData?.pagos.total ?? 0) > 0 ? (
+                  <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+                    {pagosData?.pagos.total} pago{pagosData?.pagos.total === 1 ? '' : 's'}
+                  </span>
+                ) : null}
+              </div>
+              <PaginatedDataTable
+                data={pagosData?.pagos.pagos ?? []}
+                columns={pagoColumns}
+                pagination={pagosData?.pagos}
+                isLoading={loadingPagos}
+                emptyMessage="Sin pagos registrados"
+                onPageChange={pagosPagination.handlePageChange}
+                onPageSizeChange={pagosPagination.handlePageSizeChange}
+                itemLabel="pagos"
+              />
+            </div>
           </div>
-          </PermissionGate>
-          <div className="rounded-lg bg-white p-6 shadow-1 dark:bg-gray-dark">
-            <h2 className="mb-4 font-semibold">Historial</h2>
-            <PaginatedDataTable
-              data={pagosData?.pagos.pagos ?? []}
-              columns={pagoColumns}
-              pagination={pagosData?.pagos}
-              isLoading={loadingPagos}
-              emptyMessage="Sin pagos registrados"
-              onPageChange={pagosPagination.handlePageChange}
-              onPageSizeChange={pagosPagination.handlePageSizeChange}
-              itemLabel="pagos"
-            />
-          </div>
-        </div>
         </TabsContent>
 
         <TabsContent value="enviar">
@@ -735,10 +723,7 @@ export default function PrestamoDetailPage({ params }: PageProps) {
                 <DeudorContactoPanel idcliente={cliente.idcliente} />
               )}
               {masSeccion === 'cortes' && (
-                <PrestamoCortesPanel
-                  idprestamo={idprestamo}
-                  moneda={prestamo.moneda}
-                />
+                <PrestamoCortesPanel idprestamo={idprestamo} moneda={prestamo.moneda} />
               )}
               {masSeccion === 'estados' && (
                 <>
@@ -752,12 +737,8 @@ export default function PrestamoDetailPage({ params }: PageProps) {
                   <PrestamoAsignacionHistorialPanel idprestamo={idprestamo} />
                 </>
               )}
-              {masSeccion === 'fiadores' && (
-                <FiadorPanel idprestamo={idprestamo} />
-              )}
-              {masSeccion === 'documentos' && (
-                <DocumentoPanel idprestamo={idprestamo} />
-              )}
+              {masSeccion === 'fiadores' && <FiadorPanel idprestamo={idprestamo} />}
+              {masSeccion === 'documentos' && <DocumentoPanel idprestamo={idprestamo} />}
             </div>
           </div>
         </TabsContent>
@@ -770,10 +751,7 @@ export default function PrestamoDetailPage({ params }: PageProps) {
         size="lg"
       >
         <div className="mb-3">
-          <ContactoRapidoAcciones
-            idprestamo={idprestamo}
-            telefono={celularCliente}
-          />
+          <ContactoRapidoAcciones idprestamo={idprestamo} telefono={celularCliente} />
         </div>
         <GestionForm
           idmandante={prestamo.idmandante}
@@ -833,25 +811,22 @@ export default function PrestamoDetailPage({ params }: PageProps) {
         {pagoEditando ? (
           <>
             <p className="mb-4 text-sm text-gray-500 dark:text-dark-6">
-              Solo se pueden editar pagos pendientes de conciliar. Si ya está
-              conciliado, desmárquelo primero.
+              Solo se pueden editar pagos pendientes de conciliar. Si ya está conciliado,
+              desmárquelo primero.
             </p>
             <PagoForm
               key={pagoEditando.idpago}
               initialValues={{
                 monto: pagoEditando.monto,
                 fechaPago: pagoEditando.fechaPago,
-                moneda:
-                  pagoEditando.moneda === 'USD' ? 'USD' : 'NIO',
+                moneda: pagoEditando.moneda === 'USD' ? 'USD' : 'NIO',
                 medio: pagoEditando.medio,
                 descripcion: pagoEditando.descripcion,
               }}
               submitLabel="Guardar cambios"
               ocultarMontosRapidos
               isLoading={updatePagoMutation.isPending}
-              errorMessage={
-                updatePagoMutation.error?.message ?? null
-              }
+              errorMessage={updatePagoMutation.error?.message ?? null}
               onSubmit={(data) => {
                 updatePagoMutation.reset();
                 updatePagoMutation.mutate({
@@ -900,7 +875,7 @@ export default function PrestamoDetailPage({ params }: PageProps) {
           }
           acuerdoEstadoMutation.mutate(
             { idacuerdo: acuerdoRotoId, estado: 'ROTO' },
-            { onSuccess: () => setAcuerdoRotoId(null) },
+            { onSuccess: () => setAcuerdoRotoId(null) }
           );
         }}
       />

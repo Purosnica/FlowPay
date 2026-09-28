@@ -4,6 +4,7 @@ import type { PermisoCodigo } from '@/lib/permissions/permiso-codes';
 export interface NavSubItem {
   title: string;
   url: string;
+  icon?: ComponentType<{ className?: string }>;
   permiso?: PermisoCodigo | string;
   permisos?: (PermisoCodigo | string)[];
 }

@@ -143,10 +143,17 @@ export function Sidebar() {
                                 {item.items.map((subItem) => (
                                   <li key={subItem.title} role="none">
                                     <MenuItem
+                                      className="flex items-center gap-3"
                                       as="link"
                                       href={subItem.url}
                                       isActive={pathname === subItem.url}
                                     >
+                                      {subItem.icon && (
+                                        <subItem.icon
+                                          className="size-5 shrink-0"
+                                          aria-hidden="true"
+                                        />
+                                      )}
                                       <span>{subItem.title}</span>
                                     </MenuItem>
                                   </li>

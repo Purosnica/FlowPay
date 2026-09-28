@@ -2,6 +2,220 @@ import type { SVGProps } from "react";
 
 export type PropsType = SVGProps<SVGSVGElement>;
 
+function SidebarIcon({ children, ...props }: PropsType) {
+  return (
+    <svg
+      width={24}
+      height={24}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      {children}
+    </svg>
+  );
+}
+
+export function Inbox(props: PropsType) {
+  return (
+    <SidebarIcon {...props}>
+      <path d="M4 4h16v12H4z" />
+      <path d="M4 13h4l2 3h4l2-3h4" />
+    </SidebarIcon>
+  );
+}
+export function ClipboardCheck(props: PropsType) {
+  return (
+    <SidebarIcon {...props}>
+      <rect x="5" y="4" width="14" height="17" rx="2" />
+      <path d="M9 4.5h6v3H9zM9 13l2 2 4-4" />
+    </SidebarIcon>
+  );
+}
+export function Wallet(props: PropsType) {
+  return (
+    <SidebarIcon {...props}>
+      <path d="M4 7a2 2 0 012-2h12a2 2 0 012 2v12H6a2 2 0 01-2-2V7z" />
+      <path d="M4 8h14v5h-4a2 2 0 000 4h4v2M14 15h.01" />
+    </SidebarIcon>
+  );
+}
+export function Megaphone(props: PropsType) {
+  return (
+    <SidebarIcon {...props}>
+      <path d="M4 14h3l8 4V6l-8 4H4zM7 14l1 5h3l-1-4" />
+    </SidebarIcon>
+  );
+}
+export function Wand(props: PropsType) {
+  return (
+    <SidebarIcon {...props}>
+      <path d="M4 20L17 7l-3-3L1 17zM13 5l2-2M18 10l3-3M19 15h3M9 2v3" />
+    </SidebarIcon>
+  );
+}
+export function MessageAlert(props: PropsType) {
+  return (
+    <SidebarIcon {...props}>
+      <path d="M20 15a3 3 0 01-3 3H9l-5 3V7a3 3 0 013-3h10a3 3 0 013 3z" />
+      <path d="M12 8v3M12 14h.01" />
+    </SidebarIcon>
+  );
+}
+export function Brain(props: PropsType) {
+  return (
+    <SidebarIcon {...props}>
+      <path d="M9 4a3 3 0 00-5 2 3 3 0 00-1 5 3 3 0 001 5 3 3 0 005 2M15 4a3 3 0 015 2 3 3 0 011 5 3 3 0 01-1 5 3 3 0 01-5 2M12 3v18M8 8h4M12 14h4" />
+    </SidebarIcon>
+  );
+}
+export function Users(props: PropsType) {
+  return (
+    <SidebarIcon {...props}>
+      <circle cx="9" cy="8" r="3" />
+      <path d="M3 20v-1a5 5 0 015-5h2a5 5 0 015 5v1M16 5a3 3 0 010 6M21 20v-1a5 5 0 00-3-4.6" />
+    </SidebarIcon>
+  );
+}
+export function Trophy(props: PropsType) {
+  return (
+    <SidebarIcon {...props}>
+      <path d="M8 4h8v5a4 4 0 01-8 0zM8 6H4v1a4 4 0 004 4M16 6h4v1a4 4 0 01-4 4M12 13v4M8 21h8M9 17h6" />
+    </SidebarIcon>
+  );
+}
+export function Building(props: PropsType) {
+  return (
+    <SidebarIcon {...props}>
+      <path d="M4 21V5l8-3 8 3v16M8 8h.01M12 8h.01M16 8h.01M8 12h.01M12 12h.01M16 12h.01M10 21v-4h4v4" />
+    </SidebarIcon>
+  );
+}
+export function Upload(props: PropsType) {
+  return (
+    <SidebarIcon {...props}>
+      <path d="M12 15V3M8 7l4-4 4 4M5 14v5h14v-5" />
+    </SidebarIcon>
+  );
+}
+export function History(props: PropsType) {
+  return (
+    <SidebarIcon {...props}>
+      <path d="M3 12a9 9 0 109-9 9 9 0 00-6.4 2.7L3 8" />
+      <path d="M3 3v5h5M12 7v5l3 2" />
+    </SidebarIcon>
+  );
+}
+export function UserCheck(props: PropsType) {
+  return (
+    <SidebarIcon {...props}>
+      <circle cx="9" cy="8" r="3" />
+      <path d="M3 20v-1a5 5 0 015-5h2a5 5 0 013.6 1.5M16 19l2 2 4-5" />
+    </SidebarIcon>
+  );
+}
+export function LayoutTemplate(props: PropsType) {
+  return (
+    <SidebarIcon {...props}>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M3 9h18M8 9v11" />
+    </SidebarIcon>
+  );
+}
+export function MessageSquare(props: PropsType) {
+  return (
+    <SidebarIcon {...props}>
+      <path d="M20 15a3 3 0 01-3 3H9l-5 3V7a3 3 0 013-3h10a3 3 0 013 3z" />
+      <path d="M8 9h8M8 13h5" />
+    </SidebarIcon>
+  );
+}
+export function Landmark(props: PropsType) {
+  return (
+    <SidebarIcon {...props}>
+      <path d="M3 21h18M5 18h14M4 8l8-5 8 5M6 10v6M10 10v6M14 10v6M18 10v6" />
+    </SidebarIcon>
+  );
+}
+export function Receipt(props: PropsType) {
+  return (
+    <SidebarIcon {...props}>
+      <path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6" />
+    </SidebarIcon>
+  );
+}
+export function Bank(props: PropsType) {
+  return (
+    <SidebarIcon {...props}>
+      <path d="M3 10h18M5 10v8M9 10v8M15 10v8M19 10v8M3 21h18M2 7l10-4 10 4" />
+    </SidebarIcon>
+  );
+}
+export function CalendarCheck(props: PropsType) {
+  return (
+    <SidebarIcon {...props}>
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M7 3v4M17 3v4M3 10h18M9 16l2 2 4-4" />
+    </SidebarIcon>
+  );
+}
+
+export function ChartReport(props: PropsType) {
+  return (
+    <SidebarIcon {...props}>
+      <path d="M4 20V4h16v16zM8 16v-3M12 16V9M16 16v-5" />
+    </SidebarIcon>
+  );
+}
+
+export function Server(props: PropsType) {
+  return (
+    <SidebarIcon {...props}>
+      <rect x="4" y="4" width="16" height="6" rx="1" />
+      <rect x="4" y="14" width="16" height="6" rx="1" />
+      <path d="M8 7h.01M8 17h.01M12 7h4M12 17h4" />
+    </SidebarIcon>
+  );
+}
+
+export function ShieldCheck(props: PropsType) {
+  return (
+    <SidebarIcon {...props}>
+      <path d="M12 3l7 3v5c0 4.5-2.9 8-7 10-4.1-2-7-5.5-7-10V6zM9 12l2 2 4-4" />
+    </SidebarIcon>
+  );
+}
+
+export function Clock(props: PropsType) {
+  return (
+    <SidebarIcon {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </SidebarIcon>
+  );
+}
+
+export function UsersKey(props: PropsType) {
+  return (
+    <SidebarIcon {...props}>
+      <circle cx="8" cy="8" r="3" />
+      <path d="M2 20v-1a5 5 0 015-5h2a5 5 0 014 2M16 8h5M18 6v4M16 19h5M18.5 16.5a2.5 2.5 0 010 5" />
+    </SidebarIcon>
+  );
+}
+
+export function BookOpen(props: PropsType) {
+  return (
+    <SidebarIcon {...props}>
+      <path d="M3 5.5A2.5 2.5 0 015.5 3H11v17H5.5A2.5 2.5 0 003 22zM21 5.5A2.5 2.5 0 0018.5 3H13v17h5.5A2.5 2.5 0 0121 22z" />
+    </SidebarIcon>
+  );
+}
+
 export function ChevronUp(props: PropsType) {
   return (
     <svg
@@ -203,10 +417,7 @@ export function Settings(props: PropsType) {
         d="M9.594 3.94c.38-.38.893-.59 1.414-.59h2c.521 0 1.034.21 1.414.59l1.83 1.83c.38.38.59.893.59 1.414v2c0 .521.21 1.034.59 1.414l1.83 1.83c.38.38.59.893.59 1.414v2c0 .521-.21 1.034-.59 1.414l-1.83 1.83c-.38.38-.893.59-1.414.59h-2c-.521 0-1.034.21-1.414.59l-1.83 1.83c-.38.38-.893.59-1.414.59h-2c-.521 0-1.034-.21-1.414-.59l-1.83-1.83a2 2 0 01-.59-1.414v-2a2 2 0 00-.59-1.414l-1.83-1.83a2 2 0 010-2.828l1.83-1.83a2 2 0 011.414-.59h2c.521 0 1.034-.21 1.414-.59l1.83-1.83zm1.414 1.06a.5.5 0 00-.354.146L9.354 6.768a.5.5 0 01-.354.146H6.536a.5.5 0 00-.354.146L4.354 8.536a.5.5 0 000 .707l1.828 1.829a.5.5 0 00.354.146h2.464a.5.5 0 01.354.146l1.828 1.829a.5.5 0 00.354.146h2.464a.5.5 0 00.354-.146l1.828-1.829a.5.5 0 01.354-.146h2.464a.5.5 0 00.354-.146l1.828-1.829a.5.5 0 000-.707l-1.828-1.829a.5.5 0 00-.354-.146h-2.464a.5.5 0 01-.354-.146L14.536 4.354a.5.5 0 00-.354-.146h-2.464a.5.5 0 00-.354.146z"
         fill="currentColor"
       />
-      <path
-        d="M12 15a3 3 0 100-6 3 3 0 000 6z"
-        fill="currentColor"
-      />
+      <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" fill="currentColor" />
     </svg>
   );
 }
