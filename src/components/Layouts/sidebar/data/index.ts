@@ -34,7 +34,7 @@ export const NAV_DATA: NavSection[] = [
       {
         title: "Cobranza",
         icon: Icons.PieChart,
-        permisos: [PERMISO.CARTERA_READ, PERMISO.GESTION_READ],
+        permisos: [PERMISO.CARTERA_READ, PERMISO.GESTION_READ, PERMISO.CONCILIACION_VIEW, PERMISO.CIERRE_VIEW],
         items: [
           // Trabajo diario
           {
@@ -127,9 +127,14 @@ export const NAV_DATA: NavSection[] = [
             permiso: PERMISO.LIQUIDACION_READ,
           },
           {
-            title: "Conciliaciones",
+            title: "Conciliación bancaria",
             url: "/cobranza/conciliaciones",
-            permiso: PERMISO.PAGO_READ,
+            permiso: PERMISO.CONCILIACION_VIEW,
+          },
+          {
+            title: "Cierre diario",
+            url: "/cobranza/cierres",
+            permiso: PERMISO.CIERRE_VIEW,
           },
         ],
       },
