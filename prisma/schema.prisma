@@ -700,6 +700,10 @@ model tbl_conciliacion_pago {
   idconciliacion Int @id @default(autoincrement())
   idlinea Int
   idpago Int
+  /// Claves activas: solo se rellenan mientras estado=CONCILIADO.
+  /// UNIQUE + NULL permite conservar todo el historial y bloquear doble conciliación concurrente.
+  lineaActiva Int? @unique
+  pagoActivo Int? @unique
   estado String @default("CONCILIADO") @db.VarChar(24)
   metodoMatch String @db.VarChar(32)
   confidence Decimal @db.Decimal(5,2)
