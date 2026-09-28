@@ -19,6 +19,9 @@ export const PERMISO = {
   PAGO_WRITE: 'PAGO_WRITE',
   /** Conciliar / aplicar / desaplicar pagos. Cobrador: solo los propios. */
   PAGO_APPLY: 'PAGO_APPLY',
+  CONCILIACION_VIEW: 'CONCILIACION_VIEW',
+  CONCILIACION_EXECUTE: 'CONCILIACION_EXECUTE',
+  CONCILIACION_OVERRIDE: 'CONCILIACION_OVERRIDE',
   LIQUIDACION_READ: 'LIQUIDACION_READ',
   LIQUIDACION_WRITE: 'LIQUIDACION_WRITE',
   /** Comodín legacy: acceso a todos los reportes. */
@@ -173,6 +176,27 @@ export const PERMISOS_CATALOGO: PermisoDefinicion[] = [
       'Marcar pagos como aplicados o desaplicarlos. El cobrador solo aplica los que registró',
     categoria: 'COBRANZA',
     tipo: 'operativo',
+  },
+  {
+    codigo: PERMISO.CONCILIACION_VIEW,
+    nombre: 'Ver Conciliación Bancaria',
+    descripcion: 'Consultar extractos, líneas y estado de conciliación bancaria',
+    categoria: 'COBRANZA',
+    tipo: 'operativo',
+  },
+  {
+    codigo: PERMISO.CONCILIACION_EXECUTE,
+    nombre: 'Ejecutar Conciliación Bancaria',
+    descripcion: 'Ejecutar matching automático y conciliar líneas bancarias',
+    categoria: 'COBRANZA',
+    tipo: 'operativo',
+  },
+  {
+    codigo: PERMISO.CONCILIACION_OVERRIDE,
+    nombre: 'Gestionar Excepciones de Conciliación',
+    descripcion: 'Conciliar manualmente, desconciliar y excluir líneas bancarias',
+    categoria: 'COBRANZA',
+    tipo: 'administrativo',
   },
   {
     codigo: PERMISO.LIQUIDACION_READ,
@@ -500,6 +524,8 @@ export const PERMISOS_SUPERVISOR: PermisoCodigo[] = [
   PERMISO.INTELIGENCIA_READ,
   PERMISO.EQUIPO_READ,
   PERMISO.LIQUIDACION_READ,
+  PERMISO.CONCILIACION_VIEW,
+  PERMISO.CONCILIACION_EXECUTE,
   PERMISO.REPORTE_RIESGO_READ,
   PERMISO.REPORTE_EQUIPO_READ,
   ...PERMISOS_REPORTE_FINOS_RIESGO,
@@ -509,6 +535,7 @@ export const PERMISOS_SUPERVISOR: PermisoCodigo[] = [
 export const PERMISOS_GERENTE: PermisoCodigo[] = [
   ...PERMISOS_SUPERVISOR,
   PERMISO.LIQUIDACION_WRITE,
+  PERMISO.CONCILIACION_OVERRIDE,
   PERMISO.USER_READ,
   PERMISO.REPORTE_FINANZAS_READ,
   PERMISO.REPORTE_GERENCIAL_READ,
