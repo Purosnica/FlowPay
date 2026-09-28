@@ -39,6 +39,7 @@ import { encolarWebhookMandante } from '@/lib/cobranza/webhook-mandante-service'
 import { MarcarPagoAplicadoSchema, IdPositiveSchema } from '@/lib/validators/graphql-args';
 import { anularPagoEnTransaccion } from '@/lib/cobranza/pago-anulacion-service';
 import { validarPoliticaPago } from '@/lib/cobranza/pago-politica-service';
+import { asegurarFechaPagoNoCerrada } from '@/lib/cobranza/cierre-diario-service';
 
 builder.mutationField('createPago', (t) =>
   t.prismaField({
@@ -97,6 +98,13 @@ builder.mutationField('createPago', (t) =>
         }
       }
 
+      await asegurarFechaPagoNoCerrada({
+        idmandante: prestamo.idmandante,
+        fechaPago: data.fechaPago,
+        idagencia: prestamo.idagencia,
+        idusuarioCaja: ctx.usuario.idusuario,
+      });
+
       const pago = await ctx.prisma.$transaction(async (tx) => {
         await validarPoliticaPago(tx, data);
         await validarPagoAnticipado(tx, {
@@ -119,6 +127,7 @@ builder.mutationField('createPago', (t) =>
               moneda: data.moneda,
               tipoCambio: data.tipoCambio,
               medio: data.medio,
+              referenciaBancaria: data.referenciaBancaria,
               descripcion: data.descripcion,
               idempotencyKey: data.idempotencyKey,
             },
@@ -286,6 +295,17 @@ builder.mutationField('updatePago', (t) =>
       const monto =
         campos.monto ?? decimalToNumber(pago.monto);
 
+      const prestamoPago = await ctx.prisma.tbl_prestamo.findUnique({
+        where: { idprestamo: pago.idprestamo },
+        select: { idagencia: true },
+      });
+      await asegurarFechaPagoNoCerrada({
+        idmandante: pago.idmandante,
+        fechaPago,
+        idagencia: prestamoPago?.idagencia ?? null,
+        idusuarioCaja: pago.idgestor,
+      });
+
       await ctx.prisma.$transaction(async (tx) => {
         await validarPoliticaPago(tx, {
           idprestamo: pago.idprestamo,
@@ -312,6 +332,9 @@ builder.mutationField('updatePago', (t) =>
               ? { tipoCambio: campos.tipoCambio }
               : {}),
             ...(campos.medio !== undefined ? { medio: campos.medio } : {}),
+            ...(campos.referenciaBancaria !== undefined
+              ? { referenciaBancaria: campos.referenciaBancaria }
+              : {}),
             ...(campos.descripcion !== undefined
               ? { descripcion: campos.descripcion }
               : {}),
@@ -330,6 +353,7 @@ builder.mutationField('updatePago', (t) =>
               monto: decimalToNumber(pago.monto),
               moneda: pago.moneda,
               medio: pago.medio,
+              referenciaBancaria: pago.referenciaBancaria,
               descripcion: pago.descripcion,
               tipoCambio:
                 pago.tipoCambio != null
@@ -377,6 +401,17 @@ builder.mutationField('anularPago', (t) =>
         pago.idprestamo,
       );
 
+      const prestamoPago = await ctx.prisma.tbl_prestamo.findUnique({
+        where: { idprestamo: pago.idprestamo },
+        select: { idagencia: true },
+      });
+      await asegurarFechaPagoNoCerrada({
+        idmandante: pago.idmandante,
+        fechaPago: pago.fechaPago,
+        idagencia: prestamoPago?.idagencia ?? null,
+        idusuarioCaja: pago.idgestor,
+      });
+
       await ctx.prisma.$transaction(async (tx) => {
         await anularPagoEnTransaccion(tx, pago, ctx.usuario?.idusuario);
       });
@@ -408,6 +443,17 @@ builder.mutationField('marcarPagoAplicado', (t) =>
       }
       await requerirAccesoMandante(ctx.usuario?.idusuario, pago.idmandante);
       await requerirAccesoPagoCobrador(ctx.usuario?.idusuario, idpago);
+
+      const prestamoPago = await ctx.prisma.tbl_prestamo.findUnique({
+        where: { idprestamo: pago.idprestamo },
+        select: { idagencia: true },
+      });
+      await asegurarFechaPagoNoCerrada({
+        idmandante: pago.idmandante,
+        fechaPago: pago.fechaPago,
+        idagencia: prestamoPago?.idagencia ?? null,
+        idusuarioCaja: pago.idgestor,
+      });
 
       if (pago.aplicado === aplicado) {
         return ctx.prisma.tbl_pago.findUniqueOrThrow({
