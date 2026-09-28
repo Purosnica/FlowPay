@@ -293,6 +293,8 @@ export async function ejecutarMatchingExtracto(
           data: {
             idlinea: vigente.idlinea,
             idpago: match.candidato.idpago,
+            lineaActiva: vigente.idlinea,
+            pagoActivo: match.candidato.idpago,
             estado: 'CONCILIADO',
             metodoMatch: match.metodo,
             confidence: new Prisma.Decimal(match.confidence),
@@ -365,6 +367,8 @@ export async function conciliarLineaManual(
       data: {
         idlinea,
         idpago,
+        lineaActiva: idlinea,
+        pagoActivo: idpago,
         estado: 'CONCILIADO',
         metodoMatch: 'MANUAL',
         confidence: new Prisma.Decimal(100),
@@ -417,6 +421,8 @@ export async function desconciliarLinea(
       where: { idconciliacion: conciliacion.idconciliacion },
       data: {
         estado: 'DESCONCILIADO',
+        lineaActiva: null,
+        pagoActivo: null,
         desconciliadoPor: idusuario,
         desconciliadoAt: new Date(),
         motivoDesconciliacion: motivoLimpio,
