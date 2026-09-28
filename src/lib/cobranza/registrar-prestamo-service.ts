@@ -6,6 +6,7 @@ import {
   type EstadoPrestamo,
 } from '@/lib/cobranza/estado-prestamo-service';
 import type { CreatePrestamoInputData } from '@/lib/graphql/resolvers/prestamo/types';
+import { registrarMovimientoFinanciero } from './ledger-financiero-service';
 
 type DbClient = PrismaClient | Prisma.TransactionClient;
 
@@ -119,6 +120,21 @@ export async function registrarPrestamoManual(
       estado: input.estado,
       idusuario,
       motivo: 'Registro manual de préstamo',
+    });
+
+    // Todo préstamo nuevo inicia su trazabilidad financiera en la misma transacción.
+    await registrarMovimientoFinanciero(db, {
+      idmandante: input.idmandante,
+      idprestamo: prestamo.idprestamo,
+      idcliente: input.idcliente,
+      tipoMovimiento: 'SALDO_INICIAL_MIGRADO',
+      monto: input.saldoTotal,
+      moneda: input.moneda,
+      impactoSaldo: input.saldoTotal,
+      saldoAnterior: 0,
+      fechaOperacion: input.fechaPrestamo ?? new Date(),
+      creadoPor: idusuario,
+      motivo: 'Saldo inicial de préstamo manual',
     });
 
     return prestamo.idprestamo;

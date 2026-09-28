@@ -715,6 +715,7 @@ model tbl_conciliacion_pago {
   motivoDesconciliacion String? @db.Text
   linea tbl_extracto_linea @relation(fields: [idlinea], references: [idlinea], onDelete: Restrict)
   @@unique([idlinea, idpago])
+  @@unique([idlinea])
   @@index([idpago, estado])
   @@map("tbl_conciliacion_pago")
 }
@@ -725,6 +726,9 @@ model tbl_cierre_diario {
   fechaNegocio DateTime
   idagencia Int?
   idusuarioCaja Int?
+  /// Llaves normalizadas para que MySQL no permita duplicados con NULL.
+  scopeAgencia Int @default(0)
+  scopeUsuarioCaja Int @default(0)
   estado String @default("ABIERTO") @db.VarChar(24)
   totalSistema Decimal @default(0) @db.Decimal(14,2)
   totalDeclarado Decimal @default(0) @db.Decimal(14,2)
@@ -738,7 +742,7 @@ model tbl_cierre_diario {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   detalles tbl_cierre_diario_detalle[]
-  @@unique([idmandante, fechaNegocio, idagencia, idusuarioCaja])
+  @@unique([idmandante, fechaNegocio, scopeAgencia, scopeUsuarioCaja])
   @@index([idmandante, estado, fechaNegocio])
   @@map("tbl_cierre_diario")
 }

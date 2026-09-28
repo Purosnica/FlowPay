@@ -1,9 +1,9 @@
-import type { Prisma } from '@prisma/client';
+import type { Prisma, PrismaClient } from '@prisma/client';
 import { GraphQLValidationError } from '@/lib/errors/graphql-errors';
 import { decimalToNumber, roundMoney } from './decimal-utils';
 import { finDiaEnZona } from '@/lib/utils/timezone';
 
-type Tx = Prisma.TransactionClient;
+type Tx = Prisma.TransactionClient | PrismaClient;
 
 export const TIPOS_MOVIMIENTO_FINANCIERO = [
   'SALDO_INICIAL_MIGRADO', 'PAGO', 'REVERSO_PAGO', 'DESCUENTO',

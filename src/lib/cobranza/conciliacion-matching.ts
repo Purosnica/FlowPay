@@ -24,7 +24,11 @@ export function resolverMatchingBancario(
 ): ResultadoMatching {
   const referencia = normalizarReferenciaBancaria(linea.referencia);
   const exactos = referencia
-    ? candidatos.filter((p) => normalizarReferenciaBancaria(p.referencia) === referencia)
+    ? candidatos.filter((p) =>
+      normalizarReferenciaBancaria(p.referencia) === referencia &&
+      p.moneda === linea.moneda &&
+      roundMoney(p.monto) === roundMoney(linea.monto),
+    )
     : [];
   if (exactos.length === 1) return { estado: 'MATCH_EXACT', candidato: exactos[0]!, confidence: 100, metodo: 'REFERENCIA_NORMALIZADA' };
   if (exactos.length > 1) return { estado: 'AMBIGUO', candidatos: exactos };
