@@ -1395,7 +1395,7 @@ export interface ReporteClienteObligaciones {
   clientes: ReporteClienteObligacionesCliente[];
 }
 
-/** Depósito recuperado, con el contexto financiero del préstamo. */
+/** Depósito recuperado, con el saldo antes y después de su aplicación. */
 export interface ReporteRecuperacionClienteItem {
   idpago: number;
   nombreCliente: string;

@@ -151,7 +151,7 @@ export default function ReporteRecuperacionClientesPage() {
     <div className="space-y-6">
       <PageHeader
         title="Recuperación por clientes"
-        description="Detalle de depósitos aplicados, saldo y recuperación por cliente en el rango seleccionado."
+        description="Detalle secuencial de depósitos, saldo y recuperación por cliente en el rango seleccionado."
       />
       <ReporteFiltrosBar
         idmandante=""
@@ -206,7 +206,7 @@ export default function ReporteRecuperacionClientesPage() {
             <DashboardMetricStrip metrics={metrics} />
             <ReporteTableSection
               title="Depósitos recuperados"
-              description={`Período: ${reporte.periodo}. Cada registro corresponde a un depósito aplicado.`}
+              description={`Período: ${reporte.periodo}. Cada registro muestra el saldo antes y después de su depósito.`}
               columns={columns}
               data={reporte.registros}
               emptyMessage="No hay depósitos aplicados para los filtros seleccionados."
