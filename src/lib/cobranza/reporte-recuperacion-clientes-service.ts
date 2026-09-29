@@ -72,7 +72,7 @@ export async function obtenerReporteRecuperacionClientes(
   const idsMandante = [...new Set(pagos.map((p) => p.prestamo.idmandante))];
   const idsPago = pagos.map((p) => p.idpago);
   const idsPrestamo = [...new Set(pagos.map((p) => p.idprestamo))];
-  const [defs, movimientos, movimientosHistoricos] = await Promise.all([
+  const [defs, movimientos, pagosHistoricos] = await Promise.all([
     idsMandante.length
       ? prisma.tbl_comision_cobro.findMany({
           where: { idmandante: { in: idsMandante }, deletedAt: null },
@@ -86,15 +86,14 @@ export async function obtenerReporteRecuperacionClientes(
         })
       : Promise.resolve([]),
     idsPrestamo.length
-      ? prisma.tbl_movimiento_financiero.findMany({
-          where: { idprestamo: { in: idsPrestamo } },
-          orderBy: [{ fechaOperacion: 'asc' }, { idmovimiento: 'asc' }],
-          select: {
-            idprestamo: true,
-            tipoMovimiento: true,
-            saldoAnterior: true,
-            saldoPosterior: true,
+      ? prisma.tbl_pago.groupBy({
+          by: ['idprestamo'],
+          where: {
+            idprestamo: { in: idsPrestamo },
+            aplicado: true,
+            deletedAt: null,
           },
+          _sum: { monto: true },
         })
       : Promise.resolve([]),
   ]);
@@ -114,14 +113,16 @@ export async function obtenerReporteRecuperacionClientes(
   // Monto fijo del crédito: saldo de apertura en el libro mayor. Para cartera
   // histórica, el primer pago guarda el saldo que existía antes de abonarlo.
   const montoOriginalPorPrestamo = new Map<number, number>();
-  for (const movimiento of movimientosHistoricos) {
-    if (montoOriginalPorPrestamo.has(movimiento.idprestamo)) continue;
+  const saldoActualPorPrestamo = new Map<number, number>();
+  for (const pago of pagos) {
+    saldoActualPorPrestamo.set(pago.idprestamo, decimalToNumber(pago.prestamo.saldoTotal));
+  }
+  for (const pagoHistorico of pagosHistoricos) {
     montoOriginalPorPrestamo.set(
-      movimiento.idprestamo,
-      decimalToNumber(
-        movimiento.tipoMovimiento === 'SALDO_INICIAL_MIGRADO'
-          ? movimiento.saldoPosterior
-          : movimiento.saldoAnterior
+      pagoHistorico.idprestamo,
+      roundMoney(
+        (saldoActualPorPrestamo.get(pagoHistorico.idprestamo) ?? 0) +
+          decimalToNumber(pagoHistorico._sum.monto)
       )
     );
   }
