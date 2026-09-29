@@ -1394,3 +1394,32 @@ export interface ReporteClienteObligaciones {
   clientesMultiMandante: number;
   clientes: ReporteClienteObligacionesCliente[];
 }
+
+/** Depósito recuperado, con el contexto financiero del préstamo. */
+export interface ReporteRecuperacionClienteItem {
+  idpago: number;
+  nombreCliente: string;
+  codigoUnico: string;
+  saldoInicial: number;
+  ejecutivo: string;
+  fechaDeposito: string;
+  tramoMora: string;
+  sucursal: string;
+  banco: string;
+  interesesMoratorios: number;
+  descuentos: number;
+  saldoALaFecha: number;
+  montoAbonado: number;
+  saldoPendiente: number;
+  porcentajeRecuperado: number;
+}
+
+/** Recuperación por depósito para un cliente y rango de fechas. */
+export interface ReporteRecuperacionClientes {
+  periodo: string;
+  totalDepositos: number;
+  totalAbonado: number;
+  saldoPendienteTotal: number;
+  recuperacionPct: number;
+  registros: ReporteRecuperacionClienteItem[];
+}

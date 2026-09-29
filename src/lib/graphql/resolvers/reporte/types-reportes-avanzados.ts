@@ -1,6 +1,7 @@
 import { builder } from '../../builder';
 import type {
   ReporteClienteObligaciones,
+  ReporteRecuperacionClientes,
   ReporteComisionesVsProyeccion,
   ReporteConcentracionRiesgo,
   ReporteCumplimientoMetas,
@@ -16,9 +17,7 @@ import type {
 } from '@/types/cobranza';
 
 const ReporteMargenMandanteItemType = builder
-  .objectRef<
-    ReporteMargenMandantes['porMandante'][number]
-  >('ReporteMargenMandanteItem')
+  .objectRef<ReporteMargenMandantes['porMandante'][number]>('ReporteMargenMandanteItem')
   .implement({
     fields: (t) => ({
       idmandante: t.exposeInt('idmandante'),
@@ -77,9 +76,7 @@ export const ReporteComisionesVsProyeccionType = builder
   });
 
 const ReporteIngresoTramoItemType = builder
-  .objectRef<
-    ReporteIngresoTramoMora['porTramo'][number]
-  >('ReporteIngresoTramoItem')
+  .objectRef<ReporteIngresoTramoMora['porTramo'][number]>('ReporteIngresoTramoItem')
   .implement({
     fields: (t) => ({
       tramo: t.exposeString('tramo'),
@@ -151,9 +148,7 @@ export const ReportePromesasPagoType = builder
   });
 
 const ReporteProductividadDiaItemType = builder
-  .objectRef<
-    ReporteProductividadDiaria['porDia'][number]
-  >('ReporteProductividadDiaItem')
+  .objectRef<ReporteProductividadDiaria['porDia'][number]>('ReporteProductividadDiaItem')
   .implement({
     fields: (t) => ({
       fecha: t.exposeString('fecha'),
@@ -166,9 +161,7 @@ const ReporteProductividadDiaItemType = builder
   });
 
 const ReporteProductividadGestorResumenType = builder
-  .objectRef<
-    ReporteProductividadDiaria['porGestor'][number]
-  >('ReporteProductividadGestorResumen')
+  .objectRef<ReporteProductividadDiaria['porGestor'][number]>('ReporteProductividadGestorResumen')
   .implement({
     fields: (t) => ({
       idgestor: t.exposeInt('idgestor'),
@@ -271,9 +264,7 @@ export const ReporteReclamosSlaType = builder
   });
 
 const ReporteMigracionMoraItemType = builder
-  .objectRef<
-    ReporteMigracionMora['migraciones'][number]
-  >('ReporteMigracionMoraItem')
+  .objectRef<ReporteMigracionMora['migraciones'][number]>('ReporteMigracionMoraItem')
   .implement({
     fields: (t) => ({
       tramoOrigen: t.exposeString('tramoOrigen'),
@@ -303,9 +294,7 @@ export const ReporteMigracionMoraType = builder
   });
 
 const ReporteConcentracionItemType = builder
-  .objectRef<
-    ReporteConcentracionRiesgo['topDeudores'][number]
-  >('ReporteConcentracionItem')
+  .objectRef<ReporteConcentracionRiesgo['topDeudores'][number]>('ReporteConcentracionItem')
   .implement({
     fields: (t) => ({
       tipo: t.exposeString('tipo'),
@@ -370,9 +359,7 @@ export const ReporteCuotasVencidasType = builder
   });
 
 const ReporteCumplimientoMetaItemType = builder
-  .objectRef<
-    ReporteCumplimientoMetas['cobradores'][number]
-  >('ReporteCumplimientoMetaItem')
+  .objectRef<ReporteCumplimientoMetas['cobradores'][number]>('ReporteCumplimientoMetaItem')
   .implement({
     fields: (t) => ({
       idgestor: t.exposeInt('idgestor'),
@@ -407,9 +394,7 @@ export const ReporteCumplimientoMetasType = builder
   });
 
 const ReporteSupervisorEquipoItemType = builder
-  .objectRef<
-    ReporteSupervisorEquipo['ranking'][number]
-  >('ReporteSupervisorEquipoItem')
+  .objectRef<ReporteSupervisorEquipo['ranking'][number]>('ReporteSupervisorEquipoItem')
   .implement({
     fields: (t) => ({
       idgestor: t.exposeInt('idgestor'),
@@ -476,9 +461,7 @@ const ReporteClienteMandanteResumenType = builder
   });
 
 const ReporteClienteObligacionesClienteType = builder
-  .objectRef<
-    ReporteClienteObligaciones['clientes'][number]
-  >('ReporteClienteObligacionesCliente')
+  .objectRef<ReporteClienteObligaciones['clientes'][number]>('ReporteClienteObligacionesCliente')
   .implement({
     fields: (t) => ({
       idcliente: t.exposeInt('idcliente'),
@@ -511,6 +494,44 @@ export const ReporteClienteObligacionesType = builder
       clientes: t.field({
         type: [ReporteClienteObligacionesClienteType],
         resolve: (p) => p.clientes,
+      }),
+    }),
+  });
+
+const ReporteRecuperacionClienteItemType = builder
+  .objectRef<ReporteRecuperacionClientes['registros'][number]>('ReporteRecuperacionClienteItem')
+  .implement({
+    fields: (t) => ({
+      idpago: t.exposeInt('idpago'),
+      nombreCliente: t.exposeString('nombreCliente'),
+      codigoUnico: t.exposeString('codigoUnico'),
+      saldoInicial: t.exposeFloat('saldoInicial'),
+      ejecutivo: t.exposeString('ejecutivo'),
+      fechaDeposito: t.exposeString('fechaDeposito'),
+      tramoMora: t.exposeString('tramoMora'),
+      sucursal: t.exposeString('sucursal'),
+      banco: t.exposeString('banco'),
+      interesesMoratorios: t.exposeFloat('interesesMoratorios'),
+      descuentos: t.exposeFloat('descuentos'),
+      saldoALaFecha: t.exposeFloat('saldoALaFecha'),
+      montoAbonado: t.exposeFloat('montoAbonado'),
+      saldoPendiente: t.exposeFloat('saldoPendiente'),
+      porcentajeRecuperado: t.exposeFloat('porcentajeRecuperado'),
+    }),
+  });
+
+export const ReporteRecuperacionClientesType = builder
+  .objectRef<ReporteRecuperacionClientes>('ReporteRecuperacionClientes')
+  .implement({
+    fields: (t) => ({
+      periodo: t.exposeString('periodo'),
+      totalDepositos: t.exposeInt('totalDepositos'),
+      totalAbonado: t.exposeFloat('totalAbonado'),
+      saldoPendienteTotal: t.exposeFloat('saldoPendienteTotal'),
+      recuperacionPct: t.exposeFloat('recuperacionPct'),
+      registros: t.field({
+        type: [ReporteRecuperacionClienteItemType],
+        resolve: (p) => p.registros,
       }),
     }),
   });

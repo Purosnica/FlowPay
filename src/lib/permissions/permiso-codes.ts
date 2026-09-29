@@ -49,8 +49,7 @@ export const PERMISO = {
   REPORTE_CUMPLIMIENTO_ACUERDOS_READ: 'REPORTE_CUMPLIMIENTO_ACUERDOS_READ',
   REPORTE_CARTERA_SIN_GESTION_READ: 'REPORTE_CARTERA_SIN_GESTION_READ',
   REPORTE_MARGEN_MANDANTES_READ: 'REPORTE_MARGEN_MANDANTES_READ',
-  REPORTE_COMISIONES_VS_PROYECCION_READ:
-    'REPORTE_COMISIONES_VS_PROYECCION_READ',
+  REPORTE_COMISIONES_VS_PROYECCION_READ: 'REPORTE_COMISIONES_VS_PROYECCION_READ',
   REPORTE_INGRESO_TRAMO_MORA_READ: 'REPORTE_INGRESO_TRAMO_MORA_READ',
   REPORTE_PROMESAS_PAGO_READ: 'REPORTE_PROMESAS_PAGO_READ',
   REPORTE_PRODUCTIVIDAD_DIARIA_READ: 'REPORTE_PRODUCTIVIDAD_DIARIA_READ',
@@ -62,6 +61,7 @@ export const PERMISO = {
   REPORTE_CUOTAS_VENCIDAS_READ: 'REPORTE_CUOTAS_VENCIDAS_READ',
   REPORTE_CUMPLIMIENTO_METAS_READ: 'REPORTE_CUMPLIMIENTO_METAS_READ',
   REPORTE_SUPERVISOR_EQUIPO_READ: 'REPORTE_SUPERVISOR_EQUIPO_READ',
+  REPORTE_RECUPERACION_CLIENTES_READ: 'REPORTE_RECUPERACION_CLIENTES_READ',
   INTELIGENCIA_READ: 'INTELIGENCIA_READ',
   EQUIPO_READ: 'EQUIPO_READ',
 } as const;
@@ -127,8 +127,7 @@ export const PERMISOS_CATALOGO: PermisoDefinicion[] = [
   {
     codigo: PERMISO.CARTERA_WRITE,
     nombre: 'Gestionar Cartera',
-    descripcion:
-      'Registrar préstamos, importar cartera, asignar cobradores y modificar datos',
+    descripcion: 'Registrar préstamos, importar cartera, asignar cobradores y modificar datos',
     categoria: 'COBRANZA',
     tipo: 'operativo',
   },
@@ -255,8 +254,7 @@ export const PERMISOS_CATALOGO: PermisoDefinicion[] = [
   {
     codigo: PERMISO.REPORTE_READ,
     nombre: 'Ver todos los reportes',
-    descripcion:
-      'Acceso completo a reportes (comodín legacy). Preferir grupos granulares.',
+    descripcion: 'Acceso completo a reportes (comodín legacy). Preferir grupos granulares.',
     categoria: 'COBRANZA',
     tipo: 'operativo',
   },
@@ -270,24 +268,21 @@ export const PERMISOS_CATALOGO: PermisoDefinicion[] = [
   {
     codigo: PERMISO.REPORTE_FINANZAS_READ,
     nombre: 'Reportes financieros',
-    descripcion:
-      'Ganancias, comisiones, margen, ingreso por tramo y vs proyección',
+    descripcion: 'Ganancias, comisiones, margen, ingreso por tramo y vs proyección',
     categoria: 'COBRANZA',
     tipo: 'operativo',
   },
   {
     codigo: PERMISO.REPORTE_OPERACION_READ,
     nombre: 'Reportes operativos',
-    descripcion:
-      'Efectividad, gestiones, promesas, productividad y recontactos',
+    descripcion: 'Efectividad, gestiones, promesas, productividad y recontactos',
     categoria: 'COBRANZA',
     tipo: 'operativo',
   },
   {
     codigo: PERMISO.REPORTE_RIESGO_READ,
     nombre: 'Reportes de riesgo',
-    descripcion:
-      'Acuerdos, cartera sin gestión, mora, concentración, cuotas y SLA',
+    descripcion: 'Acuerdos, cartera sin gestión, mora, concentración, cuotas y SLA',
     categoria: 'COBRANZA',
     tipo: 'operativo',
   },
@@ -337,6 +332,13 @@ export const PERMISOS_CATALOGO: PermisoDefinicion[] = [
     codigo: PERMISO.REPORTE_INFORME_GESTIONES_READ,
     nombre: 'Informe de gestiones',
     descripcion: 'Acceso fino al informe de gestiones',
+    categoria: 'COBRANZA',
+    tipo: 'operativo',
+  },
+  {
+    codigo: PERMISO.REPORTE_RECUPERACION_CLIENTES_READ,
+    nombre: 'Recuperación por clientes',
+    descripcion: 'Acceso al detalle de depósitos y recuperación por cliente',
     categoria: 'COBRANZA',
     tipo: 'operativo',
   },
@@ -441,8 +443,7 @@ export const PERMISOS_CATALOGO: PermisoDefinicion[] = [
   {
     codigo: PERMISO.REPORTE_CLIENTE_OBLIGACIONES_READ,
     nombre: 'Cliente obligaciones',
-    descripcion:
-      'Acceso fino a obligaciones de cliente por mandante (multi-mandante)',
+    descripcion: 'Acceso fino a obligaciones de cliente por mandante (multi-mandante)',
     categoria: 'COBRANZA',
     tipo: 'operativo',
   },
@@ -509,6 +510,7 @@ export const PERMISOS_REPORTE_FINOS_COBRANZA: PermisoCodigo[] = [
 
 export const PERMISOS_REPORTE_FINOS_OPERACION: PermisoCodigo[] = [
   PERMISO.REPORTE_INFORME_GESTIONES_READ,
+  PERMISO.REPORTE_RECUPERACION_CLIENTES_READ,
   PERMISO.REPORTE_EFECTIVIDAD_READ,
   PERMISO.REPORTE_PROMESAS_PAGO_READ,
   PERMISO.REPORTE_PRODUCTIVIDAD_DIARIA_READ,
@@ -588,6 +590,4 @@ export const PERMISOS_GERENTE: PermisoCodigo[] = [
   ...PERMISOS_REPORTE_FINOS_GERENCIAL,
 ];
 
-export const PERMISOS_ADMIN: PermisoCodigo[] = PERMISOS_CATALOGO.map(
-  (p) => p.codigo,
-);
+export const PERMISOS_ADMIN: PermisoCodigo[] = PERMISOS_CATALOGO.map((p) => p.codigo);

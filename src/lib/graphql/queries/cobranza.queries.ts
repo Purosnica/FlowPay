@@ -2878,6 +2878,17 @@ export const GET_REPORTE_CLIENTE_OBLIGACIONES = `
   }
 `;
 
+export const GET_REPORTE_RECUPERACION_CLIENTES = `
+  query GetReporteRecuperacionClientes($periodo: String!, $search: String) {
+    reporteRecuperacionClientes(periodo: $periodo, search: $search) {
+      periodo totalDepositos totalAbonado saldoPendienteTotal recuperacionPct
+      registros {
+        idpago nombreCliente codigoUnico saldoInicial ejecutivo fechaDeposito tramoMora sucursal banco
+        interesesMoratorios descuentos saldoALaFecha montoAbonado saldoPendiente porcentajeRecuperado
+      }
+    }
+  }
+`;
 
 export const GET_EXTRACTOS_BANCARIOS = `
   query GetExtractosBancarios($idmandante: Int!) {
@@ -2973,7 +2984,6 @@ export const EXCLUIR_LINEA_BANCARIA = `
     excluirLineaBancaria(idlinea: $idlinea, motivo: $motivo)
   }
 `;
-
 
 export const GET_CIERRES_DIARIOS = `
   query GetCierresDiarios($idmandante: Int, $estado: String, $take: Int) {

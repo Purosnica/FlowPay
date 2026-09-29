@@ -31,6 +31,7 @@ export const REPORTE_KEY = {
   cuotasVencidas: 'cuotasVencidas',
   cumplimientoMetas: 'cumplimientoMetas',
   supervisorEquipo: 'supervisorEquipo',
+  recuperacionClientes: 'recuperacionClientes',
 } as const;
 
 export type ReporteKey = (typeof REPORTE_KEY)[keyof typeof REPORTE_KEY];
@@ -45,12 +46,10 @@ export const REPORTE_PERMISO_MAP: Record<ReporteKey, PermisoCodigo> = {
   [REPORTE_KEY.ganancias]: PERMISO.REPORTE_GANANCIAS_READ,
   [REPORTE_KEY.comisionesCobradores]: PERMISO.REPORTE_COMISIONES_COBRADORES_READ,
   [REPORTE_KEY.efectividad]: PERMISO.REPORTE_EFECTIVIDAD_READ,
-  [REPORTE_KEY.cumplimientoAcuerdos]:
-    PERMISO.REPORTE_CUMPLIMIENTO_ACUERDOS_READ,
+  [REPORTE_KEY.cumplimientoAcuerdos]: PERMISO.REPORTE_CUMPLIMIENTO_ACUERDOS_READ,
   [REPORTE_KEY.carteraSinGestion]: PERMISO.REPORTE_CARTERA_SIN_GESTION_READ,
   [REPORTE_KEY.margenMandantes]: PERMISO.REPORTE_MARGEN_MANDANTES_READ,
-  [REPORTE_KEY.comisionesVsProyeccion]:
-    PERMISO.REPORTE_COMISIONES_VS_PROYECCION_READ,
+  [REPORTE_KEY.comisionesVsProyeccion]: PERMISO.REPORTE_COMISIONES_VS_PROYECCION_READ,
   [REPORTE_KEY.ingresoTramoMora]: PERMISO.REPORTE_INGRESO_TRAMO_MORA_READ,
   [REPORTE_KEY.promesasPago]: PERMISO.REPORTE_PROMESAS_PAGO_READ,
   [REPORTE_KEY.productividadDiaria]: PERMISO.REPORTE_PRODUCTIVIDAD_DIARIA_READ,
@@ -62,6 +61,7 @@ export const REPORTE_PERMISO_MAP: Record<ReporteKey, PermisoCodigo> = {
   [REPORTE_KEY.cuotasVencidas]: PERMISO.REPORTE_CUOTAS_VENCIDAS_READ,
   [REPORTE_KEY.cumplimientoMetas]: PERMISO.REPORTE_CUMPLIMIENTO_METAS_READ,
   [REPORTE_KEY.supervisorEquipo]: PERMISO.REPORTE_SUPERVISOR_EQUIPO_READ,
+  [REPORTE_KEY.recuperacionClientes]: PERMISO.REPORTE_RECUPERACION_CLIENTES_READ,
 };
 
 /** Grupo legacy: quien tiene el grupo sigue viendo todos los reportes del grupo. */
@@ -89,6 +89,7 @@ export const REPORTE_GRUPO_MAP: Record<ReporteKey, PermisoCodigo> = {
   [REPORTE_KEY.cuotasVencidas]: PERMISO.REPORTE_RIESGO_READ,
   [REPORTE_KEY.cumplimientoMetas]: PERMISO.REPORTE_EQUIPO_READ,
   [REPORTE_KEY.supervisorEquipo]: PERMISO.REPORTE_EQUIPO_READ,
+  [REPORTE_KEY.recuperacionClientes]: PERMISO.REPORTE_OPERACION_READ,
 };
 
 /** Paths de reportes (slug bajo /cobranza/reportes) → clave. */
@@ -114,6 +115,7 @@ export const REPORTE_PATH_KEY: Record<string, ReporteKey> = {
   'supervisor-equipo': REPORTE_KEY.supervisorEquipo,
   'informe-gerencial': REPORTE_KEY.informeGerencial,
   'informe-gestiones': REPORTE_KEY.informeGestiones,
+  'recuperacion-clientes': REPORTE_KEY.recuperacionClientes,
 };
 
 export function permisoGrupoDeReporte(key: ReporteKey): PermisoCodigo {
@@ -128,17 +130,10 @@ export function permisoFinoDeReporte(key: ReporteKey): PermisoCodigo {
  * Fino + grupo + comodín REPORTE_READ (legacy / acceso total).
  */
 export function permisosDeReporte(key: ReporteKey): PermisoCodigo[] {
-  return [
-    REPORTE_PERMISO_MAP[key],
-    REPORTE_GRUPO_MAP[key],
-    PERMISO.REPORTE_READ,
-  ];
+  return [REPORTE_PERMISO_MAP[key], REPORTE_GRUPO_MAP[key], PERMISO.REPORTE_READ];
 }
 
-export function usuarioPuedeVerReporte(
-  permisosUsuario: string[],
-  key: ReporteKey,
-): boolean {
+export function usuarioPuedeVerReporte(permisosUsuario: string[], key: ReporteKey): boolean {
   return permisosDeReporte(key).some((p) => permisosUsuario.includes(p));
 }
 
@@ -223,6 +218,12 @@ export const CATALOGO_REPORTES_HUB: ReadonlyArray<{
     categoria: 'Seguimiento',
   },
   {
+    href: '/cobranza/reportes/recuperacion-clientes',
+    label: 'Recuperación por clientes',
+    key: REPORTE_KEY.recuperacionClientes,
+    categoria: 'Seguimiento',
+  },
+  {
     href: '/cobranza/reportes/reclamos-sla',
     label: 'SLA de reclamos',
     key: REPORTE_KEY.reclamosSla,
@@ -277,4 +278,3 @@ export const CATALOGO_REPORTES_HUB: ReadonlyArray<{
     categoria: 'Financiero',
   },
 ];
-

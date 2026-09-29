@@ -1,4 +1,4 @@
-import { builder ,type  GraphQLContext } from '../../builder';
+import { builder, type GraphQLContext } from '../../builder';
 
 import { ReporteCobranzaType, ReporteAgingCarteraType } from '../liquidacion/types';
 import { InformeGerencialType } from './types-informe';
@@ -12,6 +12,7 @@ import {
 } from './types-reportes-control';
 import {
   ReporteClienteObligacionesType,
+  ReporteRecuperacionClientesType,
   ReporteComisionesVsProyeccionType,
   ReporteConcentracionRiesgoType,
   ReporteCumplimientoMetasType,
@@ -25,10 +26,7 @@ import {
   ReporteRecontactosType,
   ReporteSupervisorEquipoType,
 } from './types-reportes-avanzados';
-import {
-  requerirPermiso,
-  requerirReporte,
-} from '@/lib/permissions/permission-service';
+import { requerirPermiso, requerirReporte } from '@/lib/permissions/permission-service';
 import { PERMISO } from '@/lib/permissions/permiso-codes';
 import { REPORTE_KEY } from '@/lib/permissions/reporte-permisos';
 import { obtenerReporteCobranza } from '@/lib/cobranza/reporte-cobranza-service';
@@ -51,6 +49,7 @@ import { obtenerReporteReclamosSla } from '@/lib/cobranza/reporte-reclamos-sla-s
 import { obtenerReporteMigracionMora } from '@/lib/cobranza/reporte-migracion-mora-service';
 import { obtenerReporteConcentracionRiesgo } from '@/lib/cobranza/reporte-concentracion-riesgo-service';
 import { obtenerReporteClienteObligaciones } from '@/lib/cobranza/reporte-cliente-obligaciones-service';
+import { obtenerReporteRecuperacionClientes } from '@/lib/cobranza/reporte-recuperacion-clientes-service';
 import { obtenerReporteCuotasVencidas } from '@/lib/cobranza/reporte-cuotas-vencidas-service';
 import { obtenerReporteCumplimientoMetas } from '@/lib/cobranza/reporte-cumplimiento-metas-service';
 import { obtenerReporteSupervisorEquipo } from '@/lib/cobranza/reporte-supervisor-equipo-service';
@@ -72,17 +71,13 @@ builder.queryField('reporteCobranza', (t) =>
         throw new GraphQLValidationError('Usuario no autenticado.');
       }
       try {
-        return await obtenerReporteCobranza(
-          args.idmandante,
-          idusuario,
-          args.periodo,
-        );
+        return await obtenerReporteCobranza(args.idmandante, idusuario, args.periodo);
       } catch (err) {
         const msg = mensajeClienteSeguro(err, 'Error al generar reporte.');
         throw new GraphQLValidationError(msg);
       }
     },
-  }),
+  })
 );
 
 builder.queryField('reporteAgingCartera', (t) =>
@@ -100,12 +95,10 @@ builder.queryField('reporteAgingCartera', (t) =>
       try {
         return await obtenerReporteAgingCartera(args.idmandante, idusuario);
       } catch (err) {
-        throw new GraphQLValidationError(
-          mensajeClienteSeguro(err, 'Error al generar aging.'),
-        );
+        throw new GraphQLValidationError(mensajeClienteSeguro(err, 'Error al generar aging.'));
       }
     },
-  }),
+  })
 );
 
 builder.queryField('resumenDashboardCobranza', (t) =>
@@ -119,7 +112,7 @@ builder.queryField('resumenDashboardCobranza', (t) =>
       }
       return obtenerResumenDashboard(idusuario);
     },
-  }),
+  })
 );
 
 builder.queryField('informeGerencial', (t) =>
@@ -136,17 +129,13 @@ builder.queryField('informeGerencial', (t) =>
         throw new GraphQLValidationError('Usuario no autenticado.');
       }
       try {
-        return await obtenerInformeGerencial(
-          args.idmandante,
-          idusuario,
-          args.periodo,
-        );
+        return await obtenerInformeGerencial(args.idmandante, idusuario, args.periodo);
       } catch (err) {
         const msg = mensajeClienteSeguro(err, 'Error al generar informe gerencial.');
         throw new GraphQLValidationError(msg);
       }
     },
-  }),
+  })
 );
 
 builder.queryField('informeGestiones', (t) =>
@@ -168,14 +157,14 @@ builder.queryField('informeGestiones', (t) =>
           args.idmandante,
           idusuario,
           args.periodo,
-          args.idgestor,
+          args.idgestor
         );
       } catch (err) {
         const msg = mensajeClienteSeguro(err, 'Error al generar informe de gestiones.');
         throw new GraphQLValidationError(msg);
       }
     },
-  }),
+  })
 );
 
 builder.queryField('reporteGanancias', (t) =>
@@ -192,17 +181,13 @@ builder.queryField('reporteGanancias', (t) =>
         throw new GraphQLValidationError('Usuario no autenticado.');
       }
       try {
-        return await obtenerReporteGanancias(
-          args.idmandante,
-          idusuario,
-          args.periodo,
-        );
+        return await obtenerReporteGanancias(args.idmandante, idusuario, args.periodo);
       } catch (err) {
         const msg = mensajeClienteSeguro(err, 'Error al generar reporte de ganancias.');
         throw new GraphQLValidationError(msg);
       }
     },
-  }),
+  })
 );
 
 builder.queryField('reporteComisionesCobradores', (t) =>
@@ -219,17 +204,13 @@ builder.queryField('reporteComisionesCobradores', (t) =>
         throw new GraphQLValidationError('Usuario no autenticado.');
       }
       try {
-        return await obtenerReporteComisionesCobradores(
-          args.idmandante,
-          idusuario,
-          args.periodo,
-        );
+        return await obtenerReporteComisionesCobradores(args.idmandante, idusuario, args.periodo);
       } catch (err) {
         const msg = mensajeClienteSeguro(err, 'Error al generar reporte de comisiones.');
         throw new GraphQLValidationError(msg);
       }
     },
-  }),
+  })
 );
 
 builder.queryField('reporteEfectividad', (t) =>
@@ -246,17 +227,13 @@ builder.queryField('reporteEfectividad', (t) =>
         throw new GraphQLValidationError('Usuario no autenticado.');
       }
       try {
-        return await obtenerReporteEfectividad(
-          args.idmandante,
-          idusuario,
-          args.periodo,
-        );
+        return await obtenerReporteEfectividad(args.idmandante, idusuario, args.periodo);
       } catch (err) {
         const msg = mensajeClienteSeguro(err, 'Error al generar reporte de efectividad.');
         throw new GraphQLValidationError(msg);
       }
     },
-  }),
+  })
 );
 
 builder.queryField('reporteCumplimientoAcuerdos', (t) =>
@@ -273,17 +250,13 @@ builder.queryField('reporteCumplimientoAcuerdos', (t) =>
         throw new GraphQLValidationError('Usuario no autenticado.');
       }
       try {
-        return await obtenerReporteCumplimientoAcuerdos(
-          args.idmandante,
-          idusuario,
-          args.periodo,
-        );
+        return await obtenerReporteCumplimientoAcuerdos(args.idmandante, idusuario, args.periodo);
       } catch (err) {
         const msg = mensajeClienteSeguro(err, 'Error al generar reporte de cumplimiento.');
         throw new GraphQLValidationError(msg);
       }
     },
-  }),
+  })
 );
 
 builder.queryField('reporteCarteraSinGestion', (t) =>
@@ -303,20 +276,17 @@ builder.queryField('reporteCarteraSinGestion', (t) =>
         return await obtenerReporteCarteraSinGestion(
           args.idmandante,
           idusuario,
-          args.diasSinGestion ?? 7,
+          args.diasSinGestion ?? 7
         );
       } catch (err) {
         const msg = mensajeClienteSeguro(err, 'Error al generar reporte de cartera sin gestión.');
         throw new GraphQLValidationError(msg);
       }
     },
-  }),
+  })
 );
 
-function resolverReporte<T>(
-  fn: () => Promise<T>,
-  errorMsg: string,
-): Promise<T> {
+function resolverReporte<T>(fn: () => Promise<T>, errorMsg: string): Promise<T> {
   return fn().catch((err: unknown) => {
     if (err instanceof GraphQLValidationError) {
       throw err;
@@ -337,10 +307,10 @@ builder.queryField('reporteMargenMandantes', (t) =>
       }
       return resolverReporte(
         () => obtenerReporteMargenMandantes(idusuario, args.periodo),
-        'Error al generar reporte de margen.',
+        'Error al generar reporte de margen.'
       );
     },
-  }),
+  })
 );
 
 builder.queryField('reporteComisionesVsProyeccion', (t) =>
@@ -357,16 +327,11 @@ builder.queryField('reporteComisionesVsProyeccion', (t) =>
         throw new GraphQLValidationError('Usuario no autenticado.');
       }
       return resolverReporte(
-        () =>
-          obtenerReporteComisionesVsProyeccion(
-            args.idmandante,
-            idusuario,
-            args.periodo,
-          ),
-        'Error al generar comisiones vs proyección.',
+        () => obtenerReporteComisionesVsProyeccion(args.idmandante, idusuario, args.periodo),
+        'Error al generar comisiones vs proyección.'
       );
     },
-  }),
+  })
 );
 
 builder.queryField('reporteIngresoTramoMora', (t) =>
@@ -383,16 +348,11 @@ builder.queryField('reporteIngresoTramoMora', (t) =>
         throw new GraphQLValidationError('Usuario no autenticado.');
       }
       return resolverReporte(
-        () =>
-          obtenerReporteIngresoTramoMora(
-            args.idmandante,
-            idusuario,
-            args.periodo,
-          ),
-        'Error al generar ingreso por tramo.',
+        () => obtenerReporteIngresoTramoMora(args.idmandante, idusuario, args.periodo),
+        'Error al generar ingreso por tramo.'
       );
     },
-  }),
+  })
 );
 
 builder.queryField('reportePromesasPago', (t) =>
@@ -409,16 +369,11 @@ builder.queryField('reportePromesasPago', (t) =>
         throw new GraphQLValidationError('Usuario no autenticado.');
       }
       return resolverReporte(
-        () =>
-          obtenerReportePromesasPago(
-            args.idmandante,
-            idusuario,
-            args.periodo,
-          ),
-        'Error al generar reporte de promesas.',
+        () => obtenerReportePromesasPago(args.idmandante, idusuario, args.periodo),
+        'Error al generar reporte de promesas.'
       );
     },
-  }),
+  })
 );
 
 builder.queryField('reporteProductividadDiaria', (t) =>
@@ -435,16 +390,11 @@ builder.queryField('reporteProductividadDiaria', (t) =>
         throw new GraphQLValidationError('Usuario no autenticado.');
       }
       return resolverReporte(
-        () =>
-          obtenerReporteProductividadDiaria(
-            args.idmandante,
-            idusuario,
-            args.periodo,
-          ),
-        'Error al generar productividad diaria.',
+        () => obtenerReporteProductividadDiaria(args.idmandante, idusuario, args.periodo),
+        'Error al generar productividad diaria.'
       );
     },
-  }),
+  })
 );
 
 builder.queryField('reporteRecontactos', (t) =>
@@ -467,12 +417,12 @@ builder.queryField('reporteRecontactos', (t) =>
             args.idmandante,
             idusuario,
             args.periodo,
-            args.minGestiones ?? 3,
+            args.minGestiones ?? 3
           ),
-        'Error al generar reporte de recontactos.',
+        'Error al generar reporte de recontactos.'
       );
     },
-  }),
+  })
 );
 
 builder.queryField('reporteReclamosSla', (t) =>
@@ -487,10 +437,10 @@ builder.queryField('reporteReclamosSla', (t) =>
       }
       return resolverReporte(
         () => obtenerReporteReclamosSla(args.idmandante, idusuario),
-        'Error al generar reporte SLA reclamos.',
+        'Error al generar reporte SLA reclamos.'
       );
     },
-  }),
+  })
 );
 
 builder.queryField('reporteMigracionMora', (t) =>
@@ -507,16 +457,11 @@ builder.queryField('reporteMigracionMora', (t) =>
         throw new GraphQLValidationError('Usuario no autenticado.');
       }
       return resolverReporte(
-        () =>
-          obtenerReporteMigracionMora(
-            args.idmandante,
-            idusuario,
-            args.periodo,
-          ),
-        'Error al generar migración de mora.',
+        () => obtenerReporteMigracionMora(args.idmandante, idusuario, args.periodo),
+        'Error al generar migración de mora.'
       );
     },
-  }),
+  })
 );
 
 builder.queryField('reporteConcentracionRiesgo', (t) =>
@@ -533,16 +478,11 @@ builder.queryField('reporteConcentracionRiesgo', (t) =>
         throw new GraphQLValidationError('Usuario no autenticado.');
       }
       return resolverReporte(
-        () =>
-          obtenerReporteConcentracionRiesgo(
-            args.idmandante,
-            idusuario,
-            args.topN ?? 10,
-          ),
-        'Error al generar concentración de riesgo.',
+        () => obtenerReporteConcentracionRiesgo(args.idmandante, idusuario, args.topN ?? 10),
+        'Error al generar concentración de riesgo.'
       );
     },
-  }),
+  })
 );
 
 builder.queryField('reporteCuotasVencidas', (t) =>
@@ -557,10 +497,10 @@ builder.queryField('reporteCuotasVencidas', (t) =>
       }
       return resolverReporte(
         () => obtenerReporteCuotasVencidas(args.idmandante, idusuario),
-        'Error al generar cuotas vencidas.',
+        'Error al generar cuotas vencidas.'
       );
     },
-  }),
+  })
 );
 
 builder.queryField('reporteCumplimientoMetas', (t) =>
@@ -577,16 +517,11 @@ builder.queryField('reporteCumplimientoMetas', (t) =>
         throw new GraphQLValidationError('Usuario no autenticado.');
       }
       return resolverReporte(
-        () =>
-          obtenerReporteCumplimientoMetas(
-            args.idmandante,
-            idusuario,
-            args.periodo,
-          ),
-        'Error al generar cumplimiento de metas.',
+        () => obtenerReporteCumplimientoMetas(args.idmandante, idusuario, args.periodo),
+        'Error al generar cumplimiento de metas.'
       );
     },
-  }),
+  })
 );
 
 builder.queryField('reporteSupervisorEquipo', (t) =>
@@ -603,16 +538,11 @@ builder.queryField('reporteSupervisorEquipo', (t) =>
         throw new GraphQLValidationError('Usuario no autenticado.');
       }
       return resolverReporte(
-        () =>
-          obtenerReporteSupervisorEquipo(
-            args.idmandante,
-            idusuario,
-            args.periodo,
-          ),
-        'Error al generar supervisor vs equipo.',
+        () => obtenerReporteSupervisorEquipo(args.idmandante, idusuario, args.periodo),
+        'Error al generar supervisor vs equipo.'
       );
     },
-  }),
+  })
 );
 
 builder.queryField('reporteClienteObligaciones', (t) =>
@@ -624,10 +554,7 @@ builder.queryField('reporteClienteObligaciones', (t) =>
       idcliente: t.arg.int({ required: false }),
     },
     resolve: async (_parent, args, ctx: GraphQLContext) => {
-      await requerirReporte(
-        ctx.usuario?.idusuario,
-        REPORTE_KEY.clienteObligaciones,
-      );
+      await requerirReporte(ctx.usuario?.idusuario, REPORTE_KEY.clienteObligaciones);
       const idusuario = ctx.usuario?.idusuario;
       if (!idusuario) {
         throw new GraphQLValidationError('Usuario no autenticado.');
@@ -639,8 +566,27 @@ builder.queryField('reporteClienteObligaciones', (t) =>
             search: args.search,
             idcliente: args.idcliente,
           }),
-        'Error al generar reporte de obligaciones de cliente.',
+        'Error al generar reporte de obligaciones de cliente.'
       );
     },
-  }),
+  })
+);
+
+builder.queryField('reporteRecuperacionClientes', (t) =>
+  t.field({
+    type: ReporteRecuperacionClientesType,
+    args: {
+      periodo: t.arg.string({ required: true }),
+      search: t.arg.string({ required: false }),
+    },
+    resolve: async (_parent, args, ctx: GraphQLContext) => {
+      await requerirReporte(ctx.usuario?.idusuario, REPORTE_KEY.recuperacionClientes);
+      const idusuario = ctx.usuario?.idusuario;
+      if (!idusuario) throw new GraphQLValidationError('Usuario no autenticado.');
+      return resolverReporte(
+        () => obtenerReporteRecuperacionClientes(idusuario, args),
+        'Error al generar reporte de recuperación por clientes.'
+      );
+    },
+  })
 );
