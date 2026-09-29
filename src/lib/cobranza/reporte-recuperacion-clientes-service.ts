@@ -71,7 +71,8 @@ export async function obtenerReporteRecuperacionClientes(
   });
   const idsMandante = [...new Set(pagos.map((p) => p.prestamo.idmandante))];
   const idsPago = pagos.map((p) => p.idpago);
-  const [defs, movimientos] = await Promise.all([
+  const idsPrestamo = [...new Set(pagos.map((p) => p.idprestamo))];
+  const [defs, movimientos, movimientosHistoricos] = await Promise.all([
     idsMandante.length
       ? prisma.tbl_comision_cobro.findMany({
           where: { idmandante: { in: idsMandante }, deletedAt: null },
@@ -82,6 +83,18 @@ export async function obtenerReporteRecuperacionClientes(
       ? prisma.tbl_movimiento_financiero.findMany({
           where: { idpago: { in: idsPago }, tipoMovimiento: 'PAGO' },
           select: { idpago: true, saldoAnterior: true, saldoPosterior: true },
+        })
+      : Promise.resolve([]),
+    idsPrestamo.length
+      ? prisma.tbl_movimiento_financiero.findMany({
+          where: { idprestamo: { in: idsPrestamo } },
+          orderBy: [{ fechaOperacion: 'asc' }, { idmovimiento: 'asc' }],
+          select: {
+            idprestamo: true,
+            tipoMovimiento: true,
+            saldoAnterior: true,
+            saldoPosterior: true,
+          },
         })
       : Promise.resolve([]),
   ]);
@@ -97,6 +110,20 @@ export async function obtenerReporteRecuperacionClientes(
       tramoMoraMax: def.tramoMoraMax,
     });
     tramosPorMandante.set(def.idmandante, actuales);
+  }
+  // Monto fijo del crédito: saldo de apertura en el libro mayor. Para cartera
+  // histórica, el primer pago guarda el saldo que existía antes de abonarlo.
+  const montoOriginalPorPrestamo = new Map<number, number>();
+  for (const movimiento of movimientosHistoricos) {
+    if (montoOriginalPorPrestamo.has(movimiento.idprestamo)) continue;
+    montoOriginalPorPrestamo.set(
+      movimiento.idprestamo,
+      decimalToNumber(
+        movimiento.tipoMovimiento === 'SALDO_INICIAL_MIGRADO'
+          ? movimiento.saldoPosterior
+          : movimiento.saldoAnterior
+      )
+    );
   }
 
   // Fallback para históricos sin ledger: reconstruye la secuencia usando el saldo actual + abonos del rango.
@@ -121,6 +148,7 @@ export async function obtenerReporteRecuperacionClientes(
       ? decimalToNumber(movimiento.saldoPosterior)
       : roundMoney(saldoInicial - montoAbonado);
     saldoFallbackPorPrestamo.set(pago.idprestamo, saldoPosterior);
+    const montoOriginal = montoOriginalPorPrestamo.get(pago.idprestamo) ?? saldoInicial;
     const tramo = resolverTramoMoraDef(
       tramosPorMandante.get(prestamo.idmandante) ?? [],
       prestamo.diasMora
@@ -129,7 +157,7 @@ export async function obtenerReporteRecuperacionClientes(
       idpago: pago.idpago,
       nombreCliente: formatNombreClienteDisplay(prestamo.cliente),
       codigoUnico: prestamo.codigoUnico,
-      saldoInicial: roundMoney(saldoInicial),
+      saldoInicial: roundMoney(montoOriginal),
       ejecutivo: pago.gestor?.nombre ?? prestamo.gestor?.nombre ?? '—',
       fechaDeposito: fechaIso(pago.fechaPago),
       tramoMora: tramo?.tramo ?? `${prestamo.diasMora} días`,
@@ -140,7 +168,8 @@ export async function obtenerReporteRecuperacionClientes(
       saldoALaFecha: roundMoney(saldoPosterior),
       montoAbonado,
       saldoPendiente: roundMoney(saldoPosterior),
-      porcentajeRecuperado: saldoInicial > 0 ? roundMoney((montoAbonado / saldoInicial) * 100) : 0,
+      porcentajeRecuperado:
+        montoOriginal > 0 ? roundMoney((montoAbonado / montoOriginal) * 100) : 0,
     };
   });
   const saldoInicialPorPrestamo = new Map<number, number>();
