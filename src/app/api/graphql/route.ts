@@ -38,19 +38,19 @@ interface FormattableGraphQLError {
 }
 
 function esErrorDominioGraphQL(
-  err: unknown,
+  err: any,
 ):
   | GraphQLPermissionError
   | GraphQLAuthenticationError
   | GraphQLValidationError
   | null {
-  if (err instanceof GraphQLPermissionError) {
+  if (err && err.name === 'GraphQLPermissionError') {
     return err;
   }
-  if (err instanceof GraphQLAuthenticationError) {
+  if (err && err.name === 'GraphQLAuthenticationError') {
     return err;
   }
-  if (err instanceof GraphQLValidationError) {
+  if (err && err.name === 'GraphQLValidationError') {
     return err;
   }
   return null;

@@ -26,11 +26,11 @@ async function invalidateCatalogos() {
  * código, sin dar al usuario una acción concreta para resolverlo.
  */
 function manejarErrorCatalogo(
-  error: unknown,
+  error: any,
   entidad: 'acción' | 'resultado',
   operacion: 'crear' | 'actualizar',
 ): never {
-  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+  if (error && typeof error === 'object' && 'code' in error) {
     if (error.code === 'P2002') {
       throw new GraphQLValidationError(
         `Ya existe un código de ${entidad} con ese valor.`,
