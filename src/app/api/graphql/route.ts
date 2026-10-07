@@ -110,7 +110,13 @@ const { handleRequest } = createYoga<NextRouteContext>({
       };
     }
   },
-  maskedErrors: process.env.NODE_ENV === 'production',
+  /**
+   * Deshabilitamos maskedErrors de Yoga porque nuestro plugin onExecuteDone
+   * ya implementa el mismo enmascaramiento de forma correcta.
+   * El maskedErrors de Yoga causaba "Unexpected error." porque su instanceof
+   * GraphQLError falla cuando hay múltiples copias del paquete graphql.
+   */
+  maskedErrors: false,
   graphiql: process.env.NODE_ENV === 'development',
   plugins: [
     ...introspectionPlugins,
