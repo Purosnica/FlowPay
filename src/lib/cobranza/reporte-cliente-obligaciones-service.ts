@@ -46,6 +46,7 @@ export async function obtenerReporteClienteObligaciones(
 
   const where: Prisma.tbl_prestamoWhereInput = {
     deletedAt: null,
+    bajaMandanteAt: null,
     saldoTotal: { gt: 0 },
     estado: { notIn: [...ESTADOS_SIN_DEUDA] },
     idmandante: mandanteFilter,

@@ -71,11 +71,29 @@ export function parsearPtmOs(buffer: Buffer, nombreArchivo: string): FilaPtmo[] 
     const cell = sheet[XLSX.utils.encode_cell({ r: row, c: col })];
     if (!cell || cell.v == null || String(cell.v).trim() === '') continue;
     if (cell.t === 'n') {
+      // Si la celda es numérica, comparamos el valor numérico (como string) contra el
+      // texto formateado por Excel (cell.w). Si difieren, hay riesgo de ceros iniciales
+      // perdidos y se rechaza. Si son iguales, el PTMO no tiene ceros iniciales y es seguro.
+      const valorNumerico = String(cell.v).trim();
+      const valorFormateado = String(cell.w ?? cell.v).trim();
+      const tieneRiesgoCerosIniciales = valorNumerico !== valorFormateado;
+      if (tieneRiesgoCerosIniciales) {
+        filas.push({
+          fila: row + 1,
+          numeroPtmo: valorFormateado,
+          error:
+            'El PTMO está almacenado como número; no es posible garantizar sus ceros iniciales. Formatee la celda como texto.',
+        });
+        continue;
+      }
+      // Sin riesgo de ceros iniciales: se acepta el valor numérico como texto.
+      const numeroPtmo = valorNumerico;
       filas.push({
         fila: row + 1,
-        numeroPtmo: String(cell.w ?? cell.v).trim(),
-        error:
-          'El PTMO está almacenado como número; no es posible garantizar sus ceros iniciales. Formatee la celda como texto.',
+        numeroPtmo,
+        error: /e[+-]?\d+$/i.test(numeroPtmo)
+          ? 'El PTMO está en notación científica y no puede identificarse con certeza.'
+          : undefined,
       });
       continue;
     }
