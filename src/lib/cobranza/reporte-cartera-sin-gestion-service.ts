@@ -55,6 +55,7 @@ export async function obtenerReporteCarteraSinGestion(
     where: {
       idmandante,
       deletedAt: null,
+      gestionActiva: true,
       saldoTotal: { gt: 0 },
       estado: { notIn: ['Cancelado', 'Finalizado'] },
       gestiones: {
@@ -113,6 +114,7 @@ export async function obtenerReporteCarteraSinGestion(
       where: {
         idmandante,
         deletedAt: null,
+        gestionActiva: true,
         saldoTotal: { gt: 0 },
         estado: { notIn: ['Cancelado', 'Finalizado'] },
         gestiones: {

@@ -11,6 +11,7 @@ import { requerirPermiso, tienePermiso } from '@/lib/permissions/permission-serv
 import { PERMISO } from '@/lib/permissions/permiso-codes';
 import { requerirAccesoMandante } from '@/lib/cobranza/mandante-scope';
 import {
+  esUsuarioCobrador,
   requerirAccesoPagoCobrador,
   requerirAccesoPrestamoCobrador,
 } from '@/lib/cobranza/cobrador-scope';
@@ -66,6 +67,14 @@ builder.mutationField('createPago', (t) =>
 
       if (!ctx.usuario?.idusuario) {
         throw new GraphQLValidationError('Usuario no autenticado.');
+      }
+      if (
+        !prestamo.gestionActiva &&
+        (await esUsuarioCobrador(ctx.usuario.idusuario))
+      ) {
+        throw new GraphQLValidationError(
+          'El préstamo fue retirado por el mandante. Los cobradores no pueden registrar pagos posteriores a la baja.',
+        );
       }
 
       const existente = await ctx.prisma.tbl_pago.findFirst({

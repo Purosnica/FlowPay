@@ -43,6 +43,7 @@ async function calcularResumenMandante(
 
   const prestamoWhere = {
     deletedAt: null,
+    gestionActiva: true,
     idmandante,
     estado: { notIn: ['Cancelado', 'Finalizado'] },
   };

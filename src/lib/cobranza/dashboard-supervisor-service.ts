@@ -69,6 +69,7 @@ export async function obtenerDashboardSupervisor(
     prisma.tbl_prestamo.count({
       where: {
         deletedAt: null,
+        gestionActiva: true,
         idgestorAsignado: { in: equipoIds },
         idmandante: mandanteFilter,
         diasMora: { gt: 0 },

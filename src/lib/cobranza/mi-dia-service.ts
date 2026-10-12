@@ -36,6 +36,7 @@ export async function obtenerCasosPrioritariosMiDia(
   const prestamos = await prisma.tbl_prestamo.findMany({
     where: {
       deletedAt: null,
+      gestionActiva: true,
       idgestorAsignado: idusuario,
       idmandante: mandanteFilter,
       diasMora: { gt: 0 },
@@ -100,6 +101,7 @@ export async function obtenerResumenMiDia(
     prisma.tbl_gestion.count({
       where: {
         deletedAt: null,
+        prestamo: { gestionActiva: true },
         idgestor: idusuario,
         fechaPromesa: { gte: inicioDia, lt: finDia },
       },
@@ -132,6 +134,7 @@ export async function obtenerResumenMiDia(
     prisma.tbl_gestion.count({
       where: {
         deletedAt: null,
+        prestamo: { gestionActiva: true },
         idgestor: idusuario,
         fechaProximaGestion: { gte: inicioDia, lt: finDia },
       },

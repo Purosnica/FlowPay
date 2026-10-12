@@ -36,6 +36,7 @@ export async function obtenerReporteCuotasVencidas(
       acuerdo: {
         idmandante,
         deletedAt: null,
+        prestamo: { gestionActiva: true },
       },
     },
     include: {

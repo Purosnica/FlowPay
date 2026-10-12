@@ -62,6 +62,7 @@ interface ClienteCacheEntry {
 interface PrestamoCacheEntry {
   idprestamo: number;
   saldoTotal: number;
+  gestionActiva: boolean;
 }
 
 interface ProcesarFilaCarteraParams {
@@ -148,6 +149,7 @@ export async function importarCartera(
     prestamosCreados: 0,
     prestamosActualizados: 0,
     prestamosSaldoActualizado: 0,
+    prestamosRetiradosDetectados: 0,
     cortesRegistrados: 0,
     contactosCreados: 0,
     gestoresAsignados: 0,
@@ -290,12 +292,13 @@ async function precargarPrestamosPorNumero(
         idmandante,
         noPrestamo: { in: lote },
       },
-      select: { idprestamo: true, noPrestamo: true, saldoTotal: true },
+      select: { idprestamo: true, noPrestamo: true, saldoTotal: true, gestionActiva: true },
     });
     for (const fila of filas) {
       map.set(fila.noPrestamo, {
         idprestamo: fila.idprestamo,
         saldoTotal: decimalToNumber(fila.saldoTotal),
+        gestionActiva: fila.gestionActiva,
       });
     }
   }
@@ -390,6 +393,9 @@ async function procesarFilaCartera(
   let prestamoId: number;
 
   if (prestamoExistente) {
+    if (!prestamoExistente.gestionActiva) {
+      resultado.prestamosRetiradosDetectados++;
+    }
     const saldoAnterior = prestamoExistente.saldoTotal;
     const pagosAplicados = await db.tbl_pago.count({
       where: {
@@ -545,6 +551,7 @@ async function procesarFilaCartera(
     cachePrestamos.set(noPrestamo, {
       idprestamo: prestamoId,
       saldoTotal: saldoNuevo,
+      gestionActiva: true,
     });
     resultado.prestamosCreados++;
 

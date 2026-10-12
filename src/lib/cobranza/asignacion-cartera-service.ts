@@ -52,6 +52,7 @@ function construirWherePrestamos(
   const where: Prisma.tbl_prestamoWhereInput = {
     idmandante: filtros.idmandante,
     deletedAt: null,
+    gestionActiva: true,
     bloqueadoAsignacion: false,
     estado: { notIn: ['Cancelado', 'Finalizado'] },
   };
@@ -257,11 +258,15 @@ export async function asignarGestorConHistorial(
       bloqueadoAsignacion: true,
       idmandante: true,
       deletedAt: true,
+      gestionActiva: true,
     },
   });
 
   if (!prestamo || prestamo.deletedAt) {
     throw new GraphQLValidationError('Préstamo no encontrado.');
+  }
+  if (!prestamo.gestionActiva) {
+    throw new GraphQLValidationError('El préstamo fue retirado por el mandante y no puede reasignarse.');
   }
 
   await requerirAccesoMandante(idusuario, prestamo.idmandante);
@@ -387,7 +392,7 @@ export async function asignarPrestamosAGestorEnLotes(
   for (let i = 0; i < idsUnicos.length; i += ASIGNACION_BATCH_SIZE) {
     const batchIds = idsUnicos.slice(i, i + ASIGNACION_BATCH_SIZE);
     const filas = await prisma.tbl_prestamo.findMany({
-      where: { idprestamo: { in: batchIds }, deletedAt: null },
+      where: { idprestamo: { in: batchIds }, deletedAt: null, gestionActiva: true },
       select: { idprestamo: true, idgestorAsignado: true },
     });
     actuales.push(...filas);
@@ -412,7 +417,7 @@ export async function asignarPrestamosAGestorEnLotes(
 
     await prisma.$transaction(async (tx) => {
       await tx.tbl_prestamo.updateMany({
-        where: { idprestamo: { in: batch } },
+        where: { idprestamo: { in: batch }, gestionActiva: true },
         data: { idgestorAsignado: idgestor },
       });
 

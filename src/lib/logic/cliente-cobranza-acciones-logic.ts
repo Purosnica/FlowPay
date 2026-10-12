@@ -11,5 +11,7 @@ export type PrestamoClienteOperativo = ClienteVista360['prestamos'][number];
 export function prestamosOperativosCliente(
   prestamos: ClienteVista360['prestamos'],
 ): PrestamoClienteOperativo[] {
-  return prestamos.filter((p) => !ESTADOS_NO_OPERATIVOS.has(p.estado));
+  return prestamos.filter(
+    (p) => p.gestionActiva !== false && !ESTADOS_NO_OPERATIVOS.has(p.estado),
+  );
 }

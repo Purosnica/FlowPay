@@ -25,6 +25,7 @@ import { esSupervisor } from "@/lib/cobranza/equipo-scope";
 import { GraphQLValidationError } from "@/lib/errors/graphql-errors";
 import { IdPositiveSchema } from "@/lib/validators/graphql-args";
 import { z } from "zod";
+import { PRESTAMO_NO_GESTIONABLE_MESSAGE, requerirPrestamoGestionable } from '@/lib/cobranza/baja-mandante-service';
 
 builder.mutationField("createAcuerdo", (t) =>
   t.prismaField({
@@ -40,6 +41,9 @@ builder.mutationField("createAcuerdo", (t) =>
       });
       if (!prestamo || prestamo.deletedAt) {
         throw new GraphQLValidationError("Préstamo no encontrado.");
+      }
+      if (!prestamo.gestionActiva) {
+        throw new GraphQLValidationError(PRESTAMO_NO_GESTIONABLE_MESSAGE);
       }
       await requerirAccesoMandante(ctx.usuario?.idusuario, prestamo.idmandante);
       await requerirAccesoPrestamoCobrador(
@@ -117,6 +121,7 @@ builder.mutationField("createAcuerdo", (t) =>
       });
 
       const acuerdo = await ctx.prisma.$transaction(async (tx) => {
+        await requerirPrestamoGestionable(tx, input.idprestamo);
         const created = await tx.tbl_acuerdo.create({
           data: {
             idmandante: prestamo.idmandante,

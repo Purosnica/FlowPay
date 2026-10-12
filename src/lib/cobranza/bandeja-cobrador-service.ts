@@ -93,6 +93,7 @@ export function buildBandejaWhere(
   const where: Prisma.tbl_prestamoWhereInput = {
 
     deletedAt: null,
+    gestionActiva: true,
 
     idmandante: filters.idmandante ?? mandanteFilter,
 

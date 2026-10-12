@@ -133,6 +133,9 @@ export const GET_PRESTAMO = `
       codigoUnico
       noCuenta
       estado
+      gestionActiva
+      bajaMandanteEfectiva
+      bajaMandanteMotivo
       moneda
       diasMora
       saldoTotal
@@ -2461,6 +2464,7 @@ export const GET_CLIENTE_VISTA_360 = `
         idprestamo
         noPrestamo
         estado
+        gestionActiva
         saldoTotal
         diasMora
         mandante

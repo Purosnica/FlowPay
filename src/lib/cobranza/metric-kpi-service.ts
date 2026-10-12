@@ -61,6 +61,7 @@ async function obtenerKpisLiveOperativos(
       prisma.tbl_gestion.count({
         where: {
           deletedAt: null,
+          prestamo: { gestionActiva: true },
           idmandante: mandanteFilter,
           fechaPromesa: { gte: hoy },
         },
@@ -68,6 +69,7 @@ async function obtenerKpisLiveOperativos(
       prisma.tbl_acuerdo.count({
         where: {
           deletedAt: null,
+          prestamo: { gestionActiva: true },
           idmandante: mandanteFilter,
           estado: 'VIGENTE',
         },
@@ -132,6 +134,7 @@ export async function obtenerKpisCobranzaCore(
       prisma.tbl_prestamo.aggregate({
         where: {
           deletedAt: null,
+          gestionActiva: true,
           idmandante: mandanteFilter,
           saldoTotal: { gt: 0 },
         },
@@ -140,6 +143,7 @@ export async function obtenerKpisCobranzaCore(
       prisma.tbl_prestamo.aggregate({
         where: {
           deletedAt: null,
+          gestionActiva: true,
           idmandante: mandanteFilter,
           saldoTotal: { gt: 0 },
           diasMora: { gt: 0 },
@@ -165,6 +169,7 @@ export async function obtenerKpisCobranzaCore(
       prisma.tbl_gestion.count({
         where: {
           deletedAt: null,
+          prestamo: { gestionActiva: true },
           idmandante: mandanteFilter,
           fechaPromesa: { gte: hoy },
         },
@@ -172,6 +177,7 @@ export async function obtenerKpisCobranzaCore(
       prisma.tbl_acuerdo.count({
         where: {
           deletedAt: null,
+          prestamo: { gestionActiva: true },
           idmandante: mandanteFilter,
           estado: 'VIGENTE',
         },

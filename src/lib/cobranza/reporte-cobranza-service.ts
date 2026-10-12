@@ -50,12 +50,12 @@ export async function obtenerReporteCobranza(
   const [prestamoAgg, prestamosEnMora, pagosConContexto, gestiones, acuerdosVigentes] =
     await Promise.all([
       prisma.tbl_prestamo.aggregate({
-        where: { idmandante, deletedAt: null },
+        where: { idmandante, deletedAt: null, gestionActiva: true },
         _count: { idprestamo: true },
         _sum: { saldoTotal: true },
       }),
       prisma.tbl_prestamo.count({
-        where: { idmandante, deletedAt: null, diasMora: { gt: 0 } },
+        where: { idmandante, deletedAt: null, gestionActiva: true, diasMora: { gt: 0 } },
       }),
       prisma.tbl_pago.findMany({
         where: pagoWhere,
@@ -75,7 +75,7 @@ export async function obtenerReporteCobranza(
         },
       }),
       prisma.tbl_acuerdo.count({
-        where: { idmandante, estado: 'VIGENTE', deletedAt: null },
+        where: { idmandante, estado: 'VIGENTE', deletedAt: null, prestamo: { gestionActiva: true } },
       }),
     ]);
 

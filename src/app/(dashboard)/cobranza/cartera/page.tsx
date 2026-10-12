@@ -165,8 +165,8 @@ function CarteraPageContent() {
         accessorKey: 'estado',
         header: 'Estado',
         cell: ({ row }) => (
-          <span className="rounded-full bg-gray-2 px-2 py-0.5 text-xs dark:bg-dark-2">
-            {row.original.estado}
+          <span className={`rounded-full px-2 py-0.5 text-xs ${row.original.gestionActiva === false ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200' : 'bg-gray-2 dark:bg-dark-2'}`}>
+            {row.original.gestionActiva === false ? 'Retirado por mandante' : row.original.estado}
           </span>
         ),
       },

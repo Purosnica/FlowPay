@@ -106,6 +106,12 @@ export const NAV_DATA: NavSection[] = [
             permiso: PERMISO.CARTERA_WRITE,
           },
           {
+            title: "Baja por mandante",
+            url: "/cobranza/bajas-mandante",
+            icon: Icons.History,
+            permiso: PERMISO.BAJA_MANDANTE_EXECUTE,
+          },
+          {
             title: "Historial cargas",
             url: "/cobranza/historial-cargas",
             icon: Icons.History,

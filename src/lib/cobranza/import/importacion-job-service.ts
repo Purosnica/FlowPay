@@ -258,6 +258,7 @@ export async function reconciliarImportacionesAtascadas(): Promise<number> {
         prestamosCreados: carga.prestamosNuevos,
         prestamosActualizados: carga.prestamosActualizados,
         prestamosSaldoActualizado: carga.prestamosSaldoCambiado,
+        prestamosRetiradosDetectados: 0,
         cortesRegistrados: 0,
         contactosCreados: 0,
         gestoresAsignados: 0,

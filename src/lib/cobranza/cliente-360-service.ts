@@ -22,6 +22,7 @@ export interface Cliente360Resumen {
     idprestamo: number;
     noPrestamo: string;
     estado: string;
+    gestionActiva: boolean;
     saldoTotal: number;
     diasMora: number;
     mandante: string;
@@ -141,7 +142,7 @@ export async function obtenerVista360Cliente(
     0,
   );
   const prestamosActivos = prestamos.filter(
-    (p) => Number(p.saldoTotal) > 0,
+    (p) => p.gestionActiva && Number(p.saldoTotal) > 0,
   ).length;
   const pagosMes = pagos
     .filter((p) => p.fechaPago >= inicioMes)
@@ -161,6 +162,7 @@ export async function obtenerVista360Cliente(
       idprestamo: p.idprestamo,
       noPrestamo: p.noPrestamo,
       estado: p.estado,
+      gestionActiva: p.gestionActiva,
       saldoTotal: roundMoney(decimalToNumber(p.saldoTotal)),
       diasMora: p.diasMora,
       mandante: p.mandante.nombre,

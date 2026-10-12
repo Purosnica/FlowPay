@@ -10,6 +10,13 @@ export const KPI_CACHE_TTL_SECONDS = 45;
 
 type MandanteScope = number | Prisma.IntFilter | undefined;
 
+let cacheGeneration = 0;
+
+/** Invalida de inmediato las claves KPI de esta instancia tras cambios de cartera. */
+export function invalidarCacheKpi(): void {
+  cacheGeneration += 1;
+}
+
 function mandanteKeyPart(idmandante: MandanteScope): string {
   if (idmandante == null) {
     return 'all';
@@ -27,7 +34,7 @@ export function claveCacheResumenDashboard(
   idusuario: number,
   idmandante: MandanteScope,
 ): string {
-  return `kpi:dashboard:${idusuario}:${mandanteKeyPart(idmandante)}`;
+  return `kpi:dashboard:v${cacheGeneration}:${idusuario}:${mandanteKeyPart(idmandante)}`;
 }
 
 export function claveCacheKpisCore(
@@ -35,7 +42,7 @@ export function claveCacheKpisCore(
   idmandante: MandanteScope,
   periodo?: string | null,
 ): string {
-  return `kpi:core:${idusuario}:${mandanteKeyPart(idmandante)}:${periodo ?? 'actual'}`;
+  return `kpi:core:v${cacheGeneration}:${idusuario}:${mandanteKeyPart(idmandante)}:${periodo ?? 'actual'}`;
 }
 
 export async function conCacheKpi<T>(

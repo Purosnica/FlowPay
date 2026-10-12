@@ -24,6 +24,7 @@ export async function validarDestinatarioEmailCobro(params: {
       idcliente: true,
       idmandante: true,
       deletedAt: true,
+      gestionActiva: true,
       cliente: {
         select: {
           email: true,
@@ -47,6 +48,9 @@ export async function validarDestinatarioEmailCobro(params: {
       ErrorCode.PRESTAMO_NO_ENCONTRADO,
       'Préstamo no encontrado.',
     );
+  }
+  if (!prestamo.gestionActiva) {
+    throw errorValidacion('El préstamo fue retirado de la cartera de gestión por disposición del mandante.');
   }
 
   const emailsPermitidos = new Set<string>();

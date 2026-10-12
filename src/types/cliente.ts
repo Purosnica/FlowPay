@@ -159,6 +159,7 @@ export interface ClienteVista360 {
     idprestamo: number;
     noPrestamo: string;
     estado: string;
+    gestionActiva?: boolean;
     saldoTotal: number;
     diasMora: number;
     mandante: string;

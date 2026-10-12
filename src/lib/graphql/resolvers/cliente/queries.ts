@@ -201,6 +201,7 @@ builder.queryField('clienteVista360', (t) =>
                   idprestamo: number;
                   noPrestamo: string;
                   estado: string;
+                  gestionActiva: boolean;
                   saldoTotal: number;
                   diasMora: number;
                   mandante: string;
@@ -210,6 +211,7 @@ builder.queryField('clienteVista360', (t) =>
                     idprestamo: t3.exposeInt('idprestamo'),
                     noPrestamo: t3.exposeString('noPrestamo'),
                     estado: t3.exposeString('estado'),
+                    gestionActiva: t3.exposeBoolean('gestionActiva'),
                     saldoTotal: t3.exposeFloat('saldoTotal'),
                     diasMora: t3.exposeInt('diasMora'),
                     mandante: t3.exposeString('mandante'),

@@ -43,6 +43,9 @@ export interface Prestamo {
   codigoUnico: string;
   noCuenta: string | null;
   estado: string;
+  gestionActiva?: boolean;
+  bajaMandanteEfectiva?: string | null;
+  bajaMandanteMotivo?: string | null;
   moneda: string;
   diasMora: number;
   saldoTotal: number;

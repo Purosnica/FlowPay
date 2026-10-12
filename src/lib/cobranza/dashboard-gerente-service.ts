@@ -61,6 +61,7 @@ export async function obtenerDashboardGerente(
       prisma.tbl_prestamo.aggregate({
         where: {
           deletedAt: null,
+          gestionActiva: true,
           idmandante: mandanteFilter,
           saldoTotal: { gt: 0 },
         },
@@ -70,6 +71,7 @@ export async function obtenerDashboardGerente(
       prisma.tbl_prestamo.aggregate({
         where: {
           deletedAt: null,
+          gestionActiva: true,
           idmandante: mandanteFilter,
           saldoTotal: { gt: 0 },
           diasMora: { gt: 0 },

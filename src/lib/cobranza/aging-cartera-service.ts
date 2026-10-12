@@ -22,6 +22,7 @@ function whereBaseAging(idmandante: number) {
   return {
     idmandante,
     deletedAt: null,
+    gestionActiva: true,
     saldoTotal: { gt: 0 },
     estado: { not: 'Cancelado' },
   } as const;

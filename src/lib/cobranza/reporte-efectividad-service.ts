@@ -63,6 +63,7 @@ export async function obtenerReporteEfectividad(
         where: {
           idmandante,
           deletedAt: null,
+          gestionActiva: true,
           idgestorAsignado: { not: null },
           estado: { notIn: ['Cancelado', 'Finalizado'] },
         },

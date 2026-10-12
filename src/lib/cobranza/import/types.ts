@@ -58,6 +58,8 @@ export interface ResultadoImportacionCartera {
   prestamosCreados: number;
   prestamosActualizados: number;
   prestamosSaldoActualizado: number;
+  /** Coincidencias actualizadas financieramente sin reactivar su gestión. */
+  prestamosRetiradosDetectados: number;
   cortesRegistrados: number;
   contactosCreados: number;
   gestoresAsignados: number;

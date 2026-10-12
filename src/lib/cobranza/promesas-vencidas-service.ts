@@ -32,6 +32,7 @@ const wherePromesaVencidaBase = (
   ],
   prestamo: {
     deletedAt: null,
+    gestionActiva: true,
     estado: { not: 'Cancelado' },
     saldoTotal: { gt: 0 },
   },

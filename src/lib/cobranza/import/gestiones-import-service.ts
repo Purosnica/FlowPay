@@ -87,6 +87,16 @@ export async function importarGestiones(
         resultado.omitidos++;
         continue;
       }
+      if (
+        !prestamo.gestionActiva &&
+        (!prestamo.bajaMandanteEfectiva || fechaGestion >= prestamo.bajaMandanteEfectiva)
+      ) {
+        resultado.errores.push({
+          fila: fila.fila,
+          mensaje: 'El préstamo fue retirado por el mandante; solo se admite importar historial anterior a la fecha efectiva.',
+        });
+        continue;
+      }
 
       const idgestor =
         (await resolverGestorPorNombre(

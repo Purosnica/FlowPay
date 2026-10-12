@@ -34,6 +34,7 @@ export async function obtenerReporteConcentracionRiesgo(
     where: {
       idmandante,
       deletedAt: null,
+      gestionActiva: true,
       diasMora: { gt: 0 },
       saldoTotal: { gt: 0 },
       estado: { notIn: ['Cancelado', 'Finalizado'] },

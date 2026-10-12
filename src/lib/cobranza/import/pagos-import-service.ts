@@ -130,12 +130,17 @@ export async function importarPagosHistoricos(
         continue;
       }
 
-      const idgestor = resolverIdGestorPago(
-        nombreGestor,
-        prestamo.idgestorAsignado,
-        params.idusuario,
-        cacheGestores,
-      );
+      const pagoPosteriorBaja =
+        !prestamo.gestionActiva &&
+        (!prestamo.bajaMandanteEfectiva || fechaPago >= prestamo.bajaMandanteEfectiva);
+      const idgestor = pagoPosteriorBaja
+        ? null
+        : resolverIdGestorPago(
+            nombreGestor,
+            prestamo.idgestorAsignado,
+            params.idusuario,
+            cacheGestores,
+          );
       const sourceFingerprint = fingerprintPagoImportado({
         idmandante: params.idmandante,
         idprestamo: prestamo.idprestamo,

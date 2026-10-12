@@ -25,6 +25,7 @@ export async function obtenerResumenDashboard(
 
     const prestamoWhere = {
       deletedAt: null,
+      gestionActiva: true,
       idmandante: mandanteFilter,
     };
 

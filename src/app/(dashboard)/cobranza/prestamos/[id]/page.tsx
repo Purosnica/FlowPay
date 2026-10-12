@@ -380,12 +380,15 @@ export default function PrestamoDetailPage({ params }: PageProps) {
             )}
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <ContactoRapidoAcciones idprestamo={idprestamo} telefono={celularCliente} />
+            {prestamo.gestionActiva !== false && (
+              <ContactoRapidoAcciones idprestamo={idprestamo} telefono={celularCliente} />
+            )}
             <PermissionGate permiso={PERMISO.PAGO_WRITE}>
               <Button
                 className="field-touch-target"
                 data-ux-id="prestamo-registrar-pago"
                 onClick={() => setPagoRapidoOpen(true)}
+                disabled={prestamo.gestionActiva === false && esCobrador}
               >
                 Registrar pago
               </Button>
@@ -396,7 +399,7 @@ export default function PrestamoDetailPage({ params }: PageProps) {
                 className="field-touch-target"
                 data-ux-id="prestamo-tipificar"
                 onClick={() => setGestionModal(true)}
-                disabled={horarioData?.verificarHorarioCobranza.permitido === false}
+                disabled={prestamo.gestionActiva === false || horarioData?.verificarHorarioCobranza.permitido === false}
               >
                 Tipificar gestión
               </Button>
@@ -426,6 +429,14 @@ export default function PrestamoDetailPage({ params }: PageProps) {
           </div>
         </div>
       </div>
+
+      {prestamo.gestionActiva === false && (
+        <div role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-100">
+          <p className="font-semibold">Préstamo retirado de la gestión por el mandante</p>
+          <p>No se permiten nuevas gestiones, acuerdos ni comunicaciones. El historial y los datos financieros permanecen disponibles.</p>
+          {prestamo.bajaMandanteEfectiva && <p>Fecha efectiva: {String(prestamo.bajaMandanteEfectiva).slice(0, 10)}</p>}
+        </div>
+      )}
 
       {horarioData?.verificarHorarioCobranza && (
         <HorarioAlerta
@@ -515,7 +526,7 @@ export default function PrestamoDetailPage({ params }: PageProps) {
 
         <TabsContent value="acuerdo">
           <div className="space-y-6">
-            <div className="rounded-lg bg-white p-6 shadow-1 dark:bg-gray-dark">
+            {prestamo.gestionActiva !== false && <div className="rounded-lg bg-white p-6 shadow-1 dark:bg-gray-dark">
               <h2 className="mb-4 font-semibold">Simulador de acuerdo</h2>
               <AcuerdoSimulator
                 idprestamo={idprestamo}
@@ -530,7 +541,7 @@ export default function PrestamoDetailPage({ params }: PageProps) {
                   })
                 }
               />
-            </div>
+            </div>}
             {(acuerdosData?.acuerdos ?? []).length > 0 && (
               <div className="rounded-lg bg-white p-6 shadow-1 dark:bg-gray-dark">
                 <h2 className="mb-4 font-semibold">Acuerdos</h2>

@@ -79,13 +79,14 @@ export async function obtenerNotificacionesOperativas(
           deletedAt: null,
           estado: 'VIGENTE',
           idmandante: mandanteFilter,
-          prestamo: { idgestorAsignado: { in: equipoIds } },
+          prestamo: { idgestorAsignado: { in: equipoIds }, gestionActiva: true },
           cuotas: { some: { estado: 'VENCIDA' } },
         },
       }),
       prisma.tbl_prestamo.count({
         where: {
           deletedAt: null,
+          gestionActiva: true,
           idmandante: mandanteFilter,
           idgestorAsignado: { in: equipoIds },
           saldoTotal: { gt: 0 },

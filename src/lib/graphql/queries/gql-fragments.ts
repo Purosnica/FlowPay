@@ -31,6 +31,9 @@ export const PRESTAMO_LIST_FIELDS = `
   idmandante
   noPrestamo
   estado
+  gestionActiva
+  bajaMandanteEfectiva
+  bajaMandanteMotivo
   moneda
   diasMora
   saldoTotal

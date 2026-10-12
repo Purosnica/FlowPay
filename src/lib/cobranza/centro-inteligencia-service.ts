@@ -269,6 +269,7 @@ export async function obtenerCentroInteligencia(
 
   const prestamoWhere = {
     deletedAt: null,
+    gestionActiva: true,
     idmandante: idmandante ?? mandanteFilter,
     estado: { notIn: ['Cancelado', 'Finalizado'] },
   };
@@ -301,6 +302,7 @@ export async function obtenerCentroInteligencia(
         montoPromesa: { not: null },
         prestamo: {
           deletedAt: null,
+          gestionActiva: true,
           estado: { not: 'Cancelado' },
           saldoTotal: { gt: 0 },
         },

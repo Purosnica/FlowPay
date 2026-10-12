@@ -44,6 +44,7 @@ export async function validarDestinatarioSmsCobro(params: {
       idcliente: true,
       idmandante: true,
       deletedAt: true,
+      gestionActiva: true,
       cliente: {
         select: {
           telefono: true,
@@ -68,6 +69,9 @@ export async function validarDestinatarioSmsCobro(params: {
       ErrorCode.PRESTAMO_NO_ENCONTRADO,
       'Préstamo no encontrado.',
     );
+  }
+  if (!prestamo.gestionActiva) {
+    throw errorValidacion('El préstamo fue retirado de la cartera de gestión por disposición del mandante.');
   }
 
   const permitidos: string[] = [];

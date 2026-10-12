@@ -202,6 +202,7 @@ export async function obtenerAgendaSecuenciaHoy(
     where: {
       idcampana: { in: idcampanas },
       deletedAt: null,
+      gestionActiva: true,
       saldoTotal: { gt: 0 },
       idgestorAsignado: idusuario,
     },

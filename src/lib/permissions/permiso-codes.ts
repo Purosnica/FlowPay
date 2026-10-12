@@ -11,6 +11,7 @@ export const PERMISO = {
   MANDANTE_WRITE: 'MANDANTE_WRITE',
   CARTERA_READ: 'CARTERA_READ',
   CARTERA_WRITE: 'CARTERA_WRITE',
+  BAJA_MANDANTE_EXECUTE: 'BAJA_MANDANTE_EXECUTE',
   GESTION_READ: 'GESTION_READ',
   GESTION_WRITE: 'GESTION_WRITE',
   ACUERDO_READ: 'ACUERDO_READ',
@@ -130,6 +131,13 @@ export const PERMISOS_CATALOGO: PermisoDefinicion[] = [
     descripcion: 'Registrar préstamos, importar cartera, asignar cobradores y modificar datos',
     categoria: 'COBRANZA',
     tipo: 'operativo',
+  },
+  {
+    codigo: PERMISO.BAJA_MANDANTE_EXECUTE,
+    nombre: 'Ejecutar bajas por mandante',
+    descripcion: 'Validar, ejecutar y revertir bajas masivas de préstamos solicitadas por un mandante',
+    categoria: 'COBRANZA',
+    tipo: 'administrativo',
   },
   {
     codigo: PERMISO.GESTION_READ,
