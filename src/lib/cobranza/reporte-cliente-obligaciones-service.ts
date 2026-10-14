@@ -71,6 +71,7 @@ export async function obtenerReporteClienteObligaciones(
       idcliente: true,
       idmandante: true,
       noPrestamo: true,
+      codigoUnico: true,
       estado: true,
       saldoTotal: true,
       diasMora: true,
@@ -133,6 +134,7 @@ export async function obtenerReporteClienteObligaciones(
     acc.obligaciones.push({
       idprestamo: p.idprestamo,
       noPrestamo: p.noPrestamo,
+      codigoUnico: p.codigoUnico,
       idmandante: p.idmandante,
       mandanteCodigo: p.mandante.codigo,
       mandanteNombre: p.mandante.nombre,

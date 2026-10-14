@@ -1356,6 +1356,7 @@ export interface ReporteSupervisorEquipo {
 export interface ReporteClienteObligacionItem {
   idprestamo: number;
   noPrestamo: string;
+  codigoUnico: string;
   idmandante: number;
   mandanteCodigo: string;
   mandanteNombre: string;

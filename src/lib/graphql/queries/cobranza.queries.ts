@@ -2869,6 +2869,7 @@ export const GET_REPORTE_CLIENTE_OBLIGACIONES = `
         obligaciones {
           idprestamo
           noPrestamo
+          codigoUnico
           idmandante
           mandanteCodigo
           mandanteNombre

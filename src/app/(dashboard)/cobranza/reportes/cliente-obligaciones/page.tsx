@@ -194,6 +194,7 @@ export default function Page() {
         cell: ({ row }) =>
           cellPrestamoLink(row.original.idprestamo, row.original.noPrestamo),
       },
+      { accessorKey: 'codigoUnico', header: 'Código único' },
       { accessorKey: 'mandanteNombre', header: 'Mandante' },
       { accessorKey: 'estado', header: 'Estado' },
       {

@@ -435,6 +435,7 @@ const ReporteClienteObligacionItemType = builder
     fields: (t) => ({
       idprestamo: t.exposeInt('idprestamo'),
       noPrestamo: t.exposeString('noPrestamo'),
+      codigoUnico: t.exposeString('codigoUnico'),
       idmandante: t.exposeInt('idmandante'),
       mandanteCodigo: t.exposeString('mandanteCodigo'),
       mandanteNombre: t.exposeString('mandanteNombre'),
