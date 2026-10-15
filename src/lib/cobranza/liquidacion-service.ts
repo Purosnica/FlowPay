@@ -301,6 +301,109 @@ async function cargarSimulacionDesdeLiquidacion(
   };
 }
 
+/**
+ * Base contable para reportes financieros.
+ *
+ * Si el rango ya tiene una liquidación, usa su detalle congelado para que
+ * ganancias, comisiones y sus exportaciones presenten exactamente los mismos
+ * pagos e importes. Solo simula pagos en vivo cuando todavía no existe una
+ * liquidación para el rango solicitado.
+ */
+export async function obtenerSimulacionReporteFinanciero(
+  idmandante: number,
+  periodo: string,
+  idusuario: number,
+): Promise<SimulacionLiquidacion> {
+  await requerirAccesoMandante(idusuario, idmandante);
+  const rango = parsePeriodo(periodo);
+
+  const esMesCalendarioCompleto =
+    rango.inicio.getUTCDate() === 1 &&
+    rango.fin.getTime() ===
+      Date.UTC(
+        rango.inicio.getUTCFullYear(),
+        rango.inicio.getUTCMonth() + 1,
+        1,
+      );
+  const periodoMensual = esMesCalendarioCompleto
+    ? `${rango.inicio.getUTCFullYear()}-${String(
+        rango.inicio.getUTCMonth() + 1,
+      ).padStart(2, '0')}`
+    : null;
+
+  const liquidaciones = await prisma.tbl_liquidacion.findMany({
+    where: {
+      idmandante,
+      deletedAt: null,
+      ...(periodoMensual
+        ? { periodo: periodoMensual }
+        : {
+            detalle: {
+              some: {
+                pago: {
+                  fechaPago: { gte: rango.inicio, lt: rango.fin },
+                },
+              },
+            },
+          }),
+    },
+    include: {
+      detalle: {
+        where: {
+          pago: { fechaPago: { gte: rango.inicio, lt: rango.fin } },
+        },
+        include: {
+          pago: { select: { fechaPago: true } },
+        },
+      },
+    },
+    orderBy: { idliquidacion: 'asc' },
+  });
+
+  if (liquidaciones.length === 0) {
+    return simularLiquidacion(idmandante, periodo, idusuario);
+  }
+
+  const detalle: DetallePagoLiquidacion[] = liquidaciones.flatMap((liq) =>
+    liq.detalle.map((d) => ({
+      idpago: d.idpago,
+      idprestamo: d.idprestamo,
+      noPrestamo: d.noPrestamo,
+      fechaPago: d.pago.fechaPago.toISOString(),
+      monto: decimalToNumber(d.monto),
+      monedaOriginal: d.monedaOriginal,
+      montoOriginal: decimalToNumber(d.montoOriginal),
+      tipoCambioAplicado: decimalToNumber(d.tipoCambioAplicado),
+      diasMora: d.diasMora,
+      idgestor: d.idgestor,
+      nombreGestor: d.nombreGestor,
+      porcentajeRecuperacion: decimalToNumber(d.porcentajeRecuperacion),
+      ingresoEmpresa: decimalToNumber(d.ingresoEmpresa),
+      porcentajeComisionCobrador: decimalToNumber(
+        d.porcentajeComisionCobrador,
+      ),
+      montoComision: decimalToNumber(d.montoComision),
+    })),
+  );
+
+  return {
+    idmandante,
+    periodo: rango.periodo,
+    moneda: liquidaciones[0]?.moneda ?? MONEDA_BASE_LIQUIDACION,
+    totalRecuperado: roundMoney(
+      detalle.reduce((total, row) => total + row.monto, 0),
+    ),
+    totalIngresoEmpresa: roundMoney(
+      detalle.reduce((total, row) => total + row.ingresoEmpresa, 0),
+    ),
+    totalComision: roundMoney(
+      detalle.reduce((total, row) => total + row.montoComision, 0),
+    ),
+    cantidadPagos: detalle.length,
+    detalle,
+  };
+}
+
 export async function generarLiquidacion(
   params: GenerarLiquidacionParams,
 ): Promise<{ idliquidacion: number; simulacion: SimulacionLiquidacion }> {

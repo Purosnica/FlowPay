@@ -10,6 +10,7 @@ export {
   revertirLiquidacionPagada,
   revertirLiquidacionEmitida,
   simularLiquidacion,
+  obtenerSimulacionReporteFinanciero,
   obtenerDetalleLiquidacion,
 } from '@/lib/cobranza/liquidacion-service';
 export {

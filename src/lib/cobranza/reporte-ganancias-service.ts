@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { requerirAccesoMandante } from './mandante-scope';
 import { roundMoney } from './decimal-utils';
-import { simularLiquidacion } from './liquidacion-service';
+import { obtenerSimulacionReporteFinanciero } from './liquidacion-service';
 import {
   cargarTramosRecuperacionMandante,
   comisionTramosADefs,
@@ -22,7 +22,8 @@ function margenPct(gananciaNeta: number, ingreso: number): number {
 }
 
 /**
- * Reporte de ganancias del periodo a partir de pagos aplicados
+ * Reporte de ganancias del periodo a partir de la liquidación existente o,
+ * si aún no se ha generado, de los pagos aplicados
  * (misma fórmula que liquidación: ingresoEmpresa − comisión).
  * Por tramo usa la config de % recuperación del Mandante.
  */
@@ -42,7 +43,7 @@ export async function obtenerReporteGanancias(
   }
 
   const [sim, tramosRecuperacion] = await Promise.all([
-    simularLiquidacion(idmandante, periodo, idusuario),
+    obtenerSimulacionReporteFinanciero(idmandante, periodo, idusuario),
     cargarTramosRecuperacionMandante(idmandante),
   ]);
   const gananciaNeta = roundMoney(
