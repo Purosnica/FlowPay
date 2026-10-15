@@ -7,6 +7,7 @@ import {
   ejecutarBajaMasivaMandante,
   listarLotesBaja,
   obtenerLoteBaja,
+  reactivarPtmOsBajaMandante,
   revertirBajaMasivaMandante,
   validarBajaMasivaMandante,
 } from '@/lib/cobranza/baja-mandante-service';
@@ -21,6 +22,12 @@ export const maxDuration = 300;
 const EjecutarSchema = z.discriminatedUnion('accion', [
   z.object({ accion: z.literal('ejecutar'), idlote: z.number().int().positive() }),
   z.object({ accion: z.literal('revertir'), idlote: z.number().int().positive(), motivo: z.string().trim().min(5).max(500) }),
+  z.object({
+    accion: z.literal('reactivar_ptmos'),
+    idlote: z.number().int().positive(),
+    iddetalles: z.array(z.number().int().positive()).min(1).max(500),
+    motivo: z.string().trim().min(5).max(500),
+  }),
 ]);
 
 export async function GET(req: NextRequest) {
@@ -80,7 +87,9 @@ export async function POST(req: NextRequest) {
     const body = EjecutarSchema.parse(await req.json());
     const data = body.accion === 'ejecutar'
       ? await ejecutarBajaMasivaMandante(body.idlote, usuario.idusuario)
-      : await revertirBajaMasivaMandante(body.idlote, usuario.idusuario, body.motivo);
+      : body.accion === 'revertir'
+        ? await revertirBajaMasivaMandante(body.idlote, usuario.idusuario, body.motivo)
+        : await reactivarPtmOsBajaMandante(body.idlote, body.iddetalles, usuario.idusuario, body.motivo);
     return NextResponse.json({ success: true, data });
   } catch (error) {
     return handleApiError(error);

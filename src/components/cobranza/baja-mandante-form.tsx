@@ -17,6 +17,8 @@ type Detalle = {
   mensaje: string | null;
   saldoSnapshot: number | null;
   cobradorAnterior: string | null;
+  reactivadoAt: string | null;
+  motivoReactivacion: string | null;
 };
 type Lote = {
   idlote: number;
@@ -57,6 +59,10 @@ export function BajaMandanteForm() {
   const [confirmar, setConfirmar] = useState(false);
   const [confirmarReversion, setConfirmarReversion] = useState(false);
   const [motivoReversion, setMotivoReversion] = useState('');
+  const [confirmarReactivacion, setConfirmarReactivacion] = useState(false);
+  const [motivoReactivacion, setMotivoReactivacion] = useState('');
+  const [detallesSeleccionados, setDetallesSeleccionados] = useState<Set<number>>(new Set());
+  const [busquedaPtmo, setBusquedaPtmo] = useState('');
   const [historial, setHistorial] = useState<LoteResumen[]>([]);
 
   const { data: campanasData } = useGraphQLQuery<{ campanas: { campanas: Campana[] } }>(
@@ -70,6 +76,17 @@ export function BajaMandanteForm() {
     for (const d of lote?.detalles ?? []) result[d.resultado] = (result[d.resultado] ?? 0) + 1;
     return result;
   }, [lote]);
+  const detallesReactivables = useMemo(
+    () => lote?.detalles.filter((detalle) => detalle.resultado === 'BAJA_APLICADA' && !detalle.reactivadoAt) ?? [],
+    [lote],
+  );
+  const detallesVisibles = useMemo(() => {
+    const busqueda = busquedaPtmo.trim().toLowerCase();
+    return (busqueda
+      ? lote?.detalles.filter((detalle) => detalle.numeroPtmo.toLowerCase().includes(busqueda))
+      : lote?.detalles
+    )?.slice(0, 500) ?? [];
+  }, [busquedaPtmo, lote]);
 
   useEffect(() => {
     if (!idmandante) { setHistorial([]); return; }
@@ -86,6 +103,8 @@ export function BajaMandanteForm() {
       const json = await response.json() as { success: boolean; data?: Lote; error?: string };
       if (!response.ok || !json.success || !json.data) throw new Error(json.error ?? 'No fue posible consultar el lote.');
       setLote(json.data);
+      setDetallesSeleccionados(new Set());
+      setBusquedaPtmo('');
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'No fue posible consultar el lote.'); }
     finally { setLoading(false); }
   }
@@ -93,6 +112,8 @@ export function BajaMandanteForm() {
   async function validar() {
     setError(null);
     setLote(null);
+    setDetallesSeleccionados(new Set());
+    setBusquedaPtmo('');
     if (!idmandante || !archivo || !fechaEfectiva || (motivo === 'OTRO' && !observaciones.trim())) {
       setError('Complete mandante, fecha, motivo, archivo y la explicación requerida.');
       return;
@@ -147,14 +168,47 @@ export function BajaMandanteForm() {
       const json = await response.json() as { success: boolean; data?: Lote; error?: string };
       if (!response.ok || !json.success || !json.data) throw new Error(json.error ?? 'No fue posible revertir la baja.');
       setLote(json.data); setConfirmarReversion(false); setMotivoReversion('');
+      setDetallesSeleccionados(new Set());
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'No fue posible revertir la baja.'); }
     finally { setLoading(false); }
+  }
+
+  async function reactivarSeleccionados() {
+    if (!lote || detallesSeleccionados.size === 0 || motivoReactivacion.trim().length < 5) return;
+    setLoading(true); setError(null);
+    try {
+      const response = await fetch('/api/cobranza/bajas-mandante', {
+        method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json', ...csrfHeaders() },
+        body: JSON.stringify({
+          accion: 'reactivar_ptmos',
+          idlote: lote.idlote,
+          iddetalles: [...detallesSeleccionados],
+          motivo: motivoReactivacion,
+        }),
+      });
+      const json = await response.json() as { success: boolean; data?: Lote; error?: string };
+      if (!response.ok || !json.success || !json.data) throw new Error(json.error ?? 'No fue posible reactivar los PTMO seleccionados.');
+      setLote(json.data);
+      setDetallesSeleccionados(new Set());
+      setConfirmarReactivacion(false);
+      setMotivoReactivacion('');
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'No fue posible reactivar los PTMO seleccionados.'); }
+    finally { setLoading(false); }
+  }
+
+  function alternarDetalle(iddetalle: number) {
+    setDetallesSeleccionados((actuales) => {
+      const siguientes = new Set(actuales);
+      if (siguientes.has(iddetalle)) siguientes.delete(iddetalle);
+      else siguientes.add(iddetalle);
+      return siguientes;
+    });
   }
 
   function descargarResultado() {
     if (!lote) return;
     const q = (v: unknown) => `"${String(v ?? '').replaceAll('"', '""')}"`;
-    const rows = [['fila', 'numero_ptmo', 'resultado', 'mensaje', 'cobrador_anterior', 'saldo'], ...lote.detalles.map((d) => [d.fila, d.numeroPtmo, d.resultado, d.mensaje ?? '', d.cobradorAnterior ?? '', d.saldoSnapshot ?? ''])];
+    const rows = [['fila', 'numero_ptmo', 'resultado', 'mensaje', 'cobrador_anterior', 'saldo', 'fecha_reactivacion', 'motivo_reactivacion'], ...lote.detalles.map((d) => [d.fila, d.numeroPtmo, d.reactivadoAt ? 'REACTIVADO' : d.resultado, d.mensaje ?? '', d.cobradorAnterior ?? '', d.saldoSnapshot ?? '', d.reactivadoAt ?? '', d.motivoReactivacion ?? ''])];
     const blob = new Blob([`\ufeff${rows.map((r) => r.map(q).join(',')).join('\r\n')}`], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = `${lote.codigo}-resultado.csv`; a.click(); URL.revokeObjectURL(url);
@@ -195,12 +249,14 @@ export function BajaMandanteForm() {
         {[['Recibidos', lote.totalRecibidos], ['Elegibles', lote.totalElegibles], ['Ya inactivos', conteos.YA_INACTIVO ?? 0], ['Duplicados', conteos.DUPLICADO ?? 0], ['No encontrados', conteos.NO_ENCONTRADO ?? 0], ['Otro mandante/cartera', (conteos.OTRO_MANDANTE ?? 0) + (conteos.FUERA_CARTERA ?? 0)], ['Ambiguos/errores', (conteos.AMBIGUO ?? 0) + (conteos.ERROR_FORMATO ?? 0)], ['Saldo elegible', lote.detalles.filter((d) => d.resultado === 'ELEGIBLE').reduce((s, d) => s + (d.saldoSnapshot ?? 0), 0).toLocaleString('es-NI')]].map(([label, value]) => <div key={String(label)} className="rounded-lg bg-gray-2 p-3 dark:bg-dark-2"><p className="text-xs text-gray-500">{label}</p><p className="font-semibold">{value}</p></div>)}
       </div>
       <div className="grid gap-4 md:grid-cols-2"><div><h3 className="text-sm font-semibold">Cobradores afectados</h3>{lote.resumenCobradores.map((x) => <p key={x.nombre} className="text-sm">{x.nombre}: {x.cantidad}</p>)}</div><div><h3 className="text-sm font-semibold">Distribución por cartera</h3>{lote.resumenCarteras.map((x) => <p key={x.cartera} className="text-sm">{x.cartera}: {x.cantidad}</p>)}</div></div>
-      <div className="max-h-80 overflow-auto"><table className="w-full text-left text-sm"><thead className="sticky top-0 bg-white dark:bg-dark"><tr><th className="p-2">Fila</th><th className="p-2">PTMO</th><th className="p-2">Resultado</th><th className="p-2">Detalle</th></tr></thead><tbody>{lote.detalles.slice(0, 500).map((d) => <tr key={d.iddetalle} className="border-t border-stroke dark:border-dark-3"><td className="p-2">{d.fila}</td><td className="p-2 font-mono">{d.numeroPtmo}</td><td className="p-2">{d.resultado}</td><td className="p-2">{d.mensaje ?? '—'}</td></tr>)}</tbody></table>{lote.detalles.length > 500 && <p className="p-2 text-xs text-gray-500">Se muestran 500 filas. Descargue el CSV para ver todas.</p>}</div>
+      <div><label className="text-sm font-medium">Buscar PTMO<input type="search" value={busquedaPtmo} onChange={(e) => setBusquedaPtmo(e.target.value)} placeholder="Escriba el número de préstamo" className="mt-1.5 w-full rounded-lg border border-stroke bg-transparent px-3 py-2 font-mono dark:border-dark-3 dark:bg-dark-2" /></label></div>
+      <div className="max-h-80 overflow-auto"><table className="w-full text-left text-sm"><thead className="sticky top-0 bg-white dark:bg-dark"><tr><th className="p-2">Seleccionar</th><th className="p-2">Fila</th><th className="p-2">PTMO</th><th className="p-2">Resultado</th><th className="p-2">Detalle</th></tr></thead><tbody>{detallesVisibles.map((d) => { const reactivable = d.resultado === 'BAJA_APLICADA' && !d.reactivadoAt; return <tr key={d.iddetalle} className="border-t border-stroke dark:border-dark-3"><td className="p-2"><input type="checkbox" aria-label={`Seleccionar PTMO ${d.numeroPtmo}`} checked={detallesSeleccionados.has(d.iddetalle)} disabled={!reactivable || loading} onChange={() => alternarDetalle(d.iddetalle)} /></td><td className="p-2">{d.fila}</td><td className="p-2 font-mono">{d.numeroPtmo}</td><td className="p-2">{d.reactivadoAt ? 'REACTIVADO' : d.resultado}</td><td className="p-2">{d.reactivadoAt ? `Reactivado: ${d.motivoReactivacion ?? 'sin detalle'}` : d.mensaje ?? '—'}</td></tr>; })}</tbody></table>{(busquedaPtmo ? (lote.detalles.filter((d) => d.numeroPtmo.toLowerCase().includes(busquedaPtmo.trim().toLowerCase())).length > 500) : lote.detalles.length > 500) && <p className="p-2 text-xs text-gray-500">Se muestran hasta 500 filas. Use la búsqueda o descargue el CSV para localizar otro PTMO.</p>}</div>
       {lote.estado === 'VALIDADO' && <Button variant="danger" disabled={lote.totalElegibles === 0} onClick={() => setConfirmar(true)}>Confirmar baja de {lote.totalElegibles} préstamos</Button>}
-      {lote.estado.startsWith('COMPLETADO') && <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-green-50 p-3 text-sm text-green-800"><span>Baja finalizada: {lote.totalExitosos} préstamos retirados; {lote.totalRechazados} rechazados.</span><Button variant="outline" onClick={() => setConfirmarReversion(true)}>Reactivar lote</Button></div>}
+      {['COMPLETADO', 'COMPLETADO_PARCIAL', 'REVERTIDO_PARCIAL'].includes(lote.estado) && <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-green-50 p-3 text-sm text-green-800"><span>Baja finalizada: {lote.totalExitosos} préstamos retirados; {detallesReactivables.length} continúan inactivos.</span><div className="flex flex-wrap gap-2"><Button variant="outline" disabled={detallesSeleccionados.size === 0} onClick={() => setConfirmarReactivacion(true)}>Reactivar seleccionados ({detallesSeleccionados.size})</Button><Button variant="outline" onClick={() => setConfirmarReversion(true)}>Reactivar lote completo</Button></div></div>}
     </section>}
     {historial.length > 0 && <section className="rounded-lg border border-stroke p-4 dark:border-dark-3"><h2 className="mb-3 font-semibold">Historial de bajas</h2><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr><th className="p-2">Lote</th><th className="p-2">Estado</th><th className="p-2">Fecha efectiva</th><th className="p-2">Recibidos</th><th className="p-2">Exitosos</th><th className="p-2"></th></tr></thead><tbody>{historial.map((h) => <tr key={h.idlote} className="border-t border-stroke dark:border-dark-3"><td className="p-2 font-mono">{h.codigo}</td><td className="p-2">{h.estado}</td><td className="p-2">{String(h.fechaEfectiva).slice(0, 10)}</td><td className="p-2">{h.totalRecibidos}</td><td className="p-2">{h.totalExitosos}</td><td className="p-2"><Button size="sm" variant="outline" onClick={() => abrirLote(h.idlote)}>Ver</Button></td></tr>)}</tbody></table></div></section>}
     <ConfirmDialog isOpen={confirmar} onClose={() => setConfirmar(false)} onConfirm={ejecutar} isLoading={loading} title="Confirmar baja masiva" confirmLabel={`Dar de baja ${lote?.totalElegibles ?? 0} préstamos`} description={<>Se retirarán de la gestión activa <strong>{lote?.totalElegibles ?? 0}</strong> préstamos del mandante <strong>{mandanteNombre || lote?.mandante.nombre}</strong>. El historial será conservado.</>} />
+    <ConfirmDialog isOpen={confirmarReactivacion} onClose={() => setConfirmarReactivacion(false)} onConfirm={reactivarSeleccionados} isLoading={loading} disabled={motivoReactivacion.trim().length < 5} variant="warning" title="Reactivar PTMO seleccionados" confirmLabel={`Reactivar ${detallesSeleccionados.size} PTMO`} description="Solo los préstamos seleccionados volverán a la cartera activa y quedarán sin cobrador asignado."><label className="block text-sm font-medium">Motivo de reactivación *<textarea value={motivoReactivacion} onChange={(e) => setMotivoReactivacion(e.target.value)} rows={3} maxLength={500} className="mt-1 w-full rounded-lg border border-stroke p-2 dark:border-dark-3 dark:bg-dark-2" /></label></ConfirmDialog>
     <ConfirmDialog isOpen={confirmarReversion} onClose={() => setConfirmarReversion(false)} onConfirm={revertir} isLoading={loading} disabled={motivoReversion.trim().length < 5} variant="warning" title="Reactivar préstamos" confirmLabel="Confirmar reactivación" description="Los préstamos volverán a la cartera activa sin asignarse automáticamente al cobrador anterior."><label className="block text-sm font-medium">Motivo de reactivación *<textarea value={motivoReversion} onChange={(e) => setMotivoReversion(e.target.value)} rows={3} className="mt-1 w-full rounded-lg border border-stroke p-2 dark:border-dark-3 dark:bg-dark-2" /></label></ConfirmDialog>
   </div>;
 }

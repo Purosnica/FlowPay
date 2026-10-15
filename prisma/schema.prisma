@@ -674,24 +674,28 @@ model tbl_baja_mandante_lote {
 
 /// Resultado inmutable por fila/PTMO de la validación y ejecución.
 model tbl_baja_mandante_detalle {
-  iddetalle        Int      @id @default(autoincrement())
-  idlote           Int
-  fila             Int
-  numeroPtmo       String   @db.VarChar(191)
-  idprestamo       Int?
-  idgestorAnterior Int?
-  estadoAnterior   String?  @db.VarChar(50)
-  resultado        String   @db.VarChar(32)
-  mensaje          String?  @db.Text
-  saldoSnapshot    Decimal? @db.Decimal(14, 2)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  iddetalle             Int       @id @default(autoincrement())
+  idlote                Int
+  fila                  Int
+  numeroPtmo            String    @db.VarChar(191)
+  idprestamo            Int?
+  idgestorAnterior      Int?
+  estadoAnterior        String?   @db.VarChar(50)
+  resultado             String    @db.VarChar(32)
+  mensaje               String?   @db.Text
+  saldoSnapshot         Decimal?  @db.Decimal(14, 2)
+  reactivadoAt          DateTime?
+  idusuarioReactivacion Int?
+  motivoReactivacion    String?   @db.Text
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   lote     tbl_baja_mandante_lote @relation(fields: [idlote], references: [idlote], onDelete: Restrict)
   prestamo tbl_prestamo?          @relation(fields: [idprestamo], references: [idprestamo], onDelete: SetNull)
 
   @@unique([idlote, fila])
   @@index([idlote, resultado])
+  @@index([idlote, reactivadoAt])
   @@index([numeroPtmo])
   @@index([idprestamo])
   @@map("tbl_baja_mandante_detalle")

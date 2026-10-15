@@ -71,29 +71,14 @@ export function parsearPtmOs(buffer: Buffer, nombreArchivo: string): FilaPtmo[] 
     const cell = sheet[XLSX.utils.encode_cell({ r: row, c: col })];
     if (!cell || cell.v == null || String(cell.v).trim() === '') continue;
     if (cell.t === 'n') {
-      // Si la celda es numérica, comparamos el valor numérico (como string) contra el
-      // texto formateado por Excel (cell.w). Si difieren, hay riesgo de ceros iniciales
-      // perdidos y se rechaza. Si son iguales, el PTMO no tiene ceros iniciales y es seguro.
       const valorNumerico = String(cell.v).trim();
       const valorFormateado = String(cell.w ?? cell.v).trim();
-      const tieneRiesgoCerosIniciales = valorNumerico !== valorFormateado;
-      if (tieneRiesgoCerosIniciales) {
-        filas.push({
-          fila: row + 1,
-          numeroPtmo: valorFormateado,
-          error:
-            'El PTMO está almacenado como número; no es posible garantizar sus ceros iniciales. Formatee la celda como texto.',
-        });
-        continue;
-      }
-      // Sin riesgo de ceros iniciales: se acepta el valor numérico como texto.
-      const numeroPtmo = valorNumerico;
       filas.push({
         fila: row + 1,
-        numeroPtmo,
-        error: /e[+-]?\d+$/i.test(numeroPtmo)
+        numeroPtmo: valorFormateado,
+        error: /e[+-]?\d+$/i.test(valorNumerico)
           ? 'El PTMO está en notación científica y no puede identificarse con certeza.'
-          : undefined,
+          : 'El PTMO está almacenado como número; no es posible garantizar sus ceros iniciales. Formatee la celda como texto.',
       });
       continue;
     }
@@ -358,10 +343,16 @@ export async function revertirBajaMasivaMandante(idlote: number, idusuario: numb
   const lote = await prisma.tbl_baja_mandante_lote.findUnique({ where: { idlote } });
   if (!lote) throw new Error('Lote no encontrado.');
   await requerirAccesoMandante(idusuario, lote.idmandante);
-  if (!['COMPLETADO', 'COMPLETADO_PARCIAL'].includes(lote.estado)) throw new Error('Solo puede revertirse un lote ejecutado.');
+  if (!['COMPLETADO', 'COMPLETADO_PARCIAL', 'REVERTIDO_PARCIAL'].includes(lote.estado)) throw new Error('Solo puede revertirse un lote ejecutado.');
   await prisma.$transaction(async (tx) => {
-    const result = await tx.tbl_prestamo.updateMany({
+    const prestamos = await tx.tbl_prestamo.findMany({
       where: { bajaMandanteLoteId: idlote, gestionActiva: false, deletedAt: null },
+      select: { idprestamo: true },
+    });
+    const idsPrestamo = prestamos.map((prestamo) => prestamo.idprestamo);
+    const reactivadoAt = new Date();
+    const result = await tx.tbl_prestamo.updateMany({
+      where: { idprestamo: { in: idsPrestamo }, bajaMandanteLoteId: idlote, gestionActiva: false, deletedAt: null },
       data: {
         gestionActiva: true,
         bajaMandanteAt: null,
@@ -375,6 +366,13 @@ export async function revertirBajaMasivaMandante(idlote: number, idusuario: numb
         version: { increment: 1 },
       },
     });
+    if (result.count !== idsPrestamo.length) throw new Error('La cartera cambió durante la reactivación. Intente nuevamente.');
+    if (idsPrestamo.length > 0) {
+      await tx.tbl_baja_mandante_detalle.updateMany({
+        where: { idlote, idprestamo: { in: idsPrestamo }, resultado: 'BAJA_APLICADA', reactivadoAt: null },
+        data: { reactivadoAt, idusuarioReactivacion: idusuario, motivoReactivacion: motivo.trim() },
+      });
+    }
     await tx.tbl_baja_mandante_lote.update({ where: { idlote }, data: { estado: 'REVERTIDO', revertidoAt: new Date(), motivoReversion: motivo.trim() } });
     await registrarAuditoria(tx, {
       idusuario,
@@ -384,6 +382,101 @@ export async function revertirBajaMasivaMandante(idlote: number, idusuario: numb
       detalle: JSON.stringify({ codigo: lote.codigo, motivo: motivo.trim(), reactivados: result.count }),
     });
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  invalidarCacheKpi();
+  return obtenerLoteBaja(idlote, idusuario);
+}
+
+export async function reactivarPtmOsBajaMandante(
+  idlote: number,
+  iddetalles: number[],
+  idusuario: number,
+  motivo: string,
+) {
+  const motivoLimpio = motivo.trim();
+  const idsUnicos = [...new Set(iddetalles)];
+  if (motivoLimpio.length < 5) throw new Error('El motivo de reactivación debe tener al menos 5 caracteres.');
+  if (idsUnicos.length === 0 || idsUnicos.length > 500) throw new Error('Seleccione entre 1 y 500 préstamos para reactivar.');
+
+  const lote = await prisma.tbl_baja_mandante_lote.findUnique({ where: { idlote } });
+  if (!lote) throw new Error('Lote no encontrado.');
+  await requerirAccesoMandante(idusuario, lote.idmandante);
+  if (!['COMPLETADO', 'COMPLETADO_PARCIAL', 'REVERTIDO_PARCIAL'].includes(lote.estado)) {
+    throw new Error('Solo pueden reactivarse préstamos de un lote ejecutado.');
+  }
+
+  await prisma.$transaction(async (tx) => {
+    const detalles = await tx.tbl_baja_mandante_detalle.findMany({
+      where: {
+        idlote,
+        iddetalle: { in: idsUnicos },
+        resultado: 'BAJA_APLICADA',
+        reactivadoAt: null,
+        idprestamo: { not: null },
+      },
+      orderBy: { idprestamo: 'asc' },
+    });
+    if (detalles.length !== idsUnicos.length) {
+      throw new Error('Uno o más PTMO seleccionados ya fueron reactivados o no pertenecen a este lote.');
+    }
+
+    const reactivadoAt = new Date();
+    for (const detalle of detalles) {
+      const result = await tx.tbl_prestamo.updateMany({
+        where: {
+          idprestamo: detalle.idprestamo!,
+          idmandante: lote.idmandante,
+          bajaMandanteLoteId: idlote,
+          gestionActiva: false,
+          deletedAt: null,
+        },
+        data: {
+          gestionActiva: true,
+          bajaMandanteAt: null,
+          bajaMandanteEfectiva: null,
+          bajaMandanteMotivo: null,
+          bajaMandanteLoteId: null,
+          bloqueadoAsignacion: false,
+          idgestorAsignado: null,
+          version: { increment: 1 },
+        },
+      });
+      if (result.count !== 1) {
+        throw new Error(`El PTMO ${detalle.numeroPtmo} ya no está disponible para reactivación.`);
+      }
+      await tx.tbl_baja_mandante_detalle.update({
+        where: { iddetalle: detalle.iddetalle },
+        data: { reactivadoAt, idusuarioReactivacion: idusuario, motivoReactivacion: motivoLimpio },
+      });
+      await registrarAuditoria(tx, {
+        idusuario,
+        entidad: 'prestamo',
+        entidadId: detalle.idprestamo,
+        accion: 'REACTIVAR_PTMO_BAJA_MANDANTE',
+        detalle: JSON.stringify({ lote: lote.codigo, ptmo: detalle.numeroPtmo, motivo: motivoLimpio }),
+      });
+    }
+
+    const pendientes = await tx.tbl_baja_mandante_detalle.count({
+      where: { idlote, resultado: 'BAJA_APLICADA', reactivadoAt: null },
+    });
+    const loteRevertido = pendientes === 0;
+    await tx.tbl_baja_mandante_lote.update({
+      where: { idlote },
+      data: {
+        estado: loteRevertido ? 'REVERTIDO' : 'REVERTIDO_PARCIAL',
+        revertidoAt: loteRevertido ? reactivadoAt : null,
+        motivoReversion: loteRevertido ? `Reactivación individual completada: ${motivoLimpio}` : null,
+      },
+    });
+    await registrarAuditoria(tx, {
+      idusuario,
+      entidad: 'baja_mandante_lote',
+      entidadId: idlote,
+      accion: 'REACTIVAR_PTMOS_BAJA_MANDANTE',
+      detalle: JSON.stringify({ codigo: lote.codigo, motivo: motivoLimpio, ptmos: detalles.map((detalle) => detalle.numeroPtmo), pendientes }),
+    });
+  }, { maxWait: 15_000, timeout: 120_000, isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
   invalidarCacheKpi();
   return obtenerLoteBaja(idlote, idusuario);
 }
@@ -401,7 +494,7 @@ export async function obtenerLoteBaja(idlote: number, idusuario: number) {
   await requerirAccesoMandante(idusuario, lote.idmandante);
   const cobradores = new Map<string, number>();
   const carteras = new Map<string, number>();
-  for (const d of lote.detalles.filter((x) => x.resultado === 'ELEGIBLE' || x.resultado === 'BAJA_APLICADA')) {
+  for (const d of lote.detalles.filter((x) => (x.resultado === 'ELEGIBLE' || x.resultado === 'BAJA_APLICADA') && !x.reactivadoAt)) {
     const gestor = d.prestamo?.gestor?.nombre ?? 'Sin asignar';
     cobradores.set(gestor, (cobradores.get(gestor) ?? 0) + 1);
     const cartera = d.prestamo?.idcampana ? String(d.prestamo.idcampana) : 'Sin campaña';
